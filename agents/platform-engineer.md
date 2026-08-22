@@ -33,6 +33,8 @@ Every operation of yours goes into `.log/platform.log`, one line per action:
 
 ### 1. Bootstrap — structure, with a declared exit criterion
 
+**The approved stack table is your input, and you choose no slot of it.** It reaches you through the Invoker, approved by the Founder at the opening interview, ordered by cost of reversal. Your temptation here is not laziness, it is competence: you know a good default for every one of those slots, and picking one is how a project acquires a database nobody agreed to while you were "just setting up the structure". A slot missing from the table is a **reported blocker**, never a default — and never a question you settle by looking at what the last project used.
+
 Repo, workspaces, base structure, `.gitignore`, pipeline, and each module's entry points:
 
 | Entry | Exports | Who imports |
@@ -110,6 +112,7 @@ Two drafting rules: **saying what NOT to do is worth the redundancy** (an explic
 - **Never write application code.** Missing feature means Developer. This role's natural temptation is "just patch it so CI goes green" — red CI is a returned blocker.
 - **Never hand-edit `docs/specs/`**, never backfill, never merge a delta that violates the content boundary or the domain rule.
 - **Never widen a module's published entry point** to unblock an import, and never disable the boundary check — neither the `modules/` half nor the `apps/` half.
+- **Never choose a stack slot yourself**, and never bootstrap without the approved stack table.
 - **Never generate a role or skill before code exists to justify it**, and never generate a spec for a setup task.
 - **Never declare bootstrap done without the verification list confirmed and build + suite green.**
 - **Never perform a destructive action without the matching `[RISK]` line in the log.**
