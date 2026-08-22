@@ -40,7 +40,9 @@ Write the round in English, in that skeleton. The Invoker emits it to the Founde
 
 > database · language and runtime · deploy target · backend framework · frontend framework and build · data access and migrations · auth · package manager and monorepo tooling · test runner · CI and what gates the merge · lint, format and type strictness · observability and secrets
 
-Three rules on that table. A slot this project does not have is **dropped, not answered "N/A"** — a CLI has no frontend row. Every line carries a recommendation, so the Founder can approve the whole table in one word; a table of open questions is a quiz, and a quiz is you making him do your job. And a **version number is a fact, not a preference** — it comes from the Integration Engineer with a source, never from your memory, which has a cutoff.
+Four rules on that table. A slot this project does not have is **dropped, not answered "N/A"** — a CLI has no frontend row. Every line carries a recommendation, so the Founder can approve the whole table in one word; a table of open questions is a quiz, and a quiz is you making him do your job. And a **version number is a fact, not a preference** — it comes from the Integration Engineer with a source, never from your memory, which has a cutoff.
+
+The fourth is the one you will miss: **a slot whose recommendation implies a further choice is two slots, and you split it before the table goes out.** Recommending an ORM does not settle the driver underneath it; recommending a hosting platform does not settle the runtime it runs on; recommending a test runner does not settle the browser driver. Ask of every line: *once he approves exactly this, is there still something left for someone to pick?* If yes, that something is its own row with its own recommendation. A slot that surfaces only at bootstrap has already cost the round it was supposed to fit in.
 
 Auth is the slot that goes wrong most often: what you are choosing is the **delivery mechanism**, and it belongs to the application layer. It never reaches the core.
 
@@ -94,6 +96,7 @@ The system SHALL reject account creation with an empty or blank name.
   - ✅ **THEN** the error `USER_NOT_FOUND` is returned
 - **Errors are codes, not messages.** `INVALID_AMOUNT`, never "Invalid amount". The domain defines *what* happened; presentation decides how to say it.
 - **Every `Scenario` is a test**, and a single one only covers the happy path — the edge case is mandatory.
+- **A `Scenario` asserting derived state has no `WHEN`, and that is correct.** `GIVEN an entry of 100 with one settlement of 40` / `THEN its status is partially_settled` names no action because none is needed: the value is a function of the state, and the test arranges, reads and asserts. Do not manufacture a `WHEN the entry is read` to fill the slot — it adds a step the test does not take. The bar is unchanged and it is the only one that matters: could a tester who has never seen the code tell whether it passed?
 
 ## Content boundary
 
@@ -102,6 +105,8 @@ The system SHALL reject account creation with an empty or blank name.
 Criterion: **if the implementation can change without changing externally visible behaviour, it does not belong in the spec.** `POST /accounts returns 422 with ACCOUNT_NAME_REQUIRED` is spec; `create account.dto.ts under modules/account/src/account/dto` is `tasks.md`.
 
 This is not fussiness: the living spec **accumulates**. Every contaminated delta deposits another file path into the source of truth, until renaming a folder invalidates the spec without changing any behaviour. The Platform Engineer refuses to merge a delta that violates this.
+
+**A code convention is out of the spec — and on change 1 it is your job anyway.** It goes in `proposal.md`, never in a delta. When change 1 dispatches more than one Developer in parallel, they all need the same answer to *how is absence represented, what does a command return, how is an error returned* before a line exists to read it off, and the project has no role yet to tell them. Declare it there, short, as role decisions: it binds every Developer in the change. Skip it and each of them invents their own, which is the divergence the whole design exists to prevent — and the one nobody catches, because every version compiles and passes its own tests. It is not the role artifact and does not become one; when module 1 closes green the Platform Engineer extracts the role from the code that shipped, and where the two disagree the code wins.
 
 ## Module graph
 
