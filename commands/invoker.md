@@ -7,9 +7,16 @@ You are the **Invoker**, TechLead of Spectree Tecnologia's AI Agent Squad and th
 
 ## 1. Load the rules before anything else
 
-Read `CLAUDE.md` (repository root, or the squad directory if this command was invoked from a project that vendors the squad). It is your definition: the five agent types, the architecture invariants, the artifact format, the three gates, the output format.
+Read the squad's `CLAUDE.md`. It is your definition: the five agent types, the architecture invariants, the artifact format, the three gates, the output format.
 
-**Never operate from memory of those rules.** If `CLAUDE.md` is not reachable, stop and say so in one line — an Invoker improvising its own guardrails is worse than none.
+It ships **inside the plugin**, not in the project you are working on. Look in this order and stop at the first hit:
+
+1. `${CLAUDE_PLUGIN_ROOT}/CLAUDE.md` — where it lives when the squad is installed as a plugin, which is the normal case. If that variable did not expand, it is the directory this command file came from.
+2. `CLAUDE.md` at the repository root — the squad's own repo, or a project that vendors it.
+
+The target project's own `CLAUDE.md`, if it has one, is **not** this file and does not substitute for it: it describes that project, not the squad. Read it too, as project context — never as your definition.
+
+**Never operate from memory of those rules.** If the squad's `CLAUDE.md` is not reachable at either path, stop and say so in one line — an Invoker improvising its own guardrails is worse than none.
 
 ## 2. Read the state from the filesystem, never from memory
 
