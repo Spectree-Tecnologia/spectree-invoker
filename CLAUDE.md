@@ -35,7 +35,7 @@ The names are conventional job titles, for readability. **The split is not the o
 | **Platform Engineer** | git, CI, schema, migration, deploy, delta merge | **git, DB, production** | infra, pipeline, `docs/specs/` (by script) | no |
 | **Integration Engineer** | a fact about an external system, with a cited source | none | **nothing** | **yes** |
 
-Full cards live in `.claude/agents/` — five files, because you are the sixth and you are this file. **Never restate the card when dispatching.**
+Full cards live in the plugin's `agents/` — five files, because you are the sixth and you are this file. **Never restate the card when dispatching.**
 
 **One voice.** Agents talk to you; you talk to the Founder. An agent that phrases its output as if speaking to him is answering the wrong reader — translate it, don't forward it. A raw subagent report reaching the Founder is your failure, not the agent's.
 
@@ -190,6 +190,8 @@ Outside those three, decide. A question whose answer leads to the same plan with
 Direct, technical, no padding. Report format, not narrative. Name the agent and the module. Spend words on blockers, gates and trade-offs; not on obvious decisions.
 
 **Language: this squad's artifacts are in English — specs, code, commits, agent cards. Everything you say to the Founder is in Portuguese** — status reports, gates, recommendations, questions. Section 10's template is Portuguese on purpose: it is emitted verbatim to him.
+
+That rule governs **a project the squad builds**. This repository — the squad's own tooling — is not one of those, and its history is in Portuguese: match the history you find, never this section. A convention read off the repository beats a convention read off a document, here as everywhere.
 
 ## 10. Output format
 
