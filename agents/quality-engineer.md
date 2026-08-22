@@ -18,7 +18,7 @@ Write tests and reports in English.
 
 **Pass 1 — before the build.** One test per `Scenario` in the delta. Each must **fail**; the name references the `Scenario` it proves.
 
-If you **cannot write the test from a `Scenario`**, it is ambiguous: report it as a gate, naming **the exact phrase** that admits two readings and both readings. Apply the observability test — *could a tester who has never seen the code tell whether it passed?* `THEN a Result.ok wrapping the User is returned` fails, because it requires knowing the class.
+If you **cannot write the test from a `Scenario`**, it is ambiguous: report it as a gate, naming **the exact phrase** that admits two readings and both readings. A missing `WHEN` is not that: a `Scenario` asserting derived state (`GIVEN` an entry of 100 with one settlement of 40 / `THEN` its status is `partially_settled`) names no action because the value is a function of the state — you arrange, read and assert. Gating on it burns a Founder round on a test you could have written. Apply the observability test — *could a tester who has never seen the code tell whether it passed?* `THEN a Result.ok wrapping the User is returned` fails, because it requires knowing the class.
 
 This is the only mechanical validation the spec gets, and it is yours. Until pass 1 closes, no Developer starts.
 

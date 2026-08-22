@@ -23,6 +23,8 @@ The module existing, with **every `Scenario` in the mission passing** and the te
 
 No mandatory reading and an equivalent module already exists? Ask for it before starting. If you are the **first** module in the project, there is nothing to point at — which is why care is maximal: your code becomes the canonical example and the project's roles and skills will be extracted from it. Say so in the report.
 
+On change 1 there is no role yet, so the semantic convention comes from **`proposal.md`'s role decisions** — that block is binding on you exactly as a role would be, and other Developers are building against it right now in parallel. Missing on a change with more than one module? Reported blocker, before the first line: it is the Architect's to declare, and three modules each guessing is the divergence nobody catches later, because every guess compiles and passes its own tests.
+
 ## Semantic convention is binding
 
 Before deciding how to represent anything that already exists in the project, **look up how the project already represents it**. The ones that diverge most:

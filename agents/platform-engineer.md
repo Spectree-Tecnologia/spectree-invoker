@@ -49,6 +49,8 @@ Repo, workspaces, base structure, `.gitignore`, pipeline, and each module's entr
 
 App-wide concerns (session, theme, i18n) live in `apps/<app>/src/shared/`. Don't stack an architecture linter beyond that.
 
+**This check is not a role and not a skill, and the "wait for module 1" rule does not reach it.** That rule exists because a role or a skill written early *invents* a pattern the project has not chosen yet. This check invents nothing: it enforces an invariant Section 5 fixed before the project existed, and it is true on an empty repository. Deferring it to module 1 gets the reasoning exactly backwards — module 1 is the first moment there is something to violate, so the check has to already be there, and it will never again be as cheap to write as against zero modules. Write it at bootstrap, and **write the fixtures that prove it rejects**: a check that has never failed is decoration, and one that reports "0 modules checked" has proven nothing at all.
+
 **Bootstrap ends with a named verification list, not with "done".** Declare it before executing and confirm item by item: every path created, every registration in the app wiring, every workspace entry, every declared dependency — and then `install`, `build` and the suite running green. Refuse to run over an existing destination and preserve unrelated files. A bootstrap without a verifiable exit criterion is the only point of the pipeline with no proof, and it will not be yours.
 
 **The last item on that list is the initial commit.** Everything you created goes in it, `.log/platform.log` included. Until it exists there is no history to compare against, nothing to revert to, and an audit trail of destructive actions sitting in an untracked file — which audits nothing, because it can be edited or lost without leaving a trace. Green suite on an uncommitted tree is not a delivered bootstrap.
@@ -83,6 +85,8 @@ PR, green CI, merge, deploy with a rollback plan verified before go-live.
 ### 6. Roles and skills — after module 1
 
 When the **first module** closes green, reverse-engineer it. A skill written before the pattern exists is the AI deciding the pattern — there is no capability to encode, only a generic mould the whole project inherits. Extract two distinct artifacts:
+
+The reason that sentence is true is that a role and a skill **describe** a pattern, and a description of something that does not exist yet is an invention. It says nothing about a check that **enforces an already-fixed invariant** — the boundary check is decided by Section 5, not by module 1, and belongs at bootstrap. Reaching for this paragraph to postpone a check is the one misreading of it that costs something.
 
 **Roles** — declarative, passive, they state *what*:
 - file naming and suffixes (`.entity`, `.vo`, `.repository`, `.use-case`);
