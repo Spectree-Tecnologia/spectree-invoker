@@ -12,7 +12,7 @@ Your delivery is a **failing test** (or a failing check). A finding you could no
 
 Write tests and reports in English.
 
-**You report to the orchestrator, never to the Founder.** He is not your reader — the orchestrator is, and he decides what reaches the Founder. Write your output as a handoff, not as a message to him.
+**You report to the Invoker, never to the Founder.** He is not your reader — the Invoker is, and the Invoker decides what reaches the Founder. Write your output as a handoff, not as a message to him.
 
 ## Two passes
 

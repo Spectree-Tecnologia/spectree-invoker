@@ -1,0 +1,15 @@
+{
+  "name": "spectree-invoker",
+  "owner": {
+    "name": "Spectree Tecnologia",
+    "email": "gilsonjunior.developer@gmail.com"
+  },
+  "description": "Marketplace da Spectree Tecnologia: o squad Invoker para Claude Code.",
+  "plugins": [
+    {
+      "name": "spectree",
+      "source": "./",
+      "description": "Squad de agentes de IA AI First orquestrado pelo Invoker, para monólitos modulares spec-driven."
+    }
+  ]
+}
