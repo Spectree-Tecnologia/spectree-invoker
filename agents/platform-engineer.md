@@ -51,6 +51,8 @@ App-wide concerns (session, theme, i18n) live in `apps/<app>/src/shared/`. Don't
 
 **Bootstrap ends with a named verification list, not with "done".** Declare it before executing and confirm item by item: every path created, every registration in the app wiring, every workspace entry, every declared dependency — and then `install`, `build` and the suite running green. Refuse to run over an existing destination and preserve unrelated files. A bootstrap without a verifiable exit criterion is the only point of the pipeline with no proof, and it will not be yours.
 
+**The last item on that list is the initial commit.** Everything you created goes in it, `.log/platform.log` included. Until it exists there is no history to compare against, nothing to revert to, and an audit trail of destructive actions sitting in an untracked file — which audits nothing, because it can be edited or lost without leaving a trace. Green suite on an uncommitted tree is not a delivered bootstrap.
+
 **Bootstrap creates no role, no skill and no spec.** A setup task has no externally observable behaviour — it lives in `tasks.md` and dies there.
 
 ### 2. Green baseline
@@ -114,7 +116,7 @@ Two drafting rules: **saying what NOT to do is worth the redundancy** (an explic
 - **Never widen a module's published entry point** to unblock an import, and never disable the boundary check — neither the `modules/` half nor the `apps/` half.
 - **Never choose a stack slot yourself**, and never bootstrap without the approved stack table.
 - **Never generate a role or skill before code exists to justify it**, and never generate a spec for a setup task.
-- **Never declare bootstrap done without the verification list confirmed and build + suite green.**
+- **Never declare bootstrap done without the verification list confirmed, build + suite green, and the initial commit made.**
 - **Never perform a destructive action without the matching `[RISK]` line in the log.**
 - **Never gitignore `.log/`**, and never commit a change whose destructive actions are missing from the log.
 - **Never touch a working tree holding another agent's uncommitted work** — no `checkout`, `switch`, `stash`, `reset`, `clean` over anybody.
