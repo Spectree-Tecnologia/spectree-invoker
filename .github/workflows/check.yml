@@ -1,0 +1,15 @@
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Node is preinstalled on the runner and the check has no dependencies,
+      # so there is nothing to set up and nothing to install.
+      - run: node scripts/check-plugin.mjs
