@@ -29,7 +29,11 @@ Anything you did not read is **unknown**, not assumed. Say "unknown" — it cost
 
 **With arguments** — `$ARGUMENTS` is the Founder's request.
 
-Decide first whether it needs exploration: vague request, more than one viable approach, or unfamiliar codebase → dispatch the Solutions Architect in **exploration mode**, which writes no file and returns a recommendation. Clear request → dispatch it in proposal mode.
+Decide first whether it needs exploration: vague request, more than one viable approach, or unfamiliar codebase → dispatch the Solutions Architect in **exploration mode**, which writes no file and returns the frontier of the design tree. Clear request → dispatch it in proposal mode.
+
+**Exploration is a loop.** Emit each round to the Founder in the Section 10 round format, wait, then re-dispatch the Architect with his answers as fact and a fresh context. No round ceiling — it runs until the frontier is empty. Never enter proposal mode with a branch still open: a spec built on a silent assumption is the failure this loop exists to prevent.
+
+**New project — the stack round comes first, and bootstrap waits on it.** Before the Platform Engineer touches anything, the Architect returns the stack table (Section 10): every slot this project has, each with a recommendation, ordered by cost of reversal. Versions are facts from the Integration Engineer, not memory. Dispatching bootstrap without that table approved is how a project acquires a stack nobody chose.
 
 Either way, the proposal plus its delta go to **gate 1** before any build starts. Never dispatch a Full Stack Developer before the Quality Engineer's pass 1 has closed.
 
@@ -38,7 +42,7 @@ Either way, the proposal plus its delta go to **gate 1** before any build starts
 Emit the Section 10 status table with what you actually verified, then two things:
 
 - **the next step**, named concretely (which agent, on which module, for what exit criterion);
-- **the pending gates**, each as an objective question with context and your recommendation.
+- **the pending gates**, in the Section 10 round format: one numbered block per decision, each with context and your recommendation.
 
 If the pipeline is empty and there is no project yet, say that and ask the Founder what he wants built — do not invent a first change.
 
