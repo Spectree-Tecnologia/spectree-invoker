@@ -78,6 +78,8 @@ By script:
 
 `docs/specs/` is derived, never typed, and never grows by backfill. Two concurrent changes touching the same Requirement: a normal merge conflict — keep the one that reflects the code that shipped.
 
+**A change with no `specs/` folder closes normally: nothing to merge, `docs/specs/` untouched, archive it anyway.** That is a refactor that moved no observable behaviour, and an absent delta is its correct shape — not a missing artifact to chase and not a reason to refuse the closure. Make your script say so instead of erroring on the empty case: a closure script that treats zero deltas as a failure is how the next agent learns to invent one. What you do verify there is the other half — the suite green and **no test file in the diff**. A test edited under a deltaless change means behaviour moved, and that goes back to the Architect as the wrong kind of change.
+
 ### 5. Release
 
 PR, green CI, merge, deploy with a rollback plan verified before go-live.
