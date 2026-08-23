@@ -18,6 +18,8 @@ Write tests and reports in English.
 
 **Pass 1 — before the build.** One test per `Scenario` in the delta. Each must **fail**; the name references the `Scenario` it proves.
 
+A change with **no delta** — a refactor that moves no observable behaviour — has no `Scenario`, so there is no pass 1 on it. Report that in one line and stop; it is not an empty delivery and not the "all good" this card refuses, because there was nothing to write rather than nothing found. Do not invent a test to have written one. Pass 2 on that change still runs, and it has a sharp target: the existing suite green with **no test edited**. A test that had to change means behaviour moved and the change needed a delta — that is a finding, and the diff is the proof.
+
 If you **cannot write the test from a `Scenario`**, it is ambiguous: report it as a gate, naming **the exact phrase** that admits two readings and both readings. A missing `WHEN` is not that: a `Scenario` asserting derived state (`GIVEN` an entry of 100 with one settlement of 40 / `THEN` its status is `partially_settled`) names no action because the value is a function of the state — you arrange, read and assert. Gating on it burns a Founder round on a test you could have written. Apply the observability test — *could a tester who has never seen the code tell whether it passed?* `THEN a Result.ok wrapping the User is returned` fails, because it requires knowing the class.
 
 This is the only mechanical validation the spec gets, and it is yours. Until pass 1 closes, no Developer starts.

@@ -107,6 +107,10 @@ docs/
 
 **The change carries the delta.** `## ADDED` / `## MODIFIED` / `## REMOVED Requirements`.
 
+**A change that changes no behaviour carries no delta, and that is a valid change.** Converging two modules onto one convention, moving a type to where it belongs, replacing an implementation behind an unchanged contract: nothing externally observable moves, so no `Requirement` is born and there is nothing to write. It still runs as a change — folder, `proposal.md`, `tasks.md`, gate 1 on the scope — because it is still a Developer editing code, and code entering the repository through any other door is how a project acquires edits nobody approved.
+
+The mechanical test, and it is not negotiable: **the existing suite stays green without a single test being edited.** Had to touch a test? Behaviour moved, and the change needs a delta like any other. That test is the only thing separating an honest refactor from a behaviour change smuggled in as one.
+
 ```markdown
 ### Requirement: Account rejects empty name
 The system SHALL reject account creation with an empty or blank name.
@@ -164,6 +168,8 @@ A skill points at the project, it does not carry the answer. Specific beats gene
 **Mandatory reading in every dispatch** — 3 to 6 files from the project that already are the pattern. Necessary and **demonstrably insufficient** against drift: hence roles and the Quality Engineer's convergence lens.
 
 **Quality Engineer pass 1 is the change's mechanical validation.** One test per `Scenario`, all failing. A `Scenario` you can't write a test from is ambiguous → gate 2. No Developer starts before that.
+
+**On a deltaless change, pass 1 is skipped, not run empty.** No delta means no `Scenario`, and a validation with nothing to validate is not a step to perform — the green baseline takes its place, and it is the same suite that has to still be green at the end, untouched. Pass 2 still runs.
 
 **Green baseline before the first Developer.** Red at baseline is pre-existing debt: stop, report, handle it separately.
 
@@ -290,6 +296,7 @@ Agent names stay in English inside the report — they are proper names.
 - **Business concept in `shared`:** Quality Engineer finding, back to the Developer.
 - **Request to document code nobody will change:** refuse. It rots and starts lying.
 - **A change that does two things:** back to the Architect before gate 1.
+- **A refactor that changes no behaviour:** a change with `proposal.md` and `tasks.md` and **no delta**. Gate 1 on the scope, no pass 1, exit criterion is the existing suite green with no test edited. Never a Developer editing code outside a change, and never an invented `Requirement` to fill the empty `specs/` folder.
 - **Platform Engineer wanting to "quickly fix" application code:** refuse. Red CI goes back to the Developer.
 - **Integration Engineer found no source:** "not found" is a valid delivery. Never accept an answer about an external API without a link.
 - **Merge conflict between Developers:** badly drawn boundary, back to the Architect.

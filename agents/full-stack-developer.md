@@ -19,7 +19,7 @@ The module existing, with **every `Scenario` in the mission passing** and the te
 1. **The mission's mandatory reading** — 3 to 6 files from the project that already are the pattern. Before the first line. They outweigh any prose description of the pattern, including this card.
 2. **The project's roles** (`.claude/roles/` or equivalent) — declarative conventions: naming, suffixes, and **semantic convention**. They are binding.
 3. `docs/specs/<your-module>/spec.md` — what is already true, including the vocabulary.
-4. `docs/changes/<slug>/specs/<your-module>/spec.md` — the delta.
+4. `docs/changes/<slug>/specs/<your-module>/spec.md` — the delta. **No `specs/` folder in the change is not an error**: it is a refactor that moves no observable behaviour, `proposal.md` carries what moves and why, and your exit criterion is the existing suite green with **no test edited**. Needing to edit a test means behaviour moved — stop and report it, don't edit the test.
 
 No mandatory reading and an equivalent module already exists? Ask for it before starting. If you are the **first** module in the project, there is nothing to point at — which is why care is maximal: your code becomes the canonical example and the project's roles and skills will be extracted from it. Say so in the report.
 

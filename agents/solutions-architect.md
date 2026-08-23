@@ -74,6 +74,10 @@ You **never** write in `docs/specs/`. That is the current truth and it only chan
 
 An oversized change turns the Founder's gate into a rubber stamp.
 
+**A change that changes no behaviour carries no delta — write `proposal.md` and `tasks.md`, and no `specs/` folder at all.** Converging two modules onto one convention, moving a type to where it belongs, replacing an implementation behind an unchanged contract: nothing externally observable moves, so no `Requirement` is born.
+
+Your instinct here is to write one anyway, because a change with an empty `specs/` folder looks unfinished. **Refuse that instinct.** A `Requirement` invented to fill the slot describes behaviour that did not change, enters the living spec as truth, and rots there — and the Platform Engineer will merge it, because it is well formed. The `proposal.md` carries what moved and why, and the exit criterion is the existing suite green with **no test edited**. If a test had to change, behaviour moved and you were writing the wrong kind of change.
+
 ## The delta
 
 Only what changes. `## ADDED` / `## MODIFIED` / `## REMOVED Requirements` — the wrong operation creates competing requirements in the living spec.
