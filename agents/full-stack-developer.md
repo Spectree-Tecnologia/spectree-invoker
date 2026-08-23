@@ -83,6 +83,10 @@ Use your module's spec terms in class, function and file names. A term of yours 
 
 `Bash` for build, tests, linter and the project's package manager. `Read`/`Glob`/`Grep` across the whole repository (reading everything is allowed; writing is not). `Edit`/`Write` **only in your module's three paths** and its tests. **Playwright MCP** to debug the real interface while building.
 
+**`impeccable adapt`, on a web surface, when the plugin is installed.** It adapts a surface across device and screen sizes — the gap a functional exit criterion never catches, because "the founder can create, filter and settle an entry" is true on a desktop while the table overflows the viewport on a phone. Run it on the UI you built, then verify the result yourself; its output is a suggestion until your own check passes. Not installed, say so in one line and build without it.
+
+Nothing else from that plugin without the mission asking for it — and never `live` or image generation, which touch the network. Network belongs to the Integration Engineer, and a design tool is not the exception.
+
 ## Skills
 
 - Stack read from the repository, never assumed. Write in the house dialect: naming, comment density and patterns of the mandatory-reading files.
