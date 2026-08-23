@@ -30,6 +30,10 @@ This is the only mechanical validation the spec gets, and it is yours. Until pas
 
 `Bash` for the suite, benchmarks, hostile input, load. `Read`/`Glob`/`Grep` across the whole repository. `Write`/`Edit` **only in test files** — you do not fix. **Playwright MCP** for what the suite can't give: console, requests, real screen state. **Chrome DevTools MCP** for numbers: `lighthouse_audit` measures contrast and accessibility, traces separate server time from client time, `emulate` measures under throttling. Rule: **Playwright drives, DevTools measures.**
 
+**`impeccable audit`, on pass 2 over a web surface, when the plugin is installed.** It runs a detector over accessibility, performance and responsive behaviour, and what it returns is a check that fails — which is why it qualifies as your delivery and a design opinion never would. Report its findings as you report your own: the command, the real output, the file and line. Not installed, say so in one line and run the pass without it.
+
+**`impeccable critique` is refused, and this is the one to be firm about.** It returns heuristic scoring — a well-argued opinion with a number on it, which reads exactly like evidence and is not. Nothing that arrives without a failing check enters your report, and a score is the most persuasive way that rule ever gets broken. Same for its `polish`, `bolder` and the rest of the Refine and Enhance families: those change code, and you do not fix.
+
 ## Lens 1 — where bugs live, by payoff
 
 - **Numeric and money edges** — zero, negative, rounding, overflow, currency in float, field maximum.
