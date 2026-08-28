@@ -113,7 +113,9 @@ docs/
 
 **A spec domain is a module, always 1:1.** Never a spec per layer (`auth-backend`), per component (`auth-user-menu`), per use case (`authenticate-user-usecase`) or per setup task (`monorepo-bootstrap`). **Setup tasks get no spec** — no externally observable behaviour, so no test can ever fail because of them; they live in `tasks.md` and die there.
 
-**The change carries the delta.** `## ADDED` / `## MODIFIED` / `## REMOVED Requirements`.
+**The change carries the delta.** `## ADDED` / `## MODIFIED` / `## REMOVED` / `## RENAMED Requirements`.
+
+**`RENAMED` exists because a rename has no other honest spelling.** Expressed as `REMOVED` plus `ADDED`, a renamed `Requirement` reads in the archive as one requirement retired and an unrelated one invented on the same day — its `Scenario`s look new, its history ends, and nobody a year later can tell that the rule never changed. `RENAMED` carries the old name and the new one and nothing else; the operations apply in the order `RENAMED` → `REMOVED` → `MODIFIED` → `ADDED`, so anything else in the same delta lands on the name the requirement now has.
 
 **`proposal.md` names the modules that will carry a delta, and that list is a contract.** The set of modules named there and the set of `specs/<module>/spec.md` files present must be **the same set** — a module named with no delta is work that was planned and silently dropped; a delta for a module nobody named is scope that entered without passing gate 1. Neither is visible to anyone reading only one of the two files, and both are one comparison away from being caught at closure.
 
@@ -142,6 +144,8 @@ Drafting rules, all checkable by reading:
 - **RFC 2119** — `MUST`/`SHALL` non-negotiable, `SHOULD` a recommendation with justifiable exceptions, `MAY` genuinely optional. **One `SHALL` per Requirement**; an "and also" clause means two requirements.
 - **Observability test** — *could a tester who has never seen the code tell whether it passed?* `THEN a Result.ok wrapping the User is returned` fails; `THEN the error USER_NOT_FOUND is returned` passes.
 - **Errors are codes, not messages.** `INVALID_AMOUNT`, never "Invalid amount".
+- **A `Requirement` states what is true, never what changed.** "The system SHALL **now also** accept…" is correct on the day of the delta and wrong forever after; the living spec accumulates that phrasing until it reads as a changelog. The operation is named by the delta's section header; the `Requirement` carries only the rule.
+- **These rules were written to be counted, so count them.** One `SHALL` per `Requirement`, at least one `Scenario` under each, no path or library in the text — every one is a count or a pattern, and the closure script checks them so that a rule does not hold only while someone is paying attention.
 - **Every `Scenario` is a test**, and a single one only covers the happy path — the edge case is mandatory. A `Scenario` asserting **derived state** carries `GIVEN`/`THEN` with no `WHEN` — the value is a function of the state, and there is no action to name.
 - **Content boundary, in the delta AND at merge** — no file name, path, internal class, framework, library or step-by-step. Criterion: *if the implementation can change without changing externally visible behaviour, it does not belong in the spec.* The Platform Engineer refuses to merge a delta that violates this — the living spec **accumulates**, and a contaminated delta today is a spec that goes stale with every refactor.
 - **Per-module vocabulary**, plus the rule that runs against instinct: **the same name meaning different things in different modules is correct**. Without a declared vocabulary each Developer invents their own and the next one tries to unify — unifying is the Big Ball of Mud coming back.

@@ -82,7 +82,9 @@ Your instinct here is to write one anyway, because a change with an empty `specs
 
 ## The delta
 
-Only what changes. `## ADDED` / `## MODIFIED` / `## REMOVED Requirements` — the wrong operation creates competing requirements in the living spec.
+Only what changes. `## ADDED` / `## MODIFIED` / `## REMOVED` / `## RENAMED Requirements` — the wrong operation creates competing requirements in the living spec.
+
+**Renaming is `RENAMED`, never `REMOVED` plus `ADDED`.** Written as a removal and an addition, a rename tells the archive that one rule was retired and a different one invented the same day: the `Scenario`s read as new, the history stops, and the fact that the behaviour never changed is lost. Carry the old name and the new one, nothing more. Changing a Requirement's name **and** its content is `RENAMED` plus `MODIFIED` on the new name — the rename lands first.
 
 **`MODIFIED` is the one that loses things.** The block you write **replaces the Requirement whole**, so it carries the Requirement as it will read afterwards, with **every `Scenario` it keeps written out again**. A `Scenario` you leave out is a `Scenario` deleted from the living spec — not flagged, not conflicted, just gone, and gone for the reason that you were editing a neighbouring line. Read the Requirement in `docs/specs/` before writing its `MODIFIED` block and copy forward what you are not touching. Most of the block will be identical to what is already there; that is the price of a merge that never has to guess what "unchanged" meant.
 
@@ -107,6 +109,7 @@ The system SHALL reject account creation with an empty or blank name.
   - ❌ **THEN** a `Result.ok` wrapping the `User` is returned — requires knowing the class
   - ✅ **THEN** the error `USER_NOT_FOUND` is returned
 - **Errors are codes, not messages.** `INVALID_AMOUNT`, never "Invalid amount". The domain defines *what* happened; presentation decides how to say it.
+- **State what is true, never what changed.** "The system SHALL **now also** accept…" is right on the day you write it and wrong every day after — the living spec keeps the sentence long after "now" stopped meaning anything, and starts reading like a changelog. The section header already says whether this is an addition; the `Requirement` says only the rule.
 - **Every `Scenario` is a test**, and a single one only covers the happy path — the edge case is mandatory.
 - **A `Scenario` asserting derived state has no `WHEN`, and that is correct.** `GIVEN an entry of 100 with one settlement of 40` / `THEN its status is partially_settled` names no action because none is needed: the value is a function of the state, and the test arranges, reads and asserts. Do not manufacture a `WHEN the entry is read` to fill the slot — it adds a step the test does not take. The bar is unchanged and it is the only one that matters: could a tester who has never seen the code tell whether it passed?
 

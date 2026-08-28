@@ -73,7 +73,7 @@ By script:
 
 - **validate the delta before merging.** Refuse to merge a delta carrying a file path, internal class, library or step-by-step — back to the Architect. The living spec **accumulates**: a contaminated delta today is a spec that goes stale with every refactor for the rest of the project.
 - **validate the domain**: each delta belongs to a module. A domain per layer, component, use case or setup task is a rejection.
-- merge each section (`ADDED` / `MODIFIED` / `REMOVED`) into `docs/specs/<module>/spec.md`;
+- merge each section into `docs/specs/<module>/spec.md`, applying `RENAMED` → `REMOVED` → `MODIFIED` → `ADDED` **in that order**, so a delta that renames and then edits lands both on the name the requirement now has;
 - move `docs/changes/<slug>/` to `docs/changes/archive/<YYYY-MM-DD>-<slug>/`.
 
 `docs/specs/` is derived, never typed, and never grows by backfill.
@@ -86,6 +86,20 @@ By script:
 - **A change with no `specs/` folder that never declared itself deltaless, or one that declares it and ships deltas anyway.** The first is indistinguishable from a forgotten delta and you must not guess which it is; the second contradicts itself, so one of its halves was written without meaning it.
 
 Do all four **before touching any file**, and settle the archive destination before mutating the first spec: a merge that fails halfway through a multi-module delta leaves the living spec in a state no one authored.
+
+**The closure script is also the spec's linter, and it runs in CI, not only at closure.** Every drafting rule in Section 6 was written to be checkable, and almost all of them are a count or a pattern rather than a judgement. Mechanize those, because a rule enforced only by whoever happens to be reading is a rule that holds until the day someone is tired:
+
+- exactly **one `SHALL`** per `Requirement` — count them;
+- every `Requirement` has at least one `Scenario` — count its children, **all** of them, not only the ones whose heading you expected, or a differently-named child gets silently deleted by the next merge;
+- **the content boundary** — a file path, an extension, a framework or library name inside a delta or a living spec;
+- an error rendered as a **message** where the rule says code;
+- one spec domain per module, and each delta belonging to one.
+
+**Two tiers, and put each rule in the right one.** An `ERROR` is mechanical and never wrong: a missing `Scenario`, a malformed operation header, a domain that is not a module. A `WARNING` is a strong signal that has honest exceptions — `SHALL` counting misfires on a sentence that quotes the word, and the content boundary cannot always tell a path from prose. Warnings print, do not block, and become failures under a strict flag that CI runs. A check that blocks on its own false positives gets disabled within a week, and takes the true positives with it.
+
+**And the script is the only way the change closes.** Never do the merge by hand "just this once", and never let a command that stands for the closure quietly do the editing itself instead of calling the script — mechanisation an agent can route around is not mechanisation, it is a script nobody runs. If the script cannot handle the case, that is a defect in the script and a reported blocker, not an invitation to edit `docs/specs/` yourself.
+
+**One thing the script cannot check, so check it by reading:** a merged `Requirement` must read as a statement of what is true, never as a report of what changed. "The system SHALL now also accept…" is change-relative language, correct on the day of the delta and wrong forever after — the living spec accumulates it and starts sounding like a changelog. Send that back to the Architect; the delta says the operation, the `Requirement` says the rule.
 
 **A change with no `specs/` folder closes normally: nothing to merge, `docs/specs/` untouched, archive it anyway.** That is a refactor that moved no observable behaviour, and an absent delta is its correct shape — not a missing artifact to chase and not a reason to refuse the closure. Make your script say so instead of erroring on the empty case: a closure script that treats zero deltas as a failure is how the next agent learns to invent one. What you do verify there is the other half — the suite green and **no test file in the diff**. A test edited under a deltaless change means behaviour moved, and that goes back to the Architect as the wrong kind of change.
 
