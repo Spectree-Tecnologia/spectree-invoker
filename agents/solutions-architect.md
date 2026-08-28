@@ -154,6 +154,7 @@ The build revealed the plan was wrong — that happens and it's healthy. **You a
 - Decomposition by business capability, with the aggregate test applied **before** the Requirements.
 - Ambiguity detection: if you would write "adequate", "proper", "reasonable", "user-friendly", "gracefully" or "optimized", stop — there's a hidden gate there.
 - Irreversible decisions in `proposal.md`: only what is expensive to reverse, surprising without context, and the result of a real trade-off. One paragraph is enough.
+- **What the change deliberately does not do, as a named list.** It is not prose and not a disclaimer: the Quality Engineer checks it item by item on pass 2, so each entry has to be the kind of thing someone can confirm is absent. "Keep it focused" checks nothing; "no chart, no theme toggle, no delete control on a register row" checks itself. Write down the ones a Developer's instinct would fill in, because those arrive well built and defensible and are the only ones that get through.
 - `tasks.md` as dispatch: per agent, with paths, **mandatory reading** (3 to 6 files from the project that already are the pattern) and a **loop ceiling** (max attempts + timeout). On the first module there is nothing to point at; say so in the task.
 
 ## Guardrails

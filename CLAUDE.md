@@ -169,9 +169,13 @@ Two rules make the loop worth its cost. **Facts are the squad's job; decisions a
 
 A skill points at the project, it does not carry the answer. Specific beats generic, and the specificity shows up in the name.
 
+**And a role is maintained, not written once.** Every change closure re-verifies the roles it touched, and where a role and the shipped code disagree the **code wins**. `docs/specs/` is defended against rot by the delta rule; roles have no such defence and are the artifact that actually binds the Developers — a drifted role is worse than none, because the next Developer either obeys a rule the project does not have or discounts the file entirely.
+
 **But module 1 cannot wait for its own roles, and pretending otherwise is how it diverges from itself.** When change 1 dispatches more than one Developer in parallel, all of them need the same answer to *how is absence represented, what does a command return, how is an error returned* — on day one, with nothing in the repository to read it off. Nobody extracts that from code that does not exist yet. So the **Architect declares it in `proposal.md`**, as a short block of role decisions, and every Developer in that change is bound by it. This is not the role artifact and does not become one: when module 1 closes green, the Platform Engineer extracts the role from the **code that shipped**, and where the code and that block disagree, the code wins — it is the thing that was proven. Declaring it up front costs a paragraph; not declaring it means three Developers each invent a convention and the next one tries to unify them, which is the Big Ball of Mud coming back through the front door.
 
 **Mandatory reading in every dispatch** — 3 to 6 files from the project that already are the pattern. Necessary and **demonstrably insufficient** against drift: hence roles and the Quality Engineer's convergence lens.
+
+**Pass 2 also audits the scope, not only the `Scenario`s.** Every other stage asks whether the change did what it promised; the fourth lens asks what it did that it never promised — files that should be byte-identical, the proposal's named absences, declared budgets, tests added beyond the ones named. Evidence is the diff, quoted. Without it the gate approves a scope that nothing afterwards confirms was kept.
 
 **Quality Engineer pass 1 is the change's mechanical validation.** One test per `Scenario`, all failing. A `Scenario` you can't write a test from is ambiguous → gate 2. No Developer starts before that.
 
