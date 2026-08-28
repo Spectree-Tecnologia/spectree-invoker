@@ -71,7 +71,7 @@ apps/<app>/src/shared/                <- app-wide concerns (session, theme, i18n
 packages/shared/                      <- common infra. Everyone depends on it; it depends on no one.
 ```
 
-Six invariants. Folder names vary by stack; these do not.
+Eight invariants. Folder names vary by stack; these do not.
 
 **5.1 — Two surfaces.** Every module declares two entry points:
 
@@ -85,7 +85,8 @@ Entities, use cases and value objects **never** cross a module boundary. Need a 
 **5.2 — The boundary has two halves, and the manifest defends only one.** Inside `modules/` the package resolver blocks deep imports. Inside `apps/` these are folders in the same package — nothing blocks anything. The CI check covers **both**:
 
 - imports of `<module>/internal` from outside that module's own adapters;
-- `apps/<app>/src/modules/A` importing `apps/<app>/src/modules/B` outside B's `index.ts`.
+- `apps/<app>/src/modules/A` importing `apps/<app>/src/modules/B` outside B's `index.ts`;
+- the framework's routing folder reaching a module by anything but its published entry — the half that hides, because code there is inside no module and a module-against-module check reports it clean.
 
 App-wide concerns (session, theme, i18n) live in `apps/<app>/src/shared/`, never inside a module. Half a boundary passing for a whole one is how a modular monolith becomes a Big Ball of Mud with nobody noticing.
 
@@ -100,6 +101,18 @@ Two consequences the AI violates on its own:
 **5.5 — Queries cross; commands cross only to read.** A command in A never invokes a rule in B. A command that must validate against B's state consumes a **narrow query** returning the minimum (`{ active: boolean }`), never the entity. A narrow query that doesn't exist is a mission for its owner. Complex reads are raw queries returning a DTO, not ORM navigation.
 
 **5.6 — `shared` is infrastructure, never business.** Base entity, result type, use-case contract, generic value objects. **A domain-named concept in there is a violation** — it lets any module consume a concept without declaring the dependency, and the module graph starts lying.
+
+**5.7 — Inside the module, the aggregate is the folder.** The module's core is not a flat bag of entities: it is **one folder per aggregate** — the entities that are inserted, updated and deleted in the same transaction — and inside each, the three roles that already exist everywhere else in this document: the **model** (entities and value objects, carrying the rules), the **use cases** (the flows of that aggregate), and the **ports** the use cases receive. A flow that spans two aggregates of the same module belongs to a module-wide folder beside them, never inside one of the two.
+
+The same aggregate test that decides where a module boundary falls decides this one, applied one level down — which is why it needs no second rule. A module whose core is flat has not been modelled, only filled.
+
+**Three consequences that get built wrong when nobody says them out loud:**
+
+- **A rule lives once, in the model.** The ruler, and it settles every case: *if the check has to ask the world, it belongs to the flow; if it only looks at the value, it belongs to the model.* Password strength is the model's; "this email is already taken" is the flow's. An entity reduced to getters and setters pushes every rule into the use cases, and then each use case has to **remember** to validate — one that forgets writes invalid data with nothing to stop it.
+- **A rule that fits neither a value object nor an entity is a domain service** — a class with one rule in it, acting over a set of entities that no single one of them owns. It exists because **a use case does not call another use case**: when two flows need the same calculation, both call the same domain service instead of duplicating it.
+- **A command goes through a use case; a query does not.** Commands are where the rules are. A list or a get-by-id has no rule to run, and a use case that only forwards to the repository is ceremony — the adapter reads through the port directly. Validating a query's input (refusing a page of 500) is not a rule and does not change this.
+
+**5.8 — The route layer is thin.** The framework's routing folder maps a URL to a module's page and does nothing else: no business call, no query, no state, no composition. Pages, components and module state live in the module's UI folder, where the boundary applies to them. A screen written directly in the routing folder is outside every module, so **nothing checks it** — it can import any core it likes and no boundary defends anything. The check covers this: the routing folder may reach a module only through the module's published entry.
 
 ## 6. Artifacts — living spec, change as delta
 
@@ -300,6 +313,7 @@ Agent names stay in English inside the report — they are proper names.
 - Never let `docs/specs/` be hand-edited, grow by backfill, or gain a domain that isn't a module.
 - Never accept a `MODIFIED` block that drops a `Scenario` the living spec still has, a change whose named modules and delta files are different sets, or an empty `specs/` folder nobody declared deltaless.
 - Never accept an entity, use case or value object crossing a module boundary — in `modules/` or inside `apps/`.
+- Never accept a flat module core, a use case calling another use case, or a screen built in the framework's routing folder.
 - Never accept a business concept in `shared`.
 - Never accept two representations of the same concept across modules.
 - Never accept a partial delivery without a recorded deviation.
