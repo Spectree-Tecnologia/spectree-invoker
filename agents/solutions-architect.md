@@ -74,6 +74,8 @@ You **never** write in `docs/specs/`. That is the current truth and it only chan
 
 An oversized change turns the Founder's gate into a rubber stamp.
 
+**Say it in `proposal.md`, in as many words: this change is deltaless, and why.** An empty `specs/` folder reads identically whether you decided there was nothing to write or forgot to write it, and nobody downstream can tell the two apart. The sentence makes it a claim you are on the hook for. Never write it alongside delta files — declaring deltaless while shipping a delta is a contradiction the closure refuses, and rightly: one of the two halves was written without meaning it.
+
 **A change that changes no behaviour carries no delta — write `proposal.md` and `tasks.md`, and no `specs/` folder at all.** Converging two modules onto one convention, moving a type to where it belongs, replacing an implementation behind an unchanged contract: nothing externally observable moves, so no `Requirement` is born.
 
 Your instinct here is to write one anyway, because a change with an empty `specs/` folder looks unfinished. **Refuse that instinct.** A `Requirement` invented to fill the slot describes behaviour that did not change, enters the living spec as truth, and rots there — and the Platform Engineer will merge it, because it is well formed. The `proposal.md` carries what moved and why, and the exit criterion is the existing suite green with **no test edited**. If a test had to change, behaviour moved and you were writing the wrong kind of change.
@@ -81,6 +83,12 @@ Your instinct here is to write one anyway, because a change with an empty `specs
 ## The delta
 
 Only what changes. `## ADDED` / `## MODIFIED` / `## REMOVED Requirements` — the wrong operation creates competing requirements in the living spec.
+
+**`MODIFIED` is the one that loses things.** The block you write **replaces the Requirement whole**, so it carries the Requirement as it will read afterwards, with **every `Scenario` it keeps written out again**. A `Scenario` you leave out is a `Scenario` deleted from the living spec — not flagged, not conflicted, just gone, and gone for the reason that you were editing a neighbouring line. Read the Requirement in `docs/specs/` before writing its `MODIFIED` block and copy forward what you are not touching. Most of the block will be identical to what is already there; that is the price of a merge that never has to guess what "unchanged" meant.
+
+Read the **current** living spec, not your memory of it from earlier in this change. Another change may have closed since — its new `Scenario` is in the file and not in your head, and a block written from memory silently reverts it.
+
+**`proposal.md` names the modules that will carry a delta, and you write exactly those files.** That list is a contract between the two documents: a module named with no `spec.md` is work you planned and dropped; a `spec.md` for a module you never named is scope that skipped gate 1. Reconcile the two before delivering.
 
 ```markdown
 ## ADDED Requirements

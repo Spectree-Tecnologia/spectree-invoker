@@ -76,7 +76,16 @@ By script:
 - merge each section (`ADDED` / `MODIFIED` / `REMOVED`) into `docs/specs/<module>/spec.md`;
 - move `docs/changes/<slug>/` to `docs/changes/archive/<YYYY-MM-DD>-<slug>/`.
 
-`docs/specs/` is derived, never typed, and never grows by backfill. Two concurrent changes touching the same Requirement: a normal merge conflict — keep the one that reflects the code that shipped.
+`docs/specs/` is derived, never typed, and never grows by backfill.
+
+**Four refusals the closure owes, and each is a comparison, not a judgement:**
+
+- **A `MODIFIED` block that drops a `Scenario` the living spec still has.** The merge replaces the Requirement whole, so an omitted `Scenario` is deleted — silently, permanently, with nothing downstream to notice. Compare the block against `docs/specs/` before writing anything and **name the missing `Scenario`s in the refusal**; "invalid delta" sends the Architect hunting for what you already know.
+- **The same comparison, read the other way, is the only collision detector there is.** Two open changes touching one Requirement do **not** produce a git conflict — the deltas live in different files in different change folders, and the second merge simply reverts the first. A `Scenario` present in the living spec and absent from the block is either an omission or a change that closed while this delta sat waiting. Tell them apart by asking whether that `Scenario` was there when the delta was written: if it was not, the delta is stale and goes back to the Architect to be re-derived, not patched.
+- **A module named in `proposal.md` with no delta file, or a delta file for a module `proposal.md` never named.** The two sets must match. The first is planned work silently dropped; the second is scope that entered without gate 1.
+- **A change with no `specs/` folder that never declared itself deltaless, or one that declares it and ships deltas anyway.** The first is indistinguishable from a forgotten delta and you must not guess which it is; the second contradicts itself, so one of its halves was written without meaning it.
+
+Do all four **before touching any file**, and settle the archive destination before mutating the first spec: a merge that fails halfway through a multi-module delta leaves the living spec in a state no one authored.
 
 **A change with no `specs/` folder closes normally: nothing to merge, `docs/specs/` untouched, archive it anyway.** That is a refactor that moved no observable behaviour, and an absent delta is its correct shape — not a missing artifact to chase and not a reason to refuse the closure. Make your script say so instead of erroring on the empty case: a closure script that treats zero deltas as a failure is how the next agent learns to invent one. What you do verify there is the other half — the suite green and **no test file in the diff**. A test edited under a deltaless change means behaviour moved, and that goes back to the Architect as the wrong kind of change.
 
@@ -127,6 +136,7 @@ Three drafting rules that keep a role from rotting between closures, each of whi
 - **Mandatory Founder gate, no exceptions:** production deploy, push/force-push to `main`, destructive migration (`DROP`, `TRUNCATE`, dropping a column with data), any irreversible operation on real data. Pressed to skip, refuse, state the concrete risk in one sentence, and offer the fastest route that still passes the gate.
 - **Never write application code.** Missing feature means Developer. This role's natural temptation is "just patch it so CI goes green" — red CI is a returned blocker.
 - **Never hand-edit `docs/specs/`**, never backfill, never merge a delta that violates the content boundary or the domain rule.
+- **Never merge a `MODIFIED` block without comparing it to the living spec first**, and never merge a change whose named modules and delta files are different sets, or whose empty `specs/` folder nobody declared.
 - **Never widen a module's published entry point** to unblock an import, and never disable the boundary check — neither the `modules/` half nor the `apps/` half.
 - **Never choose a stack slot yourself**, and never bootstrap without the approved stack table.
 - **Never generate a role or skill before code exists to justify it**, and never generate a spec for a setup task.
