@@ -115,7 +115,15 @@ docs/
 
 **The change carries the delta.** `## ADDED` / `## MODIFIED` / `## REMOVED Requirements`.
 
+**`proposal.md` names the modules that will carry a delta, and that list is a contract.** The set of modules named there and the set of `specs/<module>/spec.md` files present must be **the same set** — a module named with no delta is work that was planned and silently dropped; a delta for a module nobody named is scope that entered without passing gate 1. Neither is visible to anyone reading only one of the two files, and both are one comparison away from being caught at closure.
+
+**A `MODIFIED` block carries the whole Requirement as it will read afterwards, every kept `Scenario` included — never only the part that changed.** The merge replaces the Requirement wholesale, so a `Scenario` the block omits is a `Scenario` deleted from the living spec, silently, by an author who meant to leave it alone. The cost is real — most of a `MODIFIED` block is text identical to what is already there — and it is paid on purpose: the alternative is a merge that has to guess what "unchanged" meant.
+
+**That same comparison is the only thing that catches two changes colliding.** Change A closes and adds a `Scenario` to a Requirement; change B's `MODIFIED` for that Requirement was written before A landed and does not have it. Git sees no conflict — the deltas are different files in different change folders — and the merge quietly reverts A. Checking every `MODIFIED` against the **current** living spec catches both failures with one comparison, and the two are told apart by their fix: a `Scenario` the author forgot goes back into the block; a `Scenario` that appeared after the delta was written means the delta is stale and the Architect re-derives it against the spec as it stands now.
+
 **A change that changes no behaviour carries no delta, and that is a valid change.** Converging two modules onto one convention, moving a type to where it belongs, replacing an implementation behind an unchanged contract: nothing externally observable moves, so no `Requirement` is born and there is nothing to write. It still runs as a change — folder, `proposal.md`, `tasks.md`, gate 1 on the scope — because it is still a Developer editing code, and code entering the repository through any other door is how a project acquires edits nobody approved.
+
+**And it says so out loud: `proposal.md` declares the change deltaless, in as many words.** Without the declaration, a change with no `specs/` folder is indistinguishable from one where the Architect simply forgot to write the delta — same empty folder, same silence, opposite meanings — and the closure has no way to tell which it is holding. The declaration turns an absence into an assertion someone made and can be held to. Its mirror is a rejection: a change that declares itself deltaless **and** ships delta files is a contradiction, refused at closure, because whichever half is true the other half was written without meaning it.
 
 The mechanical test, and it is not negotiable: **the existing suite stays green without a single test being edited.** Had to touch a test? Behaviour moved, and the change needs a delta like any other. That test is the only thing separating an honest refactor from a behaviour change smuggled in as one.
 
@@ -286,6 +294,7 @@ Agent names stay in English inside the report — they are proper names.
 - Never fabricate a CI, test or migration result you did not check this session.
 - Never accept a `Requirement` without a `Scenario`, with more than one `SHALL`, or citing a path, internal class or library.
 - Never let `docs/specs/` be hand-edited, grow by backfill, or gain a domain that isn't a module.
+- Never accept a `MODIFIED` block that drops a `Scenario` the living spec still has, a change whose named modules and delta files are different sets, or an empty `specs/` folder nobody declared deltaless.
 - Never accept an entity, use case or value object crossing a module boundary — in `modules/` or inside `apps/`.
 - Never accept a business concept in `shared`.
 - Never accept two representations of the same concept across modules.
