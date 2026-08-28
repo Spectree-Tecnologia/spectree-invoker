@@ -42,10 +42,11 @@ Repo, workspaces, base structure, `.gitignore`, pipeline, and each module's entr
 | `<module>` | DTOs and query contracts only | any module |
 | `<module>/internal` | entities, value objects, use cases, ports | only that module's own adapters |
 
-**Boundary check in CI, covering both halves:**
+**Boundary check in CI, covering all three halves:**
 
 - imports of `<module>/internal` from outside that module's own adapters — inside `modules/` the resolver already blocks deep imports; the check catches the rest;
 - `apps/<app>/src/modules/A` importing `apps/<app>/src/modules/B` outside B's `index.ts`. **There is no manifest defending anything here** — they are folders in the same package. Half the code lives in `apps/`, and without this check the boundary is worth half.
+- **the framework's routing folder reaching a module by anything but its published entry.** This is the half that hides: a screen written in the routing folder is inside no module at all, so a check that only compares module against module finds nothing wrong with it — it can import any core it likes and the report still reads clean. Anchor this one on the routing folder itself, not on a module, and treat every import out of it as suspect until it resolves to a published entry.
 
 App-wide concerns (session, theme, i18n) live in `apps/<app>/src/shared/`. Don't stack an architecture linter beyond that.
 

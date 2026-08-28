@@ -41,8 +41,20 @@ Diverging here is a defect, and the hardest to find later: it compiles, passes i
 ```
 modules/<your-module>/                   <- pure business. Zero framework, zero infra import.
 apps/backend/src/modules/<your-module>/  <- adapter: controller, concrete repository
-apps/frontend/src/modules/<your-module>/ <- UI
+apps/frontend/src/modules/<your-module>/ <- UI: pages, components, module state
 ```
+
+**The framework's routing folder is not one of your three paths.** It maps a URL to your module's page and does nothing else — no query, no business call, no state, no composition. A screen written directly in the routing folder sits outside every module, which means **no boundary defends it and no check sees it**: it can import any module's core and nothing complains. Build the screen in your UI folder; let the route import it.
+
+**Inside your core, the aggregate is the folder.** One folder per aggregate — the entities inserted, updated and deleted in the same transaction — each holding its **model** (entities and value objects), its **use cases**, and the **ports** those use cases receive. A flow spanning two of your aggregates sits in a module-wide folder beside them, never inside one of the two. A flat core is a module nobody modelled, only filled — and it is the shape that quietly grows into the thing this whole architecture exists to prevent, one module down.
+
+**The rule lives in the model, and the flow calls it.** The ruler settles every case: **if the check has to ask the world, it belongs to the flow; if it only looks at the value, it belongs to the model.** Password strength only looks at the value — model. "This email is already taken" has to ask the database — flow. Get this backwards and you get an entity of getters and setters, with every rule copied into the use cases: then each use case has to *remember* to validate, and the first one that forgets writes invalid data with nothing anywhere to stop it. Two flows needing the same rule is not a reason to write it twice; it is proof the rule belongs one level down.
+
+**A rule that fits neither a value object nor an entity is a domain service** — a class with one rule in it, over a set of entities none of which owns it: a filter over a list, a tax computed from product plus state plus rate. It exists for a specific reason: **a use case does not call another use case.** When two flows need the same calculation, both call the same domain service. Reaching for one before trying the model first is how a rich domain gets hollowed out one service at a time.
+
+**A command goes through a use case; a query does not.** Commands are where the rules are. A list or a get-by-id has no rule to run, and a use case that only forwards to the repository is ceremony that costs a file and buys nothing — the adapter reads through the port directly. Rejecting a page of 500 items is input validation, not a rule, and does not change this. A read that needs joins and aggregation is a raw query returning a DTO, never ORM navigation.
+
+**Validate cheap before touching infra.** A password under the minimum length is invalid without asking anyone — do not spend a database round trip to discover it. Rules that cost no I/O run first; only what survives them reaches the port.
 
 **Technology depends on business, never the reverse.** Port declared in the core, implementation in the adapter, injected through the constructor. That is what makes the use case provable without a database, framework or network.
 
@@ -106,6 +118,8 @@ Your mission carries a maximum number of attempts and a timeout. Either one blow
 - **Never put a business concept in `shared`**, and never duplicate another module's DTO.
 - **Never diverge from the project's semantic convention** or from the contract declared in `shared`.
 - **Never let the core import a framework, ORM or HTTP client**, nor produce a token or session.
+- **Never call a use case from another use case** — the shared rule is a domain service, or it belonged in the model.
+- **Never build a screen in the framework's routing folder**, and never pile your core flat instead of a folder per aggregate.
 - **Never create a dependency that closes a cycle** in the graph. If the mission seems to require it, that's a blocker for the Architect.
 - **Never touch the database** — no migrations, DDL or DB CLI. Transactions you declare through a port; connections belong to the Platform Engineer.
 - **Never touch mutable git** — no `commit`, `push`, `merge`, `rebase`, `checkout`, `stash`, `reset`, `clean`. Reading is free.

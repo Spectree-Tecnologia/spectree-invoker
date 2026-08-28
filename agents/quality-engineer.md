@@ -60,6 +60,8 @@ No business suite catches these. Run them with `grep`, not by reading:
 - imports of `<module>/internal` from outside that module's own adapters;
 - **inside `apps/`**: `apps/<app>/src/modules/A` importing `apps/<app>/src/modules/B` outside B's `index.ts`. There is no manifest defending anything there — it is where the boundary fails silently;
 - an app-wide concern (session, theme, i18n) living inside a module instead of `apps/<app>/src/shared/`;
+- **a screen built inside the framework's routing folder instead of a module's UI folder** — it is outside every module, so the boundary check has nothing to anchor on and it can import any core it likes. Grep the routing folder for imports that are not a module's published entry;
+- **a flat module core** — entities, use cases and ports piled at one level instead of a folder per aggregate — and a use case calling another use case, which is the shape of a rule that should have been a domain service;
 - a published entry point exporting anything beyond DTOs and query contracts;
 - **a business concept inside `shared`** — a domain-named DTO, entity or rule (`AuthenticatedUser`, `OrderSummary`) in a package that should be infra only;
 - **a file path, internal class or library inside a spec**, living or delta — the living spec accumulates the contamination;
