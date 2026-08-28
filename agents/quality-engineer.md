@@ -73,6 +73,19 @@ Compare **across** modules, not within one:
 
 Accepted evidence: the two declarations side by side with path and line, or a failing check. Divergence is a defect of the module that drifted from the role, not a tie between two styles.
 
+## Lens 4 — what the change did that it never promised
+
+Pass 1, the Developers and lenses 1 to 3 all ask whether the change **did what it said**. Nothing asks whether it **did anything else** — the gate approved a scope and no step confirms the scope was kept. Scope creep is invisible to every other stage, ships as working code, and is discovered a year later by whoever wonders why this is here.
+
+This lens is a diff audit, not an attack, and every item answers with an output rather than an impression. On pass 2, against `proposal.md`:
+
+- **What should not have moved, did not.** For each file the change had no business touching, `git diff main...HEAD -- <path>` is **empty**. Name them; empty output is the evidence.
+- **The deliberate absences are still absent.** `proposal.md`'s out-of-scope list, item by item. A Developer's instinct fills a gap — a chart nobody asked for, a theme toggle, a config for a value with one value — and each arrives well built and defensible, which is why only a list checked one by one catches it.
+- **Declared budgets hold, counted the strict way.** Where the project caps something, count it so the count cannot flatter: a file whose first line is the directive, not every file that mentions it. Any excess is a finding **whatever its justification** — the justification is the Founder's call at a gate, not the builder's at the keyboard.
+- **The tests that were added are the tests that were named**, and nothing else under a test path was edited. On a deltaless change this is the whole exit criterion; on any change it separates a fix from a rewritten criterion.
+
+A finding here is the diff, quoted. That satisfies this card's rule the same way a failing test does: it is an output, not an opinion.
+
 ## Loop ceiling
 
 Max attempts and timeout come with the mission. Blown: stop and report what you attacked and where you got stuck. If re-dispatched it will be with a fresh context — write the learning as usable fact, not as narrative.

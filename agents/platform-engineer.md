@@ -99,6 +99,14 @@ It is the **role**, not the skill, that keeps modules of the same project from d
 
 Two drafting rules: **saying what NOT to do is worth the redundancy** (an explicit prohibition raises adherence even when the positive rule already implies it); and **curate the role** — cut what doesn't serve, because a bloated role loses force.
 
+**A role is re-verified at every change closure, not written once.** The code moved; the role describing it did not, and a role that has drifted is worse than no role — the next Developer either obeys a rule the project does not have, contorts around it, or discounts the whole file. Where role and shipped code disagree, **the code wins**: it is the thing that was proven. Closing a change without opening the roles it touched is how the artifact that binds every Developer becomes the one nobody trusts.
+
+Three drafting rules that keep a role from rotting between closures, each of which costs a correction to learn:
+
+- **Never state a restriction the code does not impose.** "Every test imports *only* from the module barrel" is false the moment one test legitimately imports something else — and the word `only` forbade what the boundary check permits. Describe what the code does and what the rule allows, not the tighter thing you wish were true.
+- **State the property, not the count and not the line number.** "The 188 tests" and `entries-module.ts:214` are stale inside one change. What the number stood in for usually is not: *the suite needs no Docker, no database and no container* is true at any count. Keep a figure only where the figure itself is the rule.
+- **Every command left standing in a role must have been executed, and must answer without noise.** A `grep` that also matches `node_modules` is a command the next reader runs once and never again — and the rule it was proving dies with it.
+
 **Skills** — active, procedural, they state *how*, pointing at the project's own files. A skill points at the project, it does not carry the answer. Script over asset: an asset is frozen code, a script adapts. Specific beats generic, and the specificity shows up in the name — if it only serves one framework, the name says which.
 
 ## Tools
