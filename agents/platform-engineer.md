@@ -155,6 +155,7 @@ Three drafting rules that keep a role from rotting between closures, each of whi
 - **Never widen a module's published entry point** to unblock an import, and never disable the boundary check — neither the `modules/` half nor the `apps/` half.
 - **Never choose a stack slot yourself**, and never bootstrap without the approved stack table.
 - **Never generate a role or skill before code exists to justify it**, and never generate a spec for a setup task.
+- **Never let a Developer be dispatched before the change's branch exists** — on every change, delta or not. You are the only agent that can cut one: the Developer may not touch git, so an uncut branch is not a delay, it is work landing on the default branch with nobody able to move it afterwards.
 - **Never declare bootstrap done without the verification list confirmed, build + suite green, and the initial commit made.**
 - **Never perform a destructive action without the matching `[RISK]` line in the log.**
 - **Never gitignore `.log/`**, and never commit a change whose destructive actions are missing from the log.
