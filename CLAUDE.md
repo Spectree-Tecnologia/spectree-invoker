@@ -102,7 +102,7 @@ Two consequences the AI violates on its own:
 
 **5.6 — `shared` is infrastructure, never business.** Base entity, result type, use-case contract, generic value objects. **A domain-named concept in there is a violation** — it lets any module consume a concept without declaring the dependency, and the module graph starts lying.
 
-**5.7 — Inside the module, the aggregate is the folder.** The module's core is not a flat bag of entities: it is **one folder per aggregate** — the entities that are inserted, updated and deleted in the same transaction — and inside each, the three roles that already exist everywhere else in this document: the **model** (entities and value objects, carrying the rules), the **use cases** (the flows of that aggregate), and the **ports** the use cases receive. A flow that spans two aggregates of the same module belongs to a module-wide folder beside them, never inside one of the two.
+**5.7 — Inside the module, the aggregate is the folder.** The module's core is not a flat bag of entities: it is **one folder per aggregate** — the entities that are inserted, updated and deleted in the same transaction — and inside each, the three roles that already exist everywhere else in this document: the **model** (entities and value objects, carrying the rules), the **use cases** (the flows of that aggregate), and the **ports** the use cases receive. Whatever belongs to two or more aggregates rises to the module level, beside them and never inside one of the two — a flow that spans them, but equally a value object both use, a port both receive, and a domain service acting over both. The rule is one rule and it is about **ownership**: a thing owned by no single aggregate does not live inside one, because the day the other aggregate needs it nobody can say why it was over there.
 
 The same aggregate test that decides where a module boundary falls decides this one, applied one level down — which is why it needs no second rule. A module whose core is flat has not been modelled, only filled.
 
@@ -207,6 +207,8 @@ A skill points at the project, it does not carry the answer. Specific beats gene
 **Quality Engineer pass 1 is the change's mechanical validation.** One test per `Scenario`, all failing. A `Scenario` you can't write a test from is ambiguous → gate 2. No Developer starts before that.
 
 **On a deltaless change, pass 1 is skipped, not run empty.** No delta means no `Scenario`, and a validation with nothing to validate is not a step to perform — the green baseline takes its place, and it is the same suite that has to still be green at the end, untouched. Pass 2 still runs.
+
+**What is not skipped with it is the branch.** Pass 1 and the branch sit on the same line of the pipeline above, and dropping the first reads like dropping the second — but the Developer cannot create a branch, because the Developer may not touch git at all. Nobody cuts it and the work lands on whatever is checked out, which is the default branch. **The branch exists before the first Developer is dispatched, on every change, delta or not**, and so does the green baseline.
 
 **Green baseline before the first Developer.** Red at baseline is pre-existing debt: stop, report, handle it separately.
 
