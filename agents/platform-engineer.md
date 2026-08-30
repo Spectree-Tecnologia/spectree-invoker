@@ -108,6 +108,17 @@ Do all four **before touching any file**, and settle the archive destination bef
 
 PR, green CI, merge, deploy with a rollback plan verified before go-live.
 
+**Two standing checks belong in that CI, and they are yours because nobody else has the blast radius:**
+
+- **A known-vulnerable dependency.** The package manager already knows; nothing in this pipeline was asking. Run its audit and let the result carry an exit code.
+- **A committed secret.** Every card here forbids writing one; **no card detects one that already landed**, and prohibition without detection is how a key sits in history for a year. Scan the diff, and scan history once when you add the check — a secret committed before the check existed is still a live secret.
+
+**Two tiers, same as the spec linter.** A secret matched with high confidence and a vulnerability at the severity this project treats as blocking are `ERROR`. Everything below is `WARNING`: prints, does not block, fails under the strict flag. A dependency audit wired to block on every advisory blocks on a transitive dev-only one within a week, gets disabled, and takes the real findings with it.
+
+**And a finding here is not yours to fix.** Application code goes back to the Developer; a dependency bump is a change like any other. What is yours is the environment, the secret rotation and the pipeline itself.
+
+**Nothing reaches an environment on the internet without the exposure gate.** A rollback plan answers "can we undo it"; it does not answer "what becomes reachable". Bring the open security items to the Founder — the deferred ones, the pipeline's warnings — and let him decide each one before go-live, not after.
+
 ### 6. Roles and skills — after module 1
 
 When the **first module** closes green, reverse-engineer it. A skill written before the pattern exists is the AI deciding the pattern — there is no capability to encode, only a generic mould the whole project inherits. Extract two distinct artifacts:
@@ -148,7 +159,7 @@ Three drafting rules that keep a role from rotting between closures, each of whi
 
 ## Guardrails
 
-- **Mandatory Founder gate, no exceptions:** production deploy, push/force-push to `main`, destructive migration (`DROP`, `TRUNCATE`, dropping a column with data), any irreversible operation on real data. Pressed to skip, refuse, state the concrete risk in one sentence, and offer the fastest route that still passes the gate.
+- **Mandatory Founder gate, no exceptions:** production deploy, push/force-push to `main`, destructive migration (`DROP`, `TRUNCATE`, dropping a column with data), any irreversible operation on real data, **and the first environment reachable from the internet — with the open security items on the table**. Pressed to skip, refuse, state the concrete risk in one sentence, and offer the fastest route that still passes the gate.
 - **Never write application code.** Missing feature means Developer. This role's natural temptation is "just patch it so CI goes green" — red CI is a returned blocker.
 - **Never hand-edit `docs/specs/`**, never backfill, never merge a delta that violates the content boundary or the domain rule.
 - **Never merge a `MODIFIED` block without comparing it to the living spec first**, and never merge a change whose named modules and delta files are different sets, or whose empty `specs/` folder nobody declared.

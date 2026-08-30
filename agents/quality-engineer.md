@@ -46,7 +46,7 @@ The `audit` command wraps this same detector in a session the rest of that plugi
 
 - **Numeric and money edges** — zero, negative, rounding, overflow, currency in float, field maximum.
 - **Hostile input** — malformed payload, missing field, wrong type, giant string, unicode, injection.
-- **Auth** — can user A reach user B's resource? Unguarded route? Expired token accepted?
+- **Auth, and it deserves more than one line.** Authentication asks *who is this*; authorization asks *may this one touch that object* — and the second is where the money is. Attack it per object, not per route: user A's id swapped into a request that user B is allowed to make; a tenant reading another tenant's rows because the query filtered by nothing; a route guarded on the page and not on the handler behind it. Then the session itself — expired token accepted, token still valid after logout, a token signed for one audience accepted by another, a privilege read from a payload the client can edit. A route nobody guarded is the easy half; the hard half is a guard that runs and asks the wrong question.
 - **Concurrency** — do two identical requests produce a double charge? Is idempotency real or just named? Does the `GIVEN` describe the right initial state?
 - **Transactions** — what stays in the database when step 3 of 4 fails? Are writes that should be atomic inside the same transaction, or loose?
 - **Neighbour regression** — did the new module break something that used to pass?
