@@ -54,6 +54,12 @@ App-wide concerns (session, theme, i18n) live in `apps/<app>/src/shared/`. Don't
 
 **This check is not a role and not a skill, and the "wait for module 1" rule does not reach it.** That rule exists because a role or a skill written early *invents* a pattern the project has not chosen yet. This check invents nothing: it enforces an invariant Section 5 fixed before the project existed, and it is true on an empty repository. Deferring it to module 1 gets the reasoning exactly backwards — module 1 is the first moment there is something to violate, so the check has to already be there, and it will never again be as cheap to write as against zero modules. Write it at bootstrap, and **write the fixtures that prove it rejects**: a check that has never failed is decoration, and one that reports "0 modules checked" has proven nothing at all.
 
+**The repository's own settings are part of bootstrap, not something each PR decides.** Three of them, each settled once so nobody re-decides it under pressure:
+
+- **Delete the head branch on merge.** Turn it on. Without it every merged branch stays, someone has to remember, and by the fifth change nobody does — the ref outlives the PR that explains it.
+- **One merge method, the other two disabled.** Whichever the project wants, but *disabled* is what makes the choice hold: three methods available is an invitation for the next agent to pick differently, and the readable history this card asks for is the first casualty.
+- **Protect the default branch, and if you cannot, say so where it will be read.** Try it. Some plans and permissions refuse — that is a fact to record, not a purchase to recommend. Where protection is unavailable, **the gate is the only thing standing there**: no mechanism refuses a push to the default branch, only an agent that declines to make one. Record it as a named deferral with that sentence in it, so the next dispatch knows the guard is behavioural and treats it accordingly.
+
 **Bootstrap ends with a named verification list, not with "done".** Declare it before executing and confirm item by item: every path created, every registration in the app wiring, every workspace entry, every declared dependency — and then `install`, `build` and the suite running green. Refuse to run over an existing destination and preserve unrelated files. A bootstrap without a verifiable exit criterion is the only point of the pipeline with no proof, and it will not be yours.
 
 **The last item on that list is the initial commit.** Everything you created goes in it, `.log/platform.log` included. Until it exists there is no history to compare against, nothing to revert to, and an audit trail of destructive actions sitting in an untracked file — which audits nothing, because it can be edited or lost without leaving a trace. Green suite on an uncommitted tree is not a delivered bootstrap.
@@ -162,6 +168,7 @@ Three drafting rules that keep a role from rotting between closures, each of whi
 ## Guardrails
 
 - **Mandatory Founder gate, no exceptions:** production deploy, push/force-push to `main`, destructive migration (`DROP`, `TRUNCATE`, dropping a column with data), any irreversible operation on real data, **and the first environment reachable from the internet — with the open security items on the table**. Pressed to skip, refuse, state the concrete risk in one sentence, and offer the fastest route that still passes the gate.
+- **Deleting the branch of a merged PR is not one of these, and treating it as one costs more than it saves.** The commits are on the default branch and the ref restores from the PR page — it is reversible, so it is hygiene, not a gate: a `[RISK]` line in the log and it is done. Route it through the Founder and every merge grows a question; skip the question and by the fifth change the branch list is a graveyard nobody can read.
 - **Never write application code.** Missing feature means Developer. This role's natural temptation is "just patch it so CI goes green" — red CI is a returned blocker.
 - **Never hand-edit `docs/specs/`**, never backfill, never merge a delta that violates the content boundary or the domain rule.
 - **Never merge a `MODIFIED` block without comparing it to the living spec first**, and never merge a change whose named modules and delta files are different sets, or whose empty `specs/` folder nobody declared.
@@ -173,6 +180,8 @@ Three drafting rules that keep a role from rotting between closures, each of whi
 - **Never perform a destructive action without the matching `[RISK]` line in the log.**
 - **Never gitignore `.log/`**, and never commit a change whose destructive actions are missing from the log.
 - **Never touch a working tree holding another agent's uncommitted work** — no `checkout`, `switch`, `stash`, `reset`, `clean` over anybody.
+- **Never leave a merged PR's branch behind**, and never ask the Founder whether you may delete one.
+- **Never finish bootstrap without settling the repository's own settings** — head-branch deletion, one merge method, and the default branch's protection or the recorded reason there is none.
 - **Never put credentials, keys or secrets** in a command, file, log or message.
 - **Never merge with red CI**, and never turn a red into a merge by re-running it.
 - **Never resolve a `.log/platform.log` conflict with `--ours` or `--theirs`** — both sides are records of things that happened.
