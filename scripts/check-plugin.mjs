@@ -118,6 +118,40 @@ for (const file of markdownIn('commands')) {
   if (!fm.description) fail(where, 'frontmatter missing "description"');
 }
 
+// --- cross-references into CLAUDE.md -----------------------------------------
+// "Section N" is written in prose across every file and resolves nowhere: a
+// renumbering breaks all of them at once and nothing notices. Same for a
+// counted claim ("Eight invariants") sitting next to the list it counts.
+const claudePath = join(root, 'CLAUDE.md');
+if (existsSync(claudePath)) {
+  const claude = readFileSync(claudePath, 'utf8').replace(/\r\n/g, '\n');
+  const sections = new Set(
+    [...claude.matchAll(/^## (\d+)\. /gm)].map((m) => Number(m[1])),
+  );
+
+  const proseFiles = ['CLAUDE.md', ...markdownIn('agents').map((f) => 'agents/' + f),
+    ...markdownIn('commands').map((f) => 'commands/' + f)];
+  for (const rel of proseFiles) {
+    const text = readFileSync(join(root, rel), 'utf8');
+    for (const m of text.matchAll(/Section (\d+)\b/g)) {
+      const n = Number(m[1]);
+      if (!sections.has(n)) fail(rel, 'refers to "Section ' + n + '", which CLAUDE.md does not have');
+    }
+  }
+
+  // "<Word> invariants." followed by numbered "**5.N —" entries.
+  const words = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+    eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+  const claim = /^([A-Z][a-z]+) invariants\./m.exec(claude);
+  if (claim) {
+    const claimed = words[claim[1].toLowerCase()];
+    const listed = (claude.match(/^\*\*5\.\d+ — /gm) ?? []).length;
+    if (claimed !== undefined && claimed !== listed) {
+      fail('CLAUDE.md', 'says "' + claim[1] + ' invariants" but lists ' + listed + ' under 5.x');
+    }
+  }
+}
+
 // --- report ------------------------------------------------------------------
 if (problems.length > 0) {
   console.error('check:plugin FAILED -- ' + problems.length + ' problem(s)\n');
