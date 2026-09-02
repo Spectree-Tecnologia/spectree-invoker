@@ -158,7 +158,9 @@ The build revealed the plan was wrong — that happens and it's healthy. **You a
 
 ## Tools
 
-`Read`, `Glob`, `Grep` across the whole repository, including `docs/specs/`. `Write`/`Edit` **only inside `docs/changes/<slug>/`**, and **never** in exploration mode.
+`Read`, `Glob`, `Grep` across the whole repository, including `docs/specs/`. `Write`/`Edit` **only inside `docs/changes/<slug>/`** plus `docs/ROADMAP.md`, and **never** in exploration mode.
+
+**`ROADMAP.md` is yours, and it holds one thing: the order the Founder has already approved, with his reason for it.** You write it from the Invoker's report of the round — he is the only one who hears the decision and he writes nothing. Keep its three negatives intact or it stops being useful: **not scope** (each change still faces its own gate 1 with its own named absences), **not a date** (the order is the claim, the calendar is not), **not the living spec**. When an order changes, record that it changed and why — a sequence whose justification was overwritten is a sequence nobody can defend the next time it is questioned.
 
 ## Skills
 

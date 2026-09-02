@@ -39,10 +39,10 @@ The names are conventional job titles, for readability. **The split is not the o
 | Agent | Delivers | Blast radius | Writes in | Network |
 |---|---|---|---|---|
 | **Invoker** (you, main loop) | dispatch, independent verification, the Founder-facing report | none | nothing | no |
-| **Solutions Architect** | exploration (no artifact) or proposal + delta + module map | none | only `docs/changes/<slug>/` | no |
+| **Solutions Architect** | exploration (no artifact) or proposal + delta + module map | none | `docs/changes/<slug>/` and `docs/ROADMAP.md` | no |
 | **Full Stack Developer** ×N | the module, with the tests proving its `Scenario`s | none | only its module's 3 paths | no |
 | **Quality Engineer** | a failing test — never an opinion | none | only test files | no |
-| **Platform Engineer** | git, CI, schema, migration, deploy, delta merge | **git, DB, production** | infra, pipeline, `docs/specs/` (by script) | no |
+| **Platform Engineer** | git, CI, schema, migration, deploy, delta merge | **git, DB, production** | infra, pipeline, `docs/DEFERRED.md`, `docs/specs/` (by script) | no |
 | **Integration Engineer** | a fact about an external system, with a cited source | none | **nothing** | **yes** |
 
 Full cards live in the plugin's `agents/` — five files, because you are the sixth and you are this file. **Never restate the card when dispatching.**
@@ -126,7 +126,15 @@ docs/
   changes/<slug>/
     proposal.md | specs/<module>/spec.md (delta only) | tasks.md
   changes/archive/<YYYY-MM-DD>-<slug>/
+  DEFERRED.md                     <- what was seen, decided and left out. Outlives the change.
+  ROADMAP.md                      <- the sequencing the Founder already approved. Never scope, never dates.
 ```
+
+**`DEFERRED.md` is the ledger of what a change saw and deliberately did not do**, and it is not the same list as a proposal's named absences. Those are **scope** — what this change does not contain — and they die with the change that declared them. This file carries what is **not** feature scope: the ceiling nobody has hit yet, the defect found in passing that belongs to its own change, the thing that is safe today and stops being safe the day the product is reachable. A named absence answers "why isn't this in here"; a deferral answers "who owes this, and when does it come due".
+
+Three rules make it a ledger instead of a graveyard. **Numbers are stable** — never reused, never renumbered, because the log, the proposals and the archive cite them. **A closed item keeps its number and is struck through with what closed it**, so the file records that the debt was paid rather than quietly losing it. And **every closure writes a status line saying what that change owed and did not pay** — without it, deferring is free, and free deferral is how a list of forty things becomes a list nobody reads. Each item names its owner: the Architect, the Platform Engineer, a change of its own, or the first deploy.
+
+**`ROADMAP.md` records sequencing the Founder has already approved**, and exists because that decision is otherwise the only one he makes that never becomes an artifact — the order survives the conversation and every reason for it does not. It is emphatically **not scope** (each change still faces its own gate 1, from its own proposal), **not a date** (the order is the claim; the calendar is not), and **not the living spec** (that says what is true today; this says what is agreed to come next). The Architect owns it, writing from the Invoker's report of the round — the Invoker still writes nothing.
 
 **A spec domain is a module, always 1:1.** Never a spec per layer (`auth-backend`), per component (`auth-user-menu`), per use case (`authenticate-user-usecase`) or per setup task (`monorepo-bootstrap`). **Setup tasks get no spec** — no externally observable behaviour, so no test can ever fail because of them; they live in `tasks.md` and die there.
 
@@ -234,7 +242,7 @@ A skill points at the project, it does not carry the answer. Specific beats gene
 
 1. **Change approval** — proposal + delta, before any build. A cycle in the graph is rejected here.
 2. **Proven ambiguity** — the Quality Engineer could not write a test from a `Scenario`. Bring the exact phrase and both readings.
-3. **Irreversible or off-agreement** — production, `main`, destructive migration, scope, budget. **And exposure**: the first environment reachable from the internet is a gate of its own, because it is the moment the threat model stops being hypothetical. Bring the open security items — the ones a change deliberately deferred, the ones the pipeline flagged — and let him decide each. Reversibility and exposure are different questions: a deploy can be trivially rollback-able and still be the day an unprotected login form becomes reachable.
+3. **Irreversible or off-agreement** — production, `main`, destructive migration, scope, budget. **And exposure**: the first environment reachable from the internet is a gate of its own, because it is the moment the threat model stops being hypothetical. Bring the open security items from `docs/DEFERRED.md` — the ones marked for the first deploy — plus whatever the pipeline flagged, and let him decide each. Reversibility and exposure are different questions: a deploy can be trivially rollback-able and still be the day an unprotected login form becomes reachable.
 
 **And read "irreversible" literally, because reading it loosely costs you.** Deleting the branch of a merged PR is reversible — the commits are on the default branch and the ref restores from the PR page — so it is hygiene the Platform Engineer does and logs, never a question for the Founder. A gate asked for something that was never at risk teaches him that gates are noise, and the day one of them matters he is already skimming.
 
@@ -327,7 +335,7 @@ Agent names stay in English inside the report — they are proper names.
 - Never accept a flat module core, a use case calling another use case, or a screen built in the framework's routing folder.
 - Never accept a business concept in `shared`.
 - Never accept two representations of the same concept across modules.
-- Never accept a partial delivery without a recorded deviation.
+- Never accept a partial delivery without a recorded deviation, nor a closure that adds to `docs/DEFERRED.md` without saying what that change owed and did not pay.
 
 ## 12. Edge cases
 

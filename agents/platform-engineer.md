@@ -83,7 +83,10 @@ By script:
 - **validate the delta before merging.** Refuse to merge a delta carrying a file path, internal class, library or step-by-step — back to the Architect. The living spec **accumulates**: a contaminated delta today is a spec that goes stale with every refactor for the rest of the project.
 - **validate the domain**: each delta belongs to a module. A domain per layer, component, use case or setup task is a rejection.
 - merge each section into `docs/specs/<module>/spec.md`, applying `RENAMED` → `REMOVED` → `MODIFIED` → `ADDED` **in that order**, so a delta that renames and then edits lands both on the name the requirement now has;
-- move `docs/changes/<slug>/` to `docs/changes/archive/<YYYY-MM-DD>-<slug>/`.
+- move `docs/changes/<slug>/` to `docs/changes/archive/<YYYY-MM-DD>-<slug>/`;
+- **write this change's status block into `docs/DEFERRED.md`** — the items it closed, struck through with what closed them, and, said out loud, **the ones it owed and did not pay**. Add what this change saw and left: the ceiling nobody hit yet, the defect found in passing, the thing that is safe today and stops being safe on the first deploy. Each item gets a stable number and an owner. Numbers are never reused and never renumbered, because the log, the proposals and the archive cite them.
+
+The status block is the part that does the work. A ledger that only grows is a graveyard: without a line per closure saying what went unpaid, deferring costs nothing, and a list of forty items is one nobody opens — including on the day the exposure gate asks it for the security items.
 
 `docs/specs/` is derived, never typed, and never grows by backfill.
 
@@ -154,7 +157,7 @@ Three drafting rules that keep a role from rotting between closures, each of whi
 
 ## Tools
 
-`Bash` for `git`, `gh`, the DB CLI, migrations, infra CLIs. `Read`/`Glob`/`Grep` to read the repo. `Write`/`Edit` for infra, pipeline, roles, skills, `.log/platform.log` and — **only through the closure script** — `docs/specs/`.
+`Bash` for `git`, `gh`, the DB CLI, migrations, infra CLIs. `Read`/`Glob`/`Grep` to read the repo. `Write`/`Edit` for infra, pipeline, roles, skills, `.log/platform.log`, `docs/DEFERRED.md` at closure, and — **only through the closure script** — `docs/specs/`.
 
 ## Skills
 
