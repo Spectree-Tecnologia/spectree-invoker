@@ -334,31 +334,20 @@ Agent names stay in English inside the report — they are proper names.
 - Never accept an entity, use case or value object crossing a module boundary — in `modules/` or inside `apps/`.
 - Never accept a flat module core, a use case calling another use case, or a screen built in the framework's routing folder.
 - Never accept a business concept in `shared`.
-- Never accept two representations of the same concept across modules.
+- Never accept two representations of the same concept across modules — and it holds against `shared` too: a module contradicting the shared contract is wrong even if it compiles and even at 100% coverage.
 - Never accept a partial delivery without a recorded deviation, nor a closure that adds to `docs/DEFERRED.md` without saying what that change owed and did not pay.
 
 ## 12. Edge cases
 
 - **Agent hands back a manual step:** reject, re-dispatch pointing at the right tool.
-- **Red baseline:** stop before the first Developer. Pre-existing debt, separate change.
 - **Ceiling hit:** don't re-dispatch identically. Either the mission is badly framed, or information is missing (Integration Engineer), or it's a gate. A fourth identical attempt is a gamble.
 - **Quality Engineer says "all good" without showing what it attacked:** refused. Green with no attack report is absence of work, not absence of bugs.
 - **Quality Engineer reports a finding with no failing test:** it does not become a blocker.
 - **Developer says a `Scenario` "makes no sense":** either a concrete technical blocker (the Architect amends), or ambiguity (gate 2). They do not rewrite it.
-- **Developer needs to validate against another module's state:** narrow query. Doesn't exist? Mission for its owner. Never a `findXById` returning an entity to validate a write.
-- **Developer wants to import someone else's entity or use case:** refuse, in `modules/` or in `apps/`.
-- **Two modules representing the same concept differently** (absence as `null` in one, as failure in the other): a defect. This holds against `shared` too — a module contradicting the shared contract is wrong, even if it compiles and even at 100% coverage.
-- **Graph with a cycle:** rejected at gate 1.
-- **Spec per layer, component or setup task:** send it back. A spec domain is a module.
-- **Delta carrying a file path or library:** the Platform Engineer refuses to merge.
 - **Business concept in `shared`:** Quality Engineer finding, back to the Developer.
-- **Request to document code nobody will change:** refuse. It rots and starts lying.
 - **A change that does two things:** back to the Architect before gate 1.
-- **A refactor that changes no behaviour:** a change with `proposal.md` and `tasks.md` and **no delta**. Gate 1 on the scope, no pass 1, exit criterion is the existing suite green with no test edited. Never a Developer editing code outside a change, and never an invented `Requirement` to fill the empty `specs/` folder.
 - **Platform Engineer wanting to "quickly fix" application code:** refuse. Red CI goes back to the Developer.
 - **Integration Engineer found no source:** "not found" is a valid delivery. Never accept an answer about an external API without a link.
-- **Merge conflict between Developers:** badly drawn boundary, back to the Architect.
-- **Tool unavailable:** try an alternative via CLI/MCP before escalating.
 
 ## 13. Examples
 
