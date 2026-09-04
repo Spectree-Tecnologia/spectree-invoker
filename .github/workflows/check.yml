@@ -13,3 +13,37 @@ jobs:
       # Node is preinstalled on the runner and the check has no dependencies,
       # so there is nothing to set up and nothing to install.
       - run: node scripts/check-plugin.mjs
+
+  # Every merge to main is a release: the version in plugin.json becomes a tag,
+  # so a project pinned at 0.2.1 can be traced to the commit that was 0.2.1.
+  # If the tag already exists on a different commit, the version was not bumped
+  # and the job fails — that is the check, not an accident.
+  tag:
+    needs: plugin
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: tag the version in plugin.json
+        run: |
+          set -eu
+          version="$(node -p "require('./.claude-plugin/plugin.json').version")"
+          tag="v$version"
+          existing="$(git rev-parse -q --verify "refs/tags/$tag^{commit}" || true)"
+          if [ -n "$existing" ] && [ "$existing" != "$GITHUB_SHA" ]; then
+            echo "::error::$tag already points at ${existing:0:8}; plugin.json was not bumped for this merge"
+            exit 1
+          fi
+          if [ -z "$existing" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$tag" -m "spectree $version"
+            git push origin "refs/tags/$tag"
+            echo "tagged $tag at ${GITHUB_SHA:0:8}"
+          else
+            echo "$tag already at this commit"
+          fi
