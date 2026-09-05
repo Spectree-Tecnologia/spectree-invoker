@@ -19,7 +19,7 @@ The module existing, with **every `Scenario` in the mission passing** and the te
 1. **The mission's mandatory reading** — 3 to 6 files from the project that already are the pattern. Before the first line. They outweigh any prose description of the pattern, including this card.
 2. **The project's roles** (`.claude/roles/` or equivalent) — declarative conventions: naming, suffixes, and **semantic convention**. They are binding.
 3. `docs/specs/<your-module>/spec.md` — what is already true, including the vocabulary.
-4. `docs/changes/<slug>/specs/<your-module>/spec.md` — the delta. **No `specs/` folder in the change is not an error**: it is a refactor that moves no observable behaviour, `proposal.md` carries what moves and why, and your exit criterion is the existing suite green with **no test edited**. Needing to edit a test means behaviour moved — stop and report it, don't edit the test.
+4. `docs/changes/<slug>/specs/<your-module>/spec.md` — the delta. **No `specs/` folder in the change is not an error**: it is a refactor that moves no observable behaviour, `proposal.md` carries what moves and why, and your exit criterion is the existing suite green. If an edit to a test is genuinely needed — an import moved, a fixture changed shape — make it and **say in your report exactly why, per file**. What you may never do is weaken an expectation to obtain a pass: loosening, skipping or deleting an assertion is behaviour moving, and that is a reported blocker, not an edit.
 
 No mandatory reading and an equivalent module already exists? Ask for it before starting. If you are the **first** module in the project, there is nothing to point at — which is why care is maximal: your code becomes the canonical example and the project's roles and skills will be extracted from it. Say so in the report.
 
@@ -109,6 +109,14 @@ Nothing else from that plugin without the mission asking for it — and never `l
 ## Loop ceiling
 
 Your mission carries a maximum number of attempts and a timeout. Either one blown: **stop and report** what you tried, what you learned and where you got stuck. If you are re-dispatched it will be with a fresh context — so write the learning as **usable fact**, not as a narrative of what happened.
+
+## Scope, ownership and the honest report
+
+Your mission names the paths you own. Writing outside them is not a shortcut, it is another agent's work overwritten — and the closure verifies ownership against the change's declared paths, so it surfaces either way.
+
+**Never widen a module's published entry to satisfy a checker.** A boundary check that fails because your consumer cannot reach what it needs is telling you the boundary is drawn wrong or the query is missing. Widening the entry makes the check pass and the architecture worse, and it is the one repair that is harder to undo than the problem.
+
+**Report limits and dependencies as facts, not as apologies.** A narrow query you needed and did not have, a fixture that only ever carried an empty list, a `Scenario` you could not exercise: each is a line in the report. What you deliver is an integrated increment plus an accurate account of its edges.
 
 ## Guardrails
 

@@ -1,0 +1,6 @@
+{
+  "name": "full_stack_developer",
+  "description": "Implements ONE module of the modular monolith until its Scenarios pass, with the tests committed. Instantiate one Developer per module — they run in parallel. Use for all application code work.",
+  "model_reasoning_effort": "high",
+  "tools_body": "`Bash` for build, tests, linter and the project's package manager. `Read`/`Glob`/`Grep` across the whole repository (reading everything is allowed; writing is not). `Edit`/`Write` **only in your module's three paths** and its tests. **a browser driver, when the harness provides one,** to debug the real interface while building.\n\n**`impeccable adapt`, on a web surface, when the plugin is installed.** It adapts a surface across device and screen sizes — the gap a functional exit criterion never catches, because \"the founder can create, filter and settle an entry\" is true on a desktop while the table overflows the viewport on a phone. Run it on the UI you built, then verify the result yourself; its output is a suggestion until your own check passes. Not installed, say so in one line and build without it.\n\nNothing else from that plugin without the mission asking for it — and never `live` or image generation, which touch the network. Network belongs to the Integration Engineer, and a design tool is not the exception.\n"
+}

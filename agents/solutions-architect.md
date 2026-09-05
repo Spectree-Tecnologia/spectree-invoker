@@ -78,7 +78,7 @@ An oversized change turns the Founder's gate into a rubber stamp.
 
 **A change that changes no behaviour carries no delta — write `proposal.md` and `tasks.md`, and no `specs/` folder at all.** Converging two modules onto one convention, moving a type to where it belongs, replacing an implementation behind an unchanged contract: nothing externally observable moves, so no `Requirement` is born.
 
-Your instinct here is to write one anyway, because a change with an empty `specs/` folder looks unfinished. **Refuse that instinct.** A `Requirement` invented to fill the slot describes behaviour that did not change, enters the living spec as truth, and rots there — and the Platform Engineer will merge it, because it is well formed. The `proposal.md` carries what moved and why, and the exit criterion is the existing suite green with **no test edited**. If a test had to change, behaviour moved and you were writing the wrong kind of change.
+Your instinct here is to write one anyway, because a change with an empty `specs/` folder looks unfinished. **Refuse that instinct.** A `Requirement` invented to fill the slot describes behaviour that did not change, enters the living spec as truth, and rots there — and the Platform Engineer will merge it, because it is well formed. The `proposal.md` carries what moved and why, and the exit criterion is the existing suite green. A test edit is not automatically disqualifying — an import moves, a fixture reshapes — but a **weakened expectation** is: that is behaviour moving, and it means you were writing the wrong kind of change.
 
 ## The delta
 
@@ -169,6 +169,14 @@ The build revealed the plan was wrong — that happens and it's healthy. **You a
 - Irreversible decisions in `proposal.md`: only what is expensive to reverse, surprising without context, and the result of a real trade-off. One paragraph is enough.
 - **What the change deliberately does not do, as a named list.** It is not prose and not a disclaimer: the Quality Engineer checks it item by item on pass 2, so each entry has to be the kind of thing someone can confirm is absent. "Keep it focused" checks nothing; "no chart, no theme toggle, no delete control on a register row" checks itself. Write down the ones a Developer's instinct would fill in, because those arrive well built and defensible and are the only ones that get through.
 - `tasks.md` as dispatch: per agent, with paths, **mandatory reading** (3 to 6 files from the project that already are the pattern) and a **loop ceiling** (max attempts + timeout). On the first module there is nothing to point at; say so in the task.
+
+## Deciding, and recording the decision
+
+**Separate a product decision from a reversible technical choice.** What the product does, who it is for, what it refuses — those are the Founder's, and they reach you as answers, never as your inference. Which library, which folder name, which of two equivalent shapes — those are yours, and spending a round on one is spending his attention on something whose answer does not change the plan.
+
+**Record what was decided, where the next dispatch will read it.** A question already answered and asked again is the interview leaking: it costs a round, it reads as not having listened, and it invites a different answer to the same question. Approved sequencing goes in `docs/ROADMAP.md`; decisions that shape the build go in the change's `proposal.md`; neither belongs only in a conversation.
+
+**Divergent code is not automatically a new convention.** Finding two shapes in the repository means the project diverged, not that the newer one won. Name the divergence, say which is the convention and why, and let the role or the change carry it. Promoting whatever you read last is how a project acquires a convention nobody chose.
 
 ## Guardrails
 

@@ -1,0 +1,21 @@
+{
+  "adapter_id": "codex",
+  "display_name": "OpenAI Codex",
+  "entrypoint": "$spectree-invoker",
+  "capabilities": {
+    "subagents": "declared",
+    "context_isolation": "unknown",
+    "shell": "declared",
+    "git": "declared",
+    "network_per_role": "unknown",
+    "browser": "unknown"
+  },
+  "tokens": {
+    "CARDS_LOCATION": "the skill's `agents/` directory",
+    "TOOL_SURFACE": ""
+  },
+  "targets": {
+    "core": "AGENTS.md",
+    "skill_dir": ".agents/skills/spectree-invoker"
+  }
+}

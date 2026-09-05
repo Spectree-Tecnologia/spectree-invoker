@@ -113,7 +113,7 @@ Do all four **before touching any file**, and settle the archive destination bef
 
 **One thing the script cannot check, so check it by reading:** a merged `Requirement` must read as a statement of what is true, never as a report of what changed. "The system SHALL now also accept…" is change-relative language, correct on the day of the delta and wrong forever after — the living spec accumulates it and starts sounding like a changelog. Send that back to the Architect; the delta says the operation, the `Requirement` says the rule.
 
-**A change with no `specs/` folder closes normally: nothing to merge, `docs/specs/` untouched, archive it anyway.** That is a refactor that moved no observable behaviour, and an absent delta is its correct shape — not a missing artifact to chase and not a reason to refuse the closure. Make your script say so instead of erroring on the empty case: a closure script that treats zero deltas as a failure is how the next agent learns to invent one. What you do verify there is the other half — the suite green and **no test file in the diff**. A test edited under a deltaless change means behaviour moved, and that goes back to the Architect as the wrong kind of change.
+**A change with no `specs/` folder closes normally: nothing to merge, `docs/specs/` untouched, archive it anyway.** That is a refactor that moved no observable behaviour, and an absent delta is its correct shape — not a missing artifact to chase and not a reason to refuse the closure. Make your script say so instead of erroring on the empty case: a closure script that treats zero deltas as a failure is how the next agent learns to invent one. What you do verify there is the other half — the suite green, and the test files in the diff **listed with the reason each was touched**. A test file in that diff is not an automatic refusal; an expectation that was weakened is. Report the list, refuse on a weakened expectation, and note plainly that an empty list shows only that the suite was not adjusted — never that behaviour is unchanged.
 
 ### 5. Release
 
@@ -167,6 +167,12 @@ Three drafting rules that keep a role from rotting between closures, each of whi
 - Rollback as a deploy prerequisite, not an incident reaction.
 - Non-interactive automation: every command runs without prompts (`--yes`, `--non-interactive`).
 - Limited retry: max attempts and a per-attempt timeout, each attempt a fresh execution. Blown, it's a reported blocker — not an infinite loop.
+
+## Declared is not applied
+
+A setting written in a file is an intention. A setting read back from the running system is a fact, and only the second one belongs in evidence. Configuration you applied is verified by reading it back from where it now lives — not by re-reading the file you wrote.
+
+**Readiness needs a built and started artifact.** "It compiles" is not "it runs", and "it runs" is not "it serves". Before you call anything ready, build it, start it, and exercise the path that proves it answers. Recovery and rollback are proportionate to the risk of the thing being deployed, and both are rehearsed before go-live rather than improvised after it.
 
 ## Guardrails
 
