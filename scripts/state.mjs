@@ -5,8 +5,10 @@
 //   node scripts/state.mjs resume [change-id]        the resume contract, human-readable
 //   node scripts/state.mjs resume --json
 //   node scripts/state.mjs open <change-id> --type <t> --base <rev> --scope <s> --paths a,b [--deltaless]
+//   node scripts/state.mjs digest <change-id>       what a gate approval must be bound to
 //   node scripts/state.mjs can <change-id> <to-state>
 //   node scripts/state.mjs transition <change-id> <to-state> --expect <state_revision>
+//   node scripts/state.mjs transition <change-id> blocked --reason "<why>"
 //   node scripts/state.mjs record-evidence <file.json>
 //   node scripts/state.mjs record-approval <file.json>
 //   node scripts/state.mjs defer <file.json>
@@ -18,7 +20,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { canTransition } from './lib/state-machine.mjs';
+import { artifactDigest } from './lib/digest.mjs';
 import { validate } from './lib/validate.mjs';
+
+/** Every gate an entry requirement can name. All of them are bound to the same artifact. */
+const GATES = ['scope', 'ambiguity', 'irreversible', 'exposure', 'integration'];
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const store = new Store(root);
@@ -65,6 +71,7 @@ function resume(changeId) {
           state_revision: change.state_revision ?? 0,
           allowed_paths: change.allowed_paths,
           blocked_reason: change.blocked_reason ?? null,
+          blocked_from: change.blocked_from ?? null,
         }
       : null,
     approvals: change ? store.approvals(change.change_id).map((a) => ({ gate: a.gate, by: a.granted_by?.identity, kind: a.granted_by?.kind, revision: a.revision })) : [],
@@ -95,7 +102,7 @@ function printResume(r) {
   else {
     L.push(`change         ${r.change.change_id}  [${r.change.state}]${r.change.deltaless ? '  deltaless' : ''}`);
     L.push(`base revision  ${r.change.base_revision.slice(0, 8)}   state_revision ${r.change.state_revision}`);
-    if (r.change.blocked_reason) L.push(`blocked        ${r.change.blocked_reason}`);
+    if (r.change.blocked_reason) L.push(`blocked        ${r.change.blocked_reason}${r.change.blocked_from ? `  (recover to ${r.change.blocked_from})` : ''}`);
     L.push(`owns paths     ${r.change.allowed_paths.join(', ')}`);
   }
   L.push(`approvals      ${r.approvals.length ? r.approvals.map((a) => `${a.gate} by ${a.by} (${a.kind})`).join('; ') : 'none'}`);
@@ -143,26 +150,50 @@ switch (cmd) {
     break;
   }
 
+  case 'digest': {
+    const id = argv[1] ?? die('usage: state.mjs digest <change-id>');
+    const change = store.change(id) ?? die(`no such change: ${id}`, 1);
+    const d = artifactDigest(root, change, { artifactsDir: flag('artifacts') });
+    console.log(d.digest);
+    console.error(`  from ${d.source}${d.files ? ` (${d.files} file(s))` : ''} — record it as the approval's scope_digest`);
+    break;
+  }
+
   case 'can':
   case 'transition': {
     const id = argv[1] ?? die('usage: state.mjs can|transition <change-id> <to-state>');
     const to = argv[2] ?? die('usage: state.mjs can|transition <change-id> <to-state>');
     const change = store.change(id) ?? die(`no such change: ${id}`, 1);
     const g = gitSituation();
+    // The digest of what is on the table right now — computed from the artifact, never
+    // copied from the approval, or the comparison would only ever agree with itself.
+    const d = artifactDigest(root, change, { artifactsDir: flag('artifacts') });
     const verdict = canTransition(change, to, {
       evidence: store.evidence(id),
       approvals: store.approvals(id),
       revision: g.revision,
+      scopeDigests: Object.fromEntries(GATES.map((gate) => [gate, d.digest])),
       expectedStateRevision: has('expect') ? Number(flag('expect')) : undefined,
     });
     if (!verdict.ok) {
       console.error(`REFUSED ${change.state} -> ${to}`);
       console.error(`  ${verdict.code}: ${verdict.message}`);
+      if (verdict.code === 'E_APPROVAL_DIGEST_MISMATCH') console.error(`  current artifact: ${d.source} -> ${d.digest}`);
       process.exit(1);
     }
     if (cmd === 'can') { console.log(`allowed ${change.state} -> ${to}`); break; }
-    const saved = store.putChange({ ...change, state: to, evaluated_revision: g.revision ?? change.evaluated_revision },
-      { event: { type: 'transition', from: change.state, to }, expected: change.state_revision });
+
+    const next = { ...change, state: to, evaluated_revision: g.revision ?? change.evaluated_revision };
+    if (to === 'blocked') {
+      // Record where to come back to as the block is written. A block whose origin nobody
+      // wrote down has nowhere safe to return to, and the machine refuses to guess.
+      next.blocked_from = change.state;
+      next.blocked_reason = flag('reason') ?? die('blocking requires --reason "<why>": a block with no stated cause is unreadable at resume');
+    } else if (change.state === 'blocked') {
+      delete next.blocked_from;
+      delete next.blocked_reason;
+    }
+    const saved = store.putChange(next, { event: { type: 'transition', from: change.state, to }, expected: change.state_revision });
     console.log(`${change.state} -> ${to}  (state_revision ${saved.state_revision})`);
     break;
   }
@@ -203,5 +234,5 @@ switch (cmd) {
   }
 
   default:
-    die(`usage: state.mjs <init|resume|open|can|transition|record-evidence|record-approval|defer|validate>`);
+    die(`usage: state.mjs <init|resume|open|digest|can|transition|record-evidence|record-approval|defer|validate>`);
 }

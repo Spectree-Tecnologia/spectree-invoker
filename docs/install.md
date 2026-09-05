@@ -81,6 +81,33 @@ and by nothing else — **reading never creates it**.
 
 Removing the squad does not remove `.spectree/`: it is the project's record, not the tool's.
 
+## Gates, digests and blocks
+
+An approval is bound to **content**, so the CLI computes the digest of what is actually on
+the table and compares it — it never copies the digest out of the approval, which would only
+ever agree with itself. The artifact is `docs/changes/<change-id>/` (override with
+`--artifacts <dir>`); with no such folder, the change's own declared scope is the artifact.
+
+```bash
+node scripts/state.mjs digest <change-id>
+```
+
+Record that value as the approval's `scope_digest`. Edit the proposal afterwards and the gate
+refuses with `E_APPROVAL_DIGEST_MISMATCH`, naming the artifact and its current digest. Code
+moving under an unchanged proposal is caught by the other half: an approval expires with the
+revision unless it carries `expires_with_revision: false`.
+
+Blocking states its cause, and records where to come back to:
+
+```bash
+node scripts/state.mjs transition <change-id> blocked --reason "the PSP webhook contract is unknown"
+```
+
+`blocked_from` is written by the command, not by hand. Recovery returns to that state and to
+no other — `E_BLOCKED_RECOVERY` for anything else — and re-checks that state's requirements,
+so a block never launders a step whose preconditions were never met. Coming back clears both
+fields.
+
 ## Migrate
 
 Documents carry `schema_version`. A document written by another version is **refused, not

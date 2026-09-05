@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -212,33 +212,58 @@ test('5f. a destination that escapes the project is refused', () => {
 
 // --- finding 6: read-modify-write was a race ---------------------------------
 
-test('6. two concurrent processes cannot both write the same state revision', () => {
+test('6. two concurrent processes race for the same state revision, and one is refused', async () => {
   const dir = tempDir('spectree-race-');
   try {
     const s = new Store(dir);
     s.init({ project_id: 'p', protocol_version: '1.0.0' });
     s.putChange(change({ state: 'draft' }));
 
-    // Both processes read revision 1 and then write. Without a lock around the whole
-    // read-compare-write, both succeed and one silently wins.
+    // Sequential processes only prove that a stale revision is rejected. The lock is about
+    // SIMULTANEOUS writers, so both children park on a barrier and are released together.
     // On Windows an absolute ESM specifier must be a file:// URL, so build one.
     const storeUrl = pathToFileURL(join(REPO, 'scripts/lib/store.mjs')).href;
     const script = `
       import { Store } from ${JSON.stringify(storeUrl)};
-      const s = new Store(${JSON.stringify(dir)});
-      const c = s.change('c1');
-      // With \`node -e <script> <arg>\`, argv is [execPath, arg] — there is no script path.
-      try { s.putChange({ ...c, state: process.argv[1] }, { expected: 1 }); console.log('WROTE'); }
+      import { writeFileSync, existsSync } from 'node:fs';
+      import { join } from 'node:path';
+      // With \`node -e <script> a b\`, argv is [execPath, a, b] — there is no script path.
+      const [, state, dir] = process.argv;
+      const s = new Store(dir);
+      const c = s.change('c1');                       // both read the same revision first
+      writeFileSync(join(dir, 'ready-' + state), '');
+      const spin = new Int32Array(new SharedArrayBuffer(4));
+      while (!existsSync(join(dir, 'go'))) Atomics.wait(spin, 0, 0, 1);
+      try { s.putChange({ ...c, state }, { expected: 1, event: { type: 'transition', to: state } }); console.log('WROTE'); }
       catch (e) { console.log(e.code ?? ('ERR ' + e.message)); }
     `;
-    const run = (state) => execFileSync(process.execPath, ['--input-type=module', '-e', script, state],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    const child = (state) => new Promise((resolve, reject) => {
+      const c = spawn(process.execPath, ['--input-type=module', '-e', script, state, dir], { stdio: ['ignore', 'pipe', 'pipe'] });
+      let out = '', err = '';
+      c.stdout.on('data', (d) => { out += d; });
+      c.stderr.on('data', (d) => { err += d; });
+      c.on('error', reject);
+      c.on('close', (code) => resolve({ state, out: out.trim(), err: err.trim(), code }));
+    });
 
-    const a = run('proposed');
-    const b = run('blocked');
-    assert.equal(a, 'WROTE');
-    assert.equal(b, 'E_CONCURRENT_UPDATE', 'the second writer is refused, not merged');
-    assert.equal(s.change('c1').state_revision, 2, 'exactly one write landed');
+    const running = [child('proposed'), child('pass1_complete')];
+    // Release only once BOTH are parked: that is what makes the writes contend.
+    const parked = () => existsSync(join(dir, 'ready-proposed')) && existsSync(join(dir, 'ready-pass1_complete'));
+    for (let i = 0; i < 600 && !parked(); i++) await new Promise((r) => setTimeout(r, 10));
+    assert.ok(parked(), 'both processes reached the barrier');
+    writeFileSync(join(dir, 'go'), '');
+
+    const results = await Promise.all(running);           // both results are collected
+    for (const r of results) assert.equal(r.code, 0, `child ${r.state} exited ${r.code}: ${r.err}`);
+    assert.deepEqual(results.map((r) => r.out).sort(), ['E_CONCURRENT_UPDATE', 'WROTE'],
+      'exactly one writer lands; the other is refused, not merged');
+
+    const winner = results.find((r) => r.out === 'WROTE').state;
+    const final = s.change('c1');
+    assert.equal(final.state_revision, 2, 'exactly one write landed');
+    assert.equal(final.state, winner, 'the state on disk belongs to the winner, not to a blend');
+    assert.deepEqual(s.history('c1').map((e) => e.to), [winner], 'only the winner appended a history event');
+    assert.equal(existsSync(join(dir, '.spectree/changes/c1.lock')), false, 'the lock is released');
   } finally { cleanup(dir); }
 });
 
