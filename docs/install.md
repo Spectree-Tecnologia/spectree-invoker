@@ -15,33 +15,28 @@ state; with an argument it takes the request into the pipeline.
 
 ## OpenAI Codex
 
-Codex reads `AGENTS.md` from the repository root, and skills from `.agents/skills/`. Two ways
-to wire the squad in, and the first one changes nothing outside the project:
-
-**Per project** — copy the two entrypoints into the project you are working on:
+Use the installer. It is a **dry run by default** and writes nothing until `--apply`:
 
 ```bash
-cp "<package>/AGENTS.md" ./AGENTS.md            # only if the project has none; see below
-cp -r "<package>/.agents/skills/spectree-invoker" ./.agents/skills/
+node <package>/scripts/install-codex.mjs /path/to/project            # plan only
+node <package>/scripts/install-codex.mjs /path/to/project --apply    # perform it
+node <package>/scripts/install-codex.mjs /path/to/project --apply --global
 ```
 
-**Per user** — put the skill under `$HOME/.agents/skills/spectree-invoker` instead, and it is
-available in every project without touching any of them.
+What it places, and where — the locations are the ones Codex actually reads:
 
-Invoke it with `$spectree-invoker`. The five specialists live in that skill's `agents/`
-directory as one TOML each and are dispatched by name: `solutions_architect`,
-`full_stack_developer`, `quality_engineer`, `platform_engineer`, `integration_engineer`.
+| Destination | What |
+|---|---|
+| `.codex/agents/*.toml` (or `~/.codex/agents/`) | the five specialists, as Codex **custom agents** |
+| `.agents/skills/spectree-invoker/SKILL.md` | the entrypoint skill, invoked with `$spectree-invoker` |
+| `.spectree/squad/SQUAD.md` | the squad's protocol |
+| `.spectree/squad/scripts/`, `.spectree/squad/schemas/` | the scripts the skill tells the agent to run, and what they need |
 
-**If the project already has an `AGENTS.md`, do not overwrite it.** Append a pointer instead:
+A skill's own `agents/` subfolder does **not** register custom agents; `.codex/agents/` does. That is why the installer exists rather than a `cp -r`.
 
-```markdown
-## Spectree Invoker
+**It never rewrites the consumer's `AGENTS.md`.** If one exists, a short pointer is appended once, below whatever is already there — and a second run appends nothing. If none exists, one is created containing only the pointer. `AGENTS.md` stays the project's document; the squad's definition is `SQUAD.md`.
 
-The squad's protocol is in `.agents/skills/spectree-invoker/SKILL.md`. Invoke it with
-`$spectree-invoker`. Read it before dispatching any specialist.
-```
-
-The project's own instructions are the project's. The squad never replaces them.
+Other guarantees, each covered by a regression test: idempotent (a second `--apply` reports only `unchanged`), contained (a destination that escapes the project is refused, never clamped), no symlink anywhere, and nothing global unless `--global` is passed. An existing squad file is **not** overwritten without `--force`, and the refusal names every file it would have replaced.
 
 ## Verify an installation
 
@@ -50,7 +45,7 @@ From the package directory:
 ```bash
 node scripts/check-plugin.mjs      # structural integrity — required content, not just files found
 node scripts/build.mjs --check     # generated files match protocol/
-node --test tests/*.test.mjs       # the deterministic suite
+node --test tests/*.test.mjs       # the deterministic suite — writes nothing inside the package
 node scripts/capabilities.mjs      # what this harness actually gives the squad
 ```
 
@@ -64,8 +59,9 @@ Those are three separate questions and only the first is answered here.
 claude plugin update spectree@spectree-invoker      # Claude Code
 ```
 
-For Codex, re-copy the skill directory. Updating never touches a consumer's own `AGENTS.md`,
-`CLAUDE.md` or any file outside `.agents/skills/spectree-invoker/`.
+For Codex, re-run the installer. It reports `unchanged` for everything already current, and
+`overwrite` for a squad file that moved — and **refuses to overwrite anything without `--force`**,
+naming each file first. Updating never touches the consumer's own `AGENTS.md`.
 
 Every merge to `main` publishes a `v<version>` tag, so a project can say which commit it is on.
 
@@ -73,8 +69,9 @@ Every merge to `main` publishes a `v<version>` tag, so a project can say which c
 
 Claude Code: `claude plugin uninstall spectree@spectree-invoker`.
 
-Codex: delete `.agents/skills/spectree-invoker/` and the pointer you added to `AGENTS.md`.
-Nothing else was written.
+Codex: delete `.agents/skills/spectree-invoker/`, `.codex/agents/{solutions_architect,full_stack_developer,quality_engineer,platform_engineer,integration_engineer}.toml`,
+`.spectree/squad/`, and the pointer block in `AGENTS.md` (it is marked with an HTML comment).
+Nothing else was ever written.
 
 ## The project's state directory
 

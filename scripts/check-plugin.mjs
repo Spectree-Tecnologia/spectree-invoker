@@ -109,11 +109,12 @@ for (const file of has('commands') ? readdirSync(join(root, 'commands')).filter(
 if (adapters.includes('codex')) {
   const a = readJson('adapters/codex/adapter.json');
   const skill = a?.targets?.skill_dir;
-  if (!has('AGENTS.md')) fail('AGENTS.md', 'the Codex entrypoint is missing');
+  const agentsDir = a?.targets?.agents_dir;
+  if (!has(a?.targets?.core ?? 'nope')) fail(a?.targets?.core ?? 'codex core', 'the Codex squad document is missing');
   if (skill) {
     if (!has(`${skill}/SKILL.md`)) fail(`${skill}/SKILL.md`, 'the Codex skill is missing');
     for (const r of REQUIRED_ROLES) {
-      const t = `${skill}/agents/${r.replace(/-/g, '_')}.toml`;
+      const t = `${agentsDir}/${r.replace(/-/g, '_')}.toml`;
       if (!has(t)) fail(t, 'required Codex specialist missing');
       else {
         const body = read(t);

@@ -18,10 +18,11 @@ Dentro de um projeto, `/spectree:invoker` boota o Invoker. Sem argumentos ele re
 ## Codex
 
 ```bash
-cp -r "<pacote>/.agents/skills/spectree-invoker" ./.agents/skills/
+node <pacote>/scripts/install-codex.mjs /caminho/do/projeto            # dry run, não escreve nada
+node <pacote>/scripts/install-codex.mjs /caminho/do/projeto --apply
 ```
 
-Invoque com `$spectree-invoker`. Os cinco especialistas ficam em `agents/`, um TOML cada. Se o projeto já tem `AGENTS.md`, **não sobrescreva** — acrescente um ponteiro. Detalhes em [docs/install.md](docs/install.md).
+Invoque com `$spectree-invoker`. Os cinco especialistas vão para `.codex/agents/`, que é onde o Codex procura agentes personalizados — a pasta `agents/` de uma skill não registra nada. O instalador **nunca reescreve o `AGENTS.md` do consumidor**: acrescenta um ponteiro uma vez, abaixo do que já existe. Detalhes em [docs/install.md](docs/install.md).
 
 ## O que há aqui
 
@@ -33,9 +34,9 @@ Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CL
 | `adapters/claude-code/`, `adapters/codex/` | O que é específico de cada harness: tokens, ferramentas, metadados |
 | `schemas/` | Os contratos estruturados: change, dispatch, evidence, deferred, approval |
 | `scripts/` | `build`, `check-plugin`, `state`, `verify-change`, `capabilities` |
-| `tests/` | 74 testes determinísticos + fixtures de avaliação comportamental |
+| `tests/` | 100 testes determinísticos + fixtures de avaliação comportamental |
 | `docs/` | [instalação](docs/install.md) · [compatibilidade](docs/compatibility.md) · [arquitetura](docs/architecture.md) |
-| `CLAUDE.md`, `agents/`, `AGENTS.md`, `.agents/` | **Gerados.** Rode `node scripts/build.mjs`; não edite à mão |
+| `CLAUDE.md`, `agents/`, `adapters/codex/dist/` | **Gerados.** Rode `node scripts/build.mjs`; não edite à mão |
 
 ```bash
 npm run check     # drift + integridade + suíte

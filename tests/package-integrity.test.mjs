@@ -11,10 +11,10 @@ import { tempDir, cleanup, REPO } from './helpers.mjs';
 function pkgCopy() {
   const dir = join(tempDir('spectree-pkg-'), 'pkg');
   mkdirSync(dir, { recursive: true });
-  for (const d of ['protocol', 'adapters', 'schemas', 'scripts', 'agents', 'commands', 'tests', '.claude-plugin', '.agents']) {
+  for (const d of ['protocol', 'adapters', 'schemas', 'scripts', 'agents', 'commands', 'tests', '.claude-plugin']) {
     if (existsSync(join(REPO, d))) cpSync(join(REPO, d), join(dir, d), { recursive: true });
   }
-  for (const f of ['CLAUDE.md', 'AGENTS.md', 'package.json']) {
+  for (const f of ['CLAUDE.md', 'package.json']) {
     if (existsSync(join(REPO, f))) cpSync(join(REPO, f), join(dir, f));
   }
   return dir;
@@ -61,7 +61,7 @@ test('removing one specialist from the manifest fails', () => {
 });
 
 test('a missing entrypoint fails, for each harness', () => {
-  for (const [file, needle] of [['commands/invoker.md', /Claude Code entrypoint is missing/], ['AGENTS.md', /Codex entrypoint is missing/]]) {
+  for (const [file, needle] of [['commands/invoker.md', /Claude Code entrypoint is missing/], ['adapters/codex/dist/SQUAD.md', /Codex squad document is missing/]]) {
     const dir = pkgCopy();
     try {
       rmSync(join(dir, file), { force: true });
@@ -117,7 +117,7 @@ test('an empty required test set fails', () => {
 test('a missing Codex specialist fails', () => {
   const dir = pkgCopy();
   try {
-    rmSync(join(dir, '.agents/skills/spectree-invoker/agents/quality_engineer.toml'), { force: true });
+    rmSync(join(dir, 'adapters/codex/dist/agents/quality_engineer.toml'), { force: true });
     const r = check(dir);
     assert.equal(r.code, 1);
     assert.match(r.out, /required Codex specialist missing/);
@@ -133,15 +133,25 @@ test('generated files are checked for drift against the protocol', () => {
 });
 
 test('hand-editing a generated file is detected as drift', () => {
-  const f = join(REPO, 'CLAUDE.md');
-  const original = readFileSync(f, 'utf8');
+  // On a COPY, always. A test that edits the real package can leave it dirty when it is
+  // interrupted, and it makes the suite unrunnable under read-only authorisation.
+  const dir = pkgCopy();
   try {
-    writeFileSync(f, original + '\nA line somebody typed straight into the generated file.\n');
+    const f = join(dir, 'CLAUDE.md');
+    writeFileSync(f, readFileSync(f, 'utf8') + '\nA line somebody typed straight into the generated file.\n');
     let code = 0;
-    try { execFileSync(process.execPath, [join(REPO, 'scripts', 'build.mjs'), '--check'], { encoding: 'utf8' }); }
+    try { execFileSync(process.execPath, [join(dir, 'scripts', 'build.mjs'), '--check'], { cwd: dir, encoding: 'utf8' }); }
     catch (e) { code = e.status ?? -1; }
     assert.equal(code, 1, 'an edit that bypasses protocol/ must fail CI');
-  } finally { writeFileSync(f, original); }
+  } finally { cleanup(dir); }
+});
+
+test('the suite leaves the package under test byte-identical', () => {
+  // The guard for the rule above: nothing in tests/ may write inside REPO.
+  const before = readFileSync(join(REPO, 'CLAUDE.md'), 'utf8');
+  const out = execFileSync(process.execPath, [join(REPO, 'scripts', 'build.mjs'), '--check'], { encoding: 'utf8' });
+  assert.match(out, /OK/);
+  assert.equal(readFileSync(join(REPO, 'CLAUDE.md'), 'utf8'), before);
 });
 
 test('both adapters render every required role from the same protocol body', async () => {
@@ -156,7 +166,7 @@ test('both adapters render every required role from the same protocol body', asy
   // The invariant that matters: the same rule text reaches both.
   const marker = 'Never accept two representations of the same concept across modules';
   assert.ok(claude.find((f) => f.path === 'CLAUDE.md').content.includes(marker));
-  assert.ok(codex.find((f) => f.path === 'AGENTS.md').content.includes(marker));
+  assert.ok(codex.find((f) => f.path.endsWith('SQUAD.md')).content.includes(marker));
 });
 
 test('the state contract reads the same in both adapters', async () => {

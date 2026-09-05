@@ -79,7 +79,9 @@ export function renderAdapter(adapterId) {
       ];
       if (meta.model_reasoning_effort) lines.push(`model_reasoning_effort = ${JSON.stringify(meta.model_reasoning_effort)}`);
       lines.push(`developer_instructions = '''`, body, `'''`, '');
-      out.push({ path: `${skill}/agents/${meta.name}.toml`, content: lines.join('\n') });
+      // Codex loads custom agents from `.codex/agents/` (project) or `~/.codex/agents/`
+      // (global) — NOT from a skill's own agents/ subfolder. The installer places them there.
+      out.push({ path: `${a.targets.agents_dir}/${meta.name}.toml`, content: lines.join('\n') });
     }
   }
 

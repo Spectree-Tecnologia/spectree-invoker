@@ -3,6 +3,10 @@
 // It validates the flow. It never performs the work: nothing here pushes, merges, deploys
 // or touches a remote. A transition says "the preconditions for calling this done are met",
 // and that is the whole of its authority.
+//
+// Requirements belong to the STATE BEING ENTERED, not to the edge. An earlier version
+// attached them to edges, and the same state could then be entered from a different edge
+// with none of them checked — which is exactly how `blocked` became a bypass.
 
 /** Refusal codes. Objective, stable, and quotable back to the Founder. */
 export const CODES = {
@@ -14,145 +18,198 @@ export const CODES = {
   MISSING_APPROVAL: 'E_MISSING_APPROVAL',
   APPROVAL_OUT_OF_SCOPE: 'E_APPROVAL_OUT_OF_SCOPE',
   APPROVAL_STALE: 'E_APPROVAL_STALE',
+  APPROVAL_DIGEST_MISMATCH: 'E_APPROVAL_DIGEST_MISMATCH',
   SELF_REPORT_ONLY: 'E_SELF_REPORT_ONLY',
   CONCURRENT_UPDATE: 'E_CONCURRENT_UPDATE',
   ATTEMPTS_EXCEEDED: 'E_ATTEMPTS_EXCEEDED',
   RETRY_WITHOUT_PROGRESS: 'E_RETRY_WITHOUT_PROGRESS',
   CAPABILITY_UNAVAILABLE: 'E_CAPABILITY_UNAVAILABLE',
+  BLOCKED_RECOVERY: 'E_BLOCKED_RECOVERY',
 };
 
+/** The ordered pipeline. Every forward edge goes to the next state and to no other. */
+export const ORDER = [
+  'draft', 'proposed', 'scope_approved', 'isolated', 'baselined',
+  'pass1_complete', 'implemented', 'pass2_complete', 'ci_green',
+  'integration_approved', 'integrated', 'closed',
+];
+
 /**
- * Each transition names what must be true. `evidence` entries are matched on `property`;
- * `approval` entries on `gate`.
+ * What must be true to BE IN a state. Checked on every entry, by whatever route.
+ * `evidence` entries match on `property`; `approvals` on `gate`.
  */
-export const TRANSITIONS = {
-  draft: { proposed: {} },
-  proposed: {
-    scope_approved: { approvals: ['scope'] },
-    blocked: {},
-  },
-  scope_approved: {
-    isolated: { evidence: [{ property: 'branch.isolated' }] },
-    blocked: {},
-  },
+export const ENTRY_REQUIREMENTS = {
+  draft: {},
+  proposed: {},
+  scope_approved: { approvals: ['scope'] },
   isolated: {
-    baselined: { evidence: [{ property: 'suite.baseline', result: 'PASS', observed: true }] },
-    blocked: {},
+    approvals: ['scope'],
+    evidence: [{ property: 'branch.isolated', result: 'PASS', observed: true, fresh: false }],
   },
   baselined: {
-    // The only place the deltaless path diverges: pass 1 is skipped, nothing else is.
-    pass1_complete: { evidence: [{ property: 'pass1.tests_failing', observed: true }] },
-    implemented: { when: (c) => c.deltaless === true },
-    blocked: {},
+    approvals: ['scope'],
+    evidence: [{ property: 'suite.baseline', result: 'PASS', observed: true, fresh: false }],
   },
-  pass1_complete: { implemented: {}, blocked: {} },
-  implemented: {
-    pass2_complete: {
-      evidence: [{ property: 'pass2.attack', observed: true }],
-      independentOf: ['full_stack_developer'],
-    },
-    blocked: {},
+  pass1_complete: {
+    approvals: ['scope'],
+    evidence: [{ property: 'pass1.tests_failing', result: 'PASS', observed: true, fresh: false }],
   },
+  implemented: { approvals: ['scope'] },
   pass2_complete: {
-    ci_green: { evidence: [{ property: 'ci.green', result: 'PASS', observed: true, fresh: true }] },
-    blocked: {},
+    approvals: ['scope'],
+    evidence: [{ property: 'pass2.attack', result: 'PASS', observed: true, fresh: true }],
+    independentOf: ['full_stack_developer'],
   },
   ci_green: {
-    integration_approved: { approvals: ['integration'] },
-    blocked: {},
+    approvals: ['scope'],
+    evidence: [{ property: 'ci.green', result: 'PASS', observed: true, fresh: true }],
   },
-  integration_approved: { integrated: {}, blocked: {} },
-  integrated: {
-    closed: { evidence: [{ property: 'closure.merged', observed: true }] },
-    blocked: {},
+  integration_approved: { approvals: ['scope', 'integration'] },
+  integrated: { approvals: ['scope', 'integration'] },
+  closed: {
+    approvals: ['scope', 'integration'],
+    evidence: [{ property: 'closure.merged', result: 'PASS', observed: true, fresh: false }],
   },
-  closed: {},
-  blocked: {
-    proposed: {}, scope_approved: {}, isolated: {}, baselined: {},
-    pass1_complete: {}, implemented: {}, pass2_complete: {}, ci_green: {},
-    integration_approved: {}, integrated: {},
-  },
+  blocked: {},
 };
+
+/** Legal edges. Forward one step, or into `blocked` from anywhere but the ends. */
+export function legalTargets(change) {
+  if (change.state === 'blocked') {
+    // Recovery returns to where the block happened and nowhere else. The entry
+    // requirements of that state are then re-checked, so a block never launders
+    // a step whose preconditions were never met.
+    return change.blocked_from ? [change.blocked_from] : [];
+  }
+  const i = ORDER.indexOf(change.state);
+  if (i === -1) return [];
+  const next = [];
+  if (i + 1 < ORDER.length) next.push(ORDER[i + 1]);
+  if (change.state !== 'closed') next.push('blocked');
+  // A deltaless change has no Scenario, so pass 1 does not apply to it — and only
+  // that one step is skipped.
+  if (change.state === 'baselined' && change.deltaless === true) next.push('implemented');
+  return next;
+}
 
 const refuse = (code, message, detail) => ({ ok: false, code, message, ...(detail ? { detail } : {}) });
 
 /**
- * @param {object} change            current change document
- * @param {string} to                target state
+ * @param {object} change
+ * @param {string} to
  * @param {object} ctx
- * @param {object[]} ctx.evidence    evidence documents for this change
- * @param {object[]} ctx.approvals   approval documents for this change
- * @param {string}  ctx.revision     the revision the caller believes is current
- * @param {number}  [ctx.expectedStateRevision]
+ * @param {object[]} [ctx.evidence]
+ * @param {object[]} [ctx.approvals]
+ * @param {string}   [ctx.revision]        the revision the caller believes is current
+ * @param {object}   [ctx.scopeDigests]    { [gate]: digest } the digest each gate must match
+ * @param {number}   [ctx.expectedStateRevision]
  */
 export function canTransition(change, to, ctx = {}) {
-  const { evidence = [], approvals = [], revision, expectedStateRevision } = ctx;
+  const { evidence = [], approvals = [], revision, scopeDigests = {}, expectedStateRevision } = ctx;
 
   if (expectedStateRevision !== undefined && expectedStateRevision !== (change.state_revision ?? 0)) {
     return refuse(CODES.CONCURRENT_UPDATE,
       `the change moved underneath this write: expected state_revision ${expectedStateRevision}, found ${change.state_revision ?? 0}`);
   }
 
-  const allowed = TRANSITIONS[change.state];
-  if (!allowed) return refuse(CODES.ILLEGAL_TRANSITION, `unknown state "${change.state}"`);
-  const rule = allowed[to];
-  if (!rule) {
+  if (!ORDER.includes(change.state) && change.state !== 'blocked') {
+    return refuse(CODES.ILLEGAL_TRANSITION, `unknown state "${change.state}"`);
+  }
+
+  const targets = legalTargets(change);
+  if (!targets.includes(to)) {
+    if (change.state === 'blocked' && !change.blocked_from) {
+      return refuse(CODES.BLOCKED_RECOVERY,
+        'this change is blocked and does not record where it was blocked from, so there is nowhere safe to return to. ' +
+        'Set blocked_from to the state it was in, and recovery will re-check that state\'s requirements.');
+    }
+    if (change.state === 'blocked') {
+      return refuse(CODES.BLOCKED_RECOVERY,
+        `recovery from blocked returns to "${change.blocked_from}" and nowhere else; ` +
+        `"${to}" would skip every step between them`);
+    }
     return refuse(CODES.ILLEGAL_TRANSITION,
-      `${change.state} -> ${to} is not a transition; from ${change.state} you may go to ${Object.keys(allowed).join(', ') || 'nowhere'}`);
-  }
-  if (rule.when && !rule.when(change)) {
-    return refuse(CODES.ILLEGAL_TRANSITION, `${change.state} -> ${to} needs a condition this change does not meet`);
+      `${change.state} -> ${to} is not a transition; from ${change.state} you may go to ${targets.join(', ') || 'nowhere'}`);
   }
 
-  for (const need of rule.approvals ?? []) {
-    const found = approvals.filter((a) => a.gate === need);
-    if (found.length === 0) {
-      return refuse(CODES.MISSING_APPROVAL, `no approval on record for gate "${need}"`);
+  // Entering `blocked` needs nothing: a block is an admission, not an achievement.
+  const need = ENTRY_REQUIREMENTS[to] ?? {};
+
+  for (const gate of need.approvals ?? []) {
+    const forGate = approvals.filter((a) => a.gate === gate);
+    if (forGate.length === 0) return refuse(CODES.MISSING_APPROVAL, `no approval on record for gate "${gate}"`);
+
+    // An approval must name the change it authorises. An unbound approval is not
+    // "for every change", it is one whose scope nobody wrote down.
+    const bound = forGate.filter((a) => a.change_id === change.change_id);
+    if (bound.length === 0) {
+      const others = [...new Set(forGate.map((a) => a.change_id ?? '(no change_id)'))].join(', ');
+      return refuse(CODES.APPROVAL_OUT_OF_SCOPE,
+        `the "${gate}" approval on record does not name this change (it names: ${others})`);
     }
-    const inScope = found.filter((a) => !a.change_id || a.change_id === change.change_id);
-    if (inScope.length === 0) {
-      return refuse(CODES.APPROVAL_OUT_OF_SCOPE, `the "${need}" approval on record belongs to another change`);
+
+    // Bound to content: the digest the human approved must be the digest of what is
+    // being gated. Where the caller supplies no digest for the gate, that is a
+    // refusal too — an unchecked digest is a digest that proves nothing.
+    const expectedDigest = scopeDigests[gate];
+    if (expectedDigest === undefined) {
+      return refuse(CODES.APPROVAL_DIGEST_MISMATCH,
+        `the "${gate}" approval cannot be checked: no digest of the current ${gate} artifact was supplied to compare it against`);
     }
-    const usable = inScope.filter((a) => !(a.expires_with_revision && revision && a.revision !== revision));
-    if (usable.length === 0) {
-      return refuse(CODES.APPROVAL_STALE, `the "${need}" approval was granted for a revision that is no longer current`);
+    const sameContent = bound.filter((a) => a.scope_digest === expectedDigest);
+    if (sameContent.length === 0) {
+      return refuse(CODES.APPROVAL_DIGEST_MISMATCH,
+        `the "${gate}" approval was granted for different content ` +
+        `(approved ${bound[0].scope_digest}, current ${expectedDigest})`);
     }
-    if (usable.every((a) => a.granted_by?.kind === undefined)) {
-      return refuse(CODES.MISSING_APPROVAL, `the "${need}" approval names no granting party`);
+
+    // Fresh by default. `expires_with_revision: false` is an explicit, recorded opt-out.
+    const fresh = revision
+      ? sameContent.filter((a) => a.expires_with_revision === false || a.revision === revision)
+      : sameContent;
+    if (fresh.length === 0) {
+      return refuse(CODES.APPROVAL_STALE,
+        `the "${gate}" approval was granted at ${bound[0].revision.slice(0, 8)} and the current revision is ${revision.slice(0, 8)}`);
+    }
+    if (fresh.every((a) => a.granted_by?.kind === undefined)) {
+      return refuse(CODES.MISSING_APPROVAL, `the "${gate}" approval names no granting party`);
     }
   }
 
-  for (const need of rule.evidence ?? []) {
-    const matching = evidence.filter((e) => e.property === need.property && !e.superseded_by);
-    if (matching.length === 0) {
-      return refuse(CODES.MISSING_EVIDENCE, `no evidence for "${need.property}"`);
-    }
-    const observed = need.observed ? matching.filter((e) => e.source_kind === 'observed_execution') : matching;
+  for (const want of need.evidence ?? []) {
+    const matching = evidence.filter((e) => e.property === want.property && !e.superseded_by);
+    if (matching.length === 0) return refuse(CODES.MISSING_EVIDENCE, `no evidence for "${want.property}"`);
+
+    const observed = want.observed !== false ? matching.filter((e) => e.source_kind === 'observed_execution') : matching;
     if (observed.length === 0) {
       return refuse(CODES.SELF_REPORT_ONLY,
-        `"${need.property}" is only an agent report; this transition needs an observed execution`);
+        `"${want.property}" is only an agent report; entering "${to}" needs an observed execution`);
     }
-    const fresh = need.fresh && revision ? observed.filter((e) => e.revision === revision) : observed;
+
+    const fresh = want.fresh && revision ? observed.filter((e) => e.revision === revision) : observed;
     if (fresh.length === 0) {
       return refuse(CODES.STALE_EVIDENCE,
-        `"${need.property}" was observed at another revision; the content it measured is not the content being transitioned`);
+        `"${want.property}" was observed at another revision; the content it measured is not the content being transitioned`);
     }
-    if (need.result) {
-      const right = fresh.filter((e) => e.result === need.result);
-      if (right.length === 0) {
-        const got = [...new Set(fresh.map((e) => e.result))].join(', ');
-        return refuse(CODES.EVIDENCE_NOT_PASS,
-          `"${need.property}" is ${got}, not ${need.result}` +
-          (got.includes('INFRA_ERROR') ? ' — an infrastructure failure did not exercise the property, so it proves nothing either way' : ''));
-      }
+
+    const wanted = want.result ?? 'PASS';
+    const right = fresh.filter((e) => e.result === wanted);
+    if (right.length === 0) {
+      const got = [...new Set(fresh.map((e) => e.result))].join(', ');
+      return refuse(CODES.EVIDENCE_NOT_PASS,
+        `"${want.property}" is ${got}, not ${wanted}` +
+        (got.includes('INFRA_ERROR')
+          ? ' — an infrastructure failure did not exercise the property, so it proves nothing either way'
+          : ''));
     }
-    if (rule.independentOf) {
-      const independent = fresh.some((e) =>
-        rule.independentOf.every((r) => (e.executor?.independent_of ?? []).includes(r)));
+
+    if (need.independentOf) {
+      const independent = right.some((e) =>
+        need.independentOf.every((r) => (e.executor?.independent_of ?? []).includes(r)));
       if (!independent) {
         return refuse(CODES.NOT_INDEPENDENT,
-          `"${need.property}" was not produced independently of ${rule.independentOf.join(', ')}; ` +
-          'a review that saw the builder\'s reasoning is not the independent pass this transition assumes');
+          `"${want.property}" was not produced independently of ${need.independentOf.join(', ')}; ` +
+          "a review that saw the builder's reasoning is not the independent pass this step assumes");
       }
     }
   }
@@ -163,8 +220,7 @@ export function canTransition(change, to, ctx = {}) {
 /** Attempt budget. The key is the budget, not the mission's wording. */
 export function canDispatch(dispatch, history = []) {
   const key = dispatch.budget_key ?? `${dispatch.change_id}:${dispatch.role}`;
-  const prior = history.filter((d) => (d.budget_key ?? `${d.change_id}:${d.role}`) === key);
-  const used = prior.length;
+  const used = history.filter((d) => (d.budget_key ?? `${d.change_id}:${d.role}`) === key).length;
   if (used >= dispatch.max_attempts) {
     return refuse(CODES.ATTEMPTS_EXCEEDED,
       `budget "${key}" is spent: ${used} of ${dispatch.max_attempts} attempts used. Renaming the mission does not reset it.`);
@@ -179,13 +235,22 @@ export function canDispatch(dispatch, history = []) {
   return { ok: true, attempts_used: used, attempts_left: dispatch.max_attempts - used };
 }
 
-/** Capability gate: a dispatch that needs what the harness does not have is refused, not warned. */
+/**
+ * Capability gate. Only a capability that is `declared` or `verified` lets a dispatch
+ * through. `unknown` is not permission: it is the absence of an answer, and a dispatch
+ * that needs the capability would be running on a hope.
+ */
+export const USABLE_CAPABILITY = new Set(['declared', 'verified']);
+
 export function canDispatchWithCapabilities(dispatch, capabilities = {}) {
   for (const need of dispatch.required_capabilities ?? []) {
     const state = capabilities[need];
-    if (state === 'absent' || state === undefined) {
+    if (!USABLE_CAPABILITY.has(state)) {
       return refuse(CODES.CAPABILITY_UNAVAILABLE,
-        `this dispatch requires "${need}" and the harness reports it as ${state ?? 'unknown'}`);
+        `this dispatch requires "${need}" and the harness reports it as ${state ?? 'unknown'}` +
+        (state === 'unknown' || state === undefined
+          ? ' — unknown is the absence of an answer, not permission'
+          : ''));
     }
   }
   return { ok: true };

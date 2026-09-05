@@ -87,4 +87,5 @@ export const change = (o = {}) => ({
   ...(o.deltaless !== undefined ? { deltaless: o.deltaless } : {}),
   ...(o.modules_named ? { modules_named: o.modules_named } : {}),
   ...(o.state_revision !== undefined ? { state_revision: o.state_revision } : {}),
+  ...(o.blocked_from ? { blocked_from: o.blocked_from } : {}),
 });

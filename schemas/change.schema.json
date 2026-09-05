@@ -39,6 +39,10 @@
 
     "state": { "$ref": "spectree/common#/definitions/change_state" },
     "blocked_reason": { "type": "string", "minLength": 1 },
+    "blocked_from": {
+      "$ref": "spectree/common#/definitions/change_state",
+      "description": "The state this change was in when it was blocked. Recovery returns here and nowhere else, and re-checks this state's requirements."
+    },
 
     "approval_refs": { "type": "array", "items": { "$ref": "spectree/common#/definitions/ref" } },
     "dispatch_refs": { "type": "array", "items": { "$ref": "spectree/common#/definitions/ref" } },

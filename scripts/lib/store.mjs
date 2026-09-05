@@ -13,7 +13,10 @@
 // Current state and history are separate on purpose: resume reads the first and never has to
 // replay the second, and nothing that rewrites current state can rewrite what already happened.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, appendFileSync, renameSync } from 'node:fs';
+import {
+  readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync,
+  appendFileSync, renameSync, openSync, closeSync, unlinkSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { assertValid } from './validate.mjs';
@@ -33,6 +36,39 @@ function writeAtomic(file, text) {
 
 const readJson = (f) => JSON.parse(readFileSync(f, 'utf8'));
 const stamp = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+
+/**
+ * Read-modify-write is not atomic just because the final rename is. Two processes can read
+ * the same `state_revision`, both find it acceptable, and both write — the second silently
+ * winning. `renameSync` makes the file swap atomic; it does not make the *decision* atomic.
+ *
+ * So the whole critical section runs under an exclusive-create lock: `wx` fails when the file
+ * already exists, and that failure IS the mutual exclusion. State and history are written
+ * inside it, so a reader never finds one without the other.
+ */
+function withLock(lockFile, fn, { attempts = 100, waitMs = 20 } = {}) {
+  mkdirSync(dirname(lockFile), { recursive: true });
+  for (let i = 0; i < attempts; i++) {
+    let fd;
+    try {
+      fd = openSync(lockFile, 'wx'); // atomic create-or-fail
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs); // short, synchronous
+      continue;
+    }
+    try {
+      writeFileSync(fd, String(process.pid));
+      return fn();
+    } finally {
+      closeSync(fd);
+      try { unlinkSync(lockFile); } catch { /* already released */ }
+    }
+  }
+  const e = new Error(`could not acquire ${lockFile}: another process is writing this change`);
+  e.code = 'E_CONCURRENT_UPDATE';
+  throw e;
+}
 
 export class Store {
   constructor(root) { this.root = root; }
@@ -87,18 +123,22 @@ export class Store {
    */
   putChange(change, { event, expected } = {}) {
     assertValid('spectree/change', change, `change ${change.change_id}`);
-    const existing = this.change(change.change_id);
-    const current = existing?.state_revision ?? 0;
-    if (existing && expected !== undefined && expected !== current) {
-      const e = new Error(`concurrent update on ${change.change_id}: expected state_revision ${expected}, found ${current}`);
-      e.code = 'E_CONCURRENT_UPDATE';
-      throw e;
-    }
-    const next = { ...change, state_revision: current + 1, updated_at: stamp() };
-    assertValid('spectree/change', next, `change ${change.change_id}`);
-    writeAtomic(p(this.root, 'changes', `${change.change_id}.json`), JSON.stringify(next, null, 2) + '\n');
-    if (event) this.appendHistory(change.change_id, { ...event, at: next.updated_at, state_revision: next.state_revision });
-    return next;
+    return withLock(p(this.root, 'changes', `${change.change_id}.lock`), () => {
+      // Re-read INSIDE the lock. Reading before taking it is what made this a race.
+      const existing = this.change(change.change_id);
+      const current = existing?.state_revision ?? 0;
+      if (existing && expected !== undefined && expected !== current) {
+        const e = new Error(`concurrent update on ${change.change_id}: expected state_revision ${expected}, found ${current}`);
+        e.code = 'E_CONCURRENT_UPDATE';
+        throw e;
+      }
+      const next = { ...change, state_revision: current + 1, updated_at: stamp() };
+      assertValid('spectree/change', next, `change ${change.change_id}`);
+      // History first, so a reader that sees the new state always finds its event recorded.
+      if (event) this.appendHistory(change.change_id, { ...event, at: next.updated_at, state_revision: next.state_revision });
+      writeAtomic(p(this.root, 'changes', `${change.change_id}.json`), JSON.stringify(next, null, 2) + '\n');
+      return next;
+    });
   }
 
   /** Append-only. Idempotent on event_id: replaying a resume never duplicates an event. */
@@ -152,6 +192,10 @@ export class Store {
 
   /** Stable ids: the next id is one past the highest ever used, closed items included. */
   putDeferred(item) {
+    return withLock(p(this.root, 'deferred.lock'), () => this.#putDeferredLocked(item));
+  }
+
+  #putDeferredLocked(item) {
     const led = this.deferred();
     const next = { ...item, schema_version: SCHEMA_VERSION };
     if (next.stable_id === undefined) next.stable_id = Math.max(0, ...led.items.map((i) => i.stable_id)) + 1;

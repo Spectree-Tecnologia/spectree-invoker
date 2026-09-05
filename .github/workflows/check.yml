@@ -28,6 +28,25 @@ jobs:
       - name: capability report
         run: node scripts/capabilities.mjs
 
+      # A synthetic consumer that already has its own AGENTS.md: the installer must
+      # preserve it, be idempotent, and leave the scripts its skill calls runnable.
+      - name: install into a synthetic consumer
+        run: |
+          set -eu
+          mkdir -p /tmp/consumer
+          printf '# AGENTS.md
+
+This project uses pnpm. Do not overwrite this file.
+' > /tmp/consumer/AGENTS.md
+          node scripts/install-codex.mjs /tmp/consumer            # dry run writes nothing
+          grep -q 'Do not overwrite' /tmp/consumer/AGENTS.md
+          node scripts/install-codex.mjs /tmp/consumer --apply
+          grep -q 'Do not overwrite' /tmp/consumer/AGENTS.md
+          test -f /tmp/consumer/.codex/agents/quality_engineer.toml
+          test -f /tmp/consumer/.spectree/squad/scripts/state.mjs
+          node /tmp/consumer/.spectree/squad/scripts/capabilities.mjs > /dev/null
+          node scripts/install-codex.mjs /tmp/consumer --apply | grep -q unchanged
+
   # Every merge to main is a release: the version in plugin.json becomes a tag,
   # so a project pinned at 0.2.1 can be traced to the commit that was 0.2.1.
   # If the tag already exists on a different commit, the version was not bumped

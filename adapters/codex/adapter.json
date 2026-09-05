@@ -11,11 +11,12 @@
     "browser": "unknown"
   },
   "tokens": {
-    "CARDS_LOCATION": "the skill's `agents/` directory",
+    "CARDS_LOCATION": "`.codex/agents/`",
     "TOOL_SURFACE": ""
   },
   "targets": {
-    "core": "AGENTS.md",
-    "skill_dir": ".agents/skills/spectree-invoker"
+    "core": "adapters/codex/dist/SQUAD.md",
+    "skill_dir": "adapters/codex/dist/skills/spectree-invoker",
+    "agents_dir": "adapters/codex/dist/agents"
   }
 }
