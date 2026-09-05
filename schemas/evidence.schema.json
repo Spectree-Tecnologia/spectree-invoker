@@ -38,7 +38,12 @@
     "source_kind": { "$ref": "spectree/common#/definitions/source_kind" },
 
     "revision": { "$ref": "spectree/common#/definitions/revision" },
-    "fingerprint": { "type": "string", "minLength": 8, "maxLength": 128 },
+    "fingerprint": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Digest of the content this run actually exercised: the commit plus the uncommitted working tree, excluding the squad's own bookkeeping. A revision alone does not identify content — an uncommitted edit leaves it unchanged."
+    },
     "environment": {
       "type": "object",
       "properties": {

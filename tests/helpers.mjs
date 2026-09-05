@@ -57,6 +57,7 @@ export const evidence = (o) => ({
   result: o.result ?? 'PASS',
   timestamp: o.timestamp ?? now(),
   ...(o.change_id ? { change_id: o.change_id } : {}),
+  ...(o.fingerprint ? { fingerprint: o.fingerprint } : {}),
   ...(o.superseded_by ? { superseded_by: o.superseded_by } : {}),
 });
 

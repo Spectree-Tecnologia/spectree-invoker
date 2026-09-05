@@ -300,3 +300,98 @@ test('7b. the drift test operates on a copy, not on the repository', () => {
   assert.match(block, /pkgCopy\(\)/, 'the drift test must build a copy');
   assert.equal(/writeFileSync\(\s*join\(REPO/.test(block), false, 'and must never write into REPO');
 });
+
+// --- second round, finding 8: the revision is not the content ----------------
+
+test('8. fresh evidence must match the content on disk, not only the revision', async () => {
+  const { contentDigest, contractDigest, OPERATIONAL } = await import('../scripts/lib/digest.mjs');
+  const c = change({ state: 'implemented' });
+  const qe = { role: 'quality_engineer', independent_of: ['full_stack_developer'] };
+  const ctxOn = (contentDigest) => ({
+    approvals: [scopeApproval()], revision: REV, scopeDigests: scopeOk, contentDigest,
+  });
+
+  const measured = evidence({ property: 'pass2.attack', revision: REV, change_id: 'c1', executor: qe, fingerprint: 'CONTENT-A' });
+  assert.equal(canTransition(c, 'pass2_complete', { ...ctxOn('CONTENT-A'), evidence: [measured] }).ok, true);
+
+  const moved = canTransition(c, 'pass2_complete', { ...ctxOn('CONTENT-B'), evidence: [measured] });
+  assert.equal(moved.code, CODES.CONTENT_CHANGED);
+  assert.match(moved.message, /uncommitted change is still a change/);
+
+  const unpinned = evidence({ property: 'pass2.attack', revision: REV, change_id: 'c1', executor: qe });
+  const r = canTransition(c, 'pass2_complete', { ...ctxOn('CONTENT-A'), evidence: [unpinned] });
+  assert.equal(r.code, CODES.CONTENT_CHANGED);
+  assert.match(r.message, /records no fingerprint at all/, 'evidence that cannot say what it ran against proves nothing');
+
+  assert.ok(OPERATIONAL.includes('.spectree'), 'the squad\'s own records are outside the content digest');
+  assert.equal(typeof contentDigest, 'function');
+  assert.equal(typeof contractDigest, 'function');
+});
+
+test('8b. evidence that is not required to be fresh is unaffected by the content', () => {
+  // A baseline is a fact about a past revision. Pinning it to today's work tree would be wrong.
+  const past = evidence({ property: 'suite.baseline', revision: OLD, change_id: 'c1', fingerprint: 'CONTENT-A' });
+  const r = canTransition(change({ state: 'isolated' }), 'baselined',
+    { evidence: [past], approvals: [scopeApproval()], revision: REV, scopeDigests: scopeOk, contentDigest: 'CONTENT-B' });
+  assert.equal(r.ok, true);
+});
+
+// --- second round, finding 9: progress is not scope --------------------------
+
+test('9. the contract digest covers the proposal and the delta, and nothing else', async () => {
+  const { contractDigest, CONTRACT } = await import('../scripts/lib/digest.mjs');
+  assert.equal(CONTRACT('proposal.md'), true);
+  assert.equal(CONTRACT('specs/account/spec.md'), true);
+  assert.equal(CONTRACT('tasks.md'), false, 'ticking a checkbox is not a change of scope');
+  assert.equal(CONTRACT('notes.md'), false);
+
+  const dir = tempDir('spectree-contract-');
+  try {
+    mkdirSync(join(dir, 'specs'), { recursive: true });
+    writeFileSync(join(dir, 'proposal.md'), '# proposal\n');
+    writeFileSync(join(dir, 'specs/spec.md'), '### Requirement: x\n');
+    writeFileSync(join(dir, 'tasks.md'), '- [ ] build it\n');
+    const c = change();
+    const before = contractDigest(dir, c, { artifactsDir: dir });
+    assert.deepEqual(before.files, ['proposal.md', 'specs/spec.md']);
+
+    writeFileSync(join(dir, 'tasks.md'), '- [x] build it\n');
+    assert.equal(contractDigest(dir, c, { artifactsDir: dir }).digest, before.digest, 'progress moved, scope did not');
+
+    writeFileSync(join(dir, 'proposal.md'), '# proposal\n\nand a second module\n');
+    assert.notEqual(contractDigest(dir, c, { artifactsDir: dir }).digest, before.digest, 'scope moved, and the digest says so');
+  } finally { cleanup(dir); }
+});
+
+test('9b. the content digest ignores the squad\'s own records and notices everything else', async () => {
+  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const { gitRepo } = await import('./helpers.mjs');
+  const repo = gitRepo({ 'src/app.js': 'export const a = 1;\n' });
+  try {
+    const clean = contentDigest(repo.root);
+    assert.equal(clean.dirty, false);
+
+    mkdirSync(join(repo.root, '.spectree/changes'), { recursive: true });
+    writeFileSync(join(repo.root, '.spectree/changes/c1.json'), '{"state":"draft"}');
+    mkdirSync(join(repo.root, 'docs/changes/c1'), { recursive: true });
+    writeFileSync(join(repo.root, 'docs/changes/c1/tasks.md'), '- [x] done\n');
+    assert.equal(contentDigest(repo.root).digest, clean.digest, 'the squad writing its own records is not a code change');
+
+    writeFileSync(join(repo.root, 'src/app.js'), 'export const a = 2;\n');
+    const edited = contentDigest(repo.root);
+    assert.notEqual(edited.digest, clean.digest, 'an uncommitted edit moves the content digest');
+    assert.equal(edited.revision, clean.revision, 'while the revision stays exactly where it was');
+    assert.equal(edited.dirty, true);
+
+    writeFileSync(join(repo.root, 'src/new.js'), 'export const b = 3;\n');
+    assert.notEqual(contentDigest(repo.root).digest, edited.digest, 'a new untracked file counts too');
+  } finally { cleanup(repo.root); }
+});
+
+test('9c. content that cannot be established is refused, never read as unchanged', async () => {
+  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const dir = tempDir('spectree-nogit-');
+  try {
+    assert.throws(() => contentDigest(dir), (e) => e.code === 'E_CONTENT_UNAVAILABLE');
+  } finally { cleanup(dir); }
+});

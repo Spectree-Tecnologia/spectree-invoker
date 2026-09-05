@@ -5,7 +5,7 @@
 //   node scripts/state.mjs resume [change-id]        the resume contract, human-readable
 //   node scripts/state.mjs resume --json
 //   node scripts/state.mjs open <change-id> --type <t> --base <rev> --scope <s> --paths a,b [--deltaless]
-//   node scripts/state.mjs digest <change-id>       what a gate approval must be bound to
+//   node scripts/state.mjs digest <change-id> [--gate scope|integration]
 //   node scripts/state.mjs can <change-id> <to-state>
 //   node scripts/state.mjs transition <change-id> <to-state> --expect <state_revision>
 //   node scripts/state.mjs transition <change-id> blocked --reason "<why>"
@@ -20,11 +20,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { canTransition } from './lib/state-machine.mjs';
-import { artifactDigest } from './lib/digest.mjs';
+import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
 import { validate } from './lib/validate.mjs';
 
-/** Every gate an entry requirement can name. All of them are bound to the same artifact. */
-const GATES = ['scope', 'ambiguity', 'irreversible', 'exposure', 'integration'];
+// A gate is bound to what it authorises. Scope-class gates authorise the contract; the
+// gates that put code somewhere authorise the contract AND the code that will travel with it.
+const CONTRACT_GATES = ['scope', 'ambiguity'];
+const CODE_GATES = ['integration', 'irreversible', 'exposure'];
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const store = new Store(root);
@@ -48,6 +50,26 @@ function gitSituation() {
     branch: git(['rev-parse', '--abbrev-ref', 'HEAD'], 'unknown'),
     revision: git(['rev-parse', 'HEAD'], null),
     dirty: (git(['status', '--porcelain'], '') || '').length > 0,
+  };
+}
+
+/**
+ * What each gate is bound to, computed fresh from disk on every call.
+ * `contentDigest` throws where it cannot establish the content; that refusal is the answer,
+ * because an unavailable comparison is unknown and not "nothing changed".
+ */
+function digests(change) {
+  const contract = contractDigest(root, change, { artifactsDir: flag('artifacts') });
+  let content;
+  try { content = contentDigest(root); }
+  catch (e) { die(`${e.code}: ${e.message}`, 1); }
+  const gated = gatedDigest(contract.digest, content.digest);
+  return {
+    contract, content,
+    byGate: {
+      ...Object.fromEntries(CONTRACT_GATES.map((gate) => [gate, contract.digest])),
+      ...Object.fromEntries(CODE_GATES.map((gate) => [gate, gated])),
+    },
   };
 }
 
@@ -151,11 +173,16 @@ switch (cmd) {
   }
 
   case 'digest': {
-    const id = argv[1] ?? die('usage: state.mjs digest <change-id>');
+    const id = argv[1] ?? die('usage: state.mjs digest <change-id> [--gate scope|integration]');
     const change = store.change(id) ?? die(`no such change: ${id}`, 1);
-    const d = artifactDigest(root, change, { artifactsDir: flag('artifacts') });
-    console.log(d.digest);
-    console.error(`  from ${d.source}${d.files ? ` (${d.files} file(s))` : ''} — record it as the approval's scope_digest`);
+    const gate = flag('gate', 'scope');
+    const d = digests(change);
+    if (!(gate in d.byGate)) die(`unknown gate "${gate}": one of ${Object.keys(d.byGate).join(', ')}`);
+    console.log(d.byGate[gate]);
+    console.error(`  gate "${gate}" — ${CODE_GATES.includes(gate) ? 'the contract AND the code it will carry' : 'the contract alone'}`);
+    console.error(`  contract: ${d.contract.source}${d.contract.files.length ? ` (${d.contract.files.join(', ')})` : ''}`);
+    if (CODE_GATES.includes(gate)) console.error(`  content:  ${d.content.revision.slice(0, 8)}${d.content.dirty ? ' + uncommitted changes' : ' (clean)'}`);
+    console.error("  record it as the approval's scope_digest");
     break;
   }
 
@@ -165,20 +192,23 @@ switch (cmd) {
     const to = argv[2] ?? die('usage: state.mjs can|transition <change-id> <to-state>');
     const change = store.change(id) ?? die(`no such change: ${id}`, 1);
     const g = gitSituation();
-    // The digest of what is on the table right now — computed from the artifact, never
-    // copied from the approval, or the comparison would only ever agree with itself.
-    const d = artifactDigest(root, change, { artifactsDir: flag('artifacts') });
+    // Both digests of what is on the table right now — computed from the artifact and the
+    // work tree, never copied from an approval or a record, or the comparison would only
+    // ever agree with itself.
+    const d = digests(change);
     const verdict = canTransition(change, to, {
       evidence: store.evidence(id),
       approvals: store.approvals(id),
       revision: g.revision,
-      scopeDigests: Object.fromEntries(GATES.map((gate) => [gate, d.digest])),
+      contentDigest: d.content.digest,
+      scopeDigests: d.byGate,
       expectedStateRevision: has('expect') ? Number(flag('expect')) : undefined,
     });
     if (!verdict.ok) {
       console.error(`REFUSED ${change.state} -> ${to}`);
       console.error(`  ${verdict.code}: ${verdict.message}`);
-      if (verdict.code === 'E_APPROVAL_DIGEST_MISMATCH') console.error(`  current artifact: ${d.source} -> ${d.digest}`);
+      if (verdict.code === 'E_APPROVAL_DIGEST_MISMATCH') console.error(`  current contract: ${d.contract.source} -> ${d.contract.digest}`);
+      if (verdict.code === 'E_CONTENT_CHANGED') console.error(`  current content:  ${d.content.revision.slice(0, 8)}${d.content.dirty ? ' + uncommitted changes' : ' (clean)'} -> ${d.content.digest}`);
       process.exit(1);
     }
     if (cmd === 'can') { console.log(`allowed ${change.state} -> ${to}`); break; }
@@ -206,7 +236,16 @@ switch (cmd) {
     const doc = JSON.parse(readFileSync(f, 'utf8'));
     doc.schema_version ??= SCHEMA_VERSION;
     try {
-      if (cmd === 'record-evidence') { store.putEvidence(doc); console.log(`recorded evidence ${doc.evidence_id}: ${doc.property} = ${doc.result}`); }
+      if (cmd === 'record-evidence') {
+        // Evidence is recorded right after the run, so the content on disk now IS what it
+        // ran against. Stamping it here is what lets a later gate tell the two apart.
+        if (!doc.fingerprint) {
+          try { doc.fingerprint = contentDigest(root).digest; }
+          catch (e) { die(`${e.code}: ${e.message}`, 1); }
+        }
+        store.putEvidence(doc);
+        console.log(`recorded evidence ${doc.evidence_id}: ${doc.property} = ${doc.result}`);
+      }
       else if (cmd === 'record-approval') { store.putApproval(doc); console.log(`recorded approval ${doc.approval_id} for gate ${doc.gate}`); }
       else { const it = store.putDeferred(doc); console.log(`deferred #${it.stable_id} [${it.status}] ${it.title ?? ''}`); }
     } catch (e) { die(e.message, 1); }

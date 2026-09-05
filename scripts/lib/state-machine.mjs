@@ -13,6 +13,7 @@ export const CODES = {
   ILLEGAL_TRANSITION: 'E_ILLEGAL_TRANSITION',
   MISSING_EVIDENCE: 'E_MISSING_EVIDENCE',
   STALE_EVIDENCE: 'E_STALE_EVIDENCE',
+  CONTENT_CHANGED: 'E_CONTENT_CHANGED',
   EVIDENCE_NOT_PASS: 'E_EVIDENCE_NOT_PASS',
   NOT_INDEPENDENT: 'E_NOT_INDEPENDENT',
   MISSING_APPROVAL: 'E_MISSING_APPROVAL',
@@ -101,11 +102,13 @@ const refuse = (code, message, detail) => ({ ok: false, code, message, ...(detai
  * @param {object[]} [ctx.evidence]
  * @param {object[]} [ctx.approvals]
  * @param {string}   [ctx.revision]        the revision the caller believes is current
+ * @param {string}   [ctx.contentDigest]   the content a check would run against NOW —
+ *                                          the commit plus the uncommitted working tree
  * @param {object}   [ctx.scopeDigests]    { [gate]: digest } the digest each gate must match
  * @param {number}   [ctx.expectedStateRevision]
  */
 export function canTransition(change, to, ctx = {}) {
-  const { evidence = [], approvals = [], revision, scopeDigests = {}, expectedStateRevision } = ctx;
+  const { evidence = [], approvals = [], revision, contentDigest, scopeDigests = {}, expectedStateRevision } = ctx;
 
   if (expectedStateRevision !== undefined && expectedStateRevision !== (change.state_revision ?? 0)) {
     return refuse(CODES.CONCURRENT_UPDATE,
@@ -186,10 +189,27 @@ export function canTransition(change, to, ctx = {}) {
         `"${want.property}" is only an agent report; entering "${to}" needs an observed execution`);
     }
 
-    const fresh = want.fresh && revision ? observed.filter((e) => e.revision === revision) : observed;
-    if (fresh.length === 0) {
-      return refuse(CODES.STALE_EVIDENCE,
-        `"${want.property}" was observed at another revision; the content it measured is not the content being transitioned`);
+    let fresh = observed;
+    if (want.fresh && revision) {
+      fresh = fresh.filter((e) => e.revision === revision);
+      if (fresh.length === 0) {
+        return refuse(CODES.STALE_EVIDENCE,
+          `"${want.property}" was observed at another revision; the content it measured is not the content being transitioned`);
+      }
+    }
+    // The revision is not the content. An uncommitted edit leaves HEAD where it was, so
+    // evidence pinned only to a revision goes on counting for code it never ran against.
+    if (want.fresh && contentDigest) {
+      const onThisContent = fresh.filter((e) => e.fingerprint === contentDigest);
+      if (onThisContent.length === 0) {
+        const unpinned = fresh.some((e) => !e.fingerprint);
+        return refuse(CODES.CONTENT_CHANGED,
+          `"${want.property}" was not measured on the content now on disk` +
+          (unpinned
+            ? ' — it records no fingerprint at all, so what it ran against cannot be established'
+            : '; the working tree has moved since that run, and an uncommitted change is still a change'));
+      }
+      fresh = onThisContent;
     }
 
     const wanted = want.result ?? 'PASS';
