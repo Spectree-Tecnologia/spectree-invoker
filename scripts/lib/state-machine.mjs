@@ -14,6 +14,7 @@ export const CODES = {
   MISSING_EVIDENCE: 'E_MISSING_EVIDENCE',
   STALE_EVIDENCE: 'E_STALE_EVIDENCE',
   CONTENT_CHANGED: 'E_CONTENT_CHANGED',
+  CONTRACT_CHANGED: 'E_CONTRACT_CHANGED',
   EVIDENCE_NOT_PASS: 'E_EVIDENCE_NOT_PASS',
   NOT_INDEPENDENT: 'E_NOT_INDEPENDENT',
   MISSING_APPROVAL: 'E_MISSING_APPROVAL',
@@ -53,12 +54,12 @@ export const ENTRY_REQUIREMENTS = {
   },
   pass1_complete: {
     approvals: ['scope'],
-    evidence: [{ property: 'pass1.tests_failing', result: 'PASS', observed: true, fresh: false }],
+    evidence: [{ property: 'pass1.tests_failing', result: 'PASS', observed: true, fresh: false, contract: true }],
   },
   implemented: { approvals: ['scope'] },
   pass2_complete: {
     approvals: ['scope'],
-    evidence: [{ property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, independentOf: ['full_stack_developer'] }],
+    evidence: [{ property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, contract: true, independentOf: ['full_stack_developer'] }],
   },
   ci_green: {
     approvals: ['scope'],
@@ -71,14 +72,14 @@ export const ENTRY_REQUIREMENTS = {
   integration_approved: {
     approvals: ['scope', 'integration'],
     evidence: [
-      { property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, independentOf: ['full_stack_developer'] },
+      { property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, contract: true, independentOf: ['full_stack_developer'] },
       { property: 'ci.green', result: 'PASS', observed: true, fresh: true },
     ],
   },
   integrated: {
     approvals: ['scope', 'integration'],
     evidence: [
-      { property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, independentOf: ['full_stack_developer'] },
+      { property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, contract: true, independentOf: ['full_stack_developer'] },
       { property: 'ci.green', result: 'PASS', observed: true, fresh: true },
     ],
   },
@@ -88,6 +89,14 @@ export const ENTRY_REQUIREMENTS = {
   },
   blocked: {},
 };
+
+/**
+ * Properties whose PASS means the command FAILED. Pass 1's delivery is failing tests; nothing
+ * else in the pipeline asserts a failure, and inverting one that asserts success turns a red
+ * run into a green gate with a single flag. It lives here because it is protocol knowledge
+ * about what a property means, not a detail of how the runner is invoked.
+ */
+export const INVERTIBLE = new Set(['pass1.tests_failing']);
 
 /** Legal edges. Forward one step, or into `blocked` from anywhere but the ends. */
 export function legalTargets(change) {
@@ -117,13 +126,14 @@ const refuse = (code, message, detail) => ({ ok: false, code, message, ...(detai
  * @param {object[]} [ctx.evidence]
  * @param {object[]} [ctx.approvals]
  * @param {string}   [ctx.revision]        the revision the caller believes is current
+ * @param {string}   [ctx.contractDigest]  the contract as it reads NOW
  * @param {string}   [ctx.contentDigest]   the content a check would run against NOW —
  *                                          the commit plus the uncommitted working tree
  * @param {object}   [ctx.scopeDigests]    { [gate]: digest } the digest each gate must match
  * @param {number}   [ctx.expectedStateRevision]
  */
 export function canTransition(change, to, ctx = {}) {
-  const { evidence = [], approvals = [], revision, contentDigest, scopeDigests = {}, expectedStateRevision } = ctx;
+  const { evidence = [], approvals = [], revision, contentDigest, contractDigest, scopeDigests = {}, expectedStateRevision } = ctx;
 
   if (expectedStateRevision !== undefined && expectedStateRevision !== (change.state_revision ?? 0)) {
     return refuse(CODES.CONCURRENT_UPDATE,
@@ -243,8 +253,24 @@ export function canTransition(change, to, ctx = {}) {
           : ''));
     }
 
+    // Some evidence is a claim about the Scenarios, not only about the code: pass 1 wrote its
+    // tests from them, pass 2 attacked them. Adding an acceptance criterion with the code
+    // untouched leaves that run describing a contract that no longer exists.
+    let bound = right;
+    if (want.contract && contractDigest) {
+      bound = right.filter((e) => e.contract_digest === contractDigest);
+      if (bound.length === 0) {
+        const unbound = right.some((e) => !e.contract_digest);
+        return refuse(CODES.CONTRACT_CHANGED,
+          `"${want.property}" was produced against a different contract` +
+          (unbound
+            ? ' — it records no contract digest, so which Requirements it covered cannot be established'
+            : '; the Requirements moved since that run, and the run cannot speak for the ones it never saw'));
+      }
+    }
+
     if (want.independentOf) {
-      const independent = right.some((e) =>
+      const independent = bound.some((e) =>
         want.independentOf.every((r) => (e.executor?.independent_of ?? []).includes(r)));
       if (!independent) {
         return refuse(CODES.NOT_INDEPENDENT,

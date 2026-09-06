@@ -128,23 +128,40 @@ run exercised — and only one command produces it:
 
 ```bash
 node scripts/state.mjs run <change-id> <property> --role <role> [--independent-of a,b] \
-  [--expect-nonzero] [--id <evidence-id>] -- <command> [args...]
+  [--expect-nonzero --expect-signal <text>] [--id <evidence-id>] -- <command> [args...]
 ```
 
-It measures the content, runs the command, measures again, and records the result with the
-digest it started from. Exit 0 is `PASS`; `--expect-nonzero` inverts that, which is what pass 1
-needs, since its delivery is failing tests. A command that could not be executed is
-`INFRA_ERROR`, and a command that **changed the content it was measuring** is `INCONCLUSIVE` —
-it satisfies no gate, because what it exercised cannot be established.
+It measures the content, runs the command, measures again, and records the result together with
+the digests it started from — the content **and** the contract. Exit 0 is `PASS`. A command that
+could not be executed is `INFRA_ERROR`, and one that **changed the content it was measuring** is
+`INCONCLUSIVE`: it satisfies no gate, because what it exercised cannot be established.
 
-`record-evidence` deliberately does **not** stamp a fingerprint. Stamping at record time would
-attribute today's content to a run that may have happened against something else, which turns
-"evidence without a fingerprint is refused" into a rule the front door walks around. Use it for
-what it is for: results that no gate requires to be fresh, external references, legacy records.
+`--expect-nonzero` inverts the reading, and it is available for **`pass1.tests_failing` only** —
+the one property whose delivery is a failing test. Everything else asserts success, and a
+command that failed is not evidence that it succeeded. Inversion also requires
+`--expect-signal "<text>"`, and the run must print it: a crash, a missing file and a syntax
+error all exit non-zero, so a bare exit code cannot tell a red test from a broken suite. Failed
+without the signal is `INFRA_ERROR`, and the record keeps the `negative_control` saying what was
+expected and whether it was seen.
+
+The launcher is resolved the way the platform resolves it. On Windows `npm`, `npx` and `pnpm`
+are `.cmd` shims that Node refuses to spawn directly, so the runner finds them through `PATH`
+and `PATHEXT` and invokes the shim deliberately — rather than turning `shell: true` on for
+every string, which would hand every argument back to the interpreter.
+
+`record-evidence` **imports** a document. It observes nothing, so it neither stamps a
+`fingerprint`/`contract_digest` nor accepts one: a document cannot acquire the authority of an
+execution by describing itself as one, and a file carrying either field is refused with a
+pointer to `run`. Use it for what it is for — results no gate requires to be fresh, external
+references, legacy records. (This is a guarantee about the supported flow, not a defence
+against someone writing into `.spectree/` by hand.)
 
 Integrating re-checks the runs, not only the signature. `integration_approved` and `integrated`
 each require `pass2.attack` and `ci.green` on the content being integrated, so an approval can
-never carry code past a QA and a CI that never saw it.
+never carry code past a QA and a CI that never saw it. And `pass1.tests_failing` and
+`pass2.attack` are bound to the **contract** as well: they are claims about the Scenarios, so
+adding an acceptance criterion invalidates them with `E_CONTRACT_CHANGED` even when the code
+never moved. Moving the same contract into the archive does not.
 
 Blocking states its cause, and records where to come back to:
 

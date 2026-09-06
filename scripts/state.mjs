@@ -10,7 +10,8 @@
 //   node scripts/state.mjs transition <change-id> <to-state> --expect <state_revision>
 //   node scripts/state.mjs transition <change-id> blocked --reason "<why>"
 //   node scripts/state.mjs run <change-id> <property> --role <r> [--independent-of a,b]
-//                                [--expect-nonzero] [--id <e>] -- <command> [args...]
+//                                [--expect-nonzero --expect-signal <text>] [--id <e>]
+//                                -- <command> [args...]
 //   node scripts/state.mjs record-evidence <file.json>
 //   node scripts/state.mjs record-approval <file.json>
 //   node scripts/state.mjs defer <file.json>
@@ -19,11 +20,12 @@
 // Exit codes: 0 allowed/valid, 1 refused/invalid, 2 usage.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
-import { canTransition } from './lib/state-machine.mjs';
+import { canTransition, INVERTIBLE } from './lib/state-machine.mjs';
 import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
+import { launch } from './lib/launch.mjs';
 import { validate } from './lib/validate.mjs';
 
 // A gate is bound to what it authorises. Scope-class gates authorise the contract; the
@@ -212,6 +214,7 @@ switch (cmd) {
       approvals: store.approvals(id),
       revision: g.revision,
       contentDigest: d.content.digest,
+      contractDigest: d.contract.digest,
       scopeDigests: d.byGate,
       expectedStateRevision: has('expect') ? Number(flag('expect')) : undefined,
     });
@@ -219,6 +222,7 @@ switch (cmd) {
       console.error(`REFUSED ${change.state} -> ${to}`);
       console.error(`  ${verdict.code}: ${verdict.message}`);
       if (verdict.code === 'E_APPROVAL_DIGEST_MISMATCH') console.error(`  current contract: ${d.contract.source} -> ${d.contract.digest}`);
+      if (verdict.code === 'E_CONTRACT_CHANGED') console.error(`  current contract: ${d.contract.source} -> ${d.contract.digest}`);
       if (verdict.code === 'E_CONTENT_CHANGED') console.error(`  current content:  ${d.content.revision.slice(0, 8)}${d.content.dirty ? ' + uncommitted changes' : ' (clean)'} -> ${d.content.digest}`);
       process.exit(1);
     }
@@ -252,22 +256,41 @@ switch (cmd) {
       return i >= 0 && pre[i + 1] && !pre[i + 1].startsWith('--') ? pre[i + 1] : fallback;
     };
     const cmd = argv.slice(sep + 1);
-    store.change(id) ?? die(`no such change: ${id}`, 1);
+    const change = store.change(id) ?? die(`no such change: ${id}`, 1);
     const role = opt('role') ?? die('--role is required: evidence that cannot say who produced it is not evidence');
     const independent = (opt('independent-of', '') || '').split(',').map((x) => x.trim()).filter(Boolean);
 
+    // Inverting the result is only meaningful where the property IS a failure: pass 1's
+    // delivery is failing tests. Allowing it anywhere turned a red CI into a green gate with
+    // one flag, so the permission is an allowlist and everything else is refused by name.
+    const expectNonzero = pre.includes('--expect-nonzero');
+    if (expectNonzero && !INVERTIBLE.has(property)) {
+      die(`--expect-nonzero is not available for "${property}": it asserts success, and a command that failed is not evidence that it succeeded. ` +
+          `Inversion exists for ${[...INVERTIBLE].join(', ')}.`);
+    }
+    // And a non-zero exit alone does not say a test failed — a crash, a missing file and a
+    // syntax error all exit non-zero. The run has to show the signal it was looking for.
+    const signal = opt('expect-signal');
+    if (expectNonzero && !signal) {
+      die('--expect-nonzero requires --expect-signal "<text the failing run must print>": ' +
+          'a non-zero exit is also what a broken suite does, and the two are not the same finding');
+    }
+
     let before;
     try { before = contentDigest(root); } catch (e) { die(`${e.code}: ${e.message}`, 1); }
-    const r = spawnSync(cmd[0], cmd.slice(1), { cwd: root, stdio: 'inherit', shell: false });
+    const r = launch(cmd, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
     let after;
     try { after = contentDigest(root); } catch (e) { die(`${e.code}: ${e.message}`, 1); }
+    const output = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    if (output) process.stderr.write(output.endsWith('\n') ? output : `${output}\n`);
 
     const moved = before.digest !== after.digest;
-    const expectNonzero = pre.includes('--expect-nonzero');
+    const sawSignal = Boolean(signal) && output.includes(signal);
     const result = r.error ? 'INFRA_ERROR'
       : moved ? 'INCONCLUSIVE'
-      : expectNonzero ? (r.status !== 0 ? 'PASS' : 'FAIL')
-      : (r.status === 0 ? 'PASS' : 'FAIL');
+      : expectNonzero
+        ? (r.status === 0 ? 'FAIL' : sawSignal ? 'PASS' : 'INFRA_ERROR')
+        : (r.status === 0 ? 'PASS' : 'FAIL');
 
     const doc = {
       schema_version: SCHEMA_VERSION,
@@ -279,17 +302,23 @@ switch (cmd) {
       source_kind: 'observed_execution',
       revision: before.revision,
       fingerprint: before.digest,
+      contract_digest: contractDigest(root, change, { artifactsDir: opt('artifacts') }).digest,
       environment: { os: process.platform, runtime: `node ${process.versions.node}` },
       timestamp: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
       result,
       ...(typeof r.status === 'number' ? { exit_code: r.status } : {}),
+      ...(signal ? { negative_control: { input: cmd.join(' '), expected_signal: signal, ...(sawSignal ? { observed_signal: signal } : {}) } } : {}),
       ...(moved ? { limitations: ['the command changed the content it was measuring, so what it exercised cannot be established'] } : {}),
       ...(r.error ? { limitations: [`the command could not be executed: ${r.error.message}`] } : {}),
+      ...(expectNonzero && !sawSignal && r.status !== 0 && !moved && !r.error
+        ? { limitations: [`exited ${r.status} without printing "${signal}": a crash, a missing file and a syntax error also exit non-zero, so nothing was exercised`] }
+        : {}),
     };
     try { store.putEvidence(doc); } catch (e) { die(e.message, 1); }
     console.error(`recorded evidence ${doc.evidence_id}: ${property} = ${result}`);
     console.error(`  content ${before.digest.slice(0, 22)}...${before.dirty ? ' (with uncommitted changes)' : ''}`);
     if (moved) console.error('  the content moved DURING the run: recorded INCONCLUSIVE, and it satisfies no gate');
+    if (expectNonzero && !sawSignal && r.status !== 0) console.error(`  it failed, but never printed "${signal}" — that is a broken run, not a red test`);
     process.exit(result === 'PASS' ? 0 : 1);
   }
 
@@ -302,13 +331,20 @@ switch (cmd) {
     doc.schema_version ??= SCHEMA_VERSION;
     try {
       if (cmd === 'record-evidence') {
-        // Deliberately does NOT stamp a fingerprint. Stamping at record time attributes
-        // today's content to a run that may have happened against something else, which turns
-        // "evidence without a fingerprint is refused" into a rule the front door walks around.
-        // A gate that requires fresh evidence requires `state.mjs run`.
+        // This command IMPORTS a document. It does not observe anything, so it neither stamps
+        // a content binding nor accepts one: a fingerprint is a statement about a run, and a
+        // document cannot acquire the authority of an execution by describing itself as one.
+        // The only thing that writes those fields is the runner that watched the command.
+        for (const field of ['fingerprint', 'contract_digest']) {
+          if (doc[field]) {
+            die(`${field} is written by \`state.mjs run\`, which watches the command and measures what it ran against. ` +
+                `An imported document carrying it is claiming an observation this command did not make — drop the field, ` +
+                `or produce the evidence with \`state.mjs run\`.`, 1);
+          }
+        }
         store.putEvidence(doc);
         console.log(`recorded evidence ${doc.evidence_id}: ${doc.property} = ${doc.result}`);
-        if (!doc.fingerprint) console.error('  no fingerprint: this satisfies only gates that do not require fresh evidence (use `state.mjs run` for those)');
+        console.error('  imported, not observed here: this satisfies only gates that do not require fresh evidence');
       }
       else if (cmd === 'record-approval') { store.putApproval(doc); console.log(`recorded approval ${doc.approval_id} for gate ${doc.gate}`); }
       else { const it = store.putDeferred(doc); console.log(`deferred #${it.stable_id} [${it.status}] ${it.title ?? ''}`); }

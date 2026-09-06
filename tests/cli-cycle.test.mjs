@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, tempDir, cleanup, REPO, now } from './helpers.mjs';
 
@@ -34,13 +34,15 @@ function consumer() {
     return f;
   };
   /** Produce evidence the way the protocol wants it: by running something. */
-  const run = (property, { role = 'platform_engineer', independentOf, expectNonzero, exit = 0, id } = {}) => cli(
+  const run = (property, { role = 'platform_engineer', independentOf, expectNonzero, signal, exit = 0, id, prints } = {}) => cli(
     'run', 'c1', property,
     '--role', role,
     ...(independentOf ? ['--independent-of', independentOf] : []),
     ...(expectNonzero ? ['--expect-nonzero'] : []),
+    ...(signal ? ['--expect-signal', signal] : []),
     ...(id ? ['--id', id] : []),
-    '--', process.execPath, '-e', `process.exit(${exit})`,
+    '--', process.execPath, '-e',
+    `${prints ? `console.error(${JSON.stringify(prints)});` : ''}process.exit(${exit})`,
   );
   const drop = () => { cleanup(repo.root); cleanup(scratch); };
   return { ...repo, cli, doc, run, drop };
@@ -154,8 +156,11 @@ function upToImplemented(c) {
   assert.equal(c.cli('transition', 'c1', 'isolated').code, 0);
   assert.equal(c.run('suite.baseline').code, 0);
   assert.equal(c.cli('transition', 'c1', 'baselined').code, 0);
-  // Pass 1 delivers FAILING tests, so the check is expected to exit non-zero.
-  assert.equal(c.run('pass1.tests_failing', { expectNonzero: true, exit: 1 }).code, 0);
+  // Pass 1 delivers FAILING tests, so the check is expected to exit non-zero — and to show
+  // the failure it was looking for, because a crash exits non-zero too.
+  assert.equal(c.run('pass1.tests_failing', {
+    expectNonzero: true, exit: 1, signal: 'ACCOUNT_NAME_REQUIRED', prints: 'not ok 1 - ACCOUNT_NAME_REQUIRED',
+  }).code, 0);
   assert.equal(c.cli('transition', 'c1', 'pass1_complete').code, 0);
 
   mkdirSync(join(c.root, 'modules/account'), { recursive: true });
@@ -219,12 +224,26 @@ test('recording a document later cannot claim today\'s content for yesterday\'s 
     });
     const rec = c.cli('record-evidence', f);
     assert.equal(rec.code, 0, 'recording it is allowed; counting it is not');
-    assert.match(rec.err, /no fingerprint/, 'and the command says so at the moment it is written');
+    assert.match(rec.err, /imported, not observed here/, 'and the command says so at the moment it is written');
 
     const r = c.cli('can', 'c1', 'pass2_complete');
     assert.equal(r.code, 1);
     assert.match(r.err, /records no fingerprint at all/);
     assert.equal(JSON.parse(readFileSync(join(c.root, '.spectree/evidence/e-old.json'), 'utf8')).fingerprint, undefined);
+
+    // And filling the field in by hand is not a way around it. The document would then be
+    // claiming an observation, and the command that imports it never made one.
+    const withDigest = c.doc('e-forged', {
+      evidence_id: 'e-forged', change_id: 'c1', property: 'pass2.attack', check: 'synthetic',
+      executor: { role: 'quality_engineer', independent_of: ['full_stack_developer'] },
+      source_kind: 'observed_execution', revision: c.git(['rev-parse', 'HEAD']).trim(),
+      fingerprint: c.cli('digest', 'c1', '--gate', 'integration').out,
+      result: 'PASS', timestamp: now(),
+    });
+    const forged = c.cli('record-evidence', withDigest);
+    assert.equal(forged.code, 1, 'an imported document cannot carry a content binding');
+    assert.match(forged.err, /written by `state\.mjs run`/);
+    assert.equal(existsSync(join(c.root, '.spectree/evidence/e-forged.json')), false, 'and nothing was stored');
   } finally { c.drop(); }
 });
 
@@ -350,5 +369,92 @@ test('a merge that changes the tree is a different candidate, and is refused', (
     assert.equal(r.code, 1);
     assert.match(r.err, /E_APPROVAL_DIGEST_MISMATCH|E_CONTENT_CHANGED/,
       'what was integrated is not what was approved and proven');
+  } finally { c.drop(); }
+});
+
+test('adding a Requirement invalidates the QA that never saw it', () => {
+  const c = consumer();
+  try {
+    upToImplemented(c);
+    proveIt(c);
+
+    // The code is untouched; the contract grows an acceptance criterion. Everything the
+    // content digest looks at is identical, and the QA is still about the old Requirements.
+    const contentBefore = c.cli('digest', 'c1', '--gate', 'integration').out;
+    writeFileSync(join(c.root, 'docs/changes/c1/specs/account/spec.md'),
+      '## ADDED Requirements\n\n### Requirement: x\n\n### Requirement: y\n');
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'one more Requirement']);
+    assert.notEqual(c.cli('digest', 'c1', '--gate', 'integration').out, contentBefore, 'the candidate is a new one');
+
+    // Approve the new contract properly, so the only thing left unproven is the QA.
+    const rev = c.git(['rev-parse', 'HEAD']).trim();
+    c.cli('record-approval', c.doc('ap1b', approvalDoc('ap1b', 'scope', c.cli('digest', 'c1').out, rev)));
+    c.cli('record-approval', c.doc('ap2', approvalDoc('ap2', 'integration', c.cli('digest', 'c1', '--gate', 'integration').out, rev)));
+
+    const r = c.cli('can', 'c1', 'integration_approved');
+    assert.equal(r.code, 1, 'a run cannot speak for Requirements it never saw');
+    assert.match(r.err, /E_CONTRACT_CHANGED/);
+    assert.match(r.err, /Requirements moved since that run/);
+
+    // Re-running QA against the contract as it now reads is what unblocks it.
+    assert.equal(c.run('pass2.attack', { role: 'quality_engineer', independentOf: 'full_stack_developer', id: 'e-qa2' }).code, 0);
+    assert.equal(c.cli('can', 'c1', 'integration_approved').code, 0);
+  } finally { c.drop(); }
+});
+
+test('a result cannot be inverted into a pass, and a crash is not a red test', () => {
+  const c = consumer();
+  try {
+    upToImplemented(c);
+
+    // Inverting a property that asserts success would turn a red CI into a green gate.
+    const wrong = c.cli('run', 'c1', 'ci.green', '--role', 'platform_engineer', '--expect-nonzero',
+      '--expect-signal', 'boom', '--', process.execPath, '-e', 'process.exit(1)');
+    assert.equal(wrong.code, 2);
+    assert.match(wrong.err, /not available for "ci\.green"/);
+    assert.equal(existsSync(join(c.root, '.spectree/evidence')) &&
+      readFileSync(join(c.root, '.spectree/changes/c1.json'), 'utf8').includes('ci_green'), false);
+
+    // Inversion without a signal to look for is refused: a crash also exits non-zero.
+    const noSignal = c.cli('run', 'c1', 'pass1.tests_failing', '--role', 'quality_engineer', '--expect-nonzero',
+      '--', process.execPath, '-e', 'process.exit(1)');
+    assert.equal(noSignal.code, 2);
+    assert.match(noSignal.err, /--expect-signal/);
+
+    // And a run that fails without printing it is INFRA_ERROR: nothing was exercised.
+    const broken = c.run('pass1.tests_failing', {
+      role: 'quality_engineer', expectNonzero: true, exit: 1,
+      signal: 'ACCOUNT_NAME_REQUIRED', prints: 'Error: Cannot find module ./account.test.js', id: 'e-broken',
+    });
+    assert.equal(broken.code, 1);
+    assert.match(broken.err, /INFRA_ERROR/);
+    assert.match(broken.err, /never printed "ACCOUNT_NAME_REQUIRED"/);
+    const stored = JSON.parse(readFileSync(join(c.root, '.spectree/evidence/e-broken.json'), 'utf8'));
+    assert.equal(stored.result, 'INFRA_ERROR');
+    assert.equal(stored.negative_control.expected_signal, 'ACCOUNT_NAME_REQUIRED');
+    assert.equal(stored.negative_control.observed_signal, undefined, 'it never saw the signal, and does not claim to');
+  } finally { c.drop(); }
+});
+
+test('the runner executes the launcher this platform actually has', (t) => {
+  let hasNpm = true;
+  try { execFileSync('npm', ['--version'], { encoding: 'utf8', shell: process.platform === 'win32' }); }
+  catch { hasNpm = false; }
+  if (!hasNpm) return t.skip('npm is not on PATH in this environment');
+
+  const c = consumer();
+  try {
+    c.cli('init', 'proj');
+    c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account');
+    // On Windows `npm` is `npm.cmd`, which Node refuses to spawn without a shell. Reading that
+    // as INFRA_ERROR is true and useless: the command works in the operator's own terminal.
+    writeFileSync(join(c.root, 'package.json'),
+      JSON.stringify({ name: 'consumer', private: true, scripts: { test: 'node --version' } }, null, 2));
+    const r = c.cli('run', 'c1', 'ci.green', '--role', 'platform_engineer', '--id', 'e-npm', '--', 'npm', 'test', '--silent');
+    assert.equal(r.code, 0, r.err);
+    const stored = JSON.parse(readFileSync(join(c.root, '.spectree/evidence/e-npm.json'), 'utf8'));
+    assert.equal(stored.result, 'PASS');
+    assert.equal(stored.exit_code, 0);
+    assert.match(stored.check, /npm test --silent/);
   } finally { c.drop(); }
 });

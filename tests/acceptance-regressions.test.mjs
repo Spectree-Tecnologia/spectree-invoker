@@ -473,3 +473,37 @@ test('11c. a merge that keeps the tree keeps the content digest; one that change
     assert.notEqual(contentDigest(repo.root).digest, candidate.digest, 'a merge that changes the tree is a different candidate');
   } finally { cleanup(repo.root); }
 });
+
+// --- fourth round, finding 12: the launcher Windows actually has -------------
+
+test('12. a Windows launcher is resolved through PATH and PATHEXT, not assumed to be an exe', async () => {
+  const { resolveOnPath } = await import('../scripts/lib/launch.mjs');
+  const dir = tempDir('spectree-path-');
+  try {
+    writeFileSync(join(dir, 'npm.cmd'), '@echo off\n');
+    writeFileSync(join(dir, 'node.exe'), '');
+    const env = { PATH: dir, PATHEXT: '.COM;.EXE;.BAT;.CMD' };
+
+    assert.equal(resolveOnPath('npm', { platform: 'win32', env }), join(dir, 'npm.cmd'),
+      'the thing people type is a .cmd shim, and Node will not spawn one without a shell');
+    assert.equal(resolveOnPath('node', { platform: 'win32', env }), join(dir, 'node.exe'));
+    assert.equal(resolveOnPath('npm.cmd', { platform: 'win32', env }), join(dir, 'npm.cmd'));
+    assert.equal(resolveOnPath('nothing-here', { platform: 'win32', env }), null,
+      'not found stays not found: the failure must name the command the operator typed');
+    assert.equal(resolveOnPath('npm', { platform: 'linux', env }), null, 'elsewhere the OS resolves it');
+  } finally { cleanup(dir); }
+});
+
+// --- fourth round, finding 13: inversion, and what a non-zero exit proves ----
+
+test('13. only a property that asserts failure may be inverted', async () => {
+  const { INVERTIBLE, ENTRY_REQUIREMENTS } = await import('../scripts/lib/state-machine.mjs');
+  assert.deepEqual([...INVERTIBLE], ['pass1.tests_failing'],
+    'one property, and it is the one whose delivery is a failing test');
+  // The property that matters: nothing a gate requires to PASS may be inverted into one.
+  const asserted = new Set(Object.values(ENTRY_REQUIREMENTS).flatMap((r) => (r.evidence ?? []).map((e) => e.property)));
+  for (const p of ['ci.green', 'pass2.attack', 'suite.baseline', 'closure.merged']) {
+    assert.ok(asserted.has(p), `${p} is a gate requirement`);
+    assert.equal(INVERTIBLE.has(p), false, `${p} asserts success, so a failed run is not evidence of it`);
+  }
+});

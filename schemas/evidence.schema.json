@@ -42,7 +42,13 @@
       "type": "string",
       "minLength": 8,
       "maxLength": 128,
-      "description": "Digest of the content this run actually exercised: the commit plus the uncommitted working tree, excluding the squad's own bookkeeping. A revision alone does not identify content — an uncommitted edit leaves it unchanged."
+      "description": "Digest of the content this run actually exercised: the committed tree plus the uncommitted working tree, excluding the squad's own bookkeeping. A revision alone does not identify content — an uncommitted edit leaves it unchanged, and a --no-ff merge changes it without changing the code."
+    },
+    "contract_digest": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Digest of the Requirements this run was measured against. Evidence about Scenarios cannot speak for Scenarios it never saw."
     },
     "environment": {
       "type": "object",
