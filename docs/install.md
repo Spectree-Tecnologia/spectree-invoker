@@ -158,9 +158,13 @@ Structure only holds if the blocks are respected, so the parser tracks context r
 matching lines. **What is supported**, and everything outside it is refused rather than
 half-read:
 
-- a plan (`1..N`) at **every** level that reports results, and the counts must agree — an outer
-  plan that adds up does not excuse subtests that stopped halfway;
-- **numbered** results, each number used once at its level;
+- a plan (`1..N`) in **every group** that reports results, and the counts must agree — an outer
+  plan that adds up does not excuse subtests that stopped halfway. A group is one nested TAP
+  document, not an indentation level: two sibling `describe` blocks both sit at indent 4 and each
+  carries its own plan and its own numbering from 1, so a sibling can never complete another's
+  plan. Only `1..N` is read; a plan starting anywhere else is refused as unsupported;
+- **numbered** results, each number used once, and every number from 1 to N present — a result
+  numbered outside its group's plan is refused, and so is a gap;
 - YAML diagnostics (`---` … `...`) skipped entirely. A failing test's own error message can
   contain a line that reads exactly like `not ok 1 - <the test you asked about>`, and a
   line-by-line parser lets one test declare the failure of another. An unclosed block makes the

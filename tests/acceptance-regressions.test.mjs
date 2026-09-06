@@ -642,7 +642,7 @@ test('16b. numbering and per-level plans are checked, not assumed', async () => 
     'not ok 1 - account.test.mjs',
   ]);
   assert.equal(innerTruncated.result, 'INFRA_ERROR');
-  assert.match(innerTruncated.reason, /indent 4 planned 3 test\(s\) and reported 1/);
+  assert.match(innerTruncated.reason, /planned 3 test\(s\) and reported 1/);
 
   const noPlanAtAll = judge(['TAP version 13', `not ok 1 - ${TARGET}`]);
   assert.equal(noPlanAtAll.result, 'INFRA_ERROR');
@@ -668,4 +668,82 @@ test('16b. numbering and per-level plans are checked, not assumed', async () => 
   ]);
   assert.equal(good.result, 'PASS');
   assert.equal(good.matched.name, TARGET);
+});
+
+// --- seventh round, finding 17: a group is a document, not an indent --------
+
+test('17. two sibling groups from a real node --test run are two documents', async (t) => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const TARGET = 'Scenario: creation with a blank name';
+  const dir = tempDir('spectree-tap-real-');
+  try {
+    // Not a hand-written fixture: the parser is judged against what the runner actually emits.
+    writeFileSync(join(dir, 'sample.test.mjs'), [
+      "import { describe, it } from 'node:test';",
+      "import assert from 'node:assert/strict';",
+      `describe('account creation', () => {`,
+      `  it(${JSON.stringify(TARGET)}, () => { assert.equal(1, 2); });`,
+      '});',
+      `describe('account listing', () => {`,
+      `  it('Scenario: lists nothing when empty', () => { assert.ok(true); });`,
+      '});',
+    ].join('\n'));
+
+    // The outer runner marks its children with NODE_TEST_*, which makes the inner run report
+    // to it instead of emitting its own TAP. Drop those so this is a plain `node --test`.
+    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('NODE_TEST')));
+    let out = '', status = 0;
+    try {
+      out = execFileSync(process.execPath, ['--test', '--test-reporter=tap', 'sample.test.mjs'],
+        { cwd: dir, encoding: 'utf8', env });
+    } catch (e) { out = (e.stdout ?? '') + (e.stderr ?? ''); status = e.status ?? 1; }
+    assert.notEqual(status, 0, `the suite really did fail
+${out}`);
+
+    // Both groups sit at the same indentation and each carries its own `1..1`.
+    const tap = parseTap(out);
+    const nested = tap.groups.filter((g) => g.indent > 0);
+    assert.ok(nested.length >= 2, `two sibling groups, not one merged level (saw ${nested.length})`);
+    assert.ok(nested.every((g) => g.plan === 1), 'each group plans and reports itself');
+
+    const verdict = judgeFailingRun(tap, TARGET, status);
+    assert.equal(verdict.result, 'PASS', verdict.reason);
+    assert.equal(verdict.matched.name, TARGET);
+  } finally { cleanup(dir); }
+});
+
+test('17b. a sibling group can never complete another group\'s plan', async () => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const TARGET = 'Scenario: creation with a blank name';
+  // Two incomplete groups whose results, added together, look like one satisfied plan.
+  const forged = [
+    'TAP version 13',
+    `    not ok 1 - ${TARGET}`,
+    '    1..2',
+    'not ok 1 - account creation',
+    '    ok 1 - Scenario: lists nothing when empty',
+    'ok 2 - account listing',
+    '1..2',
+  ].join('\n');
+  const r = judgeFailingRun(parseTap(forged), TARGET, 1);
+  assert.equal(r.result, 'INFRA_ERROR');
+  assert.match(r.reason, /planned 2 test\(s\) and reported 1|no plan of its own/);
+});
+
+test('17c. a result numbered outside the plan is refused', async () => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const TARGET = 'Scenario: creation with a blank name';
+  const judge = (lines) => judgeFailingRun(parseTap(lines.join('\n')), TARGET, 1);
+
+  const outside = judge(['TAP version 13', '1..1', `not ok 999 - ${TARGET}`]);
+  assert.equal(outside.result, 'INFRA_ERROR');
+  assert.match(outside.reason, /outside it/);
+
+  const gap = judge(['TAP version 13', '1..3', `not ok 1 - ${TARGET}`, 'ok 2 - b', 'ok 4 - d']);
+  assert.equal(gap.result, 'INFRA_ERROR');
+  assert.match(gap.reason, /outside it|never reported test 3/);
+
+  const unsupportedPlan = judge(['TAP version 13', '2..2', `not ok 2 - ${TARGET}`]);
+  assert.equal(unsupportedPlan.result, 'INFRA_ERROR');
+  assert.match(unsupportedPlan.reason, /only "1\.\.N" is supported/);
 });

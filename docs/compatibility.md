@@ -7,7 +7,7 @@ a rendered file is not a harness that loaded it.
 
 | Surface | Version | How it was established |
 |---|---|---|
-| Node.js | 24.17.0 | the whole suite runs on it: 129 deterministic tests |
+| Node.js | 24.17.0 | the whole suite runs on it: 132 deterministic tests |
 | Windows | win32/x64 | the suite ran here; the diff layer is exercised against real `git` with spaces and non-ASCII names |
 | git | 2.54.0 | `readDiff` is tested against a real repository, including rename, deletion and a `-z` round trip |
 | Protocol → adapters | — | `build.mjs --check` runs in CI; a hand edit to any generated file fails it |
@@ -18,7 +18,7 @@ a rendered file is not a harness that loaded it.
 | Content binding | — | an uncommitted edit at an unchanged `HEAD` is refused with `E_CONTENT_CHANGED`; a `--no-ff` merge over an identical tree is the same candidate and passes; a merge that changes the tree is refused; ticking `tasks.md` or archiving the change moves neither digest |
 | Runner semantics | — | `pass1.tests_failing` is satisfied only by TAP showing the named test failing in a completed run — a crash with no plan, a truncated plan, a `# SKIP` and a reported pass are each refused by name; no other property accepts a failing run; an imported document carrying a fingerprint is refused |
 | Temporal binding | — | a run that edits the contract while being measured records `INCONCLUSIVE` against the contract it started from, and satisfies no gate afterwards; a report is read only from the path the run allocated and only if the run wrote it |
-| TAP reading | TAP 13/14 subset | diagnostics are skipped as blocks (a forged `not ok` inside a YAML error message is not a result), plans are checked at every level, numbers must be present and unique, and the test name is matched exactly — unsupported shapes are refused, never half-accepted |
+| TAP reading | TAP 13/14 subset | judged against real `node --test --test-reporter=tap` output with two sibling `describe` groups: each group is validated as its own document (own plan, own numbering from 1), diagnostics are skipped as blocks so a forged `not ok` inside a YAML error message is not a result, numbers must cover 1..N exactly, and the test name is matched exactly — unsupported shapes are refused, never half-accepted |
 | Windows launchers | npm 11.13.0 | `state.mjs run -- npm test` executes in a synthetic consumer through `PATH`/`PATHEXT` resolution of the `.cmd` shim (skipped, and said so, where npm is absent) |
 | Argument transport | — | thirteen arguments — empty, spaces, `&`, `\|`, `>`, `^`, `;`, parentheses, tab, accents, trailing backslash — arrive byte for byte through a `%*` shim, asserted together; `%`, `!` and `"` are refused with `E_ARGUMENT_UNTRANSPORTABLE` |
 | Path handling | — | an untracked file whose name git escapes (accents, spaces) is read and its content counts; a path that is present and unreadable raises `E_CONTENT_UNAVAILABLE` instead of being hashed as a placeholder |
@@ -26,7 +26,7 @@ a rendered file is not a harness that loaded it.
 
 `engines` declares `node >= 20.11.0`; only 24.17.0 was actually exercised.
 
-The suite is **129 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
+The suite is **132 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
 
 ## Implemented, real validation pending
 
