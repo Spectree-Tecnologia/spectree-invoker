@@ -105,16 +105,25 @@ test('3c. an unchecked digest is refused too — comparing nothing proves nothin
   assert.match(r.message, /no digest of the current scope artifact was supplied/);
 });
 
-test('3d. an approval from an older revision is stale by default, not by opt-in', () => {
+// 3d and 3e were written when the revision was the expiry. The digest replaced it, and the
+// rule now follows the gate: a contract gate dies when the contract changes, a code gate when
+// the contract or the code changes. Revision expiry survives only as an explicit opt-IN,
+// because as a default it was wrong in both directions — it revoked a scope approval over a
+// commit that never touched the contract, and it survived an uncommitted edit that changed
+// everything. What the approval is bound to is asserted in 3b and 3c, and now in 10.
+test('3d. an approval outlives a commit that did not change what it approved', () => {
   const r = canTransition(change({ state: 'proposed' }), 'scope_approved',
     { approvals: [scopeApproval({ revision: OLD })], revision: REV, scopeDigests: scopeOk });
-  assert.equal(r.code, CODES.APPROVAL_STALE);
+  assert.equal(r.ok, true, 'the contract is unchanged, so the approval still covers it');
 });
 
-test('3e. an explicit opt-out is the only way an approval survives a revision change', () => {
+test('3e. an approval that says it expires with the revision does expire with it', () => {
+  const strict = scopeApproval({ revision: OLD, expires_with_revision: true });
   const r = canTransition(change({ state: 'proposed' }), 'scope_approved',
-    { approvals: [scopeApproval({ revision: OLD, expires_with_revision: false })], revision: REV, scopeDigests: scopeOk });
-  assert.equal(r.ok, true);
+    { approvals: [strict], revision: REV, scopeDigests: scopeOk });
+  assert.equal(r.code, CODES.APPROVAL_STALE);
+  assert.equal(canTransition(change({ state: 'proposed' }), 'scope_approved',
+    { approvals: [strict], revision: OLD, scopeDigests: scopeOk }).ok, true);
 });
 
 // --- finding 4: unknown capability was permission ----------------------------
@@ -394,4 +403,73 @@ test('9c. content that cannot be established is refused, never read as unchanged
   try {
     assert.throws(() => contentDigest(dir), (e) => e.code === 'E_CONTENT_UNAVAILABLE');
   } finally { cleanup(dir); }
+});
+
+// --- third round, finding 11: escaped paths hashed as a placeholder ----------
+
+test('11. an untracked path git would escape is still read, and its content still counts', async () => {
+  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const { gitRepo } = await import('./helpers.mjs');
+  const repo = gitRepo({ 'seed.txt': 'seed\n' });
+  try {
+    // git quotes non-ASCII in its default output: "src/a\303\247\303\243o nova.js".
+    // Reading that literal string fails, and hashing a placeholder in its place gave every
+    // version of the file the same digest — the file became invisible to the check.
+    mkdirSync(join(repo.root, 'src'), { recursive: true });
+    const weird = join(repo.root, 'src', 'ação nova.js');
+    writeFileSync(weird, 'export const a = 1;\n');
+    const first = contentDigest(repo.root);
+
+    writeFileSync(weird, 'export const a = 2;\n');
+    assert.notEqual(contentDigest(repo.root).digest, first.digest,
+      'editing a file with an accented name must move the content digest');
+
+    const spaced = join(repo.root, 'src', 'a "quoted" name.js');
+    try { writeFileSync(spaced, 'export const b = 1;\n'); } catch { /* the filesystem refused the name */ }
+    if (existsSync(spaced)) {
+      const withIt = contentDigest(repo.root).digest;
+      writeFileSync(spaced, 'export const b = 2;\n');
+      assert.notEqual(contentDigest(repo.root).digest, withIt);
+    }
+  } finally { cleanup(repo.root); }
+});
+
+test('11b. content that is present and cannot be read is refused, not hashed as a placeholder', async () => {
+  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const { gitRepo } = await import('./helpers.mjs');
+  const repo = gitRepo({ 'seed.txt': 'seed\n' });
+  try {
+    assert.equal(typeof contentDigest(repo.root).digest, 'string');
+    // A nested repository is listed by git as a single untracked entry — a directory, which
+    // is exactly the case where reading the path fails while the path is genuinely there.
+    execFileSync('git', ['init', '-q', 'vendor/thing'], { cwd: repo.root });
+    assert.throws(() => contentDigest(repo.root), (e) => {
+      assert.equal(e.code, 'E_CONTENT_UNAVAILABLE');
+      assert.match(e.message, /vendor\/thing/);
+      return true;
+    });
+  } finally { cleanup(repo.root); }
+});
+
+test('11c. a merge that keeps the tree keeps the content digest; one that changes it does not', async () => {
+  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const { gitRepo } = await import('./helpers.mjs');
+  const repo = gitRepo({ 'src/app.js': 'export const a = 1;\n' });
+  const git = (...a) => execFileSync('git', a, { cwd: repo.root, encoding: 'utf8' });
+  try {
+    git('checkout', '-q', '-b', 'work');
+    writeFileSync(join(repo.root, 'src/app.js'), 'export const a = 2;\n');
+    git('add', '-A'); git('commit', '-qm', 'work');
+    const candidate = contentDigest(repo.root);
+
+    git('checkout', '-q', 'main');
+    git('merge', '--no-ff', '-q', '-m', 'merge work', 'work');
+    const merged = contentDigest(repo.root);
+    assert.notEqual(merged.revision, candidate.revision, 'the commit is a new one');
+    assert.equal(merged.digest, candidate.digest, 'and the code being integrated is the code that was reviewed');
+
+    writeFileSync(join(repo.root, 'src/app.js'), 'export const a = 3;\n');
+    git('add', '-A'); git('commit', '-qm', 'a fixup');
+    assert.notEqual(contentDigest(repo.root).digest, candidate.digest, 'a merge that changes the tree is a different candidate');
+  } finally { cleanup(repo.root); }
 });

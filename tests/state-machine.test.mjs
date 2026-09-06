@@ -43,18 +43,35 @@ test('scope approval is required, and one for another change does not count', ()
   assert.equal(canTransition(c, 'scope_approved', ctx()).ok, true);
 });
 
-test('an approval expires with the revision unless it opts out explicitly', () => {
+test('the digest is what expires an approval; the revision only when it says so', () => {
   const c = change({ state: 'proposed' });
-  assert.equal(canTransition(c, 'scope_approved', ctx({ approvals: [scopeOk({ revision: OTHER })] })).code, CODES.APPROVAL_STALE);
-  assert.equal(canTransition(c, 'scope_approved', ctx({ approvals: [scopeOk({ revision: OTHER, expires_with_revision: false })] })).ok, true);
+  assert.equal(canTransition(c, 'scope_approved', ctx({ approvals: [scopeOk({ revision: OTHER })] })).ok, true,
+    'a commit that left the contract alone does not revoke the contract approval');
+  assert.equal(canTransition(c, 'scope_approved', ctx({ approvals: [scopeOk({ revision: OTHER, expires_with_revision: true })] })).code,
+    CODES.APPROVAL_STALE);
 });
 
 test('an approval for the wrong gate never satisfies another gate', () => {
   const c = change({ state: 'ci_green' });
-  const r = canTransition(c, 'integration_approved', ctx());
+  // Integrating re-checks the technical evidence too, so supply it and vary only the approval.
+  const proven = [
+    evidence({ evidence_id: 'e-qa', property: 'pass2.attack', revision: REV, change_id: 'c1',
+      executor: { role: 'quality_engineer', independent_of: ['full_stack_developer'] } }),
+    evidence({ evidence_id: 'e-ci', property: 'ci.green', revision: REV, change_id: 'c1' }),
+  ];
+  const r = canTransition(c, 'integration_approved', ctx({ evidence: proven }));
   assert.equal(r.code, CODES.MISSING_APPROVAL);
   assert.match(r.message, /"integration"/);
-  assert.equal(canTransition(c, 'integration_approved', ctx({ approvals: [scopeOk(), integrationOk()] })).ok, true);
+  assert.equal(canTransition(c, 'integration_approved', ctx({ evidence: proven, approvals: [scopeOk(), integrationOk()] })).ok, true);
+});
+
+test('a human signature does not stand in for a run on the code being integrated', () => {
+  // The defect: integration_approved and integrated checked approvals and nothing else, so
+  // approving new content was enough to carry it past QA and CI that never saw it.
+  const c = change({ state: 'ci_green' });
+  const r = canTransition(c, 'integration_approved', ctx({ approvals: [scopeOk(), integrationOk()] }));
+  assert.equal(r.code, CODES.MISSING_EVIDENCE);
+  assert.match(r.message, /pass2\.attack/);
 });
 
 test('an agent report does not baseline: the transition needs an observed execution', () => {

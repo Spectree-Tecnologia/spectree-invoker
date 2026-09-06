@@ -9,6 +9,8 @@
 //   node scripts/state.mjs can <change-id> <to-state>
 //   node scripts/state.mjs transition <change-id> <to-state> --expect <state_revision>
 //   node scripts/state.mjs transition <change-id> blocked --reason "<why>"
+//   node scripts/state.mjs run <change-id> <property> --role <r> [--independent-of a,b]
+//                                [--expect-nonzero] [--id <e>] -- <command> [args...]
 //   node scripts/state.mjs record-evidence <file.json>
 //   node scripts/state.mjs record-approval <file.json>
 //   node scripts/state.mjs defer <file.json>
@@ -17,7 +19,8 @@
 // Exit codes: 0 allowed/valid, 1 refused/invalid, 2 usage.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { canTransition } from './lib/state-machine.mjs';
 import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
@@ -80,6 +83,9 @@ function resume(changeId) {
   const changes = store.present ? store.changes() : [];
   const open = changes.filter((c) => c.state !== 'closed');
   const change = changeId ? store.change(changeId) : (open.find((c) => c.state !== 'blocked') ?? open[0] ?? null);
+  const live = change ? store.evidence(change.change_id).filter((e) => !e.superseded_by) : [];
+  let here = null;
+  try { here = contentDigest(root).digest; } catch { /* no work tree: fall back to the revision */ }
 
   const out = {
     project: project ? { project_id: project.project_id, protocol_version: project.protocol_version } : null,
@@ -97,15 +103,20 @@ function resume(changeId) {
         }
       : null,
     approvals: change ? store.approvals(change.change_id).map((a) => ({ gate: a.gate, by: a.granted_by?.identity, kind: a.granted_by?.kind, revision: a.revision })) : [],
+    // Valid HERE means: measured on the content that is on disk now. A revision match is the
+    // fallback for evidence carrying no fingerprint, and it is the weaker claim -- saying
+    // otherwise is how resume kept presenting runs from before an uncommitted edit as current.
     evidence_valid_here: change
-      ? store.evidence(change.change_id)
-          .filter((e) => !e.superseded_by && (!g.revision || e.revision === g.revision))
-          .map((e) => ({ property: e.property, result: e.result, source: e.source_kind }))
+      ? live.filter((e) => (e.fingerprint ? e.fingerprint === here : !g.revision || e.revision === g.revision))
+          .map((e) => ({ property: e.property, result: e.result, source: e.source_kind, pinned: Boolean(e.fingerprint) }))
       : [],
     evidence_stale: change
-      ? store.evidence(change.change_id)
-          .filter((e) => !e.superseded_by && g.revision && e.revision !== g.revision)
-          .map((e) => ({ property: e.property, observed_at: e.revision.slice(0, 8) }))
+      ? live.filter((e) => (e.fingerprint ? e.fingerprint !== here : g.revision && e.revision !== g.revision))
+          .map((e) => ({
+            property: e.property,
+            observed_at: e.revision.slice(0, 8),
+            why: e.fingerprint ? 'measured on other content' : 'observed at another revision',
+          }))
       : [],
     actionable_deferrals: store.present
       ? store.deferred().items.filter((i) => i.status === 'open').map((i) => ({ id: i.stable_id, owner: i.owner, impact: i.impact, trigger: i.reevaluation_trigger ?? null }))
@@ -129,7 +140,7 @@ function printResume(r) {
   }
   L.push(`approvals      ${r.approvals.length ? r.approvals.map((a) => `${a.gate} by ${a.by} (${a.kind})`).join('; ') : 'none'}`);
   L.push(`evidence here  ${r.evidence_valid_here.length ? r.evidence_valid_here.map((e) => `${e.property}=${e.result}`).join('; ') : 'none at this revision'}`);
-  if (r.evidence_stale.length) L.push(`evidence stale ${r.evidence_stale.map((e) => `${e.property}@${e.observed_at}`).join('; ')}`);
+  if (r.evidence_stale.length) L.push(`evidence stale ${r.evidence_stale.map((e) => `${e.property} (${e.why})`).join('; ')}`);
   L.push(`deferrals open ${r.actionable_deferrals.length ? r.actionable_deferrals.map((d) => `#${d.id} ${d.impact}/${d.owner}`).join('; ') : 'none'}`);
   L.push(`next action    ${r.next_action?.description ?? 'not recorded — decide it and write it down'}`);
   if (r.other_open_changes.length) L.push(`also open      ${r.other_open_changes.join(', ')}`);
@@ -228,6 +239,60 @@ switch (cmd) {
     break;
   }
 
+  case 'run': {
+    // Evidence is produced here, not asserted here. The content is measured before and after
+    // the command, and a run that moved the content it was measuring proves nothing about it.
+    const id = argv[1] ?? die('usage: state.mjs run <change-id> <property> --role <r> -- <command> [args...]');
+    const property = argv[2] ?? die('usage: state.mjs run <change-id> <property> --role <r> -- <command> [args...]');
+    const sep = argv.indexOf('--');
+    if (sep === -1 || sep === argv.length - 1) die('the command goes after `--`: state.mjs run c1 ci.green --role platform_engineer -- npm test');
+    const pre = argv.slice(0, sep);
+    const opt = (name, fallback) => {
+      const i = pre.indexOf(`--${name}`);
+      return i >= 0 && pre[i + 1] && !pre[i + 1].startsWith('--') ? pre[i + 1] : fallback;
+    };
+    const cmd = argv.slice(sep + 1);
+    store.change(id) ?? die(`no such change: ${id}`, 1);
+    const role = opt('role') ?? die('--role is required: evidence that cannot say who produced it is not evidence');
+    const independent = (opt('independent-of', '') || '').split(',').map((x) => x.trim()).filter(Boolean);
+
+    let before;
+    try { before = contentDigest(root); } catch (e) { die(`${e.code}: ${e.message}`, 1); }
+    const r = spawnSync(cmd[0], cmd.slice(1), { cwd: root, stdio: 'inherit', shell: false });
+    let after;
+    try { after = contentDigest(root); } catch (e) { die(`${e.code}: ${e.message}`, 1); }
+
+    const moved = before.digest !== after.digest;
+    const expectNonzero = pre.includes('--expect-nonzero');
+    const result = r.error ? 'INFRA_ERROR'
+      : moved ? 'INCONCLUSIVE'
+      : expectNonzero ? (r.status !== 0 ? 'PASS' : 'FAIL')
+      : (r.status === 0 ? 'PASS' : 'FAIL');
+
+    const doc = {
+      schema_version: SCHEMA_VERSION,
+      evidence_id: opt('id') ?? `ev-${randomUUID().slice(0, 8)}`,
+      change_id: id,
+      property,
+      check: cmd.join(' ') + (expectNonzero ? '  (expected to exit non-zero)' : ''),
+      executor: { role, ...(independent.length ? { independent_of: independent } : {}) },
+      source_kind: 'observed_execution',
+      revision: before.revision,
+      fingerprint: before.digest,
+      environment: { os: process.platform, runtime: `node ${process.versions.node}` },
+      timestamp: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+      result,
+      ...(typeof r.status === 'number' ? { exit_code: r.status } : {}),
+      ...(moved ? { limitations: ['the command changed the content it was measuring, so what it exercised cannot be established'] } : {}),
+      ...(r.error ? { limitations: [`the command could not be executed: ${r.error.message}`] } : {}),
+    };
+    try { store.putEvidence(doc); } catch (e) { die(e.message, 1); }
+    console.error(`recorded evidence ${doc.evidence_id}: ${property} = ${result}`);
+    console.error(`  content ${before.digest.slice(0, 22)}...${before.dirty ? ' (with uncommitted changes)' : ''}`);
+    if (moved) console.error('  the content moved DURING the run: recorded INCONCLUSIVE, and it satisfies no gate');
+    process.exit(result === 'PASS' ? 0 : 1);
+  }
+
   case 'record-evidence':
   case 'record-approval':
   case 'defer': {
@@ -237,14 +302,13 @@ switch (cmd) {
     doc.schema_version ??= SCHEMA_VERSION;
     try {
       if (cmd === 'record-evidence') {
-        // Evidence is recorded right after the run, so the content on disk now IS what it
-        // ran against. Stamping it here is what lets a later gate tell the two apart.
-        if (!doc.fingerprint) {
-          try { doc.fingerprint = contentDigest(root).digest; }
-          catch (e) { die(`${e.code}: ${e.message}`, 1); }
-        }
+        // Deliberately does NOT stamp a fingerprint. Stamping at record time attributes
+        // today's content to a run that may have happened against something else, which turns
+        // "evidence without a fingerprint is refused" into a rule the front door walks around.
+        // A gate that requires fresh evidence requires `state.mjs run`.
         store.putEvidence(doc);
         console.log(`recorded evidence ${doc.evidence_id}: ${doc.property} = ${doc.result}`);
+        if (!doc.fingerprint) console.error('  no fingerprint: this satisfies only gates that do not require fresh evidence (use `state.mjs run` for those)');
       }
       else if (cmd === 'record-approval') { store.putApproval(doc); console.log(`recorded approval ${doc.approval_id} for gate ${doc.gate}`); }
       else { const it = store.putDeferred(doc); console.log(`deferred #${it.stable_id} [${it.status}] ${it.title ?? ''}`); }
@@ -273,5 +337,5 @@ switch (cmd) {
   }
 
   default:
-    die(`usage: state.mjs <init|resume|open|digest|can|transition|record-evidence|record-approval|defer|validate>`);
+    die(`usage: state.mjs <init|resume|open|digest|can|transition|run|record-evidence|record-approval|defer|validate>`);
 }

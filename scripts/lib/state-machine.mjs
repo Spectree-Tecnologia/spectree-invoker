@@ -58,15 +58,30 @@ export const ENTRY_REQUIREMENTS = {
   implemented: { approvals: ['scope'] },
   pass2_complete: {
     approvals: ['scope'],
-    evidence: [{ property: 'pass2.attack', result: 'PASS', observed: true, fresh: true }],
-    independentOf: ['full_stack_developer'],
+    evidence: [{ property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, independentOf: ['full_stack_developer'] }],
   },
   ci_green: {
     approvals: ['scope'],
     evidence: [{ property: 'ci.green', result: 'PASS', observed: true, fresh: true }],
   },
-  integration_approved: { approvals: ['scope', 'integration'] },
-  integrated: { approvals: ['scope', 'integration'] },
+  // Authorisation is not validation. An approval says a human agreed to integrate THIS
+  // candidate; it does not say the candidate was ever exercised. Both states re-check the
+  // technical evidence against the content on disk, so a human signature can never stand in
+  // for a run that never happened on the code being integrated.
+  integration_approved: {
+    approvals: ['scope', 'integration'],
+    evidence: [
+      { property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, independentOf: ['full_stack_developer'] },
+      { property: 'ci.green', result: 'PASS', observed: true, fresh: true },
+    ],
+  },
+  integrated: {
+    approvals: ['scope', 'integration'],
+    evidence: [
+      { property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, independentOf: ['full_stack_developer'] },
+      { property: 'ci.green', result: 'PASS', observed: true, fresh: true },
+    ],
+  },
   closed: {
     approvals: ['scope', 'integration'],
     evidence: [{ property: 'closure.merged', result: 'PASS', observed: true, fresh: false }],
@@ -166,13 +181,18 @@ export function canTransition(change, to, ctx = {}) {
         `(approved ${bound[0].scope_digest}, current ${expectedDigest})`);
     }
 
-    // Fresh by default. `expires_with_revision: false` is an explicit, recorded opt-out.
+    // The digest above IS the expiry, and it is the right one for the gate: a contract gate
+    // dies when the contract changes, a code gate when the contract or the code changes.
+    // Revision was only ever a proxy for that, and a bad one in both directions — it revoked
+    // a scope approval over a commit that never touched the contract, and it survived an
+    // uncommitted edit that changed everything. It applies now only where an approval asks
+    // for it in as many words.
     const fresh = revision
-      ? sameContent.filter((a) => a.expires_with_revision === false || a.revision === revision)
+      ? sameContent.filter((a) => a.expires_with_revision !== true || a.revision === revision)
       : sameContent;
     if (fresh.length === 0) {
       return refuse(CODES.APPROVAL_STALE,
-        `the "${gate}" approval was granted at ${bound[0].revision.slice(0, 8)} and the current revision is ${revision.slice(0, 8)}`);
+        `the "${gate}" approval says it expires with the revision: it was granted at ${bound[0].revision.slice(0, 8)} and the current revision is ${revision.slice(0, 8)}`);
     }
     if (fresh.every((a) => a.granted_by?.kind === undefined)) {
       return refuse(CODES.MISSING_APPROVAL, `the "${gate}" approval names no granting party`);
@@ -189,27 +209,27 @@ export function canTransition(change, to, ctx = {}) {
         `"${want.property}" is only an agent report; entering "${to}" needs an observed execution`);
     }
 
+    // The revision is not the content, in either direction: an uncommitted edit leaves HEAD
+    // where it was, and a `--no-ff` merge moves HEAD over an identical tree. So where the
+    // content is known it is the whole test, and the revision is the fallback for callers
+    // that cannot compute one.
     let fresh = observed;
-    if (want.fresh && revision) {
+    if (want.fresh && contentDigest) {
+      fresh = fresh.filter((e) => e.fingerprint === contentDigest);
+      if (fresh.length === 0) {
+        const unpinned = observed.some((e) => !e.fingerprint);
+        return refuse(CODES.CONTENT_CHANGED,
+          `"${want.property}" was not measured on the content now on disk` +
+          (unpinned
+            ? ' — it records no fingerprint at all, so what it ran against cannot be established'
+            : '; the content has moved since that run, and an uncommitted change is still a change'));
+      }
+    } else if (want.fresh && revision) {
       fresh = fresh.filter((e) => e.revision === revision);
       if (fresh.length === 0) {
         return refuse(CODES.STALE_EVIDENCE,
           `"${want.property}" was observed at another revision; the content it measured is not the content being transitioned`);
       }
-    }
-    // The revision is not the content. An uncommitted edit leaves HEAD where it was, so
-    // evidence pinned only to a revision goes on counting for code it never ran against.
-    if (want.fresh && contentDigest) {
-      const onThisContent = fresh.filter((e) => e.fingerprint === contentDigest);
-      if (onThisContent.length === 0) {
-        const unpinned = fresh.some((e) => !e.fingerprint);
-        return refuse(CODES.CONTENT_CHANGED,
-          `"${want.property}" was not measured on the content now on disk` +
-          (unpinned
-            ? ' — it records no fingerprint at all, so what it ran against cannot be established'
-            : '; the working tree has moved since that run, and an uncommitted change is still a change'));
-      }
-      fresh = onThisContent;
     }
 
     const wanted = want.result ?? 'PASS';
@@ -223,12 +243,12 @@ export function canTransition(change, to, ctx = {}) {
           : ''));
     }
 
-    if (need.independentOf) {
+    if (want.independentOf) {
       const independent = right.some((e) =>
-        need.independentOf.every((r) => (e.executor?.independent_of ?? []).includes(r)));
+        want.independentOf.every((r) => (e.executor?.independent_of ?? []).includes(r)));
       if (!independent) {
         return refuse(CODES.NOT_INDEPENDENT,
-          `"${want.property}" was not produced independently of ${need.independentOf.join(', ')}; ` +
+          `"${want.property}" was not produced independently of ${want.independentOf.join(', ')}; ` +
           "a review that saw the builder's reasoning is not the independent pass this step assumes");
       }
     }

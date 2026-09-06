@@ -7,20 +7,21 @@ a rendered file is not a harness that loaded it.
 
 | Surface | Version | How it was established |
 |---|---|---|
-| Node.js | 24.17.0 | the whole suite runs on it: 110 deterministic tests |
+| Node.js | 24.17.0 | the whole suite runs on it: 117 deterministic tests |
 | Windows | win32/x64 | the suite ran here; the diff layer is exercised against real `git` with spaces and non-ASCII names |
 | git | 2.54.0 | `readDiff` is tested against a real repository, including rename, deletion and a `-z` round trip |
 | Protocol → adapters | — | `build.mjs --check` runs in CI; a hand edit to any generated file fails it |
 | Package integrity | — | `check-plugin.mjs`, with fixtures proving each rule rejects |
 | Claude Code desktop, plugin load | 0.14.0 @ `410a429` | the plugin is installed here and **this session exposes all five specialists as dispatchable agent types** — the harness read `agents/` and `commands/`. That is the previous commit, not this work: see the row below |
 | Codex install | — | installed into a synthetic consumer that already had its own `AGENTS.md`: file preserved, pointer appended once, second run idempotent, and the installed `capabilities.mjs` and `state.mjs` **executed from inside that consumer** |
-| Gate cycle, through the CLI | — | one change driven **open to `closed`** by the installed commands in a synthetic consumer — every state, with real commits, evidence and both approvals — and the append-only history asserted step by step |
-| Content binding | — | an uncommitted edit at an unchanged `HEAD` is refused with `E_CONTENT_CHANGED`; restoring the file makes the same evidence valid again; ticking `tasks.md` moves neither digest |
+| Gate cycle, through the CLI | — | one change driven **open to `closed`** by the installed commands in a synthetic consumer: a real branch, evidence produced by `state.mjs run`, both approvals, a real `git merge --no-ff`, the archival move, and the append-only history asserted step by step |
+| Content binding | — | an uncommitted edit at an unchanged `HEAD` is refused with `E_CONTENT_CHANGED`; a `--no-ff` merge over an identical tree is the same candidate and passes; a merge that changes the tree is refused; ticking `tasks.md` or archiving the change moves neither digest |
+| Path handling | — | an untracked file whose name git escapes (accents, spaces) is read and its content counts; a path that is present and unreadable raises `E_CONTENT_UNAVAILABLE` instead of being hashed as a placeholder |
 | Concurrency | — | two processes park on a barrier and are released together onto the same change: one lands, the other is refused with `E_CONCURRENT_UPDATE`, and only the winner appends a history event |
 
 `engines` declares `node >= 20.11.0`; only 24.17.0 was actually exercised.
 
-The suite is **110 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
+The suite is **117 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
 
 ## Implemented, real validation pending
 

@@ -1,16 +1,18 @@
 // Two digests, because a gate asks two different questions.
 //
 //   contractDigest — what the Founder approved: the proposal and the delta.
-//   contentDigest  — what a check actually ran against: the commit PLUS the working tree.
+//   contentDigest  — what a check actually ran against: the committed TREE plus every
+//                    uncommitted change to it.
 //
 // Neither is ever read out of an approval or a piece of evidence. Copying the recorded
 // digest forward would make the comparison agree with itself, which is the one thing
 // these checks exist to prevent.
 //
-// The split matters in both directions. Binding a scope approval to the whole change
-// folder made ticking a checkbox in `tasks.md` revoke it — progress is not scope. And
-// binding evidence to `HEAD` alone made an uncommitted edit invisible: the revision was
-// the same, so a run from before the edit still counted for a gate after it.
+// The unit of "content" is the tree, not the commit. A `--no-ff` merge writes a new commit
+// over an identical tree: the code being integrated is the code that was reviewed, and a
+// digest built on the commit sha would call that a different candidate and demand the whole
+// gate again. A commit that changes the tree is a different candidate, and that one is
+// exactly what must be caught.
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -20,16 +22,20 @@ import { join, relative } from 'node:path';
 const posix = (s) => s.split('\\').join('/');
 
 /**
- * The squad's own bookkeeping. It changes constantly, on its own writes, and it is never
- * what a check measured — so it is outside both digests. Every other file counts.
+ * The squad's own bookkeeping. It changes on the squad's own writes — a state file, a ticked
+ * task, a change folder moved to the archive — and none of that is what a check measured.
+ * `docs/changes/` is here in full: its contractual half is covered by the contract digest,
+ * and covering it twice would make archiving a change look like changing the code.
  */
-export const OPERATIONAL = ['.spectree', 'docs/changes/*/tasks.md'];
+export const OPERATIONAL = ['.spectree', 'docs/changes'];
 
 /**
- * The contractual half of a change folder, as a positive allowlist. Anything not named
- * here is operational: it may change all day without touching what was approved.
+ * The contractual half of a change folder, as a positive allowlist. Anything not named here
+ * is operational: it may change all day without touching what was approved.
  */
 export const CONTRACT = (rel) => rel === 'proposal.md' || rel.startsWith('specs/');
+
+const excluded = (p) => OPERATIONAL.some((e) => p === e || p.startsWith(`${e}/`));
 
 function walk(dir, base = dir, out = []) {
   for (const name of readdirSync(dir).sort()) {
@@ -42,15 +48,35 @@ function walk(dir, base = dir, out = []) {
 
 const sha = (h) => `sha256:${h.digest('hex')}`;
 
+const unavailable = (message, cause) => {
+  const e = new Error(`${message}${cause ? ` (${String(cause).trim().split('\n')[0]})` : ''}`);
+  e.code = 'E_CONTENT_UNAVAILABLE';
+  return e;
+};
+
+/** Where the change folder is now: open, or already moved into the archive. */
+function changeFolder(root, changeId) {
+  const open = join(root, 'docs', 'changes', changeId);
+  if (existsSync(open) && statSync(open).isDirectory()) return open;
+  const archive = join(root, 'docs', 'changes', 'archive');
+  if (!existsSync(archive)) return null;
+  const hits = readdirSync(archive).filter((d) => d === changeId || d.endsWith(`-${changeId}`)).sort();
+  if (hits.length > 1) {
+    throw unavailable(`"${changeId}" is archived more than once (${hits.join(', ')}); which one is the contract cannot be decided here`);
+  }
+  return hits.length ? join(archive, hits[0]) : null;
+}
+
 /**
- * What the human approved: `proposal.md` and the delta under `specs/`.
+ * What the human approved: `proposal.md` and the delta under `specs/`. Archiving the change
+ * moves those files; it does not change them, and the digest follows them.
  * @returns {{ digest: string, source: string, files: string[] }}
  */
 export function contractDigest(root, change, { artifactsDir } = {}) {
-  const dir = artifactsDir ?? join(root, 'docs', 'changes', change.change_id);
+  const dir = artifactsDir ?? changeFolder(root, change.change_id);
   const h = createHash('sha256');
 
-  if (existsSync(dir) && statSync(dir).isDirectory()) {
+  if (dir && existsSync(dir) && statSync(dir).isDirectory()) {
     const files = walk(dir).filter(CONTRACT).sort();
     if (files.length) {
       for (const rel of files) {
@@ -73,39 +99,48 @@ export function contractDigest(root, change, { artifactsDir } = {}) {
 }
 
 /**
- * The content a check would run against right now: the commit, plus every uncommitted
- * change to anything that is not the squad's own bookkeeping.
+ * The content a check would run against right now: the committed tree, plus every
+ * uncommitted change to anything that is not the squad's own bookkeeping.
  *
- * An unavailable comparison is unknown, never "nothing changed" — so this throws rather
- * than returning a digest it cannot stand behind.
- * @returns {{ digest: string, revision: string, dirty: boolean }}
+ * An unavailable comparison is unknown, never "nothing changed" — so every failure here
+ * throws. A file that is present and cannot be read is the sharpest case: hashing a
+ * placeholder in its place would give two different versions of it the same digest.
+ * @returns {{ digest: string, revision: string, tree: string, dirty: boolean }}
  */
 export function contentDigest(root) {
   const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  let revision, patch, untracked;
+  const exclude = OPERATIONAL.map((p) => `:(exclude)${p}`);
+  let revision, tree, entries, patch, untracked;
   try {
     revision = git(['rev-parse', 'HEAD']).trim();
-    const exclude = OPERATIONAL.map((p) => `:(exclude)${p}`);
+    tree = git(['rev-parse', 'HEAD^{tree}']).trim();
+    // -z everywhere: git quotes and escapes non-ASCII paths in its default output, and a
+    // path read back through that escaping is not the path on disk.
+    entries = git(['ls-tree', '-r', '-z', 'HEAD']).split('\0').filter(Boolean)
+      .map((line) => {
+        const tab = line.indexOf('\t');
+        return { meta: line.slice(0, tab), path: line.slice(tab + 1) };
+      })
+      .filter((e) => !excluded(e.path))
+      .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
     patch = git(['diff', 'HEAD', '--', '.', ...exclude]);
-    untracked = git(['ls-files', '--others', '--exclude-standard', '--', '.', ...exclude])
-      .split('\n').map((s) => s.trim()).filter(Boolean).sort();
+    untracked = git(['ls-files', '--others', '--exclude-standard', '-z', '--', '.', ...exclude])
+      .split('\0').filter(Boolean).sort();
   } catch (e) {
-    const err = new Error(
-      `the content under ${root} cannot be determined (${e.message.trim().split('\n')[0]}); ` +
-      'an unavailable comparison is unknown, not unchanged');
-    err.code = 'E_CONTENT_UNAVAILABLE';
-    throw err;
+    throw unavailable(`the content under ${root} cannot be determined`, e.message);
   }
 
   const h = createHash('sha256');
-  h.update(revision, 'utf8'); h.update('\0');
+  for (const e of entries) { h.update(e.meta, 'utf8'); h.update('\0'); h.update(e.path, 'utf8'); h.update('\0'); }
   h.update(patch, 'utf8'); h.update('\0');
   for (const rel of untracked) {
     h.update(rel, 'utf8'); h.update('\0');
-    try { h.update(readFileSync(join(root, rel))); } catch { h.update('<unreadable>', 'utf8'); }
-    h.update('\0');
+    let body;
+    try { body = readFileSync(join(root, rel)); }
+    catch (e) { throw unavailable(`"${rel}" is part of the content and cannot be read`, e.message); }
+    h.update(body); h.update('\0');
   }
-  return { digest: sha(h), revision, dirty: patch.length > 0 || untracked.length > 0 };
+  return { digest: sha(h), revision, tree, dirty: patch.length > 0 || untracked.length > 0 };
 }
 
 /** What an integration-class gate authorises: the contract AND the code it will carry. */
