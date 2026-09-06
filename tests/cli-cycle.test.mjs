@@ -34,21 +34,32 @@ function consumer() {
     return f;
   };
   /** Produce evidence the way the protocol wants it: by running something. */
-  const run = (property, { role = 'platform_engineer', independentOf, expectNonzero, signal, exit = 0, id, prints } = {}) => cli(
+  const run = (property, { role = 'platform_engineer', independentOf, expectFailing, exit = 0, id, prints } = {}) => cli(
     'run', 'c1', property,
     '--role', role,
     ...(independentOf ? ['--independent-of', independentOf] : []),
-    ...(expectNonzero ? ['--expect-nonzero'] : []),
-    ...(signal ? ['--expect-signal', signal] : []),
+    ...(expectFailing ? ['--expect-failing', expectFailing] : []),
     ...(id ? ['--id', id] : []),
     '--', process.execPath, '-e',
-    `${prints ? `console.error(${JSON.stringify(prints)});` : ''}process.exit(${exit})`,
+    `${prints ? `console.log(${JSON.stringify(prints)});` : ''}process.exit(${exit})`,
   );
   const drop = () => { cleanup(repo.root); cleanup(scratch); };
   return { ...repo, cli, doc, run, drop };
 }
 
 const proposal = (text) => `# proposal\n\n${text}\n`;
+
+/** The Scenario pass 1 must show failing, and the TAP a runner would emit around it. */
+const SCENARIO = 'Scenario: creation with a blank name';
+const TAP = {
+  red: ['TAP version 13', '1..1', `not ok 1 - ${SCENARIO}`].join('\n'),
+  green: ['TAP version 13', '1..1', `ok 1 - ${SCENARIO}`].join('\n'),
+  // A syntax error: the diagnostic echoes the source line, and no test ever ran. This is the
+  // output that satisfied a substring match, which is why substring matching is gone.
+  crash: ["SyntaxError: Unexpected token ';'", 'const ACCOUNT_NAME_REQUIRED = ;', `  while loading ${SCENARIO}`].join('\n'),
+  truncated: ['TAP version 13', '1..3', `not ok 1 - ${SCENARIO}`].join('\n'),
+  skipped: ['TAP version 13', '1..1', `not ok 1 - ${SCENARIO} # SKIP`].join('\n'),
+};
 
 /** The two artifacts a change carries: the contract, and the progress note beside it. */
 function contractOnDisk(c, text = 'one module, four Requirements', done = false) {
@@ -156,10 +167,10 @@ function upToImplemented(c) {
   assert.equal(c.cli('transition', 'c1', 'isolated').code, 0);
   assert.equal(c.run('suite.baseline').code, 0);
   assert.equal(c.cli('transition', 'c1', 'baselined').code, 0);
-  // Pass 1 delivers FAILING tests, so the check is expected to exit non-zero — and to show
-  // the failure it was looking for, because a crash exits non-zero too.
+  // Pass 1 delivers FAILING tests, and the property says so: a named test must be reported as
+  // failing by a run that enumerated its tests and finished.
   assert.equal(c.run('pass1.tests_failing', {
-    expectNonzero: true, exit: 1, signal: 'ACCOUNT_NAME_REQUIRED', prints: 'not ok 1 - ACCOUNT_NAME_REQUIRED',
+    role: 'quality_engineer', expectFailing: SCENARIO, exit: 1, prints: TAP.red,
   }).code, 0);
   assert.equal(c.cli('transition', 'c1', 'pass1_complete').code, 0);
 
@@ -402,37 +413,83 @@ test('adding a Requirement invalidates the QA that never saw it', () => {
   } finally { c.drop(); }
 });
 
-test('a result cannot be inverted into a pass, and a crash is not a red test', () => {
+test('pass 1 is satisfied only by a named test that ran and failed', () => {
   const c = consumer();
   try {
     upToImplemented(c);
+    const ev = (id) => JSON.parse(readFileSync(join(c.root, `.spectree/evidence/${id}.json`), 'utf8'));
 
-    // Inverting a property that asserts success would turn a red CI into a green gate.
-    const wrong = c.cli('run', 'c1', 'ci.green', '--role', 'platform_engineer', '--expect-nonzero',
-      '--expect-signal', 'boom', '--', process.execPath, '-e', 'process.exit(1)');
+    // The semantics belong to the property, so they cannot be switched off by omitting a flag.
+    const bare = c.cli('run', 'c1', 'pass1.tests_failing', '--role', 'quality_engineer',
+      '--', process.execPath, '-e', 'process.exit(0)');
+    assert.equal(bare.code, 2, 'a run with nothing failing is not pass 1');
+    assert.match(bare.err, /--expect-failing/);
+
+    // And no other property may be satisfied by a run that failed.
+    const wrong = c.cli('run', 'c1', 'ci.green', '--role', 'platform_engineer',
+      '--expect-failing', SCENARIO, '--', process.execPath, '-e', 'process.exit(1)');
     assert.equal(wrong.code, 2);
     assert.match(wrong.err, /not available for "ci\.green"/);
-    assert.equal(existsSync(join(c.root, '.spectree/evidence')) &&
-      readFileSync(join(c.root, '.spectree/changes/c1.json'), 'utf8').includes('ci_green'), false);
 
-    // Inversion without a signal to look for is refused: a crash also exits non-zero.
-    const noSignal = c.cli('run', 'c1', 'pass1.tests_failing', '--role', 'quality_engineer', '--expect-nonzero',
-      '--', process.execPath, '-e', 'process.exit(1)');
-    assert.equal(noSignal.code, 2);
-    assert.match(noSignal.err, /--expect-signal/);
-
-    // And a run that fails without printing it is INFRA_ERROR: nothing was exercised.
-    const broken = c.run('pass1.tests_failing', {
-      role: 'quality_engineer', expectNonzero: true, exit: 1,
-      signal: 'ACCOUNT_NAME_REQUIRED', prints: 'Error: Cannot find module ./account.test.js', id: 'e-broken',
+    // A syntax error whose diagnostic echoes the Scenario name: nothing ran, and no substring
+    // in that output can say otherwise.
+    const crashed = c.run('pass1.tests_failing', {
+      role: 'quality_engineer', expectFailing: SCENARIO, exit: 1, prints: TAP.crash, id: 'e-crash',
     });
-    assert.equal(broken.code, 1);
-    assert.match(broken.err, /INFRA_ERROR/);
-    assert.match(broken.err, /never printed "ACCOUNT_NAME_REQUIRED"/);
-    const stored = JSON.parse(readFileSync(join(c.root, '.spectree/evidence/e-broken.json'), 'utf8'));
-    assert.equal(stored.result, 'INFRA_ERROR');
-    assert.equal(stored.negative_control.expected_signal, 'ACCOUNT_NAME_REQUIRED');
-    assert.equal(stored.negative_control.observed_signal, undefined, 'it never saw the signal, and does not claim to');
+    assert.equal(crashed.code, 1);
+    assert.match(crashed.err, /INFRA_ERROR/);
+    assert.match(crashed.err, /carries no test plan/);
+    assert.equal(ev('e-crash').result, 'INFRA_ERROR');
+    assert.equal(ev('e-crash').negative_control.observed_signal, undefined, 'it saw nothing, and does not claim to');
+
+    // A run that started and stopped halfway is not a finished run.
+    const cut = c.run('pass1.tests_failing', {
+      role: 'quality_engineer', expectFailing: SCENARIO, exit: 1, prints: TAP.truncated, id: 'e-cut',
+    });
+    assert.equal(cut.code, 1);
+    assert.match(cut.err, /planned 3 test\(s\) and reported 1/);
+
+    // A skipped test did not run either.
+    const skipped = c.run('pass1.tests_failing', {
+      role: 'quality_engineer', expectFailing: SCENARIO, exit: 1, prints: TAP.skipped, id: 'e-skip',
+    });
+    assert.equal(skipped.code, 1);
+    assert.match(skipped.err, /SKIP/);
+
+    // The test ran and passed: that is a real answer, and it is not pass 1's.
+    const green = c.run('pass1.tests_failing', {
+      role: 'quality_engineer', expectFailing: SCENARIO, exit: 0, prints: TAP.green, id: 'e-green',
+    });
+    assert.equal(green.code, 1);
+    assert.match(green.err, /ran and passed/);
+    assert.equal(ev('e-green').result, 'FAIL');
+  } finally { c.drop(); }
+});
+
+test('a run that rewrites the contract cannot be credited with the Requirements it wrote', () => {
+  const c = consumer();
+  try {
+    upToImplemented(c);
+    // The command passes, and while passing it adds a Requirement to the proposal. Binding the
+    // evidence to the contract as it reads afterwards would let a run supply its own criteria.
+    const script = "require('fs').appendFileSync('docs/changes/c1/specs/account/spec.md','\\n### Requirement: z\\n')";
+    const r = c.cli('run', 'c1', 'pass2.attack', '--role', 'quality_engineer',
+      '--independent-of', 'full_stack_developer', '--id', 'e-self', '--', process.execPath, '-e', script);
+    assert.equal(r.code, 1);
+    assert.match(r.err, /INCONCLUSIVE/);
+    assert.match(r.err, /CONTRACT moved during the run/);
+
+    const stored = JSON.parse(readFileSync(join(c.root, '.spectree/evidence/e-self.json'), 'utf8'));
+    assert.equal(stored.result, 'INCONCLUSIVE');
+    assert.notEqual(stored.contract_digest, c.cli('digest', 'c1').out, 'it records the contract it started from, not the one it created');
+
+    // And it satisfies nothing, even once that new contract is approved.
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'the run rewrote the spec']);
+    const rev = c.git(['rev-parse', 'HEAD']).trim();
+    c.cli('record-approval', c.doc('ap1b', approvalDoc('ap1b', 'scope', c.cli('digest', 'c1').out, rev)));
+    const gate = c.cli('can', 'c1', 'pass2_complete');
+    assert.equal(gate.code, 1);
+    assert.match(gate.err, /E_EVIDENCE_NOT_PASS|E_CONTRACT_CHANGED|E_CONTENT_CHANGED/);
   } finally { c.drop(); }
 });
 

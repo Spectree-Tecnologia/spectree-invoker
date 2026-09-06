@@ -128,7 +128,7 @@ run exercised — and only one command produces it:
 
 ```bash
 node scripts/state.mjs run <change-id> <property> --role <role> [--independent-of a,b] \
-  [--expect-nonzero --expect-signal <text>] [--id <evidence-id>] -- <command> [args...]
+  [--expect-failing <test name> [--report <tap file>]] [--id <evidence-id>] -- <command> [args...]
 ```
 
 It measures the content, runs the command, measures again, and records the result together with
@@ -136,18 +136,36 @@ the digests it started from — the content **and** the contract. Exit 0 is `PAS
 could not be executed is `INFRA_ERROR`, and one that **changed the content it was measuring** is
 `INCONCLUSIVE`: it satisfies no gate, because what it exercised cannot be established.
 
-`--expect-nonzero` inverts the reading, and it is available for **`pass1.tests_failing` only** —
-the one property whose delivery is a failing test. Everything else asserts success, and a
-command that failed is not evidence that it succeeded. Inversion also requires
-`--expect-signal "<text>"`, and the run must print it: a crash, a missing file and a syntax
-error all exit non-zero, so a bare exit code cannot tell a red test from a broken suite. Failed
-without the signal is `INFRA_ERROR`, and the record keeps the `negative_control` saying what was
-expected and whether it was seen.
+**`pass1.tests_failing` means a named test ran and failed**, and that is the property's
+meaning, not an option on the command line. It requires `--expect-failing "<test name>"`, and
+the run must emit TAP — on stdout, or in a file named by `--report`. The runner then reads
+structure, not text:
+
+| The run showed | Result |
+|---|---|
+| a plan, all planned results reported, `not ok` for the named test, non-zero exit | `PASS` |
+| no plan at all — a crash before any test was enumerated | `INFRA_ERROR` |
+| fewer results than planned, or `Bail out!` | `INFRA_ERROR` |
+| the named test absent, or `# SKIP` | `INFRA_ERROR` |
+| the named test reported `ok` | `FAIL` |
+| a failure reported alongside exit 0 | `INFRA_ERROR` |
+
+This replaced a substring search, which `const ACCOUNT_NAME_REQUIRED = ;` satisfied: the syntax
+error printed the identifier, no test ran, and the gate opened. A stack trace, an echoed source
+line and a log message are all text; a plan and a numbered result are structure.
+
+No other property accepts `--expect-failing`. A command that failed is not evidence that it
+succeeded, and there is no flag that makes it one.
 
 The launcher is resolved the way the platform resolves it. On Windows `npm`, `npx` and `pnpm`
 are `.cmd` shims that Node refuses to spawn directly, so the runner finds them through `PATH`
 and `PATHEXT` and invokes the shim deliberately — rather than turning `shell: true` on for
-every string, which would hand every argument back to the interpreter.
+every string, which would hand every argument back to the interpreter. Arguments are quoted so
+they arrive byte for byte: an empty argument stays an empty argument, and a trailing backslash
+does not escape the closing quote. What **cannot** survive that trip is refused with
+`E_ARGUMENT_UNTRANSPORTABLE` rather than delivered as something else — `%` and `!` are expanded
+by cmd before any quoting applies, and a `"` is re-parsed when the shim forwards with `%*`.
+Where the refusal bites, invoke the underlying executable directly.
 
 `record-evidence` **imports** a document. It observes nothing, so it neither stamps a
 `fingerprint`/`contract_digest` nor accepts one: a document cannot acquire the authority of an
@@ -162,6 +180,11 @@ never carry code past a QA and a CI that never saw it. And `pass1.tests_failing`
 `pass2.attack` are bound to the **contract** as well: they are claims about the Scenarios, so
 adding an acceptance criterion invalidates them with `E_CONTRACT_CHANGED` even when the code
 never moved. Moving the same contract into the archive does not.
+
+Both bindings are captured **before** the command runs and compared after it. A run that edits
+the contract it is being measured against is `INCONCLUSIVE`, and the record keeps the contract
+it started from — otherwise a run could supply its own acceptance criteria and then be credited
+with meeting them.
 
 Blocking states its cause, and records where to come back to:
 

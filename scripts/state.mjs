@@ -10,8 +10,8 @@
 //   node scripts/state.mjs transition <change-id> <to-state> --expect <state_revision>
 //   node scripts/state.mjs transition <change-id> blocked --reason "<why>"
 //   node scripts/state.mjs run <change-id> <property> --role <r> [--independent-of a,b]
-//                                [--expect-nonzero --expect-signal <text>] [--id <e>]
-//                                -- <command> [args...]
+//                                [--expect-failing <test name> [--report <tap file>]]
+//                                [--id <e>] -- <command> [args...]
 //   node scripts/state.mjs record-evidence <file.json>
 //   node scripts/state.mjs record-approval <file.json>
 //   node scripts/state.mjs defer <file.json>
@@ -23,9 +23,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
-import { canTransition, INVERTIBLE } from './lib/state-machine.mjs';
+import { canTransition, ASSERTS_FAILURE } from './lib/state-machine.mjs';
 import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
 import { launch } from './lib/launch.mjs';
+import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
 
 // A gate is bound to what it authorises. Scope-class gates authorise the contract; the
@@ -260,65 +261,100 @@ switch (cmd) {
     const role = opt('role') ?? die('--role is required: evidence that cannot say who produced it is not evidence');
     const independent = (opt('independent-of', '') || '').split(',').map((x) => x.trim()).filter(Boolean);
 
-    // Inverting the result is only meaningful where the property IS a failure: pass 1's
-    // delivery is failing tests. Allowing it anywhere turned a red CI into a green gate with
-    // one flag, so the permission is an allowlist and everything else is refused by name.
-    const expectNonzero = pre.includes('--expect-nonzero');
-    if (expectNonzero && !INVERTIBLE.has(property)) {
-      die(`--expect-nonzero is not available for "${property}": it asserts success, and a command that failed is not evidence that it succeeded. ` +
-          `Inversion exists for ${[...INVERTIBLE].join(', ')}.`);
+    // What a property means is not a flag. `pass1.tests_failing` PASSES only when a named test
+    // ran and failed, and no other property may be satisfied by a run that failed — both
+    // directions are mandatory, so neither can be turned off by omitting an option.
+    for (const gone of ['expect-nonzero', 'expect-signal']) {
+      if (pre.includes(`--${gone}`)) {
+        die(`--${gone} is gone: it made the semantics of a property optional. Failure-asserting properties ` +
+            `(${[...ASSERTS_FAILURE].join(', ')}) require --expect-failing "<test name>" and a machine-readable result.`);
+      }
     }
-    // And a non-zero exit alone does not say a test failed — a crash, a missing file and a
-    // syntax error all exit non-zero. The run has to show the signal it was looking for.
-    const signal = opt('expect-signal');
-    if (expectNonzero && !signal) {
-      die('--expect-nonzero requires --expect-signal "<text the failing run must print>": ' +
-          'a non-zero exit is also what a broken suite does, and the two are not the same finding');
+    const assertsFailure = ASSERTS_FAILURE.has(property);
+    const expectFailing = opt('expect-failing');
+    if (assertsFailure && !expectFailing) {
+      die(`"${property}" is satisfied only by a named test that ran and failed. Pass --expect-failing "<test name>" ` +
+          'and let the command emit TAP (or point --report at the TAP it writes).');
+    }
+    if (!assertsFailure && expectFailing) {
+      die(`--expect-failing is not available for "${property}": it asserts success, and a command that failed ` +
+          'is not evidence that it succeeded.');
     }
 
     let before;
-    try { before = contentDigest(root); } catch (e) { die(`${e.code}: ${e.message}`, 1); }
-    const r = launch(cmd, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    try { before = { content: contentDigest(root), contract: contractDigest(root, change, { artifactsDir: opt('artifacts') }) }; }
+    catch (e) { die(`${e.code}: ${e.message}`, 1); }
+    let r;
+    try { r = launch(cmd, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }); }
+    catch (e) {
+      // The command could not be delivered as written. That is an invocation to fix, not a
+      // result to record: running a DIFFERENT command and filing the outcome would be worse.
+      die(`${e.code ?? 'E_LAUNCH'}: ${e.message}`);
+    }
     let after;
-    try { after = contentDigest(root); } catch (e) { die(`${e.code}: ${e.message}`, 1); }
+    try { after = { content: contentDigest(root), contract: contractDigest(root, change, { artifactsDir: opt('artifacts') }) }; }
+    catch (e) { die(`${e.code}: ${e.message}`, 1); }
     const output = `${r.stdout ?? ''}${r.stderr ?? ''}`;
     if (output) process.stderr.write(output.endsWith('\n') ? output : `${output}\n`);
 
-    const moved = before.digest !== after.digest;
-    const sawSignal = Boolean(signal) && output.includes(signal);
+    // Both bindings are captured BEFORE and checked after. Computing the contract digest at
+    // the end attributed to the run whatever the run itself had just written.
+    const movedContent = before.content.digest !== after.content.digest;
+    const movedContract = before.contract.digest !== after.contract.digest;
+    const moved = movedContent || movedContract;
+
+    let tapVerdict = null;
+    if (assertsFailure && !r.error && !moved) {
+      let report = output;
+      const reportFile = opt('report');
+      if (reportFile) {
+        try { report = readFileSync(reportFile, 'utf8'); }
+        catch (e) { die(`--report ${reportFile}: ${e.message}`, 1); }
+      }
+      tapVerdict = judgeFailingRun(parseTap(report), expectFailing, r.status);
+    }
+
     const result = r.error ? 'INFRA_ERROR'
       : moved ? 'INCONCLUSIVE'
-      : expectNonzero
-        ? (r.status === 0 ? 'FAIL' : sawSignal ? 'PASS' : 'INFRA_ERROR')
-        : (r.status === 0 ? 'PASS' : 'FAIL');
+      : tapVerdict ? tapVerdict.result
+      : (r.status === 0 ? 'PASS' : 'FAIL');
 
     const doc = {
       schema_version: SCHEMA_VERSION,
       evidence_id: opt('id') ?? `ev-${randomUUID().slice(0, 8)}`,
       change_id: id,
       property,
-      check: cmd.join(' ') + (expectNonzero ? '  (expected to exit non-zero)' : ''),
+      check: cmd.join(' ') + (assertsFailure ? `  (expecting "${expectFailing}" to run and fail)` : ''),
       executor: { role, ...(independent.length ? { independent_of: independent } : {}) },
       source_kind: 'observed_execution',
-      revision: before.revision,
-      fingerprint: before.digest,
-      contract_digest: contractDigest(root, change, { artifactsDir: opt('artifacts') }).digest,
+      revision: before.content.revision,
+      fingerprint: before.content.digest,
+      contract_digest: before.contract.digest,
       environment: { os: process.platform, runtime: `node ${process.versions.node}` },
       timestamp: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
       result,
       ...(typeof r.status === 'number' ? { exit_code: r.status } : {}),
-      ...(signal ? { negative_control: { input: cmd.join(' '), expected_signal: signal, ...(sawSignal ? { observed_signal: signal } : {}) } } : {}),
-      ...(moved ? { limitations: ['the command changed the content it was measuring, so what it exercised cannot be established'] } : {}),
-      ...(r.error ? { limitations: [`the command could not be executed: ${r.error.message}`] } : {}),
-      ...(expectNonzero && !sawSignal && r.status !== 0 && !moved && !r.error
-        ? { limitations: [`exited ${r.status} without printing "${signal}": a crash, a missing file and a syntax error also exit non-zero, so nothing was exercised`] }
+      ...(assertsFailure
+        ? { negative_control: {
+            input: cmd.join(' '),
+            expected_signal: `the test "${expectFailing}" reported as failing in a completed run`,
+            ...(tapVerdict?.matched ? { observed_signal: `not ok - ${tapVerdict.matched.name}` } : {}),
+          } }
         : {}),
+      ...(moved
+        ? { limitations: [movedContract && !movedContent
+            ? 'the command changed the contract it was being measured against, so the Requirements it exercised cannot be established'
+            : 'the command changed the content it was measuring, so what it exercised cannot be established'] }
+        : {}),
+      ...(r.error ? { limitations: [`the command could not be executed: ${r.error.message}`] } : {}),
+      ...(tapVerdict && tapVerdict.result !== 'PASS' ? { limitations: [tapVerdict.reason] } : {}),
     };
     try { store.putEvidence(doc); } catch (e) { die(e.message, 1); }
     console.error(`recorded evidence ${doc.evidence_id}: ${property} = ${result}`);
-    console.error(`  content ${before.digest.slice(0, 22)}...${before.dirty ? ' (with uncommitted changes)' : ''}`);
-    if (moved) console.error('  the content moved DURING the run: recorded INCONCLUSIVE, and it satisfies no gate');
-    if (expectNonzero && !sawSignal && r.status !== 0) console.error(`  it failed, but never printed "${signal}" — that is a broken run, not a red test`);
+    console.error(`  content ${before.content.digest.slice(0, 22)}...${before.content.dirty ? ' (with uncommitted changes)' : ''}`);
+    if (movedContent) console.error('  the content moved DURING the run: recorded INCONCLUSIVE, and it satisfies no gate');
+    if (movedContract) console.error('  the CONTRACT moved during the run: the run cannot be credited with Requirements it wrote itself');
+    if (tapVerdict && tapVerdict.result !== 'PASS') console.error(`  ${tapVerdict.reason}`);
     process.exit(result === 'PASS' ? 0 : 1);
   }
 

@@ -35,8 +35,42 @@ export function resolveOnPath(file, { platform = process.platform, env = process
   return null;
 }
 
-/** Quote one token for `cmd.exe`. Conservative: anything unusual gets quoted. */
-const quote = (s) => (/[\s"&|<>^()%!]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s);
+/**
+ * What cannot be carried through `cmd.exe` intact, whatever quoting is applied.
+ *
+ * `%` is expanded before quoting is even considered, so `literal%FOO%end` arrives as whatever
+ * `FOO` holds; `!` is expanded too when delayed expansion is on, which a ComSpec with `/V:ON`
+ * turns on for us. There is no escape for either on a command line — only inside a batch file —
+ * so the honest answer is to refuse the argument and say why, rather than to deliver a
+ * different one and let the run report on something nobody asked for.
+ */
+export function untransportable(arg) {
+  if (arg.includes('%')) return 'contains "%", which cmd.exe expands as a variable before any quoting applies';
+  if (arg.includes('!')) return 'contains "!", which cmd.exe expands when delayed expansion is enabled';
+  if (arg.includes('"')) {
+    return 'contains a double quote: a .cmd shim forwards its arguments with %*, so cmd.exe parses the line ' +
+      'a second time, and `\\"` is a C runtime escape that cmd does not honour';
+  }
+  if (/[\r\n\0]/.test(arg)) return 'contains a newline or a NUL, which a command line cannot carry';
+  return null;
+}
+
+/**
+ * Quote one token so it arrives byte for byte. An empty argument must be `""` or it disappears
+ * entirely, and a trailing run of backslashes must be doubled or it escapes the closing quote.
+ * Anything that cannot survive the trip is refused rather than delivered as something else.
+ */
+export function quoteForCmd(s) {
+  const why = untransportable(s);
+  if (why) {
+    const e = new Error(`${JSON.stringify(s)} cannot be quoted for cmd.exe: it ${why}`);
+    e.code = 'E_ARGUMENT_UNTRANSPORTABLE';
+    throw e;
+  }
+  if (s === '') return '""';
+  if (!/[\s&|<>^()]/.test(s)) return s;
+  return `"${s.replace(/(\\+)$/, '$1$1')}"`;
+}
 
 /**
  * Run a command as given. Returns whatever spawnSync returns, so the caller keeps deciding
@@ -51,7 +85,17 @@ export function launch(cmd, options = {}) {
   if (!resolved) return spawnSync(file, args, { ...options, shell: false });
 
   if (/\.(cmd|bat)$/i.test(resolved)) {
-    const line = [resolved, ...args].map(quote).join(' ');
+    for (const a of args) {
+      const why = untransportable(a);
+      if (why) {
+        const e = new Error(
+          `the argument ${JSON.stringify(a)} cannot be passed to "${file}" on Windows: it ${why}. ` +
+          'Invoke the underlying executable directly, or move the value into a file the command reads.');
+        e.code = 'E_ARGUMENT_UNTRANSPORTABLE';
+        throw e;
+      }
+    }
+    const line = [resolved, ...args].map(quoteForCmd).join(' ');
     return spawnSync(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', `"${line}"`],
       { ...options, shell: false, windowsVerbatimArguments: true });
   }

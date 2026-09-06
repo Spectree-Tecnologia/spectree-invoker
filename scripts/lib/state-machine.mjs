@@ -91,12 +91,16 @@ export const ENTRY_REQUIREMENTS = {
 };
 
 /**
- * Properties whose PASS means the command FAILED. Pass 1's delivery is failing tests; nothing
- * else in the pipeline asserts a failure, and inverting one that asserts success turns a red
- * run into a green gate with a single flag. It lives here because it is protocol knowledge
- * about what a property means, not a detail of how the runner is invoked.
+ * Properties whose PASS means the named test RAN AND FAILED. Pass 1's delivery is failing
+ * tests, and nothing else in the pipeline asserts a failure.
+ *
+ * This is protocol knowledge about what a property means, not a detail of how the runner is
+ * invoked — which is why it is not a flag. A flag makes the semantics optional: pass it and a
+ * red run reads as green, omit it and a run that never failed reads as pass 1 delivered.
+ * Belonging to this set is mandatory in both directions: these properties require a named
+ * failing test, and no other property may be satisfied by a run that failed.
  */
-export const INVERTIBLE = new Set(['pass1.tests_failing']);
+export const ASSERTS_FAILURE = new Set(['pass1.tests_failing']);
 
 /** Legal edges. Forward one step, or into `blocked` from anywhere but the ends. */
 export function legalTargets(change) {

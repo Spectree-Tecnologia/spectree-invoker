@@ -496,14 +496,97 @@ test('12. a Windows launcher is resolved through PATH and PATHEXT, not assumed t
 
 // --- fourth round, finding 13: inversion, and what a non-zero exit proves ----
 
-test('13. only a property that asserts failure may be inverted', async () => {
-  const { INVERTIBLE, ENTRY_REQUIREMENTS } = await import('../scripts/lib/state-machine.mjs');
-  assert.deepEqual([...INVERTIBLE], ['pass1.tests_failing'],
+test('13. what a property means is not a flag', async () => {
+  const { ASSERTS_FAILURE, ENTRY_REQUIREMENTS } = await import('../scripts/lib/state-machine.mjs');
+  assert.deepEqual([...ASSERTS_FAILURE], ['pass1.tests_failing'],
     'one property, and it is the one whose delivery is a failing test');
-  // The property that matters: nothing a gate requires to PASS may be inverted into one.
+  // The property that matters: nothing a gate requires to PASS may be satisfied by a failure.
   const asserted = new Set(Object.values(ENTRY_REQUIREMENTS).flatMap((r) => (r.evidence ?? []).map((e) => e.property)));
   for (const p of ['ci.green', 'pass2.attack', 'suite.baseline', 'closure.merged']) {
     assert.ok(asserted.has(p), `${p} is a gate requirement`);
-    assert.equal(INVERTIBLE.has(p), false, `${p} asserts success, so a failed run is not evidence of it`);
+    assert.equal(ASSERTS_FAILURE.has(p), false, `${p} asserts success, so a failed run is not evidence of it`);
   }
+});
+
+// --- fifth round, finding 14: a substring is not a failing test --------------
+
+test('14. a plan, a numbered result and a matching count — not a substring', async () => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const NAME = 'Scenario: creation with a blank name';
+  const judge = (text, exit = 1) => judgeFailingRun(parseTap(text), NAME, exit);
+
+  const red = judge(`TAP version 13\n1..1\nnot ok 1 - ${NAME}\n`);
+  assert.equal(red.result, 'PASS');
+  assert.equal(red.matched.name, NAME);
+
+  // The exact output that satisfied substring matching: a syntax error echoing the source.
+  const crash = judge(`SyntaxError: Unexpected token ';'\nconst ${NAME} = ;\n  at compileSourceTextModule\n`);
+  assert.equal(crash.result, 'INFRA_ERROR');
+  assert.match(crash.reason, /no test plan/);
+
+  // A YAML diagnostic under a result line may contain anything, including the name.
+  const diagnostic = judge([`TAP version 13`, `1..1`, `not ok 1 - some other test`, `  ---`,
+    `  error: expected ${NAME}`, `  ...`].join('\n'));
+  assert.equal(diagnostic.result, 'INFRA_ERROR');
+  assert.match(diagnostic.reason, /never exercised/);
+
+  assert.equal(judge(`TAP version 13\n1..3\nnot ok 1 - ${NAME}\n`).result, 'INFRA_ERROR', 'a truncated run did not finish');
+  assert.equal(judge(`TAP version 13\n1..0\n`).result, 'INFRA_ERROR', 'an empty suite is not a failing suite');
+  assert.equal(judge(`TAP version 13\n1..1\nnot ok 1 - ${NAME}\nBail out! the database is down\n`).result, 'INFRA_ERROR');
+  assert.equal(judge(`TAP version 13\n1..1\nnot ok 1 - ${NAME} # SKIP\n`).result, 'INFRA_ERROR', 'a skipped test did not run');
+  assert.equal(judge(`TAP version 13\n1..1\nok 1 - ${NAME}\n`, 0).result, 'FAIL', 'it ran and passed');
+  assert.equal(judge(`TAP version 13\n1..1\nnot ok 1 - ${NAME}\n`, 0).result, 'INFRA_ERROR',
+    'a failure reported alongside exit 0: the two disagree');
+
+  // A Scenario is usually a subtest, and the plan still counts the file.
+  const nested = judge([`TAP version 13`, `    1..1`, `    not ok 1 - ${NAME}`,
+    `1..1`, `not ok 1 - account.test.mjs`].join('\n'));
+  assert.equal(nested.result, 'PASS');
+});
+
+// --- fifth round, finding 15: arguments that reach the command unchanged -----
+
+test('15. an empty argument survives, and one that cannot be carried is refused', async () => {
+  const { quoteForCmd, untransportable } = await import('../scripts/lib/launch.mjs');
+
+  assert.equal(quoteForCmd(''), '""', 'an unquoted empty argument disappears entirely');
+  assert.equal(quoteForCmd('plain'), 'plain');
+  assert.equal(quoteForCmd('two words'), '"two words"');
+  assert.equal(quoteForCmd('back\\slash'), 'back\\slash');
+  assert.equal(quoteForCmd('with space\\'), '"with space\\\\"', 'a trailing backslash must not escape the closing quote');
+  assert.equal(quoteForCmd('a&b'), '"a&b"', 'cmd metacharacters are neutralised by quoting');
+  assert.equal(quoteForCmd('a^b'), '"a^b"');
+
+  // These cannot be carried at all, so they are refused rather than delivered as something else.
+  assert.match(untransportable('literal%SPECTREE_PROBE%end'), /expands as a variable/);
+  assert.match(untransportable('bang!'), /delayed expansion/);
+  assert.match(untransportable('a"b'), /parses the line a second time/);
+  assert.match(untransportable('two\nlines'), /newline/);
+  assert.equal(untransportable('everything else'), null);
+  assert.throws(() => quoteForCmd('a"b'), (e) => e.code === 'E_ARGUMENT_UNTRANSPORTABLE');
+});
+
+test('15b. arguments reach a .cmd shim byte for byte, or the run is refused', async (t) => {
+  if (process.platform !== 'win32') return t.skip('cmd.exe transport is a Windows-only path');
+  const { launch } = await import('../scripts/lib/launch.mjs');
+  const dir = tempDir('spectree-shim-');
+  try {
+    // A shim that forwards with %*, exactly as npm.cmd, npx.cmd and pnpm.cmd do.
+    writeFileSync(join(dir, 'probe.mjs'), 'console.log(JSON.stringify(process.argv.slice(2)));\n');
+    writeFileSync(join(dir, 'probe.cmd'), `@echo off\r\n"${process.execPath}" "%~dp0probe.mjs" %*\r\n`);
+    const shim = join(dir, 'probe.cmd');
+
+    const sent = ['', 'two words', 'a&b', 'back\\slash', 'trailing space\\', '(paren)', 'a^b',
+      'semi;colon', 'a|b', 'x>y', 'tab\there', 'acentuação e ç', 'eq=sign'];
+    const r = launch([shim, ...sent], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(JSON.parse(r.stdout.trim()), sent, 'every argument arrives byte for byte, together');
+
+    for (const bad of ['literal%SPECTREE_PROBE%end', 'a"b', 'bang!']) {
+      assert.throws(() => launch([shim, bad], { encoding: 'utf8' }),
+        // The message quotes the argument, so compare against its quoted form.
+        (e) => e.code === 'E_ARGUMENT_UNTRANSPORTABLE' && e.message.includes(JSON.stringify(bad).slice(1, -1)),
+        `${bad} must be refused, not silently altered`);
+    }
+  } finally { cleanup(dir); }
 });
