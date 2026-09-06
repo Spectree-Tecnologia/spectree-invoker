@@ -515,3 +515,46 @@ test('the runner executes the launcher this platform actually has', (t) => {
     assert.match(stored.check, /npm test --silent/);
   } finally { c.drop(); }
 });
+
+test('a report is read only when this run wrote it', () => {
+  const c = consumer();
+  try {
+    upToImplemented(c);
+    const ev = (id) => JSON.parse(readFileSync(join(c.root, `.spectree/evidence/${id}.json`), 'utf8'));
+    const write = (dest) => `require('fs').writeFileSync(${dest}, ${JSON.stringify(`${TAP.red}\n`)});process.exit(1)`;
+
+    // A report from an earlier, genuinely red run, sitting where anyone can point at it.
+    const stale = join(c.root, 'earlier.tap');
+    writeFileSync(stale, `${TAP.red}\n`);
+
+    // The flag takes no path at all, so it cannot be aimed at that file.
+    const aimed = c.cli('run', 'c1', 'pass1.tests_failing', '--role', 'quality_engineer',
+      '--expect-failing', SCENARIO, '--report', stale, '--', process.execPath, '-e', 'process.exit(1)');
+    assert.equal(aimed.code, 2);
+    assert.match(aimed.err, /--report takes no path/);
+
+    // And a run that writes nothing has produced no results, whatever else is on disk.
+    const silent = c.cli('run', 'c1', 'pass1.tests_failing', '--role', 'quality_engineer', '--id', 'e-silent',
+      '--expect-failing', SCENARIO, '--report', '--', process.execPath, '-e',
+      "throw new Error('MODULE_NOT_FOUND')", '{report}');
+    assert.equal(silent.code, 1);
+    assert.match(silent.err, /INFRA_ERROR/);
+    assert.match(silent.err, /wrote no report/);
+    assert.equal(ev('e-silent').result, 'INFRA_ERROR');
+
+    // --report without the token would leave the destination to chance.
+    const noToken = c.cli('run', 'c1', 'pass1.tests_failing', '--role', 'quality_engineer',
+      '--expect-failing', SCENARIO, '--report', '--', process.execPath, '-e', 'process.exit(1)');
+    assert.equal(noToken.code, 2);
+    assert.match(noToken.err, /needs \{report\}/);
+
+    // Written by this run, at the path this run chose: that is a report.
+    const good = c.cli('run', 'c1', 'pass1.tests_failing', '--role', 'quality_engineer', '--id', 'e-report',
+      '--expect-failing', SCENARIO, '--report', '--', process.execPath, '-e', write('process.argv[1]'), '{report}');
+    assert.equal(good.code, 0, good.err);
+    assert.equal(ev('e-report').result, 'PASS');
+
+    // Writing the report never counts as changing the content being measured.
+    assert.equal(ev('e-report').fingerprint, ev('e-silent').fingerprint);
+  } finally { c.drop(); }
+});

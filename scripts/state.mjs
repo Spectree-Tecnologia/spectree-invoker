@@ -10,8 +10,8 @@
 //   node scripts/state.mjs transition <change-id> <to-state> --expect <state_revision>
 //   node scripts/state.mjs transition <change-id> blocked --reason "<why>"
 //   node scripts/state.mjs run <change-id> <property> --role <r> [--independent-of a,b]
-//                                [--expect-failing <test name> [--report <tap file>]]
-//                                [--id <e>] -- <command> [args...]
+//                                [--expect-failing <test name> [--report]]
+//                                [--id <e>] -- <command> [args...]   ({report} is substituted)
 //   node scripts/state.mjs record-evidence <file.json>
 //   node scripts/state.mjs record-approval <file.json>
 //   node scripts/state.mjs defer <file.json>
@@ -19,7 +19,9 @@
 //
 // Exit codes: 0 allowed/valid, 1 refused/invalid, 2 usage.
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
@@ -281,6 +283,33 @@ switch (cmd) {
           'is not evidence that it succeeded.');
     }
 
+    // `--report` reads the TAP the command WRITES, and the destination is this run's own: a
+    // fresh path, outside the work tree, that did not exist a moment ago. Pointing at a path
+    // the operator chooses lets a report from an earlier, genuinely red run stand in for a
+    // command that never ran at all — which is the hole the last three rounds were closing.
+    const wantsReport = pre.includes('--report');
+    if (wantsReport && opt('report')) {
+      die(`--report takes no path: the destination is this run's own, and "${opt('report')}" would be a file this run did not write. ` +
+          'Put {report} in the command instead, and the runner substitutes the path it will read.');
+    }
+    if (wantsReport && !assertsFailure) {
+      die(`--report is only read for ${[...ASSERTS_FAILURE].join(', ')}: no other property is judged from a test report.`);
+    }
+    let reportDir = null, reportPath = null;
+    if (wantsReport) {
+      reportDir = mkdtempSync(join(tmpdir(), 'spectree-tap-'));
+      reportPath = join(reportDir, 'report.tap');
+      // Substituted into the command, so the destination cannot be anything but this one — and
+      // it sits outside the project, so writing it is not a change to the content being measured.
+      const substituted = cmd.map((a) => a.split('{report}').join(reportPath));
+      if (substituted.every((a, i) => a === cmd[i])) {
+        rmSync(reportDir, { recursive: true, force: true });
+        die('--report needs {report} somewhere in the command: that token is replaced with the path this run will read, ' +
+            'and a report the run did not write is not a report of this run.');
+      }
+      cmd.splice(0, cmd.length, ...substituted);
+    }
+
     let before;
     try { before = { content: contentDigest(root), contract: contractDigest(root, change, { artifactsDir: opt('artifacts') }) }; }
     catch (e) { die(`${e.code}: ${e.message}`, 1); }
@@ -306,13 +335,14 @@ switch (cmd) {
     let tapVerdict = null;
     if (assertsFailure && !r.error && !moved) {
       let report = output;
-      const reportFile = opt('report');
-      if (reportFile) {
-        try { report = readFileSync(reportFile, 'utf8'); }
-        catch (e) { die(`--report ${reportFile}: ${e.message}`, 1); }
+      if (wantsReport) {
+        report = existsSync(reportPath) ? readFileSync(reportPath, 'utf8') : null;
       }
-      tapVerdict = judgeFailingRun(parseTap(report), expectFailing, r.status);
+      tapVerdict = report === null
+        ? { result: 'INFRA_ERROR', reason: 'the command wrote no report at the path it was given, so it produced no results to read', matched: null }
+        : judgeFailingRun(parseTap(report), expectFailing, r.status);
     }
+    if (reportDir) rmSync(reportDir, { recursive: true, force: true });
 
     const result = r.error ? 'INFRA_ERROR'
       : moved ? 'INCONCLUSIVE'

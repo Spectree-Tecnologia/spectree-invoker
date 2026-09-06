@@ -128,7 +128,7 @@ run exercised — and only one command produces it:
 
 ```bash
 node scripts/state.mjs run <change-id> <property> --role <role> [--independent-of a,b] \
-  [--expect-failing <test name> [--report <tap file>]] [--id <evidence-id>] -- <command> [args...]
+  [--expect-failing <test name> [--report]] [--id <evidence-id>] -- <command> [args...]
 ```
 
 It measures the content, runs the command, measures again, and records the result together with
@@ -137,9 +137,9 @@ could not be executed is `INFRA_ERROR`, and one that **changed the content it wa
 `INCONCLUSIVE`: it satisfies no gate, because what it exercised cannot be established.
 
 **`pass1.tests_failing` means a named test ran and failed**, and that is the property's
-meaning, not an option on the command line. It requires `--expect-failing "<test name>"`, and
-the run must emit TAP — on stdout, or in a file named by `--report`. The runner then reads
-structure, not text:
+meaning, not an option on the command line. It requires `--expect-failing "<test name>"` — the
+name matched **exactly**, because a substring can match two tests — and the run must emit TAP,
+on stdout or into the report this run allocates. The runner then reads structure, not text:
 
 | The run showed | Result |
 |---|---|
@@ -154,8 +154,36 @@ This replaced a substring search, which `const ACCOUNT_NAME_REQUIRED = ;` satisf
 error printed the identifier, no test ran, and the gate opened. A stack trace, an echoed source
 line and a log message are all text; a plan and a numbered result are structure.
 
-No other property accepts `--expect-failing`. A command that failed is not evidence that it
-succeeded, and there is no flag that makes it one.
+Structure only holds if the blocks are respected, so the parser tracks context rather than
+matching lines. **What is supported**, and everything outside it is refused rather than
+half-read:
+
+- a plan (`1..N`) at **every** level that reports results, and the counts must agree — an outer
+  plan that adds up does not excuse subtests that stopped halfway;
+- **numbered** results, each number used once at its level;
+- YAML diagnostics (`---` … `...`) skipped entirely. A failing test's own error message can
+  contain a line that reads exactly like `not ok 1 - <the test you asked about>`, and a
+  line-by-line parser lets one test declare the failure of another. An unclosed block makes the
+  rest unreadable, and unreadable is refused;
+- `# SKIP` and `# TODO` read as directives: a test that did not run proves nothing;
+- exactly one test with the name you passed. Two, and which one is the Scenario cannot be decided.
+
+`--report` changes **where the TAP is read from — never what it is**. A runner that does not
+emit TAP needs a reporter or a converter; nothing here translates another format. Use it when
+the runner writes its report to a file instead of stdout:
+
+```bash
+node scripts/state.mjs run c1 pass1.tests_failing --role quality_engineer   --expect-failing "Scenario: creation with a blank name" --report   -- npx some-runner --tap-out {report}
+```
+
+The flag **takes no path**. The runner allocates a fresh file outside the work tree, substitutes
+`{report}` in the command with it, and reads that file afterwards — so the report is this run's
+own, and a report the command did not write is `INFRA_ERROR` however red it is. Pointing at a
+path of your own was how a genuinely failing run from yesterday could stand in for a command
+that crashed on startup today.
+
+No other property accepts `--expect-failing` or `--report`. A command that failed is not
+evidence that it succeeded, and there is no flag that makes it one.
 
 The launcher is resolved the way the platform resolves it. On Windows `npm`, `npx` and `pnpm`
 are `.cmd` shims that Node refuses to spawn directly, so the runner finds them through `PATH`

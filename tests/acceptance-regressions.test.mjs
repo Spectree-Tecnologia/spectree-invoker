@@ -590,3 +590,82 @@ test('15b. arguments reach a .cmd shim byte for byte, or the run is refused', as
     }
   } finally { cleanup(dir); }
 });
+
+// --- sixth round, finding 16: a diagnostic is not a result ------------------
+
+test('16. a YAML diagnostic can say anything, and none of it is a result', async () => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const TARGET = 'Scenario: creation with a blank name';
+  const judge = (lines, exit = 1) => judgeFailingRun(parseTap(lines.join('\n')), TARGET, exit);
+
+  // Real `node --test` shape: one unrelated test failed, and its error message happens to
+  // contain a line that reads exactly like a result for the test we are asking about.
+  const forged = judge([
+    'TAP version 13',
+    'not ok 1 - unrelated',
+    '  ---',
+    '  error: |-',
+    `    not ok 1 - ${TARGET}`,
+    '  code: ERR_TEST_FAILURE',
+    '  ...',
+    '1..1',
+  ]);
+  assert.equal(forged.result, 'INFRA_ERROR');
+  assert.match(forged.reason, /never exercised/, 'the diagnostic is the failing test talking about itself');
+
+  // A block that never closes leaves the rest unreadable, and unreadable is not passed.
+  const unclosed = judge(['TAP version 13', '1..1', `not ok 1 - ${TARGET}`, '  ---', '  error: x']);
+  assert.equal(unclosed.result, 'INFRA_ERROR');
+  assert.match(unclosed.reason, /never closed/);
+});
+
+test('16b. numbering and per-level plans are checked, not assumed', async () => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const TARGET = 'Scenario: creation with a blank name';
+  const judge = (lines, exit = 1) => judgeFailingRun(parseTap(lines.join('\n')), TARGET, exit);
+
+  const duplicated = judge(['TAP version 13', '1..2', `not ok 1 - ${TARGET}`, 'not ok 1 - other']);
+  assert.equal(duplicated.result, 'INFRA_ERROR');
+  assert.match(duplicated.reason, /same test number twice/);
+
+  const unnumbered = judge(['TAP version 13', '1..1', `not ok - ${TARGET}`]);
+  assert.equal(unnumbered.result, 'INFRA_ERROR');
+  assert.match(unnumbered.reason, /no number/);
+
+  // The outer plan is complete and the inner one is not: the subtests did not finish, and the
+  // outer level cannot see that.
+  const innerTruncated = judge([
+    'TAP version 13',
+    '    1..3',
+    `    not ok 1 - ${TARGET}`,
+    '1..1',
+    'not ok 1 - account.test.mjs',
+  ]);
+  assert.equal(innerTruncated.result, 'INFRA_ERROR');
+  assert.match(innerTruncated.reason, /indent 4 planned 3 test\(s\) and reported 1/);
+
+  const noPlanAtAll = judge(['TAP version 13', `not ok 1 - ${TARGET}`]);
+  assert.equal(noPlanAtAll.result, 'INFRA_ERROR');
+  assert.match(noPlanAtAll.reason, /no plan/);
+
+  // Two tests with the same name: which one is the Scenario cannot be decided here.
+  const ambiguous = judge(['TAP version 13', '1..2', `not ok 1 - ${TARGET}`, `ok 2 - ${TARGET}`]);
+  assert.equal(ambiguous.result, 'INFRA_ERROR');
+  assert.match(ambiguous.reason, /appears 2 times/);
+
+  // And the name is matched exactly, so a longer test name is not the one we asked about.
+  const nearMiss = judge(['TAP version 13', '1..1', `not ok 1 - ${TARGET} under load`]);
+  assert.equal(nearMiss.result, 'INFRA_ERROR');
+  assert.match(nearMiss.reason, /never exercised/);
+
+  // What a real, complete nested run looks like.
+  const good = judge([
+    'TAP version 13',
+    `    not ok 1 - ${TARGET}`,
+    '    1..1',
+    'not ok 1 - account.test.mjs',
+    '1..1',
+  ]);
+  assert.equal(good.result, 'PASS');
+  assert.equal(good.matched.name, TARGET);
+});
