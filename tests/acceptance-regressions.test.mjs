@@ -747,3 +747,66 @@ test('17c. a result numbered outside the plan is refused', async () => {
   assert.equal(unsupportedPlan.result, 'INFRA_ERROR');
   assert.match(unsupportedPlan.reason, /only "1\.\.N" is supported/);
 });
+
+// --- eighth round, finding 18: a complete subtest is not a complete run ------
+
+test('18. the top-level document must close, however tidy the subtests are', async () => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const TARGET = 'Scenario: creation with a blank name';
+  const dir = tempDir('spectree-tap-cut-');
+  try {
+    writeFileSync(join(dir, 'sample.test.mjs'), [
+      "import { describe, it } from 'node:test';",
+      "import assert from 'node:assert/strict';",
+      `describe('account creation', () => {`,
+      `  it(${JSON.stringify(TARGET)}, () => { assert.equal(1, 2); });`,
+      '});',
+    ].join('\n'));
+    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('NODE_TEST')));
+    let out = '', status = 0;
+    try {
+      out = execFileSync(process.execPath, ['--test', '--test-reporter=tap', 'sample.test.mjs'], { cwd: dir, encoding: 'utf8', env });
+    } catch (e) { out = (e.stdout ?? '') + (e.stderr ?? ''); status = e.status ?? 1; }
+    assert.notEqual(status, 0);
+    assert.equal(judgeFailingRun(parseTap(out), TARGET, status).result, 'PASS', 'the whole run is accepted');
+
+    // Cut the stream right after the subtest's own plan: the subtest is complete and correct,
+    // and the run it belongs to never reported anything at all.
+    const lines = out.split('\n');
+    const cut = lines.findIndex((l) => /^\s+1\.\.\d+\s*$/.test(l));
+    assert.ok(cut > 0, 'the subtest does declare its own plan');
+    const truncated = judgeFailingRun(parseTap(lines.slice(0, cut + 1).join('\n')), TARGET, status);
+    assert.equal(truncated.result, 'INFRA_ERROR');
+    assert.match(truncated.reason, /never closed|no result in its parent/);
+  } finally { cleanup(dir); }
+});
+
+test('18b. a subtest with no result in its parent is refused, counts or no counts', async () => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const TARGET = 'Scenario: creation with a blank name';
+  const judge = (lines, exit = 1) => judgeFailingRun(parseTap(lines.join('\n')), TARGET, exit);
+
+  // Every count adds up — the root plans 1 and reports 1, the subtest plans 1 and reports 1 —
+  // and nothing in the root is the subtest's verdict.
+  const dangling = judge([
+    'TAP version 13',
+    '1..1',
+    'ok 1 - unrelated',
+    `    not ok 1 - ${TARGET}`,
+    '    1..1',
+  ]);
+  assert.equal(dangling.result, 'INFRA_ERROR');
+  assert.match(dangling.reason, /no result in its parent/);
+
+  // And a parent that answers for a failing subtest by recording it as passing is two
+  // descriptions of different runs.
+  const contradictory = judge([
+    'TAP version 13',
+    `    not ok 1 - ${TARGET}`,
+    '    1..1',
+    'ok 1 - account creation',
+    '1..1',
+  ]);
+  assert.equal(contradictory.result, 'INFRA_ERROR');
+  assert.match(contradictory.reason, /recorded it as passing/);
+});

@@ -59,6 +59,8 @@ const TAP = {
   crash: ["SyntaxError: Unexpected token ';'", 'const ACCOUNT_NAME_REQUIRED = ;', `  while loading ${SCENARIO}`].join('\n'),
   truncated: ['TAP version 13', '1..3', `not ok 1 - ${SCENARIO}`].join('\n'),
   skipped: ['TAP version 13', '1..1', `not ok 1 - ${SCENARIO} # SKIP`].join('\n'),
+  // A tidy, complete subtest inside a run that never reported anything of its own.
+  truncatedRoot: ['TAP version 13', `    not ok 1 - ${SCENARIO}`, '    1..1'].join('\n'),
 };
 
 /** The two artifacts a change carries: the contract, and the progress note beside it. */
@@ -521,7 +523,7 @@ test('a report is read only when this run wrote it', () => {
   try {
     upToImplemented(c);
     const ev = (id) => JSON.parse(readFileSync(join(c.root, `.spectree/evidence/${id}.json`), 'utf8'));
-    const write = (dest) => `require('fs').writeFileSync(${dest}, ${JSON.stringify(`${TAP.red}\n`)});process.exit(1)`;
+    const write = (tap) => `require('fs').writeFileSync(process.argv[1], ${JSON.stringify(`${tap}\n`)});process.exit(1)`;
 
     // A report from an earlier, genuinely red run, sitting where anyone can point at it.
     const stale = join(c.root, 'earlier.tap');
@@ -550,9 +552,16 @@ test('a report is read only when this run wrote it', () => {
 
     // Written by this run, at the path this run chose: that is a report.
     const good = c.cli('run', 'c1', 'pass1.tests_failing', '--role', 'quality_engineer', '--id', 'e-report',
-      '--expect-failing', SCENARIO, '--report', '--', process.execPath, '-e', write('process.argv[1]'), '{report}');
+      '--expect-failing', SCENARIO, '--report', '--', process.execPath, '-e', write(TAP.red), '{report}');
     assert.equal(good.code, 0, good.err);
     assert.equal(ev('e-report').result, 'PASS');
+
+    // A report this run really did write, whose subtest is complete and whose run never closed.
+    const cutOff = c.cli('run', 'c1', 'pass1.tests_failing', '--role', 'quality_engineer', '--id', 'e-cut-root',
+      '--expect-failing', SCENARIO, '--report', '--', process.execPath, '-e', write(TAP.truncatedRoot), '{report}');
+    assert.equal(cutOff.code, 1, 'a complete subtest is not a complete run');
+    assert.match(cutOff.err, /INFRA_ERROR/);
+    assert.equal(ev('e-cut-root').result, 'INFRA_ERROR');
 
     // Writing the report never counts as changing the content being measured.
     assert.equal(ev('e-report').fingerprint, ev('e-silent').fingerprint);

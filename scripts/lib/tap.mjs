@@ -38,7 +38,7 @@ export function parseTap(text) {
   let yamlAt = null;
 
   const open = (indent, line) => {
-    const g = { indent, line, plan: null, planFrom: null, results: [] };
+    const g = { indent, line, plan: null, planFrom: null, results: [], parentResult: null, awaiting: null };
     groups.push(g);
     return g;
   };
@@ -67,7 +67,17 @@ export function parseTap(text) {
     // a new group; shallower closes every group deeper than it. Coming back to a depth that
     // was closed opens a NEW group, because that is a sibling and not a continuation.
     const indent = (plan ? plan[1] : res[1]).length;
-    while (stack.length > 1 && indent < top().indent) stack.pop();
+    while (stack.length > 1 && indent < top().indent) {
+      // A closed subtest is answered by ONE result in its parent, printed right after it.
+      // Remember that we are owed that result; if it never comes, the subtest is dangling and
+      // nothing in the parent says it ran.
+      const closed = stack.pop();
+      const parent = top();
+      if (parent.awaiting) {
+        problems.push(`the group starting at line ${parent.awaiting.line} closed without a result in its parent`);
+      }
+      parent.awaiting = closed;
+    }
     if (indent > top().indent) stack.push(open(indent, i + 1));
 
     if (plan) {
@@ -83,15 +93,25 @@ export function parseTap(text) {
     }
 
     const rest = NUMBERED.exec(res[3] ?? '');
+    const owed = top().awaiting;
+    top().awaiting = null;
     const label = rest[2] ?? '';
     const directive = /#\s*(TODO|SKIP)\b/i.exec(label)?.[1]?.toUpperCase() ?? null;
-    top().results.push({
+    const entry = {
       ok: !res[2],
       number: rest[1] ? Number(rest[1]) : null,
       name: label.replace(/\s*#\s*(TODO|SKIP)\b.*$/i, '').trim(),
       directive,
       group: top(),
-    });
+    };
+    top().results.push(entry);
+    if (owed) owed.parentResult = entry;
+  }
+
+  // Anything still open at the end never closed, and never got its result either.
+  while (stack.length > 1) {
+    const closed = stack.pop();
+    if (!top().awaiting) top().awaiting = closed;
   }
 
   if (yamlAt !== null) problems.push('a diagnostic block was never closed, so the rest of the output could not be read');
@@ -106,10 +126,27 @@ const describe = (g) => (g.indent === 0 ? 'the run' : `the group starting at lin
 function validate(tap) {
   for (const p of tap.problems) return p;
 
-  const used = tap.groups.filter((g) => g.plan !== null || g.results.length > 0);
-  if (used.length === 0) return 'the output carries no test plan: nothing enumerated any tests, so nothing ran';
+  // The root is ALWAYS checked, including when it is empty. Skipping empty groups was how a
+  // stream cut off after a subtest's own plan passed: the subtest added up, and the document
+  // that should have reported it had neither a plan nor a result to be missing from.
+  const [root] = tap.groups;
+  if (root.plan === null && root.results.length === 0) {
+    return tap.groups.length > 1
+      ? 'the run reported subtests but never closed: no plan and no result at the top level, so the output stops before the run finished'
+      : 'the output carries no test plan: nothing enumerated any tests, so nothing ran';
+  }
 
-  for (const g of used) {
+  for (const g of tap.groups) {
+    if (g.indent > 0) {
+      if (g.parentResult === null) {
+        return `the group starting at line ${g.line} has no result in its parent, so nothing reports whether it finished`;
+      }
+      // The parent's result IS the subtest's verdict. If it disagrees with what the subtest
+      // reported, the two halves of the document describe different runs.
+      if (g.results.some((r) => !r.ok && !r.directive) && g.parentResult.ok) {
+        return `the group starting at line ${g.line} reported a failing test, and its parent recorded it as passing`;
+      }
+    }
     const where = describe(g);
     if (g.plan === null) {
       return `${where} reported ${g.results.length} result(s) with no plan of its own, so there is nothing to check them against`;

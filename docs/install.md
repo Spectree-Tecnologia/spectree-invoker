@@ -165,6 +165,12 @@ half-read:
   plan. Only `1..N` is read; a plan starting anywhere else is refused as unsupported;
 - **numbered** results, each number used once, and every number from 1 to N present — a result
   numbered outside its group's plan is refused, and so is a gap;
+- a **closed top-level document**. A subtest that plans one test and reports one test is a tidy
+  subtest, not a finished run: output cut off after it is refused, because the document that
+  should have reported that subtest never said anything at all;
+- every subtest answered by **one result in its parent**, and that result agreeing with it. A
+  subtest nothing in the parent reports is dangling however well its own counts add up, and a
+  parent recording a failing subtest as passing is two descriptions of different runs;
 - YAML diagnostics (`---` … `...`) skipped entirely. A failing test's own error message can
   contain a line that reads exactly like `not ok 1 - <the test you asked about>`, and a
   line-by-line parser lets one test declare the failure of another. An unclosed block makes the
