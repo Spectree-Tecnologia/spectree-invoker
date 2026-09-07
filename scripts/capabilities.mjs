@@ -53,6 +53,19 @@ const installShape =
 add('install_shape', installShape, installShape === 'unknown' ? U : V,
   'the layout on disk, not the program running it — an installation shape never proves a harness identity');
 
+// --- which build this is -----------------------------------------------------
+// A boot report that cannot name its own build is a report two different builds would write
+// identically — and the first question asked of every smoke was "which version was that?".
+const readJson = (p) => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
+const stamp = readJson(join(pkgRoot, 'installed.json'));
+const pluginJson = readJson(join(pkgRoot, '.claude-plugin', 'plugin.json')) ?? readJson(join(pkgRoot, 'package.json'));
+const manifest = readJson(join(pkgRoot, 'protocol', 'manifest.json'));
+const packageVersion = pluginJson?.version ?? stamp?.package_version ?? 'unknown';
+const protocolVersion = manifest?.protocol_version ?? stamp?.protocol_version ?? 'unknown';
+add('package_version', packageVersion, packageVersion === 'unknown' ? U : V,
+  packageVersion === 'unknown' ? 'no plugin.json, package.json or installed.json here — say so rather than guessing' : undefined);
+add('protocol_version', protocolVersion, protocolVersion === 'unknown' ? U : V);
+
 // --- roots -------------------------------------------------------------------
 add('package_root', pkgRoot, V, 'resolved from this script, so it survives being installed outside the project');
 add('project_root', projectRoot, V, env.SPECTREE_PROJECT_ROOT ? 'from SPECTREE_PROJECT_ROOT' : 'from the working directory');

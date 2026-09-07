@@ -49,8 +49,8 @@ widening the subset, or adding a second format behind the same refusals.
 ## M3 — harness loading
 
 **Owner:** this repository.
-**Status:** Codex Desktop **closed** for the bounded boot/dispatch/refusal path; Claude Code open,
-waiting only on a session started after the 1.0.0 update.
+**Status:** both **closed** for their bounded paths — Codex Desktop for boot/dispatch/refusal,
+Claude Code for boot and state reporting in an empty project.
 
 See [compatibility.md](compatibility.md) for what each row rests on. The criterion has not moved:
 nothing leaves "implemented, real validation pending" without an observed execution inside the
