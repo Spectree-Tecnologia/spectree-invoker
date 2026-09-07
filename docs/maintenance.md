@@ -46,11 +46,31 @@ reporter or a converter, and nothing here translates another format. If a consum
 that, the impediment is theirs to record and this backlog item is where the work would land —
 widening the subset, or adding a second format behind the same refusals.
 
-## M3 — no harness has loaded this build
+## M3 — harness loading
 
 **Owner:** this repository.
-**Status:** open, blocked on a merge and on an environment with Codex present.
+**Status:** Codex Desktop **closed** for the bounded boot/dispatch/refusal path; Claude Code open,
+waiting only on a session started after the 1.0.0 update.
 
-See [compatibility.md](compatibility.md) for what was tested and what was not. The rows there are
-the criteria: nothing moves out of "implemented, real validation pending" without an observed
-execution inside the harness itself.
+See [compatibility.md](compatibility.md) for what each row rests on. The criterion has not moved:
+nothing leaves "implemented, real validation pending" without an observed execution inside the
+harness itself.
+
+## M4 — pass 2 cannot be closed honestly on a single-context harness
+
+**Owner:** this repository.
+**Status:** open. It is a limit to state, not a bug to fix, until a harness proves isolation.
+
+`pass2_complete` requires evidence whose executor records `independent_of: ['full_stack_developer']`,
+because an adversarial pass that saw the builder's reasoning is not the independent pass the
+pipeline assumes. The Codex Desktop smoke reported `operating_mode: single-context`, with isolation
+**not proven** — so on that harness, today, recording that independence would be asserting
+something nobody observed, and the gate should not be closed on it.
+
+`capabilities.mjs` already prints the warning. What is missing is a way for a harness to *prove*
+isolation rather than declare it, and until one exists the honest answer is the one the tool gives:
+say the mode, do not close the gate, and record the deviation.
+
+Criteria for closing this: a harness that exposes an observable signal of context isolation, and a
+check that reads it — not a declaration in an adapter file, which is what the current
+`context_isolation` field already is.

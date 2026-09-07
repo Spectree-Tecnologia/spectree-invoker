@@ -8,12 +8,13 @@ a rendered file is not a harness that loaded it.
 | Surface | Version | How it was established |
 |---|---|---|
 | Node.js | 24.17.0 · 22.23.2 | the whole suite runs on both: 136 deterministic tests here, and the same suite in CI |
-| Ubuntu 24.04 | GitHub runner | CI ran the full suite: **136 tests, 135 pass, 0 fail, 1 skipped** — the skip is the `cmd.exe` argument-transport test, which says it is Windows-only |
+| Ubuntu 24.04 | GitHub runner | CI ran the full suite: **138 tests, 137 pass, 0 fail, 1 skipped** — the skip is the `cmd.exe` argument-transport test, which says it is Windows-only |
 | Windows | win32/x64 | the suite ran here; the diff layer is exercised against real `git` with spaces and non-ASCII names |
 | git | 2.54.0 | `readDiff` is tested against a real repository, including rename, deletion and a `-z` round trip |
 | Protocol → adapters | — | `build.mjs --check` runs in CI; a hand edit to any generated file fails it |
 | Package integrity | — | `check-plugin.mjs`, with fixtures proving each rule rejects |
 | Claude Code desktop, plugin load | 0.14.0 @ `410a429` | the plugin is installed here and **this session exposes all five specialists as dispatchable agent types** — the harness read `agents/` and `commands/`. That is the previous commit, not this work: see the row below |
+| **OpenAI Codex Desktop** | package 1.0.0 @ `dd8507b` | a real session on Windows 10.0.26200 (PowerShell 7.6.5, node 24.17.0, npm 11.13.0, git 2.54.0) discovered the installed skill in its own catalog, loaded `SKILL.md` and `.spectree/squad/SQUAD.md`, ran the installed `capabilities.mjs` and `state.mjs resume` (both exit 0), **dispatched a registered `platform_engineer` through the native multi-agent harness**, and the gate refused promotion with `E_MISSING_APPROVAL`. Native session authentication; no API, no key, no network service |
 | Codex install | — | installed into a synthetic consumer that already had its own `AGENTS.md`: file preserved, pointer appended once, second run idempotent, and the installed `capabilities.mjs` and `state.mjs` **executed from inside that consumer** |
 | Gate cycle, through the CLI | — | one change driven **open to `closed`** by the installed commands in a synthetic consumer: a real branch, evidence produced by `state.mjs run`, both approvals, a real `git merge --no-ff`, the archival move, and the append-only history asserted step by step |
 | Content binding | — | an uncommitted edit at an unchanged `HEAD` is refused with `E_CONTENT_CHANGED`; a `--no-ff` merge over an identical tree is the same candidate and passes; a merge that changes the tree is refused; ticking `tasks.md` or archiving the change moves neither digest |
@@ -27,14 +28,14 @@ a rendered file is not a harness that loaded it.
 
 `engines` declares `node >= 20.11.0`; 24.17.0 and 22.23.2 were actually exercised.
 
-The suite is **136 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
+The suite is **138 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
 
 ## Implemented, real validation pending
 
 | Surface | Status |
 |---|---|
-| **Claude Code, at this commit** | The surface the harness loads — `.claude-plugin/plugin.json`, `commands/`, `agents/` — has the **same file set and the same frontmatter keys** at this commit as at the commit currently loaded; only the content inside changed. So the load path is exercised and the shape is unchanged, but **this commit itself has not been loaded**: the installed copy is a cache of `410a429`, and reaching it needs the merge and a `claude plugin update`. Loading is the last step, not a prerequisite of the work. |
-| **OpenAI Codex** | The skill, the five specialists in `.codex/agents/`, the protocol document and the scripts are generated, installed into a synthetic consumer, and the installed scripts run there — including a full gate cycle driven by the installed commands. Agent locations follow the official custom-agent documentation (`.codex/agents/`, `~/.codex/agents/`). **No Codex session has loaded them**, and no Codex is present in this environment, so the harness has never dispatched one of these specialists. |
+| **Claude Code** | The plugin is now installed at **1.0.0 (`dd8507b`)** — `commands/` and `agents/` byte-identical to the merged commit, and the installed `check-plugin.mjs` and `build.mjs --check` both run green from inside the cache. **No session has loaded 1.0.0 yet**: the session that performed the update was itself running 0.14.0, and Claude Code asks for a restart to apply. The row closes when a fresh session runs `/spectree:invoker` and reports state instead of inventing it. |
+| **OpenAI Codex — what the smoke did not cover** | The bounded smoke covered boot, dispatch and one refusal on a disposable fixture. It was **not** a delivery cycle, a deploy, or proof across every Codex harness. Two things stayed open in it and are open still: the installed diagnostic reported the **harness identity and version as `UNKNOWN`** (Codex Desktop sets none of the variables it looks for — `install_shape` now names the layout instead, which is a filesystem fact and not an identity), and **context isolation was not proven** (`single-context`), which is the limit recorded as M4 in [maintenance.md](maintenance.md). |
 | macOS | Not run. Nothing in the code is macOS-specific and Linux now passes, but that is an argument, not a result. |
 
 **Nothing above is claimed as proven compatibility.** Where a harness was unavailable, the

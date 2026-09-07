@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, cpSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { canTransition, canDispatchWithCapabilities, legalTargets, ENTRY_REQUIREMENTS, CODES } from '../scripts/lib/state-machine.mjs';
@@ -868,4 +868,52 @@ test('19b. a marker cannot invent a group that never reports anything', async ()
   ].join('\n')), TARGET, 1);
   assert.equal(r.result, 'INFRA_ERROR');
   assert.match(r.reason, /no plan of its own|no result in its parent/);
+});
+
+// --- tenth round, finding 20: an absence by design is not a finding ---------
+
+test('20. capabilities tells a consumer install apart from the package', () => {
+  const caps = (cwd, root) => {
+    const out = execFileSync(process.execPath, [join(root ?? REPO, 'scripts', 'capabilities.mjs'), '--json'],
+      { cwd, encoding: 'utf8' });
+    const facts = JSON.parse(out).facts;
+    return Object.fromEntries(facts.map((f) => [f.name, f.value]));
+  };
+
+  // The package itself: both package checkers are here, and they are checked.
+  const here = caps(REPO);
+  assert.equal(here.install_shape, 'package checkout');
+  assert.equal(here['checkers.package_only'], 'present');
+  assert.equal(here['checkers.missing'], 'none');
+
+  // A Codex consumer: `check-plugin.mjs` and `build.mjs` are deliberately not shipped, because
+  // they check the package against protocol/ and a consumer carries no protocol/. Reporting
+  // them as missing made a correct install read as broken, and a real Codex Desktop smoke had
+  // to stop and explain the absence.
+  const dir = tempDir('spectree-consumer-caps-');
+  try {
+    execFileSync(process.execPath, [join(REPO, 'scripts', 'install-codex.mjs'), dir, '--apply'], { encoding: 'utf8' });
+    const consumer = caps(dir, join(dir, '.spectree', 'squad'));
+    assert.equal(consumer.install_shape, 'codex install');
+    assert.equal(consumer['checkers.missing'], 'none', 'everything the squad needs to run is there');
+    assert.match(consumer['checkers.package_only'], /not shipped here/);
+    assert.doesNotMatch(consumer['checkers.package_only'], /MISSING/);
+  } finally { cleanup(dir); }
+});
+
+test('20b. and it still reports a package checker that is genuinely gone', () => {
+  // The inverse, so the relaxation above cannot hide a real gap in the package.
+  const dir = tempDir('spectree-pkg-caps-');
+  try {
+    const pkg = join(dir, 'pkg');
+    mkdirSync(pkg, { recursive: true });
+    for (const d of ['protocol', 'scripts', '.claude-plugin']) {
+      cpSync(join(REPO, d), join(pkg, d), { recursive: true });
+    }
+    rmSync(join(pkg, 'scripts', 'build.mjs'), { force: true });
+    const out = execFileSync(process.execPath, [join(pkg, 'scripts', 'capabilities.mjs'), '--json'], { cwd: pkg, encoding: 'utf8' });
+    const facts = Object.fromEntries(JSON.parse(out).facts.map((f) => [f.name, f.value]));
+    assert.equal(facts.install_shape, 'package checkout');
+    assert.match(facts['checkers.package_only'], /MISSING: build\.mjs/);
+  } finally { cleanup(dir); }
 });
