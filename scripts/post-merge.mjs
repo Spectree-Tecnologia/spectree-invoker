@@ -19,7 +19,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
-import { contractDigest, contentDigestAt, gatedDigest } from './lib/digest.mjs';
+import { contractDigestAt, contentDigestAt, gatedDigest } from './lib/digest.mjs';
 import { readDiff, classifyDiff } from './lib/diff.mjs';
 import { treatmentFor, aggregate } from './lib/ci-policy.mjs';
 import { manifestPath, preparationCovers } from './lib/closure-prep.mjs';
@@ -67,36 +67,45 @@ if (pr) {
 // --- 3. is what LANDED the candidate that was authorised? ------------------------------------
 // Against the merge commit's tree, never the checkout. The two are different questions, and the
 // checkout answers the one nobody asked.
-let contract = null, landed = null, gated = null;
+let contract = null, landed = null, gated = null, authorising = null;
 if (mergeOid) {
   try { landed = contentDigestAt(root, mergeOid); }
   catch (e) { step('the merge is readable here', false, `${e.code}: ${e.message}`); }
 }
 if (landed) {
-  try { contract = contractDigest(root, change); } catch (e) { step('contract readable', false, `${e.code}: ${e.message}`); }
+  // The CONTRACT is read from the merge too. `docs/changes/` is outside the code digest by
+  // design, so a merge that quietly rewrote a proposal changes nothing the code comparison can
+  // see — and reading it from the checkout answers a question about the operator's disk.
+  try { contract = contractDigestAt(root, landed.revision, change); }
+  catch (e) { step('the contract in the merge is readable', false, `${e.code}: ${e.message}`); }
 }
 if (landed && contract) {
   gated = gatedDigest(contract.digest, landed.digest);
   const approvals = store.approvals(changeId).filter((a) => a.gate === 'integration' && a.change_id === changeId);
-  const matching = approvals.find((a) => a.scope_digest === gated);
-  step('what landed is what was authorised', Boolean(matching),
-    matching
-      ? `approval ${matching.approval_id} names the contract and the tree of ${landed.revision.slice(0, 8)}`
+
+  // ONE approval has to satisfy every criterion. Checking the content against whichever approval
+  // matches and the ancestry against whichever happens to be first lets two different documents
+  // each supply half an authorisation, and the order of files on disk decide the verdict.
+  const candidates = approvals.filter((a) => a.scope_digest === gated);
+  authorising = candidates.find((a) => {
+    if (!a.revision) return false;
+    try { execFileSync('git', ['merge-base', '--is-ancestor', a.revision, landed.revision], { cwd: root, stdio: 'ignore' }); return true; }
+    catch { return false; }
+  }) ?? null;
+
+  step('what landed is what was authorised', candidates.length > 0,
+    candidates.length
+      ? `approval ${candidates[0].approval_id} names the contract and the tree of ${landed.revision.slice(0, 8)}`
       : approvals.length
-        ? `the integration approval names ${String(approvals[0].scope_digest).slice(0, 18)}… and ${landed.revision.slice(0, 8)} carries ${gated.slice(0, 18)}… — a merge that changed the tree is a different candidate`
+        ? `no integration approval names ${gated.slice(0, 18)}… — ${approvals.length} on record name ${approvals.map((a) => String(a.scope_digest).slice(0, 14)).join(', ')}; a merge that changed the tree or the contract is a different candidate`
         : 'no integration approval names this change');
 
-  // And the approved commit has to be IN that merge. Equal trees reached by an unrelated route
-  // is a coincidence worth refusing.
-  const candidateRev = approvals[0]?.revision;
-  if (candidateRev) {
-    let ancestor = false;
-    try { execFileSync('git', ['merge-base', '--is-ancestor', candidateRev, landed.revision], { cwd: root, stdio: 'ignore' }); ancestor = true; }
-    catch { ancestor = false; }
-    step('the approved commit is in the merge', ancestor,
-      ancestor ? `${candidateRev.slice(0, 8)} is an ancestor of ${landed.revision.slice(0, 8)}`
-        : `${candidateRev.slice(0, 8)} is not an ancestor of ${landed.revision.slice(0, 8)}`);
-  }
+  step('one approval covers both the content and the history', Boolean(authorising),
+    authorising
+      ? `${authorising.approval_id} at ${authorising.revision.slice(0, 8)}, an ancestor of ${landed.revision.slice(0, 8)}`
+      : candidates.length
+        ? `${candidates.length} approval(s) name this content, and none of them was granted at a commit inside ${landed.revision.slice(0, 8)}`
+        : 'no approval names this content, so there is none whose history to check');
 }
 
 // --- 4. the checks the policy required, for THAT commit --------------------------------------
@@ -139,12 +148,16 @@ if (change.closure_mode === 'legacy') {
 } else if (contract && landed) {
   const covers = preparationCovers(manifest, { contractDigest: contract.digest, candidateDigest: landed.digest, changeId });
   step('closure preparation covers what landed', covers.ok === true, covers.ok ? `manifest ${manifest.manifest_version}` : `${covers.code}: ${covers.message}`);
-  const absent = (manifest?.artifacts ?? []).filter((a) => {
-    try { git(['cat-file', '-e', `${landed.revision}:${a.path}`]); return false; } catch { return true; }
+  // Present is not enough: an artifact whose CONTENT changed in the merge is a different
+  // artifact, and existence was the weakest possible question to ask about it.
+  const wrong = (manifest?.artifacts ?? []).filter((a) => {
+    let blob = null;
+    try { blob = git(['rev-parse', `${landed.revision}:${a.path}`]); } catch { return true; }
+    return blob !== a.digest;
   });
-  step('prepared artifacts are in the merge', absent.length === 0,
-    absent.length ? `${absent.length} missing from ${landed.revision.slice(0, 8)}: ${absent.slice(0, 3).map((a) => a.path).join(', ')}`
-      : `${manifest?.artifacts?.length ?? 0} present`);
+  step('prepared artifacts are in the merge, unchanged', wrong.length === 0,
+    wrong.length ? `${wrong.length} missing or altered in ${landed.revision.slice(0, 8)}: ${wrong.slice(0, 3).map((a) => a.path).join(', ')}`
+      : `${manifest?.artifacts?.length ?? 0} present and identical`);
 }
 
 // --- report ----------------------------------------------------------------------------------

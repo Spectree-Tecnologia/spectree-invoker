@@ -49,10 +49,17 @@ node scripts/prepare-closure.mjs <change-id>            # plan only, writes noth
 node scripts/prepare-closure.mjs <change-id> --apply
 ```
 
-**Everything that could block is decided before anything runs.** The ownership check covers the
-whole candidate — what is committed against the base *and* what is sitting uncommitted in the
-work tree — and a blocker stops the command from executing at all. A preparation that writes and
-then refuses is worse than one that refuses.
+**Everything that could block is decided before anything runs**, the dry run included. The
+ownership check covers the whole candidate — what is committed against the base *and* what is
+uncommitted in the work tree, with a rename counted at **both** ends, since its source is a path
+this change is removing. An occupied archive slot is found in the same preflight. A preparation
+that writes and then refuses is worse than one that refuses.
+
+**And the consolidation command is held to the same ownership.** Running a command the project
+supplied is not approving whatever it writes: if it goes outside the change's declared paths,
+the preparation refuses, archives nothing, and writes no manifest. What the command wrote is
+left exactly where it is — removing it automatically would destroy work nobody chose to
+destroy.
 
 It validates the proposal against the deltas on disk and the change's ownership, runs **the
 project's own** consolidation command, archives the change folder, records the deferrals the
@@ -119,13 +126,21 @@ Seven steps and no eighth: read the merge result, confirm the PR and its base br
 the integrated content **is** the authorised candidate, check the checks the policy required,
 confirm the prepared artifacts are there, record the result in the trail, close.
 
-**Every content question is asked of the merge commit's tree, never of the local checkout.** The
-checkout is whatever the operator happens to have; a confirmation that trusts it will close a
-change over a tree nobody approved. So the digest comes from `git ls-tree` at the merge commit,
-the approved commit must be an **ancestor** of that merge — equal trees reached by an unrelated
-route is a coincidence, not an integration — and the prepared artifacts are looked for **in the
-merge**, not on disk. If the merge commit is not present locally, that is an impediment: fetch it
-before confirming something you cannot see.
+**Every question is asked of the merge commit's tree, never of the local checkout.** The checkout
+is whatever the operator happens to have; a confirmation that trusts it will close a change over
+a tree nobody approved. So:
+
+- the **code** digest comes from `git ls-tree` at the merge commit;
+- the **contract** does too. `docs/changes/` is outside the code digest by design, so a merge
+  that quietly rewrote a proposal moves nothing the code comparison can see;
+- the prepared artifacts are compared **by content** in the merge — existence was the weakest
+  question that could be asked about them;
+- **one** approval must satisfy every criterion: it names this contract and this tree, *and* it
+  was granted at a commit inside this merge. Letting one approval supply the content match and
+  another the ancestry means the order of files on disk decides the verdict.
+
+If the merge commit is not here, that is an impediment: fetch it before confirming something you
+cannot see.
 
 It is **resumable**. The remaining transitions are computed from the state on disk, so a rerun
 after a crash — or after success — repeats no event and refuses nothing that already happened.

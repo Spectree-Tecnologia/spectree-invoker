@@ -17,8 +17,8 @@ import { classifyPath, KIND } from '../scripts/lib/diff.mjs';
 import { gitRepo, cleanup, now, REPO } from './helpers.mjs';
 
 /** A change at `implemented`, whose consolidation command leaves a mark when it runs. */
-function fixture({ allowed = ['src', 'docs'] } = {}) {
-  const repo = gitRepo({ 'src/app.js': 'export const x = 1;\n', '.gitignore': '.spectree/\n' });
+function fixture({ allowed = ['src', 'docs'], baseFiles = {} } = {}) {
+  const repo = gitRepo({ 'src/app.js': 'export const x = 1;\n', '.gitignore': '.spectree/\n', ...baseFiles });
   const store = new Store(repo.root);
   store.init({
     project_id: 'fixture', protocol_version: '1.0.0',
@@ -256,4 +256,75 @@ test('a proposal and a delta are behavioural contracts, open or archived', () =>
   }
   // The progress note beside them is not.
   assert.equal(classifyPath('docs/changes/c1/tasks.md'), KIND.ADMINISTRATIVE);
+});
+
+// --- what the check has to see, and when it has to see it --------------------
+
+test('a staged rename is read as two paths, and its source is checked for ownership', () => {
+  for (const commit of [false, true]) {
+    // The unowned file exists in the BASE, so renaming it away really is this change removing
+    // something it does not own.
+    const f = fixture({ baseFiles: { 'badsrc/file.js': 'export const y = 1;\n' } });
+    try {
+      // `git status --porcelain -z` writes a rename as "XY <to>\0<from>": the second field has
+      // no status prefix. Slicing three characters off every field turned `badsrc/file.js` into
+      // `src/file.js` — and a rename REMOVING a file outside the change walked through.
+      f.git(['mv', 'badsrc/file.js', 'src/file.js']);
+      if (commit) f.git(['commit', '-qm', 'move it in']);
+
+      const r = f.prep('--apply');
+      assert.equal(r.code, 1, commit ? 'a committed rename must be caught' : 'a staged one too');
+      assert.match(r.err, /badsrc\/file\.js/, 'the source of the rename is named, not a truncation of it');
+      assert.equal(f.ran(), false);
+    } finally { f.drop(); }
+  }
+});
+
+test('an occupied archive slot is a preflight refusal, in the dry run too', () => {
+  const f = fixture();
+  try {
+    const slot = join(f.root, 'docs/changes/archive', `${new Date().toISOString().slice(0, 10)}-c1`);
+    mkdirSync(slot, { recursive: true });
+    writeFileSync(join(slot, 'proposal.md'), '# somebody else got here first\n');
+
+    const dry = f.prep();
+    assert.equal(dry.code, 1, 'the plan must say so before anything is written');
+    assert.match(`${dry.out}${dry.err}`, /E_PREP_COLLISION/);
+
+    const r = f.prep('--apply');
+    assert.equal(r.code, 1);
+    assert.match(r.err, /nothing was run/);
+    assert.equal(f.ran(), false, 'discovering the collision after the consolidation is discovering it too late');
+    assert.equal(f.manifest(), null);
+  } finally { f.drop(); }
+});
+
+test('the consolidation command is itself held to the change\'s ownership', () => {
+  const repo = gitRepo({ 'src/app.js': 'export const x = 1;\n', '.gitignore': '.spectree/\n' });
+  try {
+    const store = new Store(repo.root);
+    store.init({
+      project_id: 'fixture', protocol_version: '1.0.0',
+      // A command that succeeds and writes outside the change's declared paths.
+      closure: { consolidate: [process.execPath, '-e', "require('fs').writeFileSync('outside.txt','written by the command')"] },
+    });
+    store.putChange({
+      schema_version: '1.0.0', project_id: 'fixture', change_id: 'c1', change_type: 'feature',
+      protocol_version: '1.0.0', adapter: 'codex', base_revision: repo.base, scope: 'fixture',
+      allowed_paths: ['src', 'docs'], deltaless: true, state: 'implemented',
+    }, { event: { type: 'opened' } });
+    mkdirSync(join(repo.root, 'docs/changes/c1'), { recursive: true });
+    writeFileSync(join(repo.root, 'docs/changes/c1/proposal.md'), '# proposal\n');
+    repo.git(['add', '-A']); repo.git(['commit', '-qm', 'the proposal']);
+
+    const r = spawnSync(process.execPath, [join(REPO, 'scripts/prepare-closure.mjs'), 'c1', '--apply'],
+      { cwd: repo.root, encoding: 'utf8' });
+    assert.equal(r.status, 1, 'running a command is not approving whatever it writes');
+    assert.match(r.stderr, /wrote 1 path\(s\) outside this change's declared ownership/);
+    assert.match(r.stderr, /outside\.txt/);
+    assert.equal(existsSync(join(repo.root, '.spectree/closure/c1.json')), false, 'and no manifest says it was prepared');
+    assert.equal(existsSync(join(repo.root, 'docs/changes/c1')), true, 'nothing was archived');
+    assert.equal(existsSync(join(repo.root, 'outside.txt')), true,
+      'and the file the command wrote is left alone: removing it automatically would destroy work nobody chose to destroy');
+  } finally { cleanup(repo.root); }
 });

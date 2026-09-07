@@ -63,7 +63,7 @@ const unavailable = (message, cause) => {
  * bytes, which is consistent within that project and is the only thing left to be consistent
  * about. The two are never mixed inside one digest.
  */
-function normalisedHashes(root, relPaths) {
+export function normalisedHashes(root, relPaths) {
   if (relPaths.length === 0) return [];
   const bad = relPaths.find((p) => /[\r\n]/.test(p));
   if (bad) throw unavailable(`"${posix(bad)}" contains a newline, and no path list can carry that unambiguously`);
@@ -130,6 +130,68 @@ export function contractDigest(root, change, { artifactsDir } = {}) {
     allowed_paths: [...(change.allowed_paths ?? [])].sort(),
   }), 'utf8');
   return { digest: sha(h), source: "the change's declared scope (no contractual file on disk)", files: [] };
+}
+
+/** Is this tree path the change's contract folder, open or archived? */
+const contractPathIn = (path, changeId) => {
+  const open = `docs/changes/${changeId}/`;
+  if (path.startsWith(open)) return path.slice(open.length);
+  const m = /^docs\/changes\/archive\/([^/]+)\/(.*)$/.exec(path);
+  if (m && (m[1] === changeId || m[1].endsWith(`-${changeId}`))) return m[2];
+  return null;
+};
+
+/**
+ * The contract as it stands IN a commit — the merge, say.
+ *
+ * `docs/changes/` is outside the content digest on purpose, so a merge that quietly rewrote a
+ * proposal changes nothing the code digest can see. Reading the contract from the local checkout
+ * then answers a question about the operator's disk, not about what was integrated: a merge that
+ * flipped "reject an invalid account" to "accept" would close clean. The contract has to be read
+ * from the same immutable tree the code is read from.
+ *
+ * @returns {{ digest: string, source: string, files: string[] }}
+ */
+export function contractDigestAt(root, revision, change) {
+  const git = (args) => execFileSync('git', args, {
+    cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+  });
+  let entries;
+  try {
+    entries = git(['ls-tree', '-r', '-z', revision]).split('\0').filter(Boolean).map((line) => {
+      const tab = line.indexOf('\t');
+      const [mode, type, blob] = line.slice(0, tab).split(/\s+/);
+      return { mode, type, blob, path: line.slice(tab + 1) };
+    });
+  } catch (e) {
+    throw unavailable(`the contract in ${revision} cannot be read here`, String(e.stderr || e.message));
+  }
+
+  const found = [];
+  for (const e of entries) {
+    const rel = contractPathIn(e.path, change.change_id);
+    if (rel === null || !CONTRACT(rel)) continue;
+    if (e.type !== 'blob') throw unavailable(`"${e.path}" in ${revision} is a ${e.type}, not a file`);
+    found.push({ rel, blob: e.blob, path: e.path });
+  }
+  found.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
+
+  const h = createHash('sha256');
+  if (found.length) {
+    // The same shape as `contractDigest`: the path inside the change folder, then git's own
+    // content hash. That is what makes a checkout and a commit comparable at all.
+    for (const f of found) { h.update(f.rel, 'utf8'); h.update('\0'); h.update(f.blob, 'utf8'); h.update('\0'); }
+    return { digest: sha(h), source: found[0].path.slice(0, found[0].path.length - found[0].rel.length - 1), files: found.map((f) => f.rel) };
+  }
+
+  h.update(JSON.stringify({
+    scope: change.scope,
+    deltaless: change.deltaless === true,
+    named_absences: change.named_absences ?? [],
+    modules_named: change.modules_named ?? [],
+    allowed_paths: [...(change.allowed_paths ?? [])].sort(),
+  }), 'utf8');
+  return { digest: sha(h), source: `${revision.slice(0, 8)}: no contractual file in that tree`, files: [] };
 }
 
 /**

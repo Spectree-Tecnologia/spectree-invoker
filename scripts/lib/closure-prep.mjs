@@ -15,6 +15,7 @@
 // observed. Nothing here writes `integrated` or `closed`, and nothing here opens a second PR.
 
 import { createHash } from 'node:crypto';
+import { normalisedHashes } from './digest.mjs';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -64,16 +65,21 @@ function walk(dir, base, out = []) {
   return out;
 }
 
-/** The artifacts a preparation produced, each with the digest of what it actually wrote. */
+/**
+ * The artifacts a preparation produced, each with the digest of what it actually wrote.
+ *
+ * The digest is git's own blob hash, not a hash of the raw bytes, so that a later confirmation
+ * can compare it against `<merge>:<path>` directly. Checking only that the file EXISTS in the
+ * merge says nothing about whether it is the file that was prepared.
+ */
 export function artifactsUnder(root, dir, op) {
   const abs = join(root, dir);
   if (!existsSync(abs) || !statSync(abs).isDirectory()) return [];
-  return walk(abs, join(root, dir)).map((rel) => ({
-    path: posix(join(dir, rel)),
-    op,
-    digest: `sha256:${createHash('sha256').update(readFileSync(join(abs, rel))).digest('hex')}`,
-  }));
+  const rels = walk(abs, abs);
+  const hashes = normalisedHashes(root, rels.map((rel) => posix(join(dir, rel))));
+  return rels.map((rel, i) => ({ path: posix(join(dir, rel)), op, digest: hashes[i] }));
 }
+
 
 /**
  * The manifest. Compact on purpose: it is read by the next step and by a human deciding whether

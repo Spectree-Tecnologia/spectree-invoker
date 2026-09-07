@@ -14,7 +14,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, readFileSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { Store } from '../scripts/lib/store.mjs';
-import { contractDigest, contentDigestAt, gatedDigest } from '../scripts/lib/digest.mjs';
+import { contractDigestAt, contentDigestAt, gatedDigest } from '../scripts/lib/digest.mjs';
 import { buildManifest } from '../scripts/lib/closure-prep.mjs';
 import { gitRepo, tempDir, cleanup, now, REPO } from './helpers.mjs';
 
@@ -38,22 +38,44 @@ function stubGh(dir, { pr, runs }) {
  * A change that reached `integration_approved`, with a merge on `main` and an approval bound to
  * whichever tree the caller says was authorised.
  */
-function fixture({ mergeDiffers = false, prepared = true, ci = ['check'] } = {}) {
+function fixture({
+  mergeDiffers = false, prepared = true, ci = ['check'],
+  rewriteContractInMerge = false, extraAncestorApproval = false, alterArtifactInMerge = false,
+} = {}) {
   const repo = gitRepo({ 'app.js': 'export const n = 1;\n', '.gitignore': '.spectree/\n' });
   const base = repo.base;
+  const contractFile = 'docs/changes/c1/proposal.md';
+  const taskFile = 'docs/changes/c1/tasks.md';
 
   repo.git(['checkout', '-q', '-b', 'candidate']);
   writeFileSync(join(repo.root, 'app.js'), 'export const n = 2;\n');
+  mkdirSync(join(repo.root, 'docs/changes/c1'), { recursive: true });
+  writeFileSync(join(repo.root, contractFile), '# Approved: refuse an invalid account\n');
+  writeFileSync(join(repo.root, taskFile), '- [x] build it\n');
   repo.git(['add', '-A']); repo.git(['commit', '-qm', 'the approved candidate']);
   const candidate = repo.git(['rev-parse', 'HEAD']).trim();
 
+  // A commit that is an ancestor of the merge but is not the approved candidate.
+  const ancestor = base;
+
   repo.git(['checkout', '-q', 'main']);
   if (mergeDiffers) {
-    // A merge that landed something else entirely — and a local checkout that still looks right.
     writeFileSync(join(repo.root, 'app.js'), 'export const n = 999;\n');
+    mkdirSync(join(repo.root, 'docs/changes/c1'), { recursive: true });
+    writeFileSync(join(repo.root, contractFile), '# Approved: refuse an invalid account\n');
+    writeFileSync(join(repo.root, taskFile), '- [x] build it\n');
     repo.git(['add', '-A']); repo.git(['commit', '-qm', 'something else']);
   } else {
     repo.git(['merge', '--no-ff', '-q', '-m', 'merge candidate', 'candidate']);
+    if (rewriteContractInMerge) {
+      writeFileSync(join(repo.root, contractFile), '# NOT APPROVED: accept an invalid account\n');
+      repo.git(['add', '-A']); repo.git(['commit', '-qm', 'quietly rewrite the contract']);
+    }
+    if (alterArtifactInMerge) {
+      // Operational, so neither the code digest nor the contract digest moves.
+      writeFileSync(join(repo.root, taskFile), '- [ ] actually it was never built\n');
+      repo.git(['add', '-A']); repo.git(['commit', '-qm', 'alter a prepared artifact']);
+    }
   }
   const merge = repo.git(['rev-parse', 'HEAD']).trim();
   repo.git(['checkout', '-q', 'candidate']);
@@ -66,36 +88,69 @@ function fixture({ mergeDiffers = false, prepared = true, ci = ['check'] } = {})
   const change = {
     schema_version: '1.0.0', project_id: 'fixture', change_id: 'c1', change_type: 'feature',
     protocol_version: '1.0.0', adapter: 'codex', base_revision: base, scope: 'fixture',
-    allowed_paths: ['app.js'], deltaless: true, state: 'integration_approved',
+    allowed_paths: ['app.js', 'docs'], deltaless: true, state: 'integration_approved',
   };
   store.putChange(change, { event: { type: 'opened' } });
 
-  // The approval names the tree that was actually reviewed: the candidate's.
-  const contract = contractDigest(repo.root, change);
-  const approved = contentDigestAt(repo.root, candidate);
-  for (const gate of ['scope', 'integration']) {
+  // The approval names the tree that was actually reviewed: the candidate's, contract included.
+  const approvedContract = contractDigestAt(repo.root, candidate, change);
+  const approvedContent = contentDigestAt(repo.root, candidate);
+  const approvedGate = gatedDigest(approvedContract.digest, approvedContent.digest);
+  store.putApproval({
+    schema_version: '1.0.0', approval_id: 'ap-scope', change_id: 'c1', gate: 'scope',
+    granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
+    scope_digest: approvedContract.digest, revision: candidate, timestamp: now(),
+  });
+  if (extraAncestorApproval) {
+    // Named so it sorts FIRST: an ancestor, for other content. And the matching one is granted
+    // at a commit that is not in the merge at all.
     store.putApproval({
-      schema_version: '1.0.0', approval_id: `ap-${gate}`, change_id: 'c1', gate,
+      schema_version: '1.0.0', approval_id: 'ap-a-ancestor', change_id: 'c1', gate: 'integration',
       granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
-      scope_digest: gate === 'scope' ? contract.digest : gatedDigest(contract.digest, approved.digest),
-      revision: candidate, timestamp: now(),
+      scope_digest: 'sha256:something-else-entirely', revision: ancestor, timestamp: now(),
+    });
+    repo.git(['checkout', '-q', '-b', 'sibling', base]);
+    writeFileSync(join(repo.root, 'app.js'), 'export const n = 2;\n');
+    mkdirSync(join(repo.root, 'docs/changes/c1'), { recursive: true });
+    writeFileSync(join(repo.root, contractFile), '# Approved: refuse an invalid account\n');
+    writeFileSync(join(repo.root, taskFile), '- [x] build it\n');
+    repo.git(['add', '-A']); repo.git(['commit', '-qm', 'the same content, off to one side']);
+    const sibling = repo.git(['rev-parse', 'HEAD']).trim();
+    repo.git(['checkout', '-q', 'candidate']);
+    store.putApproval({
+      schema_version: '1.0.0', approval_id: 'ap-z-matching', change_id: 'c1', gate: 'integration',
+      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
+      scope_digest: gatedDigest(contractDigestAt(repo.root, merge, change).digest, contentDigestAt(repo.root, merge).digest),
+      revision: sibling, timestamp: now(),
+    });
+  } else {
+    store.putApproval({
+      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
+      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
+      scope_digest: approvedGate, revision: candidate, timestamp: now(),
     });
   }
+
   const landed = contentDigestAt(repo.root, merge);
+  const landedContract = contractDigestAt(repo.root, merge, change);
   for (const property of ['pass2.attack', 'ci.green']) {
     store.putEvidence({
       schema_version: '1.0.0', evidence_id: `ev-${property}`, change_id: 'c1', property,
       check: 'synthetic fixture', source_kind: 'observed_execution',
       executor: { role: property === 'pass2.attack' ? 'quality_engineer' : 'platform_engineer', independent_of: ['full_stack_developer'] },
-      revision: landed.revision, fingerprint: landed.digest, contract_digest: contract.digest,
+      revision: landed.revision, fingerprint: landed.digest, contract_digest: landedContract.digest,
       result: 'PASS', timestamp: now(),
     });
   }
   if (prepared) {
+    // The artifacts as they stood on the CANDIDATE: that is what a preparation would have
+    // recorded, and what the merge is then checked against.
+    const blobFor = (p) => execFileSync('git', ['rev-parse', `${candidate}:${p}`], { cwd: repo.root, encoding: 'utf8' }).trim();
     mkdirSync(join(repo.root, '.spectree/closure'), { recursive: true });
     writeFileSync(join(repo.root, '.spectree/closure/c1.json'), JSON.stringify(buildManifest({
-      changeId: 'c1', baseRevision: base, contractDigest: contract.digest,
+      changeId: 'c1', baseRevision: base, contractDigest: landedContract.digest,
       candidateDigest: landed.digest, preparedAt: now(),
+      artifacts: [contractFile, taskFile].map((p) => ({ path: p, op: 'archived', digest: blobFor(p) })),
     })));
   }
 
@@ -133,7 +188,7 @@ test('a merge that landed different content does not close the change, however g
     const summary = JSON.parse(r.out);
     const failed = summary.steps.filter((s) => !s.ok).map((s) => s.name);
     assert.ok(failed.includes('what landed is what was authorised'), `expected the content check to fail, got ${failed.join(', ')}`);
-    assert.ok(failed.includes('the approved commit is in the merge'));
+    assert.ok(failed.includes('one approval covers both the content and the history'));
     assert.equal(summary.closed, false);
     assert.equal(f.stateNow(), 'integration_approved', 'and nothing moved');
   } finally { f.drop(); }
@@ -259,4 +314,46 @@ test('gh is asked for one PR and one run list, not for a log to re-read', () => 
   const post = readFileSync(join(REPO, 'scripts/post-merge.mjs'), 'utf8');
   assert.equal((post.match(/pullRequest\(/g) ?? []).length, 1, 'the PR is read once');
   assert.equal((post.match(/runsForSha\(/g) ?? []).length, 1, 'the runs are read once');
+});
+
+test('a merge that rewrote the contract does not close, even with the code untouched', () => {
+  const f = fixture({ rewriteContractInMerge: true });
+  try {
+    // `docs/changes/` is outside the code digest by design, so a merge that quietly edits the
+    // proposal moves nothing the code comparison can see. Reading the contract from the local
+    // checkout answered a question about the operator's disk.
+    assert.match(readFileSync(join(f.root, 'docs/changes/c1/proposal.md'), 'utf8'), /refuse/, 'the checkout still says refuse');
+    assert.match(f.git(['show', `${f.merge}:docs/changes/c1/proposal.md`]), /accept/, 'the merge says accept');
+
+    const r = f.post('--apply', '--json');
+    assert.equal(r.code, 1);
+    const failed = JSON.parse(r.out).steps.filter((s) => !s.ok).map((s) => s.name);
+    assert.ok(failed.includes('what landed is what was authorised'), `got ${failed.join(', ')}`);
+    assert.equal(f.stateNow(), 'integration_approved');
+  } finally { f.drop(); }
+});
+
+test('one approval has to satisfy both halves; two cannot supply one each', () => {
+  const f = fixture({ extraAncestorApproval: true });
+  try {
+    // An older approval that IS an ancestor but names other content, plus the one that names
+    // this content but was granted outside the merge. Checking content against whichever
+    // matches and history against whichever is first let the pair authorise between them.
+    const r = f.post('--apply', '--json');
+    assert.equal(r.code, 1);
+    const summary = JSON.parse(r.out);
+    const failed = summary.steps.filter((s) => !s.ok).map((s) => s.name);
+    assert.ok(failed.includes('one approval covers both the content and the history'), `got ${failed.join(', ')}`);
+    assert.equal(f.stateNow(), 'integration_approved');
+  } finally { f.drop(); }
+});
+
+test('a prepared artifact altered in the merge is not the artifact that was prepared', () => {
+  const f = fixture({ alterArtifactInMerge: true });
+  try {
+    const r = f.post('--apply', '--json');
+    assert.equal(r.code, 1);
+    const failed = JSON.parse(r.out).steps.filter((s) => !s.ok).map((s) => s.name);
+    assert.ok(failed.includes('prepared artifacts are in the merge, unchanged'), `got ${failed.join(', ')}`);
+  } finally { f.drop(); }
 });

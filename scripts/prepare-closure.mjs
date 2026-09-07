@@ -61,28 +61,53 @@ try {
 // is sitting in the work tree uncommitted. The candidate includes both — the digests already
 // say so — and checking only base..HEAD let an unowned file that had not been committed yet
 // pass straight through.
+/**
+ * `git status --porcelain -z`, read as records.
+ *
+ * The format is "XY <path>\0" — except for a rename or a copy, which is "XY <to>\0<from>\0":
+ * the SECOND field carries no status prefix. Slicing three characters off every field turned
+ * `badsrc/file.js` into `src/file.js`, and a rename that removed a file outside the change's
+ * ownership walked straight through the check that exists to catch it.
+ */
+function uncommittedPaths() {
+  const fields = execFileSync('git', ['status', '--porcelain', '-z'], { cwd: root, encoding: 'utf8' })
+    .split('\0');
+  const out = [];
+  for (let i = 0; i < fields.length; i++) {
+    const entry = fields[i];
+    if (!entry) continue;
+    const xy = entry.slice(0, 2);
+    const path = entry.slice(3);
+    if (path) out.push({ status: `L${xy.trim()}`, path });
+    if (xy.includes('R') || xy.includes('C')) {
+      const from = fields[++i];
+      // The source of a rename is a path this change is REMOVING, and ownership applies to it.
+      if (from) out.push({ status: 'L(from)', path: from });
+    }
+  }
+  return out;
+}
+
 const localChanges = (() => {
-  try {
-    return [...new Set(
-      execFileSync('git', ['status', '--porcelain', '-z'], { cwd: root, encoding: 'utf8' })
-        .split('\0').filter(Boolean)
-        // Porcelain v1 -z: "XY <path>", and a rename is "XY <to>\0<from>" — both ends matter.
-        .map((entry) => entry.slice(3))
-        .filter(Boolean),
-    )].map((path) => ({ status: 'L', path }));
-  } catch (e) {
+  try { return uncommittedPaths(); }
+  catch (e) {
     note(`the uncommitted part of the candidate cannot be read (${e.message.split('\n')[0]})`);
     return [];
   }
 })();
 
-const candidateFiles = [...(diff?.files ?? []), ...localChanges];
-if (candidateFiles.length) {
-  const outside = outsideAllowedPaths(candidateFiles, change.allowed_paths)
-    .filter((o) => !o.path.startsWith('.spectree/'));
-  if (outside.length) {
-    note(`${outside.length} path(s) outside this change's declared ownership: ${[...new Set(outside.map((o) => o.path))].slice(0, 5).join(', ')}`);
-  }
+/** Paths this change is touching that it does not own. `.spectree/` is the squad's own. */
+function trespasses(files) {
+  return [...new Set(
+    outsideAllowedPaths(files, change.allowed_paths)
+      .map((o) => o.path)
+      .filter((p) => !p.startsWith('.spectree/')),
+  )];
+}
+
+const outside = trespasses([...(diff?.files ?? []), ...localChanges]);
+if (outside.length) {
+  note(`${outside.length} path(s) outside this change's declared ownership: ${outside.slice(0, 5).join(', ')}`);
 }
 
 // The modules a proposal named and the deltas on disk must be the same set. A module named with
@@ -118,7 +143,15 @@ if (!consolidation.ok) {
 // --- 3. the plan ----------------------------------------------------------------------------
 const archiveName = `${new Date().toISOString().slice(0, 10)}-${changeId}`;
 const archiveRel = join('docs', 'changes', 'archive', archiveName);
-const alreadyArchived = !existsSync(changeDir) && existsSync(join(root, archiveRel));
+const archiveDest = join(root, archiveRel);
+const alreadyArchived = !existsSync(changeDir) && existsSync(archiveDest);
+
+// A destination that is already occupied is known NOW — before the consolidation runs, and in
+// the dry run too. Discovering it afterwards meant the command had already written and the
+// report still said it refused.
+if (existsSync(changeDir) && existsSync(archiveDest)) {
+  note(`E_PREP_COLLISION: ${archiveRel.split('\\').join('/')} already exists; two preparations would occupy the same archive slot`);
+}
 const plan = [
   { op: 'run', what: consolidation.command.join(' '), why: "the consumer's own spec consolidation" },
   ...(existsSync(changeDir)
@@ -208,17 +241,36 @@ if (ran.error || ran.status !== 0) {
   note(`spec consolidation failed (${ran.error ? ran.error.message : `exit ${ran.status}`}); the delta was not merged into the living spec`);
 }
 
-// Archive only when the consolidation succeeded: moving the folder first would leave a change
-// whose delta is nowhere and whose living spec never received it.
-const artifacts = [];
-if (!blocking.length && existsSync(changeDir)) {
-  const dest = join(root, archiveRel);
-  if (existsSync(dest)) {
-    console.error(`E_PREP_COLLISION: ${archiveRel} already exists; two preparations would occupy the same archive slot`);
-    process.exit(1);
+// What the consolidation itself did goes through the same ownership check. It is a command the
+// project supplied and this squad ran; a preparation that lets it write outside the change's
+// declared paths has approved, by running it, exactly what the check exists to refuse.
+if (!blocking.length) {
+  try {
+    const after = trespasses(uncommittedPaths());
+    if (after.length) {
+      note(`the consolidation command wrote ${after.length} path(s) outside this change's declared ownership: ${after.slice(0, 5).join(', ')}`);
+    }
+  } catch (e) {
+    note(`the candidate could not be re-read after the consolidation (${e.message.split('\n')[0]})`);
   }
-  mkdirSync(dirname(dest), { recursive: true });
-  renameSync(changeDir, dest);
+}
+
+if (blocking.length) {
+  console.error(`REFUSED after running the consolidation — ${blocking.length} blocking item(s):`);
+  for (const b of blocking) console.error(`  - ${b}`);
+  // Nothing is archived and nothing is deleted. What the command wrote stays where it is: it is
+  // work, and removing it automatically would destroy something nobody chose to destroy.
+  console.error('\nNothing was archived and nothing was removed. The files the command wrote are still there,');
+  console.error('for you to keep or revert deliberately.');
+  process.exit(1);
+}
+
+// Archive only once everything above holds: moving the folder first would leave a change whose
+// delta is nowhere and whose living spec never received it.
+const artifacts = [];
+if (existsSync(changeDir)) {
+  mkdirSync(dirname(archiveDest), { recursive: true });
+  renameSync(changeDir, archiveDest);
 }
 artifacts.push(...artifactsUnder(root, archiveRel.split('\\').join('/'), 'archived'));
 
