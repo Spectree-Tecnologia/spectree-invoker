@@ -40,6 +40,19 @@ else if (env.SPECTREE_HARNESS) { harness = env.SPECTREE_HARNESS; how = D; }
 add('harness', harness, how, how === V ? 'inferred from an environment variable the harness sets' : 'no harness marker in the environment');
 add('harness.version', env.CLAUDE_CODE_VERSION ?? env.CODEX_VERSION ?? 'unknown', env.CLAUDE_CODE_VERSION || env.CODEX_VERSION ? V : U);
 
+// How this copy was INSTALLED, which is a filesystem fact and not the harness identity. A real
+// Codex Desktop run reported `harness: unknown` because it sets none of the variables above,
+// and a report that can only say "unknown" about where it is running is harder to read than it
+// needs to be. The two are kept apart on purpose: the shape says which installer wrote these
+// files, never which program is executing them.
+const installShape =
+  existsSync(join(pkgRoot, 'protocol', 'manifest.json')) ? 'package checkout'
+  : existsSync(join(projectRoot, '.codex', 'agents')) && /[\\/]\.spectree[\\/]squad$/.test(pkgRoot) ? 'codex install'
+  : existsSync(join(pkgRoot, '.claude-plugin', 'plugin.json')) ? 'claude-code plugin'
+  : 'unknown';
+add('install_shape', installShape, installShape === 'unknown' ? U : V,
+  'the layout on disk, not the program running it — an installation shape never proves a harness identity');
+
 // --- roots -------------------------------------------------------------------
 add('package_root', pkgRoot, V, 'resolved from this script, so it survives being installed outside the project');
 add('project_root', projectRoot, V, env.SPECTREE_PROJECT_ROOT ? 'from SPECTREE_PROJECT_ROOT' : 'from the working directory');
@@ -124,10 +137,29 @@ const MATRIX = [
     residual: 'network is UNKNOWN here, so this role may be undeliverable on this harness' },
 ];
 
-// --- missing checkers --------------------------------------------------------
-const expected = ['check-plugin.mjs', 'build.mjs', 'state.mjs', 'verify-change.mjs', 'capabilities.mjs'];
-const missing = expected.filter((f) => !existsSync(join(pkgRoot, 'scripts', f)));
-add('checkers.missing', missing.length ? missing.join(', ') : 'none', V);
+// --- checkers ----------------------------------------------------------------
+// Two sets, because they answer different questions in different places. The runtime tools go
+// wherever the squad runs; `check-plugin.mjs` and `build.mjs` check the PACKAGE against
+// `protocol/`, which a consumer install deliberately does not carry. Reporting those two as
+// "missing" in a consumer made a correct install read as a broken one, and a real smoke had to
+// stop and explain that the absence was by design. An absence by design is not a finding.
+const RUNTIME_CHECKERS = ['state.mjs', 'verify-change.mjs', 'capabilities.mjs'];
+const PACKAGE_CHECKERS = ['check-plugin.mjs', 'build.mjs'];
+const present = (f) => existsSync(join(pkgRoot, 'scripts', f));
+
+const missing = RUNTIME_CHECKERS.filter((f) => !present(f));
+add('checkers.missing', missing.length ? missing.join(', ') : 'none', V,
+  missing.length ? 'the squad cannot run without these' : undefined);
+
+const absentPackage = PACKAGE_CHECKERS.filter((f) => !present(f));
+add('checkers.package_only',
+  absentPackage.length === 0 ? 'present'
+    : installShape === 'package checkout' ? `MISSING: ${absentPackage.join(', ')}`
+    : `not shipped here (${absentPackage.join(', ')})`,
+  V,
+  installShape === 'package checkout'
+    ? 'these check the package against protocol/, and this IS the package'
+    : 'these check the package against protocol/, which a consumer install does not carry — expected, not a finding');
 
 // --- output ------------------------------------------------------------------
 if (process.argv.includes('--json')) {
