@@ -86,6 +86,7 @@ export const change = (o = {}) => ({
   allowed_paths: o.allowed_paths ?? ['src/'],
   state: o.state ?? 'draft',
   ...(o.deltaless !== undefined ? { deltaless: o.deltaless } : {}),
+  ...(o.closure_mode ? { closure_mode: o.closure_mode } : {}),
   ...(o.modules_named ? { modules_named: o.modules_named } : {}),
   ...(o.state_revision !== undefined ? { state_revision: o.state_revision } : {}),
   ...(o.blocked_from ? { blocked_from: o.blocked_from } : {}),

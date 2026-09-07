@@ -13,4 +13,10 @@
 - Never accept a flat module core, a use case calling another use case, or a screen built in the framework's routing folder.
 - Never accept a business concept in `shared`.
 - Never accept two representations of the same concept across modules — and it holds against `shared` too: a module contradicting the shared contract is wrong even if it compiles and even at 100% coverage.
+- Never write `integrated` or `closed` from a closure preparation, and never let a prepared
+  closure stand for a candidate it was not prepared against.
+- Never record a green as a commit inside the content that green was about.
+- Never let a diff be classified by a PR title, a commit prefix or a label, and never classify
+  the last commit in place of the whole candidate.
+- Never accept a required check that failed, was cancelled, or never reported as a pass.
 - Never accept a partial delivery without a recorded deviation, nor a closure that adds to `docs/DEFERRED.md` without saying what that change owed and did not pay.

@@ -15,7 +15,9 @@ const OTHER = '0'.repeat(40);
 const scopeOk = (o = {}) => approval({ approval_id: 'ap-scope', gate: 'scope', change_id: 'c1', scope_digest: 'D-scope', revision: REV, ...o });
 const integrationOk = (o = {}) => approval({ approval_id: 'ap-int', gate: 'integration', change_id: 'c1', scope_digest: 'D-int', revision: REV, ...o });
 const DIGESTS = { scope: 'D-scope', integration: 'D-int' };
-const ctx = (o = {}) => ({ approvals: [scopeOk()], revision: REV, scopeDigests: DIGESTS, ...o });
+// A prepared closure, so the tests below can each isolate one variable. The preparation
+// itself is asserted in its own test.
+const ctx = (o = {}) => ({ approvals: [scopeOk()], revision: REV, scopeDigests: DIGESTS, closure: { ok: true }, ...o });
 
 test('the pipeline moves one step at a time, and the message says where you may go', () => {
   const r = canTransition(change({ state: 'draft' }), 'closed', {});
@@ -160,6 +162,32 @@ test('requirements are attached to the state entered, not to the edge', () => {
   }
   assert.deepEqual(ENTRY_REQUIREMENTS.blocked, {}, 'blocking is an admission, not an achievement');
   assert.ok(ENTRY_REQUIREMENTS.closed.approvals.includes('integration'));
+});
+
+test('integrating needs the closure prepared on the branch, not after the merge', () => {
+  const proven = [
+    evidence({ evidence_id: 'e-qa', property: 'pass2.attack', revision: REV, change_id: 'c1',
+      executor: { role: 'quality_engineer', independent_of: ['full_stack_developer'] } }),
+    evidence({ evidence_id: 'e-ci', property: 'ci.green', revision: REV, change_id: 'c1' }),
+  ];
+  const c = change({ state: 'ci_green' });
+  const full = { evidence: proven, approvals: [scopeOk(), integrationOk()] };
+
+  // Nothing checked the preparation at all: that is not permission, it is an unanswered question.
+  const unchecked = canTransition(c, 'integration_approved', ctx({ ...full, closure: undefined }));
+  assert.equal(unchecked.code, CODES.CLOSURE_NOT_PREPARED);
+  assert.match(unchecked.message, /prepare-closure/);
+
+  const stale = canTransition(c, 'integration_approved',
+    ctx({ ...full, closure: { ok: false, code: 'E_PREP_STALE', message: 'the candidate changed after the closure was prepared' } }));
+  assert.equal(stale.code, CODES.CLOSURE_NOT_PREPARED);
+  assert.match(stale.message, /candidate changed/);
+
+  assert.equal(canTransition(c, 'integration_approved', ctx(full)).ok, true);
+
+  // A consumer with no consolidation mechanism says so in the change, and is exempt by name.
+  const legacy = change({ state: 'ci_green', closure_mode: 'legacy' });
+  assert.equal(canTransition(legacy, 'integration_approved', ctx({ ...full, closure: undefined })).ok, true);
 });
 
 test('the machine performs nothing: it only answers', () => {

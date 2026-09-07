@@ -18,6 +18,7 @@ export const KIND = {
   PIPELINE: 'pipeline',
   RUNTIME_CONFIG: 'runtime_config',
   PROTOCOL: 'protocol',
+  OPERATIONAL: 'operational',
   UNKNOWN: 'unknown',
 };
 
@@ -56,7 +57,13 @@ export const DEFAULT_TEST_PATTERNS = [
   /_test\.(go|py)$/i,
 ];
 
-const PROTOCOL = [/^protocol\//, /^schemas\//, /^adapters\//];
+// A living spec is a behavioural contract, not documentation: it is what a test is written
+// from, so a change to it is never "just docs".
+const PROTOCOL = [/^protocol\//, /^schemas\//, /^adapters\//, /^docs\/specs\//];
+
+// The operational trail records what happened. It defines nothing, so it cannot change
+// behaviour — which is why it is narrow on purpose: this one prefix, and no other.
+const OPERATIONAL = [/^\.spectree\/history\//];
 
 /** Normalise a git path to POSIX, and refuse anything that escapes the repository. */
 export function normalisePath(raw) {
@@ -82,6 +89,7 @@ export function classifyPath(path, { testPatterns = DEFAULT_TEST_PATTERNS } = {}
   if (PIPELINE.some((r) => r.test(p))) return KIND.PIPELINE;
   if (RUNTIME_CONFIG.some((r) => r.test(p))) return KIND.RUNTIME_CONFIG;
   if (PROTOCOL.some((r) => r.test(p))) return KIND.PROTOCOL;
+  if (OPERATIONAL.some((r) => r.test(p))) return KIND.OPERATIONAL;
   if (ADMINISTRATIVE.some((r) => r.test(p))) return KIND.ADMINISTRATIVE;
   return KIND.SOURCE;
 }

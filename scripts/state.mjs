@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // The Invoker's state CLI. It validates the flow; it never performs the work.
 //
-//   node scripts/state.mjs init <project-id>
+//   node scripts/state.mjs init <project-id> [-- <spec consolidation command> [args...]]
 //   node scripts/state.mjs resume [change-id]        the resume contract, human-readable
 //   node scripts/state.mjs resume --json
-//   node scripts/state.mjs open <change-id> --type <t> --base <rev> --scope <s> --paths a,b [--deltaless]
+//   node scripts/state.mjs open <change-id> --type <t> --base <rev> --scope <s> --paths a,b
+//                                [--modules a,b] [--closure-mode prepared|legacy] [--deltaless]
 //   node scripts/state.mjs digest <change-id> [--gate scope|integration]
 //   node scripts/state.mjs can <change-id> <to-state>
 //   node scripts/state.mjs transition <change-id> <to-state> --expect <state_revision>
@@ -15,11 +16,12 @@
 //   node scripts/state.mjs record-evidence <file.json>
 //   node scripts/state.mjs record-approval <file.json>
 //   node scripts/state.mjs defer <file.json>
+//   node scripts/state.mjs trail [change-id] [--json] [--export <file>]
 //   node scripts/state.mjs validate                  every stored document against its schema
 //
 // Exit codes: 0 allowed/valid, 1 refused/invalid, 2 usage.
 
-import { existsSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -28,6 +30,7 @@ import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { canTransition, ASSERTS_FAILURE } from './lib/state-machine.mjs';
 import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
 import { launch } from './lib/launch.mjs';
+import { manifestPath, preparationCovers } from './lib/closure-prep.mjs';
 import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
 
@@ -79,6 +82,18 @@ function digests(change) {
       ...Object.fromEntries(CODE_GATES.map((gate) => [gate, gated])),
     },
   };
+}
+
+/**
+ * Does a closure preparation on record cover the candidate being gated? Read from the manifest,
+ * never from the presence of an archive folder: a folder that moved says a move happened, and
+ * only the manifest says what was true when it happened.
+ */
+function closureVerdict(change, d) {
+  if (change.closure_mode === 'legacy') return { ok: true, legacy: true };
+  let manifest = null;
+  try { manifest = JSON.parse(readFileSync(join(root, manifestPath(change.change_id)), 'utf8')); } catch { /* none */ }
+  return preparationCovers(manifest, { contractDigest: d.contract.digest, candidateDigest: d.content.digest });
 }
 
 /** The resume contract: everything needed to pick work back up, read from artifacts. */
@@ -155,7 +170,19 @@ function printResume(r) {
 switch (cmd) {
   case 'init': {
     const id = argv[1] ?? die('usage: state.mjs init <project-id>');
-    const doc = store.init({ project_id: id, protocol_version: '1.0.0', created_at: new Date().toISOString().replace(/\.\d+Z$/, 'Z') });
+    // The consolidation command is the CONSUMER's, declared once here. Nothing in this squad
+    // edits `docs/specs/` by hand, so a project that declares none closes the legacy way and
+    // says so — it never gets a spec merge improvised on its behalf.
+    // The command comes after `--`, argument by argument, exactly as `run` takes one. Splitting
+    // a command string on whitespace breaks the first path that contains a space — and on
+    // Windows the most likely command there is the node executable under "Program Files".
+    const sep = argv.indexOf('--');
+    const consolidate = sep >= 0 && argv.length > sep + 1 ? argv.slice(sep + 1) : null;
+    const doc = store.init({
+      project_id: id, protocol_version: '1.0.0',
+      created_at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+      ...(consolidate ? { closure: { consolidate } } : {}),
+    });
     console.log(`initialised .spectree for ${doc.project_id} (schema ${SCHEMA_VERSION})`);
     break;
   }
@@ -181,6 +208,10 @@ switch (cmd) {
       scope: flag('scope', '') || die('--scope is required: a change with no stated scope cannot be gated'),
       allowed_paths: (flag('paths', '') || die('--paths is required: ownership is not optional')).split(',').map((s) => s.trim()).filter(Boolean),
       state: 'draft',
+      // The modules the proposal names. The set here and the set of delta files on disk must be
+      // the same set, and nothing can check that if nobody wrote down what was named.
+      ...(flag('modules') ? { modules_named: flag('modules').split(',').map((m) => m.trim()).filter(Boolean) } : {}),
+      ...(flag('closure-mode') ? { closure_mode: flag('closure-mode') } : {}),
       ...(has('deltaless') ? { deltaless: true } : {}),
     };
     const saved = store.putChange(change, { event: { type: 'opened', state: 'draft' } });
@@ -218,6 +249,7 @@ switch (cmd) {
       revision: g.revision,
       contentDigest: d.content.digest,
       contractDigest: d.contract.digest,
+      closure: closureVerdict(change, d),
       scopeDigests: d.byGate,
       expectedStateRevision: has('expect') ? Number(flag('expect')) : undefined,
     });
@@ -225,6 +257,7 @@ switch (cmd) {
       console.error(`REFUSED ${change.state} -> ${to}`);
       console.error(`  ${verdict.code}: ${verdict.message}`);
       if (verdict.code === 'E_APPROVAL_DIGEST_MISMATCH') console.error(`  current contract: ${d.contract.source} -> ${d.contract.digest}`);
+      if (verdict.code === 'E_CLOSURE_NOT_PREPARED') console.error(`  prepare it on the branch: node <squad>/scripts/prepare-closure.mjs ${id} --apply`);
       if (verdict.code === 'E_CONTRACT_CHANGED') console.error(`  current contract: ${d.contract.source} -> ${d.contract.digest}`);
       if (verdict.code === 'E_CONTENT_CHANGED') console.error(`  current content:  ${d.content.revision.slice(0, 8)}${d.content.dirty ? ' + uncommitted changes' : ' (clean)'} -> ${d.content.digest}`);
       process.exit(1);
@@ -418,6 +451,32 @@ switch (cmd) {
     break;
   }
 
+  case 'trail': {
+    // The operational trail: what happened, kept apart from the content it describes. This is
+    // why closing a change needs no commit — an event about a revision is not part of it.
+    //
+    // Retention: append-only, one file per change under `.spectree/history/`, kept for as long
+    // as the project keeps `.spectree/`. It is LOCAL, and a consumer that gitignores `.spectree/`
+    // has no durable copy off this machine — say so rather than calling it an audit trail. Use
+    // `--export` to hand it to whatever does keep records.
+    const id = argv[1] && !argv[1].startsWith('--') ? argv[1] : null;
+    if (!store.present) die('no .spectree directory here', 1);
+    const ids = id ? [id] : store.changes().map((c) => c.change_id);
+    const events = ids.flatMap((cid) => store.history(cid).map((e) => ({ change_id: cid, ...e })));
+    const out = flag('export');
+    if (out) {
+      writeFileSync(out, events.map((e) => `${JSON.stringify(e)}\n`).join(''));
+      console.log(`exported ${events.length} event(s) for ${ids.length} change(s) -> ${out}`);
+      break;
+    }
+    if (has('json')) { console.log(JSON.stringify(events, null, 2)); break; }
+    for (const e of events) {
+      console.log(`${e.at ?? '?'}  ${e.change_id}  ${e.type}${e.to ? ` -> ${e.to}` : ''}${e.pr ? `  PR #${e.pr}` : ''}`);
+    }
+    console.log(`\n${events.length} event(s). Local to this machine: nothing here is a durable audit record on its own.`);
+    break;
+  }
+
   case 'validate': {
     if (!store.present) die('no .spectree directory here', 1);
     let bad = 0, seen = 0;
@@ -439,5 +498,5 @@ switch (cmd) {
   }
 
   default:
-    die(`usage: state.mjs <init|resume|open|digest|can|transition|run|record-evidence|record-approval|defer|validate>`);
+    die(`usage: state.mjs <init|resume|open|digest|can|transition|run|record-evidence|record-approval|defer|trail|validate>`);
 }

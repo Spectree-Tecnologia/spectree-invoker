@@ -5,8 +5,46 @@ on:
   push:
     branches: [main]
 
+# One candidate at a time per ref. A superseded run is cancelled rather than left to finish
+# validating a commit nobody is going to merge.
+concurrency:
+  group: check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # What this candidate has earned, from the FULL diff against the base — never from the last
+  # commit, the PR title, the commit prefix or a label. A log commit on top of a code change
+  # does not reclassify the code.
+  classify:
+    runs-on: ubuntu-latest
+    outputs:
+      treatment: ${{ steps.decide.outputs.treatment }}
+      checks: ${{ steps.decide.outputs.checks }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: decide
+        run: |
+          set -eu
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.base_ref }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          git rev-parse --verify "$base" >/dev/null 2>&1 || base=""
+          if [ -z "$base" ]; then
+            # No base to compare against is unknown, and unknown is the full suite.
+            echo "treatment=full" >> "$GITHUB_OUTPUT"
+            echo "checks=drift,integrity,suite,capabilities,consumer-install" >> "$GITHUB_OUTPUT"
+            echo "no usable base ref; falling back to the full suite"
+            exit 0
+          fi
+          node scripts/ci-treatment.mjs --base "$base" --github-output
+          node scripts/ci-treatment.mjs --base "$base"
+
   plugin:
+    needs: classify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,11 +64,13 @@ jobs:
 
       # No side effects, no network, no secrets — it only reports.
       - name: capability report
+        if: needs.classify.outputs.treatment == 'full'
         run: node scripts/capabilities.mjs
 
       # A synthetic consumer that already has its own AGENTS.md: the installer must
       # preserve it, be idempotent, and leave the scripts its skill calls runnable.
       - name: install into a synthetic consumer
+        if: needs.classify.outputs.treatment == 'full'
         run: |
           set -eu
           mkdir -p /tmp/consumer
@@ -44,12 +84,33 @@ jobs:
           node /tmp/consumer/.spectree/squad/scripts/capabilities.mjs > /dev/null
           node scripts/install-codex.mjs /tmp/consumer --apply | grep -q unchanged
 
+  # The aggregate, and the only job a branch protection needs to require. It fails when any
+  # required job failed, was cancelled, or did not report — none of which is a pass, and none
+  # of which may become one because the job that would have said so did not run.
+  required:
+    needs: [classify, plugin]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: every required check reported success
+        run: |
+          set -eu
+          echo "treatment: ${{ needs.classify.outputs.treatment }}"
+          for r in "classify=${{ needs.classify.result }}" "plugin=${{ needs.plugin.result }}"; do
+            name="${r%%=*}"; result="${r#*=}"
+            echo "  $name = ${result:-<never reported>}"
+            if [ "$result" != "success" ]; then
+              echo "::error::$name is '${result:-<never reported>}', which is not success"
+              exit 1
+            fi
+          done
+
   # Every merge to main is a release: the version in plugin.json becomes a tag,
   # so a project pinned at 0.2.1 can be traced to the commit that was 0.2.1.
   # If the tag already exists on a different commit, the version was not bumped
   # and the job fails — that is the check, not an accident.
   tag:
-    needs: plugin
+    needs: required
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

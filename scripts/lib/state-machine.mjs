@@ -27,6 +27,7 @@ export const CODES = {
   RETRY_WITHOUT_PROGRESS: 'E_RETRY_WITHOUT_PROGRESS',
   CAPABILITY_UNAVAILABLE: 'E_CAPABILITY_UNAVAILABLE',
   BLOCKED_RECOVERY: 'E_BLOCKED_RECOVERY',
+  CLOSURE_NOT_PREPARED: 'E_CLOSURE_NOT_PREPARED',
 };
 
 /** The ordered pipeline. Every forward edge goes to the next state and to no other. */
@@ -130,6 +131,8 @@ const refuse = (code, message, detail) => ({ ok: false, code, message, ...(detai
  * @param {object[]} [ctx.evidence]
  * @param {object[]} [ctx.approvals]
  * @param {string}   [ctx.revision]        the revision the caller believes is current
+ * @param {object}   [ctx.closure]         the closure preparation's verdict for THIS candidate,
+ *                                          as `lib/closure-prep.mjs` computed it
  * @param {string}   [ctx.contractDigest]  the contract as it reads NOW
  * @param {string}   [ctx.contentDigest]   the content a check would run against NOW —
  *                                          the commit plus the uncommitted working tree
@@ -137,7 +140,7 @@ const refuse = (code, message, detail) => ({ ok: false, code, message, ...(detai
  * @param {number}   [ctx.expectedStateRevision]
  */
 export function canTransition(change, to, ctx = {}) {
-  const { evidence = [], approvals = [], revision, contentDigest, contractDigest, scopeDigests = {}, expectedStateRevision } = ctx;
+  const { evidence = [], approvals = [], revision, contentDigest, contractDigest, closure, scopeDigests = {}, expectedStateRevision } = ctx;
 
   if (expectedStateRevision !== undefined && expectedStateRevision !== (change.state_revision ?? 0)) {
     return refuse(CODES.CONCURRENT_UPDATE,
@@ -281,6 +284,22 @@ export function canTransition(change, to, ctx = {}) {
           `"${want.property}" was not produced independently of ${want.independentOf.join(', ')}; ` +
           "a review that saw the builder's reasoning is not the independent pass this step assumes");
       }
+    }
+  }
+
+  // The closure is prepared on the branch, BEFORE the merge — consolidated specs, archived
+  // folder, one manifest — and authorising the integration is where that preparation has to
+  // exist. Preparing early is what removes the second PR and the commits that only said the
+  // previous run was green; requiring it here is what stops "prepared" from meaning "declared
+  // integrated". A change that says `closure_mode: "legacy"` is exempt, and says so out loud.
+  if (to === 'integration_approved' && change.closure_mode !== 'legacy') {
+    if (!closure) {
+      return refuse(CODES.CLOSURE_NOT_PREPARED,
+        'no closure preparation was checked for this candidate; run `prepare-closure.mjs` on the branch, ' +
+        'or declare the change `closure_mode: "legacy"` and close it the old way');
+    }
+    if (!closure.ok) {
+      return refuse(CODES.CLOSURE_NOT_PREPARED, `${closure.code}: ${closure.message}`);
     }
   }
 

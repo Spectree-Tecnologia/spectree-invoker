@@ -54,6 +54,36 @@ const unavailable = (message, cause) => {
   return e;
 };
 
+/**
+ * One content hash per file, the way the repository itself would store it.
+ *
+ * `git hash-object` applies the repo's own line-ending and filter rules, so the same file
+ * digests identically whether it was just written or checked out on a platform that converts
+ * line endings. Where git cannot answer — no repository, no git — it falls back to the raw
+ * bytes, which is consistent within that project and is the only thing left to be consistent
+ * about. The two are never mixed inside one digest.
+ */
+function normalisedHashes(root, relPaths) {
+  if (relPaths.length === 0) return [];
+  const bad = relPaths.find((p) => /[\r\n]/.test(p));
+  if (bad) throw unavailable(`"${posix(bad)}" contains a newline, and no path list can carry that unambiguously`);
+  const absPaths = relPaths.map((p) => join(root, p));
+  try {
+    const out = execFileSync('git', ['hash-object', '--stdin-paths'], {
+      cwd: root, encoding: 'utf8', input: `${absPaths.join('\n')}\n`,
+      stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+    }).split(/\r?\n/).filter(Boolean);
+    if (out.length === absPaths.length) return out;
+    throw unavailable(`git hashed ${out.length} of ${absPaths.length} file(s); a partial answer is not an answer`);
+  } catch (e) {
+    if (e.code === 'E_CONTENT_UNAVAILABLE') throw e;
+    return absPaths.map((p, i) => {
+      try { return `raw:${createHash('sha256').update(readFileSync(p)).digest('hex')}`; }
+      catch (err) { throw unavailable(`"${posix(relPaths[i])}" is part of the content and cannot be read`, err.message); }
+    });
+  }
+}
+
 /** Where the change folder is now: open, or already moved into the archive. */
 function changeFolder(root, changeId) {
   const open = join(root, 'docs', 'changes', changeId);
@@ -79,10 +109,14 @@ export function contractDigest(root, change, { artifactsDir } = {}) {
   if (dir && existsSync(dir) && statSync(dir).isDirectory()) {
     const files = walk(dir).filter(CONTRACT).sort();
     if (files.length) {
-      for (const rel of files) {
+      // Normalised the same way the content digest is, and for the same reason: archiving the
+      // change writes these files, and checking the branch out again re-materialises them with
+      // the platform's line endings. Raw bytes made that read as a changed contract.
+      const hashes = normalisedHashes(root, files.map((rel) => posix(relative(root, join(dir, rel)))));
+      files.forEach((rel, i) => {
         h.update(rel, 'utf8'); h.update('\0');
-        h.update(readFileSync(join(dir, rel))); h.update('\0');
-      }
+        h.update(hashes[i], 'utf8'); h.update('\0');
+      });
       return { digest: sha(h), source: posix(relative(root, dir)) || '.', files };
     }
   }
@@ -108,39 +142,46 @@ export function contractDigest(root, change, { artifactsDir } = {}) {
  * @returns {{ digest: string, revision: string, tree: string, dirty: boolean }}
  */
 export function contentDigest(root) {
-  const git = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const git = (args, input) => execFileSync('git', args, {
+    cwd: root, encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+  });
   const exclude = OPERATIONAL.map((p) => `:(exclude)${p}`);
-  let revision, tree, entries, patch, untracked;
+  let revision, tree, paths, dirty;
   try {
     revision = git(['rev-parse', 'HEAD']).trim();
     tree = git(['rev-parse', 'HEAD^{tree}']).trim();
-    // -z everywhere: git quotes and escapes non-ASCII paths in its default output, and a
-    // path read back through that escaping is not the path on disk.
-    entries = git(['ls-tree', '-r', '-z', 'HEAD']).split('\0').filter(Boolean)
-      .map((line) => {
-        const tab = line.indexOf('\t');
-        return { meta: line.slice(0, tab), path: line.slice(tab + 1) };
-      })
-      .filter((e) => !excluded(e.path))
-      .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-    patch = git(['diff', 'HEAD', '--', '.', ...exclude]);
-    untracked = git(['ls-files', '--others', '--exclude-standard', '-z', '--', '.', ...exclude])
-      .split('\0').filter(Boolean).sort();
+    // Every file in scope, tracked or not, ignored files excluded. -z everywhere: git quotes and
+    // escapes non-ASCII paths in its default output, and a path read back through that escaping
+    // is not the path on disk.
+    paths = [...new Set(
+      git(['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '.', ...exclude])
+        .split('\0').filter(Boolean),
+    )].filter((p) => !excluded(p)).sort();
+    dirty = git(['status', '--porcelain', '-z', '--', '.', ...exclude]).length > 0;
   } catch (e) {
     throw unavailable(`the content under ${root} cannot be determined`, e.message);
   }
 
+  // Content identity is git's own, asked per path for the file as it stands in the work tree.
+  //
+  // Two earlier answers were both wrong, in opposite directions. Hashing tree entries plus a
+  // patch made the same bytes digest differently before and after a commit, so committing
+  // finished work invalidated the evidence and the closure preparation covering it — friction
+  // with no safety in it. Hashing the bytes on disk made the digest depend on the platform's
+  // line-ending conversion, so the same commit checked out on Windows was "different content".
+  // `git hash-object` applies the repository's own normalisation, which is the only definition
+  // of "the same content" that both ends of a merge can agree on.
+  const present = paths.filter((p) => existsSync(join(root, p)));
+  const blobs = normalisedHashes(root, present);
+  const byPath = new Map(present.map((p, i) => [p, blobs[i]]));
   const h = createHash('sha256');
-  for (const e of entries) { h.update(e.meta, 'utf8'); h.update('\0'); h.update(e.path, 'utf8'); h.update('\0'); }
-  h.update(patch, 'utf8'); h.update('\0');
-  for (const rel of untracked) {
+  for (const rel of paths) {
     h.update(rel, 'utf8'); h.update('\0');
-    let body;
-    try { body = readFileSync(join(root, rel)); }
-    catch (e) { throw unavailable(`"${rel}" is part of the content and cannot be read`, e.message); }
-    h.update(body); h.update('\0');
+    // A tracked path that is not on disk is a deletion: a legitimate state, and not a read
+    // failure to be papered over with a placeholder two versions could share.
+    h.update(byPath.get(rel) ?? '<deleted>', 'utf8'); h.update('\0');
   }
-  return { digest: sha(h), revision, tree, dirty: patch.length > 0 || untracked.length > 0 };
+  return { digest: sha(h), revision, tree, dirty };
 }
 
 /** What an integration-class gate authorises: the contract AND the code it will carry. */

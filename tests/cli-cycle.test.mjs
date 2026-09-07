@@ -19,15 +19,20 @@ function consumer() {
   // collide with the squad's own writes, so a consumer keeps it out of version control.
   const repo = gitRepo({ 'seed.txt': 'seed\n', '.gitignore': '.spectree/\n' });
   execFileSync(process.execPath, [join(REPO, 'scripts', 'install-codex.mjs'), repo.root, '--apply'], { encoding: 'utf8' });
+  // The squad is installed once, before any change opens — so it is part of the base and not
+  // part of somebody's delivery, which is how a real consumer has it.
+  repo.git(['add', '-A']); repo.git(['commit', '-qm', 'install the squad']);
   const state = join(repo.root, '.spectree/squad/scripts/state.mjs');
   // Input documents live OUTSIDE the project: a scratch file dropped in the work tree would
   // change the very content digest the commands are about to compute.
   const scratch = tempDir('spectree-scratch-');
   // spawnSync, not execFileSync: the refusals are on stderr and every one of them is asserted.
-  const cli = (...args) => {
-    const r = spawnSync(process.execPath, [state, ...args], { cwd: repo.root, encoding: 'utf8' });
+  const script = (name, ...args) => {
+    const r = spawnSync(process.execPath, [join(repo.root, '.spectree/squad/scripts', name), ...args],
+      { cwd: repo.root, encoding: 'utf8' });
     return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
   };
+  const cli = (...args) => script('state.mjs', ...args);
   const doc = (name, body) => {
     const f = join(scratch, `${name}.json`);
     writeFileSync(f, JSON.stringify(body));
@@ -44,7 +49,7 @@ function consumer() {
     `${prints ? `console.log(${JSON.stringify(prints)});` : ''}process.exit(${exit})`,
   );
   const drop = () => { cleanup(repo.root); cleanup(scratch); };
-  return { ...repo, cli, doc, run, drop };
+  return { ...repo, cli, script, doc, run, drop };
 }
 
 const proposal = (text) => `# proposal\n\n${text}\n`;
@@ -154,8 +159,15 @@ test('the CLI blocks a change and can bring it back, without hand-editing JSON',
 
 /** Open, approve the scope, cut the branch, build the module: everything up to `implemented`. */
 function upToImplemented(c) {
-  c.cli('init', 'proj');
-  c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account');
+  c.cli('init', 'proj', '--', process.execPath, '.spectree/consolidate.mjs');
+  // The consumer's own spec consolidation, declared once at init. It lives under `.spectree/`
+  // so that running it is not itself a change to the content being measured.
+  writeFileSync(join(c.root, '.spectree/consolidate.mjs'), [
+    "import { cpSync, existsSync, mkdirSync } from 'node:fs';",
+    "const from = 'docs/changes/c1/specs', to = 'docs/specs';",
+    'if (existsSync(from)) { mkdirSync(to, { recursive: true }); cpSync(from, to, { recursive: true }); }',
+  ].join('\n'));
+  c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account,docs', '--modules', 'account');
   contractOnDisk(c);
   c.git(['add', '-A']); c.git(['commit', '-qm', 'the proposal']);
   const contract = c.cli('digest', 'c1').out;
@@ -189,6 +201,15 @@ function proveIt(c) {
   assert.equal(c.cli('transition', 'c1', 'pass2_complete').code, 0);
   assert.equal(c.run('ci.green', { id: 'e-ci' }).code, 0);
   assert.equal(c.cli('transition', 'c1', 'ci_green').code, 0);
+}
+
+/**
+ * The closure, prepared on the branch and BEFORE the final validation — which is the whole
+ * point: specs consolidated and the folder archived after QA and CI would mean the thing that
+ * was validated is not the thing being integrated.
+ */
+function prepare(c, args = []) {
+  return c.script('prepare-closure.mjs', 'c1', ...args);
 }
 
 test('an uncommitted edit invalidates the evidence: the revision is not the content', () => {
@@ -301,17 +322,37 @@ test('an approval cannot carry new content past a QA and a CI that never saw it'
   } finally { c.drop(); }
 });
 
-test('one change goes the whole way to closed: branch, merge --no-ff, archive', () => {
+test('one PR: the closure is prepared on the branch, and the merge is the only integration', () => {
   const c = consumer();
   try {
     upToImplemented(c);
+
+    // The closure is prepared BEFORE the final validation, so what QA and CI look at is the
+    // candidate that will be integrated — specs consolidated, folder archived, one manifest.
+    const dry = prepare(c);
+    assert.equal(dry.code, 0, dry.err);
+    assert.match(dry.out, /DRY RUN/);
+    assert.equal(existsSync(join(c.root, '.spectree/closure/c1.json')), false, 'a dry run writes nothing');
+
+    const prepared = prepare(c, ['--apply']);
+    assert.equal(prepared.code, 0, prepared.err);
+    const manifest = JSON.parse(readFileSync(join(c.root, '.spectree/closure/c1.json'), 'utf8'));
+    assert.equal(manifest.change_id, 'c1');
+    assert.deepEqual(manifest.blocking, []);
+    assert.ok(manifest.artifacts.length, 'the archived contract is recorded as an artifact');
+    assert.ok(existsSync(join(c.root, 'docs/specs/account/spec.md')), "the consumer's own command consolidated the delta");
+    assert.equal(existsSync(join(c.root, 'docs/changes/c1')), false, 'the change folder moved into the archive');
+
+    // Preparing is not declaring. The change is still `implemented`, and nothing above wrote
+    // `integrated` or `closed` — that is the merge's job and only the merge's.
+    assert.equal(JSON.parse(readFileSync(join(c.root, '.spectree/changes/c1.json'), 'utf8')).state, 'implemented');
+
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'closure prepared on the branch']);
     proveIt(c);
     const candidate = c.git(['rev-parse', 'HEAD']).trim();
 
-    // The integration gate authorises the contract AND the code that will travel with it.
     const integration = c.cli('digest', 'c1', '--gate', 'integration');
     assert.notEqual(integration.out, c.cli('digest', 'c1').out, 'integration is not bound to the documents alone');
-    assert.match(integration.err, /the contract AND the code/);
 
     const missing = c.cli('can', 'c1', 'integration_approved');
     assert.equal(missing.code, 1);
@@ -320,37 +361,30 @@ test('one change goes the whole way to closed: branch, merge --no-ff, archive', 
     c.cli('record-approval', c.doc('ap2', approvalDoc('ap2', 'integration', integration.out, candidate)));
     assert.equal(c.cli('transition', 'c1', 'integration_approved').code, 0);
 
-    // A real merge. `--no-ff` writes a new commit over an identical tree: the candidate that
-    // was reviewed is the candidate being integrated, and the digest must say so.
+    // ONE merge. `--no-ff` writes a new commit over an identical tree: the candidate that was
+    // reviewed is the candidate being integrated, and the digest says so.
     c.git(['checkout', '-q', 'main']);
     c.git(['merge', '--no-ff', '-q', '-m', 'merge change/c1', 'change/c1']);
     const merged = c.git(['rev-parse', 'HEAD']).trim();
     assert.notEqual(merged, candidate, 'the revision moved');
     assert.equal(c.cli('digest', 'c1', '--gate', 'integration').out, integration.out,
-      'and the content did not: the approval and the runs still cover exactly this code');
+      'and the content did not: the approval, the runs and the preparation still cover exactly this');
     assert.equal(c.cli('transition', 'c1', 'integrated').code, 0);
 
     const notClosed = c.cli('can', 'c1', 'closed');
     assert.equal(notClosed.code, 1);
     assert.match(notClosed.err, /closure\.merged/, 'closing needs the merge to have been observed');
 
-    // The closure check is a real question about the two revisions, not a synthetic PASS.
+    // A real question about the two revisions, not a synthetic PASS.
     const closure = c.cli('run', 'c1', 'closure.merged', '--role', 'platform_engineer', '--id', 'e-merge',
       '--', 'git', 'merge-base', '--is-ancestor', candidate, merged);
     assert.equal(closure.code, 0, closure.err);
-
-    // Archival moves the contract; it does not change it, and it is not a code change either.
-    c.git(['mv', 'docs/changes/c1', 'docs/changes/archive-tmp']);
-    mkdirSync(join(c.root, 'docs/changes/archive'), { recursive: true });
-    c.git(['mv', 'docs/changes/archive-tmp', 'docs/changes/archive/2026-09-06-c1']);
-    c.git(['add', '-A']); c.git(['commit', '-qm', 'archive c1']);
-    const afterArchive = c.cli('digest', 'c1');
-    assert.equal(afterArchive.code, 0);
-    assert.match(afterArchive.err, /archive\/2026-09-06-c1/, 'the digest follows the contract into the archive');
-    assert.equal(c.cli('digest', 'c1', '--gate', 'integration').out, integration.out,
-      'archiving is bookkeeping: neither digest moves');
-
     assert.equal(c.cli('transition', 'c1', 'closed').code, 0);
+
+    // The point of the whole exercise: closing added no commit. The old flow ended with one
+    // that said the previous run had been green, and that commit started another run.
+    assert.equal(c.git(['rev-parse', 'HEAD']).trim(), merged, 'no commit was made after the merge');
+    assert.equal(c.git(['status', '--porcelain']).trim(), '', 'and nothing is left uncommitted either');
 
     const done = c.cli('resume');
     assert.match(done.out, /change\s+none open/, 'a closed change is no longer open work');
@@ -359,13 +393,67 @@ test('one change goes the whole way to closed: branch, merge --no-ff, archive', 
       'proposed', 'scope_approved', 'isolated', 'baselined', 'pass1_complete',
       'implemented', 'pass2_complete', 'ci_green', 'integration_approved', 'integrated', 'closed',
     ], 'every step is in the append-only record, in order');
+    assert.ok(history.some((h) => h.type === 'closure_prepared'), 'and the preparation is an event, not a commit');
   } finally { c.drop(); }
 });
+
+test('the preparation is idempotent, and a moved folder is not proof it was valid', () => {
+  const c = consumer();
+  try {
+    upToImplemented(c);
+    assert.equal(prepare(c, ['--apply']).code, 0);
+    const first = readFileSync(join(c.root, '.spectree/closure/c1.json'), 'utf8');
+
+    const again = prepare(c, ['--apply']);
+    assert.equal(again.code, 0);
+    assert.match(again.out, /unchanged/);
+    assert.equal(readFileSync(join(c.root, '.spectree/closure/c1.json'), 'utf8'), first, 'the manifest is not rewritten');
+
+    // The folder is archived and the manifest describes another candidate: "already archived"
+    // is a move that happened, not a preparation that is valid for what is here now.
+    writeFileSync(join(c.root, 'modules/account/account.js'), 'export const name = (s) => s;\n');
+    const stale = prepare(c);
+    assert.equal(stale.code, 1);
+    assert.match(stale.err, /E_PREP_STALE/);
+    assert.match(stale.err, /candidate moved/);
+
+    const gate = c.cli('can', 'c1', 'integration_approved');
+    assert.equal(gate.code, 1, 'and the gate refuses on the same grounds');
+  } finally { c.drop(); }
+});
+
+test('a consumer with no consolidation mechanism is told, not improvised for', () => {
+  const c = consumer();
+  try {
+    // Initialised WITHOUT --consolidate: there is no mechanism this squad may use, and editing
+    // docs/specs/ by hand is not the fallback.
+    c.cli('init', 'proj');
+    c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account,docs');
+    contractOnDisk(c);
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'the proposal']);
+
+    const refused = prepare(c, ['--apply']);
+    assert.equal(refused.code, 1);
+    assert.match(refused.err, /E_NO_CONSOLIDATION/);
+    assert.match(refused.err, /Hand-editing docs\/specs\/ is not the fallback/);
+    assert.equal(existsSync(join(c.root, 'docs/specs')), false, 'and it wrote no spec');
+    assert.equal(existsSync(join(c.root, 'docs/changes/c1')), true, 'and archived nothing');
+
+    // The legacy flow is available, and it is a statement rather than a silent fallback.
+    const legacy = prepare(c, ['--legacy']);
+    assert.equal(legacy.code, 0);
+    assert.match(legacy.err, /closes the legacy way/);
+    assert.equal(existsSync(join(c.root, '.spectree/closure/c1.json')), false, 'legacy prepares nothing');
+  } finally { c.drop(); }
+});
+
 
 test('a merge that changes the tree is a different candidate, and is refused', () => {
   const c = consumer();
   try {
     upToImplemented(c);
+    assert.equal(prepare(c, ['--apply']).code, 0);
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'closure prepared']);
     proveIt(c);
     const candidate = c.git(['rev-parse', 'HEAD']).trim();
     const integration = c.cli('digest', 'c1', '--gate', 'integration').out;
@@ -385,32 +473,42 @@ test('a merge that changes the tree is a different candidate, and is refused', (
   } finally { c.drop(); }
 });
 
-test('adding a Requirement invalidates the QA that never saw it', () => {
+test('adding a Requirement invalidates the QA, and the preparation, that never saw it', () => {
   const c = consumer();
   try {
     upToImplemented(c);
+    assert.equal(prepare(c, ['--apply']).code, 0);
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'closure prepared']);
     proveIt(c);
 
-    // The code is untouched; the contract grows an acceptance criterion. Everything the
-    // content digest looks at is identical, and the QA is still about the old Requirements.
-    const contentBefore = c.cli('digest', 'c1', '--gate', 'integration').out;
-    writeFileSync(join(c.root, 'docs/changes/c1/specs/account/spec.md'),
-      '## ADDED Requirements\n\n### Requirement: x\n\n### Requirement: y\n');
+    // The code is untouched; the contract grows an acceptance criterion — edited where the
+    // contract now lives, which after preparation is the archive.
+    const before = c.cli('digest', 'c1', '--gate', 'integration').out;
+    const spec = join(c.root, `docs/changes/archive/${new Date().toISOString().slice(0, 10)}-c1/specs/account/spec.md`);
+    assert.ok(existsSync(spec), 'the contract is in the archive');
+    writeFileSync(spec, ['## ADDED Requirements', '', '### Requirement: x', '', '### Requirement: y', ''].join('\n'));
     c.git(['add', '-A']); c.git(['commit', '-qm', 'one more Requirement']);
-    assert.notEqual(c.cli('digest', 'c1', '--gate', 'integration').out, contentBefore, 'the candidate is a new one');
+    assert.notEqual(c.cli('digest', 'c1', '--gate', 'integration').out, before, 'the candidate is a new one');
 
-    // Approve the new contract properly, so the only thing left unproven is the QA.
+    // Approve the new contract properly, so the only things left unproven are the QA and the
+    // preparation — both of which were computed from Requirements that no longer exist.
     const rev = c.git(['rev-parse', 'HEAD']).trim();
     c.cli('record-approval', c.doc('ap1b', approvalDoc('ap1b', 'scope', c.cli('digest', 'c1').out, rev)));
     c.cli('record-approval', c.doc('ap2', approvalDoc('ap2', 'integration', c.cli('digest', 'c1', '--gate', 'integration').out, rev)));
 
-    const r = c.cli('can', 'c1', 'integration_approved');
-    assert.equal(r.code, 1, 'a run cannot speak for Requirements it never saw');
-    assert.match(r.err, /E_CONTRACT_CHANGED/);
-    assert.match(r.err, /Requirements moved since that run/);
+    const staleQa = c.cli('can', 'c1', 'integration_approved');
+    assert.equal(staleQa.code, 1, 'a run cannot speak for Requirements it never saw');
+    assert.match(staleQa.err, /E_CONTRACT_CHANGED/);
+    assert.match(staleQa.err, /Requirements moved since that run/);
 
-    // Re-running QA against the contract as it now reads is what unblocks it.
+    // Re-running QA is not enough: the closure was consolidated from the old contract too.
     assert.equal(c.run('pass2.attack', { role: 'quality_engineer', independentOf: 'full_stack_developer', id: 'e-qa2' }).code, 0);
+    const stalePrep = c.cli('can', 'c1', 'integration_approved');
+    assert.equal(stalePrep.code, 1);
+    assert.match(stalePrep.err, /E_CLOSURE_NOT_PREPARED/);
+    assert.match(stalePrep.err, /E_PREP_STALE/);
+
+    assert.equal(prepare(c, ['--apply']).code, 0, 'preparing again against the contract as it now reads');
     assert.equal(c.cli('can', 'c1', 'integration_approved').code, 0);
   } finally { c.drop(); }
 });

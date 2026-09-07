@@ -36,6 +36,21 @@ Four of those were introduced while fixing the previous one. That is what this e
 5. an unsupported or unparseable shape is **refused**, never half-read. Silence about what a run
    did is not evidence that it did it.
 
+## M5 — the post-merge path through `gh` has never run
+
+**Owner:** this repository.
+**Status:** open, and it cannot close in a synthetic consumer.
+
+`scripts/post-merge.mjs` reads a real PR, real checks and a real merge commit through the GitHub
+CLI. The decision logic under it — content equivalence, the required-check aggregate, whether a
+preparation covers what landed — is tested directly and offline. **The `gh` calls themselves are
+not**: a disposable repository has no remote and no PR to ask about.
+
+Criteria for closing: one real change taken through `post-merge.mjs --apply` against a real PR,
+with the refusal path exercised too (a merge whose content is not the authorised candidate must
+stop the closure). Until then the row in [compatibility.md](compatibility.md) says implemented,
+not verified.
+
 ## M2 — the supported TAP subset is narrow, deliberately
 
 **Owner:** this repository.

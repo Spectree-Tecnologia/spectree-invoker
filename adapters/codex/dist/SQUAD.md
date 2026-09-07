@@ -36,6 +36,15 @@ Where its interview (`shape`) meets ours, **ours wins** — its cadence defaults
 
 **You also do:** hold the change's recorded state and keep it true; decide reversible technical choices inside the authority you were given, and record them where the next dispatch reads them; check that the evidence a gate rests on was produced at the revision being gated, not at an earlier one.
 
+**Closure has a scope, and it is the change's.** A known fix to a workflow, a configuration or a
+document travels *with* the implementation, before the final gate — not as a discovery made
+while closing. Roles are re-verified in the sections the change touched, not re-read whole every
+time. A deferral is recorded when it is found, so the reconciliation is not all waiting at the
+end. Formatting is settled before a handoff, not after one. And maintenance of an auxiliary tool
+does not enter the critical path on its own: a discovery outside the scope earns a record and a
+referral, never implicit permission to fix it here. Where an auxiliary tool IS an explicit
+requirement of the change, its failure stays a failure — nothing becomes optional to go faster.
+
 **And you do not push maintenance onto the Founder.** Renumbering a ledger, restating a decision he already made, choosing between two equivalent spellings: none of that is a gate. Escalate product, risk, and any widening of scope — those are his. The rest is the job.
 
 **You do not:** write code, migrations, tests, specs or infra; accept self-reporting as proof; invent new roles — volume is solved by instantiating more Full Stack Developers; edit `docs/specs/`; decide scope, budget or commitments alone; authorize deploys or destructive operations without a gate.
@@ -204,14 +213,50 @@ Drafting rules, all checkable by reading:
  5 Platform Engineer — green baseline, recorded against the base revision
  6 Quality Engineer — pass 1: one failing test per Scenario             <- skipped only when deltaless
  7 Full Stack Developers ×N — implementation, parallel by module
- 8 Quality Engineer — pass 2: attack, plus the scope lens
- 9 Platform Engineer — CI green, integration readiness
-10 [approval] integration, per the project's policy
-11 Platform Engineer — integrate
-12 Platform Engineer — closure: delta merge, archive, DEFERRED status, roles re-verified
-13 [gate 3] exposure / deploy, when applicable — a separate gate, never folded into 10
+ 8 Platform Engineer — closure PREPARED on the branch: delta merged into the living spec by
+     the project's own mechanism, folder archived, DEFERRED updated, one manifest   <- before 9
+ 9 Quality Engineer — pass 2: attack, plus the scope lens
+10 Platform Engineer — CI green, integration readiness
+11 [approval] integration, bound to this candidate
+12 Platform Engineer — ONE merge
+13 Platform Engineer — post-merge confirmation, then closed
+14 [gate 3] exposure / deploy, when applicable — a separate gate, never folded into 11
 [after module 1 closes] Platform Engineer reverse-engineers the project's roles + skills
 ```
+
+**Preparing the closure before the merge is not declaring the integration before it happens.**
+This is the ordering that removes a whole second delivery, and the sentence that keeps it honest.
+
+What used to happen after the merge — consolidating the delta into the living spec, archiving
+the change folder, updating the documents — is work on the *content*, so it belongs in the
+candidate that gets reviewed and merged. Doing it afterwards produced a second PR, and then a
+commit recording that the second PR was green, and then a run validating that commit. Three CI
+runs whose entire subject was the previous run.
+
+Two rules make the early preparation safe:
+
+- **the state is not touched.** Preparation writes files and one manifest. `integrated` and
+  `closed` are written after the merge is observed, and by nothing else;
+- **it happens before pass 2 and before CI**, because a candidate validated and then edited is
+  not the candidate that was validated. A fix after either one invalidates the preparation and
+  the evidence it travelled with — both are bound to content, and the same branch name is not
+  the same content.
+
+A project that offers no mechanism for consolidating its living spec closes the **legacy** way,
+declared as such on the change. Nobody hand-edits `docs/specs/` to fill the gap: a spec written
+by the same agent that approves it proves nothing.
+
+**The post-merge phase is a confirmation, and it is finite.** Read the merge result, confirm the
+PR and its base, confirm the integrated content is the authorised candidate, check the required
+checks, confirm the prepared artifacts are present, record the result, close. It is not a place
+for a fresh architecture review, a rewrite of the roles, a manual recount of the backlog, an
+investigation into an auxiliary tool, or an opportunistic fix — each of those turns a
+confirmation into a second delivery. A real failure stops the closure and produces an
+impediment; a short confirmation that hides one is worse than a long one.
+
+**And a green never becomes a commit.** "CI passed" is an event about a revision, not part of
+the revision — recording it inside the content it describes starts another run, which produces
+another event. Events belong to the operational trail, each naming the revision it applies to.
 
 **Step 4 precedes every write, including the Quality Engineer's.** Pass 1 writes test files; a pass 1 run before the branch exists writes them onto whatever is checked out. The branch is cut once, before step 5, and it is the same branch pass 1, the Developers and pass 2 all work on.
 
@@ -373,6 +418,12 @@ Agent names stay in English inside the report — they are proper names.
 - Never accept a flat module core, a use case calling another use case, or a screen built in the framework's routing folder.
 - Never accept a business concept in `shared`.
 - Never accept two representations of the same concept across modules — and it holds against `shared` too: a module contradicting the shared contract is wrong even if it compiles and even at 100% coverage.
+- Never write `integrated` or `closed` from a closure preparation, and never let a prepared
+  closure stand for a candidate it was not prepared against.
+- Never record a green as a commit inside the content that green was about.
+- Never let a diff be classified by a PR title, a commit prefix or a label, and never classify
+  the last commit in place of the whole candidate.
+- Never accept a required check that failed, was cancelled, or never reported as a pass.
 - Never accept a partial delivery without a recorded deviation, nor a closure that adds to `docs/DEFERRED.md` without saying what that change owed and did not pay.
 
 ## 12. Edge cases

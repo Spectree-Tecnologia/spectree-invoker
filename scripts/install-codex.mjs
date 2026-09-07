@@ -71,7 +71,7 @@ function planWrite(content, to, label) {
 
 // 1. the protocol document and the scripts the skill actually calls
 planCopy(join(dist, 'SQUAD.md'), join(squadRoot, 'SQUAD.md'), 'squad protocol');
-for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs']) {
+for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs', 'prepare-closure.mjs', 'post-merge.mjs', 'ci-treatment.mjs']) {
   planCopy(join(pkg, 'scripts', f), join(squadRoot, 'scripts', f), 'script the skill calls');
 }
 for (const f of readdirSync(join(pkg, 'scripts', 'lib'))) {

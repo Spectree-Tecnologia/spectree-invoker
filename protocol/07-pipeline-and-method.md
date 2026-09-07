@@ -11,14 +11,50 @@
  5 Platform Engineer — green baseline, recorded against the base revision
  6 Quality Engineer — pass 1: one failing test per Scenario             <- skipped only when deltaless
  7 Full Stack Developers ×N — implementation, parallel by module
- 8 Quality Engineer — pass 2: attack, plus the scope lens
- 9 Platform Engineer — CI green, integration readiness
-10 [approval] integration, per the project's policy
-11 Platform Engineer — integrate
-12 Platform Engineer — closure: delta merge, archive, DEFERRED status, roles re-verified
-13 [gate 3] exposure / deploy, when applicable — a separate gate, never folded into 10
+ 8 Platform Engineer — closure PREPARED on the branch: delta merged into the living spec by
+     the project's own mechanism, folder archived, DEFERRED updated, one manifest   <- before 9
+ 9 Quality Engineer — pass 2: attack, plus the scope lens
+10 Platform Engineer — CI green, integration readiness
+11 [approval] integration, bound to this candidate
+12 Platform Engineer — ONE merge
+13 Platform Engineer — post-merge confirmation, then closed
+14 [gate 3] exposure / deploy, when applicable — a separate gate, never folded into 11
 [after module 1 closes] Platform Engineer reverse-engineers the project's roles + skills
 ```
+
+**Preparing the closure before the merge is not declaring the integration before it happens.**
+This is the ordering that removes a whole second delivery, and the sentence that keeps it honest.
+
+What used to happen after the merge — consolidating the delta into the living spec, archiving
+the change folder, updating the documents — is work on the *content*, so it belongs in the
+candidate that gets reviewed and merged. Doing it afterwards produced a second PR, and then a
+commit recording that the second PR was green, and then a run validating that commit. Three CI
+runs whose entire subject was the previous run.
+
+Two rules make the early preparation safe:
+
+- **the state is not touched.** Preparation writes files and one manifest. `integrated` and
+  `closed` are written after the merge is observed, and by nothing else;
+- **it happens before pass 2 and before CI**, because a candidate validated and then edited is
+  not the candidate that was validated. A fix after either one invalidates the preparation and
+  the evidence it travelled with — both are bound to content, and the same branch name is not
+  the same content.
+
+A project that offers no mechanism for consolidating its living spec closes the **legacy** way,
+declared as such on the change. Nobody hand-edits `docs/specs/` to fill the gap: a spec written
+by the same agent that approves it proves nothing.
+
+**The post-merge phase is a confirmation, and it is finite.** Read the merge result, confirm the
+PR and its base, confirm the integrated content is the authorised candidate, check the required
+checks, confirm the prepared artifacts are present, record the result, close. It is not a place
+for a fresh architecture review, a rewrite of the roles, a manual recount of the backlog, an
+investigation into an auxiliary tool, or an opportunistic fix — each of those turns a
+confirmation into a second delivery. A real failure stops the closure and produces an
+impediment; a short confirmation that hides one is worse than a long one.
+
+**And a green never becomes a commit.** "CI passed" is an event about a revision, not part of
+the revision — recording it inside the content it describes starts another run, which produces
+another event. Events belong to the operational trail, each naming the revision it applies to.
 
 **Step 4 precedes every write, including the Quality Engineer's.** Pass 1 writes test files; a pass 1 run before the branch exists writes them onto whatever is checked out. The branch is cut once, before step 5, and it is the same branch pass 1, the Developers and pass 2 all work on.
 
