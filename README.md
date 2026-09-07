@@ -15,14 +15,32 @@ Para atualizar um projeto que já usa o plugin: `claude plugin update spectree@s
 
 Dentro de um projeto, `/spectree:invoker` boota o Invoker. Sem argumentos ele reporta o estado do pipeline lido do disco; com argumentos, leva o pedido para dentro do pipeline — entrevista, proposta, gate, build, verificação.
 
+## Codex
+
+```bash
+node <pacote>/scripts/install-codex.mjs /caminho/do/projeto            # dry run, não escreve nada
+node <pacote>/scripts/install-codex.mjs /caminho/do/projeto --apply
+```
+
+Invoque com `$spectree-invoker`. Os cinco especialistas vão para `.codex/agents/`, que é onde o Codex procura agentes personalizados — a pasta `agents/` de uma skill não registra nada. O instalador **nunca reescreve o `AGENTS.md` do consumidor**: acrescenta um ponteiro uma vez, abaixo do que já existe. Detalhes em [docs/install.md](docs/install.md).
+
 ## O que há aqui
+
+Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CLAUDE.md`, `agents/*.md`, `AGENTS.md` e a skill do Codex são **gerados** e verificados contra ela no CI.
 
 | Caminho | O quê |
 |---|---|
-| `CLAUDE.md` | A definição do Invoker: os cinco tipos de agente, os invariantes de arquitetura, o formato dos artefatos, os três gates, o formato de saída. **É o main loop; não tem card porque nada o despacha.** |
-| `agents/` | Os cinco cards: Solutions Architect, Full Stack Developer, Quality Engineer, Platform Engineer, Integration Engineer. |
-| `commands/invoker.md` | O comando que boota o Invoker e o manda ler a própria definição. |
-| `scripts/check-plugin.mjs` | O check de sanidade do plugin, rodado em CI. |
+| `protocol/` | O núcleo neutro de fornecedor: seções e corpos dos cinco papéis. **Edite aqui.** |
+| `adapters/claude-code/`, `adapters/codex/` | O que é específico de cada harness: tokens, ferramentas, metadados |
+| `schemas/` | Os contratos estruturados: change, dispatch, evidence, deferred, approval |
+| `scripts/` | `build`, `check-plugin`, `state`, `verify-change`, `capabilities` |
+| `tests/` | 100 testes determinísticos + fixtures de avaliação comportamental |
+| `docs/` | [instalação](docs/install.md) · [compatibilidade](docs/compatibility.md) · [arquitetura](docs/architecture.md) · [manutenção](docs/maintenance.md) |
+| `CLAUDE.md`, `agents/`, `adapters/codex/dist/` | **Gerados.** Rode `node scripts/build.mjs`; não edite à mão |
+
+```bash
+npm run check     # drift + integridade + suíte
+```
 
 Os artefatos que o squad produz nos projetos — specs, código, commits, cards — são em inglês. Tudo que chega ao Founder é em português. Este repositório é a ferramenta, não um projeto do squad: a história dele é em português.
 

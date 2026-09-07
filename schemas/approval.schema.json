@@ -1,0 +1,49 @@
+{
+  "$id": "spectree/approval",
+  "title": "Approval",
+  "description": "A record that a human authorised something specific. The agent records it; the agent cannot be it.",
+  "type": "object",
+  "required": ["schema_version", "approval_id", "gate", "granted_by", "scope_digest", "revision", "timestamp", "channel"],
+  "properties": {
+    "schema_version": { "$ref": "spectree/common#/definitions/schema_version" },
+    "approval_id": { "$ref": "spectree/common#/definitions/id" },
+    "change_id": { "$ref": "spectree/common#/definitions/id" },
+
+    "gate": {
+      "enum": ["scope", "ambiguity", "irreversible", "exposure", "integration"],
+      "description": "Which gate this authorises. An approval for one gate never satisfies another."
+    },
+    "granted_by": {
+      "type": "object",
+      "required": ["identity", "kind"],
+      "properties": {
+        "identity": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": ["human_in_session", "external_review", "repository_policy"],
+          "description": "How the authorisation reached the record. There is no 'agent' value on purpose."
+        },
+        "reference": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "channel": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Where it was given — a session, a PR review, a protected-branch rule. Free text, because it is a pointer for a human, not a proof."
+    },
+
+    "scope_digest": {
+      "type": "string",
+      "minLength": 8,
+      "description": "Digest of the artifact the human approved. It binds the approval to content; it does not prove authorship or consent."
+    },
+    "scope_note": { "type": "string" },
+    "revision": { "$ref": "spectree/common#/definitions/revision" },
+    "timestamp": { "$ref": "spectree/common#/definitions/timestamp" },
+    "expires_with_revision": {
+      "type": "boolean",
+      "description": "True means: a new revision of the approved artifact invalidates this approval."
+    }
+  },
+  "additionalProperties": false
+}

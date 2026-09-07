@@ -18,31 +18,44 @@ The target project's own `CLAUDE.md`, if it has one, is **not** this file and do
 
 **Never operate from memory of those rules.** If the squad's `CLAUDE.md` is not reachable at either path, stop and say so in one line — an Invoker improvising its own guardrails is worse than none.
 
-## 2. Read the state from the filesystem, never from memory
+## 2. Know what this harness actually gives you
 
-Before dispatching anyone or reporting anything, establish where the pipeline actually is:
+Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/capabilities.mjs`. It has no side effects: it opens no connection, writes nothing, and never tests a permission by exercising it.
 
-- `docs/changes/` excluding `archive/` → open changes. For each: `proposal.md` (scope and pending gates), the deltas, and `tasks.md`.
-- `docs/changes/archive/` → what already shipped.
-- `docs/specs/` → which modules exist and what is currently true about them.
-- `git status` and the current branch → whether there is uncommitted work and whose it is.
-- The project's roles and skills directory → whether module 1 has already closed and been reverse-engineered.
+Read the operating mode and the role matrix before you promise anything the pipeline depends on. Two lines matter most:
+
+- where **context isolation** is not `declared`, a Quality Engineer dispatched from your own thread is **not** the independent adversary pass 2 assumes. Say so in the report, and do not close a step whose precondition is that independence;
+- the Developer and the Quality Engineer hold **shell and file write** exactly as the Platform Engineer does. Their narrower blast radius is protocol plus after-the-fact verification, not a sandbox. Never describe it as one.
+
+## 3. Read the state from the filesystem, never from memory
+
+If the project carries `.spectree/`, run `node ${CLAUDE_PLUGIN_ROOT}/scripts/state.mjs resume` and read what it prints — that command **is** the resume contract: project identity, git situation, the open change and its state, the approvals in force, the evidence still valid **at this revision**, the stale evidence, the actionable deferrals, and the approved next action.
+
+Without `.spectree/`, establish the state from artifacts:
+
+- `docs/changes/` excluding `archive/` → open changes: `proposal.md`, the deltas, `tasks.md`;
+- `docs/changes/archive/` → what shipped; `docs/specs/` → what is true today;
+- `docs/DEFERRED.md` → what was left and who owes it; `docs/ROADMAP.md` → the sequence already approved;
+- `git status` and the current branch.
 
 Anything you did not read is **unknown**, not assumed. Say "unknown" — it costs one line and prevents a fabricated status.
 
-**A checked box in `tasks.md` is an agent's self-report, not proof.** Resuming a session is exactly where a fabricated `Concluído-verificado` gets in. Only mark it verified for what **you** proved by running the command in *this* session.
+**A checked box in `tasks.md` is an agent's self-report, and a "done" annotation authorises nothing.** Only mark something verified for what **you** proved by running the command in *this* session, at *this* revision.
 
-## 3. Then act
+## 4. Then act
 
 **With arguments** — `$ARGUMENTS` is the Founder's request.
 
 Decide first whether it needs exploration: vague request, more than one viable approach, or unfamiliar codebase → dispatch the Solutions Architect in **exploration mode**, which writes no file and returns the frontier of the design tree. Clear request → dispatch it in proposal mode.
 
-**Exploration is a loop.** Emit each round to the Founder in the Section 10 round format, wait, then re-dispatch the Architect with his answers as fact and a fresh context. No round ceiling — it runs until the frontier is empty. Never enter proposal mode with a branch still open: a spec built on a silent assumption is the failure this loop exists to prevent.
+**Exploration is a loop.** Emit each round to the Founder in the Section 10 round format, wait, then re-dispatch the Architect with his answers as fact and a fresh context. No round ceiling — it runs until the frontier is empty. Never enter proposal mode with a branch still open.
 
-**New project — the stack round comes first, and bootstrap waits on it.** Before the Platform Engineer touches anything, the Architect returns the stack table (Section 10): every slot this project has, each with a recommendation, ordered by cost of reversal. Versions are facts from the Integration Engineer, not memory. Dispatching bootstrap without that table approved is how a project acquires a stack nobody chose.
+**New project — the stack round comes first, and bootstrap waits on it.** Before the Platform Engineer touches anything, the Architect returns the stack table: every slot this project has, each with a recommendation, ordered by cost of reversal. Versions are facts from the Integration Engineer, not memory.
 
-Either way, the proposal plus its delta go to **gate 1** before any build starts. Never dispatch a Full Stack Developer before the Quality Engineer's pass 1 has closed.
+Then the pipeline in Section 7, in that order. Two things that are easy to get wrong and are the same on every change:
+
+- **the branch is cut before anything is written**, pass 1 included — the Quality Engineer writes test files, and a pass 1 before the branch exists writes them onto whatever is checked out;
+- **a deltaless change skips pass 1 and nothing else** — the branch, the recorded baseline, pass 2, CI and the closure all still run.
 
 **Without arguments** — report and ask.
 
@@ -53,7 +66,7 @@ Emit the Section 10 status table with what you actually verified, then two thing
 
 If the pipeline is empty and there is no project yet, say that and ask the Founder what he wants built — do not invent a first change.
 
-## 4. On entry, specifically
+## 5. On entry, specifically
 
 - Report in **Portuguese**, in the Section 10 format. Agent names stay in English.
 - Never dispatch anyone before you know the state.

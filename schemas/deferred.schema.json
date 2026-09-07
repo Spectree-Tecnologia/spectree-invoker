@@ -1,0 +1,54 @@
+{
+  "$id": "spectree/deferred",
+  "title": "Deferred item",
+  "description": "Something seen, decided and left out. Not a named absence: those are scope and die with their change.",
+  "type": "object",
+  "required": ["schema_version", "stable_id", "owner", "status", "impact", "current_decision"],
+  "properties": {
+    "schema_version": { "$ref": "spectree/common#/definitions/schema_version" },
+    "stable_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Never reused, never renumbered. The log, the proposals and the archive cite it."
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "owner": { "enum": ["architect", "platform_engineer", "own_change", "first_deploy", "founder"] },
+    "status": { "enum": ["open", "closed", "superseded"] },
+    "impact": { "enum": ["cosmetic", "behaviour", "ceiling", "defect", "security"] },
+
+    "current_decision": { "type": "string", "minLength": 1 },
+    "reevaluation_trigger": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The named event that makes this due. 'Later' is not a trigger."
+    },
+    "closure_condition": { "type": "string", "minLength": 1 },
+
+    "evidence_refs": { "type": "array", "items": { "$ref": "spectree/common#/definitions/ref" } },
+    "closure_evidence": { "$ref": "spectree/common#/definitions/ref" },
+    "closed_by_change": { "$ref": "spectree/common#/definitions/id" },
+    "superseded_by": { "type": "integer", "minimum": 1 },
+    "opened_by_change": { "$ref": "spectree/common#/definitions/id" }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "closed" } }, "required": ["status"] },
+      "then": {
+        "required": ["closure_evidence", "closed_by_change"],
+        "description": "A closed item names what closed it. Marking it closed is not closing it."
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "superseded" } }, "required": ["status"] },
+      "then": { "required": ["superseded_by"] }
+    },
+    {
+      "if": { "properties": { "impact": { "const": "security" } }, "required": ["impact"] },
+      "then": {
+        "required": ["reevaluation_trigger"],
+        "description": "A security deferral without a trigger is the one the exposure gate cannot act on."
+      }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "protocol_version": "1.0.0",
+  "description": "Vendor-neutral core of the Spectree Invoker squad. Single authoritative source: every adapter renders from these files and adds nothing of its own beyond the tokens it declares.",
+  "core": [
+    "00-title.md",
+    "01-identity-and-goal.md",
+    "02-audience-and-context.md",
+    "03-scope.md",
+    "04-the-squad.md",
+    "05-architecture-and-boundaries.md",
+    "06-artifacts-living-spec-change-as-delta.md",
+    "07-pipeline-and-method.md",
+    "08-escalation-three-gates-only.md",
+    "09-tone-and-language.md",
+    "10-output-format.md",
+    "11-guardrails-and-refusals.md",
+    "12-edge-cases.md",
+    "13-examples.md"
+  ],
+  "roles": [
+    "solutions-architect",
+    "full-stack-developer",
+    "quality-engineer",
+    "platform-engineer",
+    "integration-engineer"
+  ],
+  "tokens": {
+    "CARDS_LOCATION": "Where an adapter keeps the five specialist cards, phrased to read inside a sentence.",
+    "TOOL_SURFACE": "The tool surface the harness exposes beyond the CLI, phrased as a trailing clause or empty.",
+    "ROLE_TOOLS": "The Tools section body of a role card, which names actual harness tools and is therefore adapter-owned."
+  },
+  "extraction_baseline": {
+    "revision": "410a429",
+    "proved_on": "the day the protocol was extracted",
+    "result": "All five specialist cards rendered byte-identical to the files at this revision. CLAUDE.md differed by exactly one line, changed deliberately so the sentence stops naming a Claude-specific directory.",
+    "note": "Historical record. The proof was a one-time gate for the extraction; it is not re-runnable, because the protocol has legitimately evolved since. A command that can never pass again would be decoration."
+  }
+}

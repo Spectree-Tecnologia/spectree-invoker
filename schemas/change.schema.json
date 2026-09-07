@@ -1,0 +1,71 @@
+{
+  "$id": "spectree/change",
+  "title": "Change",
+  "description": "The current state of one change. Append-only history lives beside it, never inside it.",
+  "type": "object",
+  "required": [
+    "schema_version", "project_id", "change_id", "change_type", "protocol_version",
+    "adapter", "base_revision", "scope", "allowed_paths", "state"
+  ],
+  "properties": {
+    "schema_version": { "$ref": "spectree/common#/definitions/schema_version" },
+    "project_id": { "$ref": "spectree/common#/definitions/id" },
+    "change_id": { "$ref": "spectree/common#/definitions/id" },
+    "change_type": { "$ref": "spectree/common#/definitions/change_type" },
+    "protocol_version": { "$ref": "spectree/common#/definitions/schema_version" },
+    "adapter": { "type": "string", "minLength": 1 },
+
+    "base_revision": {
+      "$ref": "spectree/common#/definitions/revision",
+      "description": "Immutable once written. Every comparison this change makes is against this revision."
+    },
+    "evaluated_revision": {
+      "$ref": "spectree/common#/definitions/revision",
+      "description": "The revision the current evidence was produced at. Moves; base_revision does not."
+    },
+    "fingerprint": { "type": "string", "minLength": 8, "maxLength": 128 },
+
+    "deltaless": { "type": "boolean" },
+    "scope": { "type": "string", "minLength": 1 },
+    "named_absences": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "modules_named": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+
+    "allowed_paths": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "spectree/common#/definitions/path" },
+      "description": "Repository-relative path prefixes this change may write. Ownership, not advice."
+    },
+
+    "state": { "$ref": "spectree/common#/definitions/change_state" },
+    "blocked_reason": { "type": "string", "minLength": 1 },
+    "blocked_from": {
+      "$ref": "spectree/common#/definitions/change_state",
+      "description": "The state this change was in when it was blocked. Recovery returns here and nowhere else, and re-checks this state's requirements."
+    },
+
+    "approval_refs": { "type": "array", "items": { "$ref": "spectree/common#/definitions/ref" } },
+    "dispatch_refs": { "type": "array", "items": { "$ref": "spectree/common#/definitions/ref" } },
+    "evidence_refs": { "type": "array", "items": { "$ref": "spectree/common#/definitions/ref" } },
+    "deferred_refs": { "type": "array", "items": { "$ref": "spectree/common#/definitions/ref" } },
+
+    "next_action": {
+      "type": "object",
+      "required": ["description"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1 },
+        "role": { "$ref": "spectree/common#/definitions/role" },
+        "blocked_on": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "updated_at": { "$ref": "spectree/common#/definitions/timestamp" },
+    "state_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optimistic-concurrency counter. A write that expects a different value is refused."
+    }
+  },
+  "additionalProperties": false
+}

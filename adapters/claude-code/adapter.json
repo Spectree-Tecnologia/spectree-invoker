@@ -1,0 +1,22 @@
+{
+  "adapter_id": "claude-code",
+  "display_name": "Claude Code",
+  "entrypoint": "/spectree:invoker",
+  "capabilities": {
+    "subagents": "declared",
+    "context_isolation": "declared",
+    "shell": "declared",
+    "git": "declared",
+    "network_per_role": "declared",
+    "browser": "declared"
+  },
+  "tokens": {
+    "CARDS_LOCATION": "the plugin's `agents/`",
+    "TOOL_SURFACE": " and MCP servers"
+  },
+  "targets": {
+    "core": "CLAUDE.md",
+    "roles_dir": "agents",
+    "role_ext": ".md"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$id": "spectree/evidence",
+  "title": "Evidence",
+  "description": "One observation about one property, tied to the content and environment it was made on. Evidence that cannot say what it was measured against is not evidence.",
+  "type": "object",
+  "required": [
+    "schema_version", "evidence_id", "property", "check", "executor",
+    "source_kind", "revision", "result", "timestamp"
+  ],
+  "properties": {
+    "schema_version": { "$ref": "spectree/common#/definitions/schema_version" },
+    "evidence_id": { "$ref": "spectree/common#/definitions/id" },
+    "change_id": { "$ref": "spectree/common#/definitions/id" },
+
+    "property": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What is being claimed, in words. Not the command — the claim the command supports."
+    },
+    "check": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The command or procedure actually run."
+    },
+    "executor": {
+      "type": "object",
+      "required": ["role"],
+      "properties": {
+        "role": { "$ref": "spectree/common#/definitions/role" },
+        "independent_of": {
+          "type": "array",
+          "items": { "$ref": "spectree/common#/definitions/role" },
+          "description": "Roles whose reasoning this executor did not see. Empty means: assume none."
+        }
+      },
+      "additionalProperties": false
+    },
+    "source_kind": { "$ref": "spectree/common#/definitions/source_kind" },
+
+    "revision": { "$ref": "spectree/common#/definitions/revision" },
+    "fingerprint": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Digest of the content this run actually exercised: the committed tree plus the uncommitted working tree, excluding the squad's own bookkeeping. A revision alone does not identify content — an uncommitted edit leaves it unchanged, and a --no-ff merge changes it without changing the code."
+    },
+    "contract_digest": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Digest of the Requirements this run was measured against. Evidence about Scenarios cannot speak for Scenarios it never saw."
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "os": { "type": "string" },
+        "runtime": { "type": "string" },
+        "harness": { "type": "string" },
+        "ci": { "type": "boolean" },
+        "run_ref": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "timestamp": { "$ref": "spectree/common#/definitions/timestamp" },
+    "result": { "$ref": "spectree/common#/definitions/result" },
+    "exit_code": { "type": "integer" },
+
+    "negative_control": {
+      "type": "object",
+      "required": ["input", "expected_signal"],
+      "properties": {
+        "input": { "type": "string", "minLength": 1 },
+        "expected_signal": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The specific rejection expected. A non-zero exit alone does not satisfy this: a crash also exits non-zero."
+        },
+        "observed_signal": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "artifact_ref": { "$ref": "spectree/common#/definitions/path" },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "What this run did not cover, in the run's own words. A degraded tool says so here."
+    },
+    "superseded_by": { "$ref": "spectree/common#/definitions/id" }
+  },
+  "additionalProperties": false
+}

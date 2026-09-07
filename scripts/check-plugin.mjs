@@ -1,40 +1,34 @@
 #!/usr/bin/env node
-// Sanity check for the plugin's manifest surface.
+// Integrity of the package itself.
 //
 //   node scripts/check-plugin.mjs [rootDir]
 //
-// Exits 0 when clean, 1 with one line per problem otherwise.
+// It checks REQUIRED CONTENT, not merely whatever files happen to be present.
+// Deleting every specialist must fail loudly — "zero cards checked, OK" is the
+// failure mode this file exists to make impossible.
 //
-// It checks only what breaks the plugin *silently* -- at install time or at
-// dispatch time, with no error anywhere pointing back at the cause. Prose
-// quality is not checkable and is not attempted here.
+// Scope, stated so nobody reads more into a green than it carries:
+//   this is structural integrity only. It does not run the protocol's rules, it
+//   does not observe an agent's behaviour, and it does not prove the plugin works
+//   inside a harness. Those are three different checks and only one of them is here.
 
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), '..'));
 const problems = [];
-const fail = (where, msg) => problems.push(where + ': ' + msg);
+const fail = (where, msg) => problems.push(`${where}: ${msg}`);
 
-function readJson(relPath) {
-  const abs = join(root, relPath);
-  if (!existsSync(abs)) {
-    fail(relPath, 'missing');
-    return null;
-  }
-  try {
-    return JSON.parse(readFileSync(abs, 'utf8'));
-  } catch (e) {
-    fail(relPath, 'invalid JSON -- ' + e.message);
-    return null;
-  }
-}
+const has = (p) => existsSync(join(root, p));
+const read = (p) => readFileSync(join(root, p), 'utf8').replace(/\r\n/g, '\n');
+const readJson = (p) => {
+  if (!has(p)) { fail(p, 'missing'); return null; }
+  try { return JSON.parse(read(p)); } catch (e) { fail(p, `invalid JSON — ${e.message}`); return null; }
+};
+const listMd = (dir) => (has(dir) ? readdirSync(join(root, dir)).filter((f) => f.endsWith('.md')).sort() : []);
 
-// Frontmatter, deliberately dumb: no YAML dependency to read two keys.
 function frontmatter(abs) {
-  // Normalise CRLF first: this repo is authored on Windows, and in a JS regex
-  // `.` does not match \r, so a trailing \r makes every `key: value` line miss.
   const text = readFileSync(abs, 'utf8').replace(/\r\n/g, '\n');
   if (!text.startsWith('---')) return null;
   const end = text.indexOf('\n---', 3);
@@ -47,118 +41,150 @@ function frontmatter(abs) {
   return out;
 }
 
-const markdownIn = (dir) => {
-  const abs = join(root, dir);
-  return existsSync(abs) ? readdirSync(abs).filter((f) => f.endsWith('.md')) : [];
-};
-
-// --- the Invoker's own definition ships with the plugin ----------------------
-// Without this file the Invoker stops at boot, by its own rule. It is the most
-// load-bearing file here and the easiest to lose in a restructure.
-if (!existsSync(join(root, 'CLAUDE.md'))) {
-  fail('CLAUDE.md', "missing -- it is the Invoker's definition and ships inside the plugin");
+// --- 1. required directories -------------------------------------------------
+const REQUIRED_DIRS = ['protocol', 'protocol/roles', 'adapters', 'schemas', 'scripts', 'agents', 'commands', 'tests'];
+for (const d of REQUIRED_DIRS) {
+  if (!has(d) || !statSync(join(root, d)).isDirectory()) fail(d, 'required directory missing');
 }
 
-// --- manifests ---------------------------------------------------------------
+// --- 2. the protocol is the source, and it must be complete ------------------
+const manifest = readJson('protocol/manifest.json');
+const REQUIRED_ROLES = [
+  'solutions-architect', 'full-stack-developer', 'quality-engineer',
+  'platform-engineer', 'integration-engineer',
+];
+
+if (manifest) {
+  if (manifest.core?.length !== 14) fail('protocol/manifest.json', `core lists ${manifest.core?.length ?? 0} fragments; the protocol has 14`);
+  for (const f of manifest.core ?? []) if (!has(`protocol/${f}`)) fail('protocol/manifest.json', `core names "${f}", which does not exist`);
+  const declared = new Set(manifest.roles ?? []);
+  for (const r of REQUIRED_ROLES) {
+    if (!declared.has(r)) fail('protocol/manifest.json', `does not declare the required specialist "${r}"`);
+    if (!has(`protocol/roles/${r}.md`)) fail(`protocol/roles/${r}.md`, 'required specialist body missing');
+  }
+  if ((manifest.roles ?? []).length !== 5) fail('protocol/manifest.json', `declares ${(manifest.roles ?? []).length} specialists; the squad has exactly 5`);
+}
+
+// --- 3. every adapter renders every required role ----------------------------
+const adapters = has('adapters')
+  ? readdirSync(join(root, 'adapters'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort()
+  : [];
+if (adapters.length === 0) fail('adapters/', 'no adapter present; the package ships for no harness');
+for (const id of adapters) {
+  const a = readJson(`adapters/${id}/adapter.json`);
+  if (!a) continue;
+  for (const k of ['adapter_id', 'display_name', 'entrypoint', 'capabilities', 'targets']) {
+    if (!(k in a)) fail(`adapters/${id}/adapter.json`, `missing "${k}"`);
+  }
+  if (a.adapter_id !== id) fail(`adapters/${id}/adapter.json`, `adapter_id "${a.adapter_id}" does not match its directory`);
+  for (const r of REQUIRED_ROLES) {
+    if (!has(`adapters/${id}/roles/${r}.json`)) fail(`adapters/${id}/roles/${r}.json`, 'required specialist metadata missing for this adapter');
+  }
+}
+
+// --- 4. Claude Code entrypoint and rendered cards ----------------------------
+if (!has('CLAUDE.md')) fail('CLAUDE.md', "missing — it is the Invoker's definition and ships inside the plugin");
+if (!has('commands/invoker.md')) fail('commands/invoker.md', 'the Claude Code entrypoint is missing');
+
+const cards = listMd('agents');
+for (const r of REQUIRED_ROLES) {
+  if (!cards.includes(`${r}.md`)) fail(`agents/${r}.md`, 'required specialist card missing');
+}
+for (const file of cards) {
+  const where = `agents/${file}`;
+  const fm = frontmatter(join(root, 'agents', file));
+  if (!fm) { fail(where, 'no frontmatter block'); continue; }
+  for (const k of ['name', 'description']) if (!fm[k]) fail(where, `frontmatter missing "${k}"`);
+  const stem = basename(file, '.md');
+  if (fm.name && fm.name !== stem) fail(where, `frontmatter name "${fm.name}" does not match the filename "${stem}"`);
+}
+
+for (const file of has('commands') ? readdirSync(join(root, 'commands')).filter((f) => f.endsWith('.md')) : []) {
+  const fm = frontmatter(join(root, 'commands', file));
+  if (!fm) fail(`commands/${file}`, 'no frontmatter block');
+  else if (!fm.description) fail(`commands/${file}`, 'frontmatter missing "description"');
+}
+
+// --- 5. Codex entrypoint and specialists -------------------------------------
+if (adapters.includes('codex')) {
+  const a = readJson('adapters/codex/adapter.json');
+  const skill = a?.targets?.skill_dir;
+  const agentsDir = a?.targets?.agents_dir;
+  if (!has(a?.targets?.core ?? 'nope')) fail(a?.targets?.core ?? 'codex core', 'the Codex squad document is missing');
+  if (skill) {
+    if (!has(`${skill}/SKILL.md`)) fail(`${skill}/SKILL.md`, 'the Codex skill is missing');
+    for (const r of REQUIRED_ROLES) {
+      const t = `${agentsDir}/${r.replace(/-/g, '_')}.toml`;
+      if (!has(t)) fail(t, 'required Codex specialist missing');
+      else {
+        const body = read(t);
+        for (const key of ['name =', 'description =', 'developer_instructions =']) {
+          if (!body.includes(key)) fail(t, `missing "${key.replace(' =', '')}"`);
+        }
+      }
+    }
+  }
+}
+
+// --- 6. manifests ------------------------------------------------------------
 const plugin = readJson('.claude-plugin/plugin.json');
 if (plugin) {
-  for (const key of ['name', 'description', 'version']) {
-    if (!plugin[key]) fail('.claude-plugin/plugin.json', 'missing "' + key + '"');
-  }
+  for (const k of ['name', 'description', 'version']) if (!plugin[k]) fail('.claude-plugin/plugin.json', `missing "${k}"`);
   if (plugin.version && !/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(plugin.version)) {
-    fail('.claude-plugin/plugin.json', 'version "' + plugin.version + '" is not semver');
+    fail('.claude-plugin/plugin.json', `version "${plugin.version}" is not semver`);
   }
 }
-
 const marketplace = readJson('.claude-plugin/marketplace.json');
 if (marketplace) {
-  if (!Array.isArray(marketplace.plugins) || marketplace.plugins.length === 0) {
-    fail('.claude-plugin/marketplace.json', 'plugins[] missing or empty');
-  } else {
-    for (const entry of marketplace.plugins) {
-      if (!entry.source) {
-        fail('.claude-plugin/marketplace.json', 'entry "' + entry.name + '" has no source');
-      } else if (!existsSync(resolve(root, entry.source))) {
-        fail('.claude-plugin/marketplace.json', 'source "' + entry.source + '" does not exist');
-      }
-      if (plugin && entry.name && entry.name !== plugin.name) {
-        fail('.claude-plugin/marketplace.json', 'entry name "' + entry.name +
-          '" does not match plugin.json name "' + plugin.name + '"');
-      }
+  if (!Array.isArray(marketplace.plugins) || marketplace.plugins.length === 0) fail('.claude-plugin/marketplace.json', 'plugins[] missing or empty');
+  else for (const entry of marketplace.plugins) {
+    if (!entry.source) fail('.claude-plugin/marketplace.json', `entry "${entry.name}" has no source`);
+    else if (!existsSync(resolve(root, entry.source))) fail('.claude-plugin/marketplace.json', `source "${entry.source}" does not exist`);
+    if (plugin && entry.name && entry.name !== plugin.name) {
+      fail('.claude-plugin/marketplace.json', `entry name "${entry.name}" does not match plugin.json name "${plugin.name}"`);
     }
   }
 }
 
-// --- agent cards and commands ------------------------------------------------
-// A frontmatter name that drifts from the filename errors nowhere: the agent
-// just stops being dispatchable under the name everything else refers to.
-for (const file of markdownIn('agents')) {
-  const where = 'agents/' + file;
-  const fm = frontmatter(join(root, 'agents', file));
-  if (!fm) {
-    fail(where, 'no frontmatter block');
-    continue;
-  }
-  for (const key of ['name', 'description']) {
-    if (!fm[key]) fail(where, 'frontmatter missing "' + key + '"');
-  }
-  const stem = basename(file, '.md');
-  if (fm.name && fm.name !== stem) {
-    fail(where, 'frontmatter name "' + fm.name + '" does not match the filename "' + stem + '"');
-  }
+// --- 7. schemas parse and carry an $id ---------------------------------------
+const REQUIRED_SCHEMAS = ['common.json', 'change.schema.json', 'dispatch.schema.json', 'evidence.schema.json', 'deferred.schema.json', 'approval.schema.json'];
+for (const s of REQUIRED_SCHEMAS) {
+  const doc = readJson(`schemas/${s}`);
+  if (doc && !doc.$id) fail(`schemas/${s}`, 'missing $id');
 }
 
-for (const file of markdownIn('commands')) {
-  const where = 'commands/' + file;
-  const fm = frontmatter(join(root, 'commands', file));
-  if (!fm) {
-    fail(where, 'no frontmatter block');
-    continue;
-  }
-  if (!fm.description) fail(where, 'frontmatter missing "description"');
-}
-
-// --- cross-references into CLAUDE.md -----------------------------------------
-// "Section N" is written in prose across every file and resolves nowhere: a
-// renumbering breaks all of them at once and nothing notices. Same for a
-// counted claim ("Eight invariants") sitting next to the list it counts.
-const claudePath = join(root, 'CLAUDE.md');
-if (existsSync(claudePath)) {
-  const claude = readFileSync(claudePath, 'utf8').replace(/\r\n/g, '\n');
-  const sections = new Set(
-    [...claude.matchAll(/^## (\d+)\. /gm)].map((m) => Number(m[1])),
-  );
-
-  const proseFiles = ['CLAUDE.md', ...markdownIn('agents').map((f) => 'agents/' + f),
-    ...markdownIn('commands').map((f) => 'commands/' + f)];
-  for (const rel of proseFiles) {
-    const text = readFileSync(join(root, rel), 'utf8');
-    for (const m of text.matchAll(/Section (\d+)\b/g)) {
-      const n = Number(m[1]);
-      if (!sections.has(n)) fail(rel, 'refers to "Section ' + n + '", which CLAUDE.md does not have');
+// --- 8. cross-references into the rendered core ------------------------------
+if (has('CLAUDE.md')) {
+  const claude = read('CLAUDE.md');
+  const sections = new Set([...claude.matchAll(/^## (\d+)\. /gm)].map((m) => Number(m[1])));
+  const prose = ['CLAUDE.md', ...(has('AGENTS.md') ? ['AGENTS.md'] : []),
+    ...cards.map((f) => `agents/${f}`),
+    ...(has('commands') ? readdirSync(join(root, 'commands')).filter((f) => f.endsWith('.md')).map((f) => `commands/${f}`) : [])];
+  for (const rel of prose) {
+    for (const m of read(rel).matchAll(/Section (\d+)\b/g)) {
+      if (!sections.has(Number(m[1]))) fail(rel, `refers to "Section ${m[1]}", which the rendered core does not have`);
     }
   }
-
-  // "<Word> invariants." followed by numbered "**5.N —" entries.
-  const words = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
-    eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+  const words = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
   const claim = /^([A-Z][a-z]+) invariants\./m.exec(claude);
   if (claim) {
     const claimed = words[claim[1].toLowerCase()];
     const listed = (claude.match(/^\*\*5\.\d+ — /gm) ?? []).length;
-    if (claimed !== undefined && claimed !== listed) {
-      fail('CLAUDE.md', 'says "' + claim[1] + ' invariants" but lists ' + listed + ' under 5.x');
-    }
+    if (claimed !== undefined && claimed !== listed) fail('CLAUDE.md', `says "${claim[1]} invariants" but lists ${listed} under 5.x`);
   }
 }
 
+// --- 9. the required test set is not empty -----------------------------------
+const testFiles = has('tests') ? readdirSync(join(root, 'tests')).filter((f) => /\.test\.mjs$/.test(f)) : [];
+if (testFiles.length === 0) fail('tests/', 'no test file — an empty suite is not a passing suite');
+
 // --- report ------------------------------------------------------------------
 if (problems.length > 0) {
-  console.error('check:plugin FAILED -- ' + problems.length + ' problem(s)\n');
-  for (const p of problems) console.error('  ' + p);
+  console.error(`check:plugin FAILED -- ${problems.length} problem(s)\n`);
+  for (const p of problems) console.error(`  ${p}`);
   console.error('');
   process.exit(1);
 }
-console.log('check:plugin OK -- manifests, CLAUDE.md, ' +
-  markdownIn('agents').length + ' agent card(s), ' +
-  markdownIn('commands').length + ' command(s).');
+console.log(
+  `check:plugin OK -- ${adapters.length} adapter(s), ${REQUIRED_ROLES.length} required specialist(s), ` +
+  `${REQUIRED_SCHEMAS.length} schema(s), ${testFiles.length} test file(s). Structural integrity only.`);

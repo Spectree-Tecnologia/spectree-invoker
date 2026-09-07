@@ -1,0 +1,4 @@
+{
+  "name": "spectree-invoker",
+  "description": "Boot the Invoker — the TechLead of Spectree's AI agent squad. Use when the user wants a feature, module, refactor or fix taken through the squad's spec-driven pipeline, when they ask for the state of the pipeline, or when they name the Invoker, a change, a delta, a gate or one of the five specialists."
+}

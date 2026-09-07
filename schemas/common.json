@@ -1,0 +1,49 @@
+{
+  "$id": "spectree/common",
+  "definitions": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$" },
+    "revision": { "type": "string", "minLength": 7, "maxLength": 128 },
+    "timestamp": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$" },
+    "path": { "type": "string", "minLength": 1, "maxLength": 1024 },
+
+    "change_type": { "enum": ["feature", "refactor", "fix", "chore", "bootstrap"] },
+
+    "change_state": {
+      "enum": [
+        "draft", "proposed", "scope_approved", "isolated", "baselined",
+        "pass1_complete", "implemented", "pass2_complete", "ci_green",
+        "integration_approved", "integrated", "closed", "blocked"
+      ]
+    },
+
+    "result": {
+      "description": "PASS/FAIL are verdicts about the property. The other four are explicitly not verdicts, and must never be collapsed into one.",
+      "enum": ["PASS", "FAIL", "EXPECTED_REJECTION", "INFRA_ERROR", "NOT_RUN", "INCONCLUSIVE"]
+    },
+
+    "source_kind": {
+      "description": "How the squad came to believe this. An agent's report is not an observed run.",
+      "enum": ["agent_report", "observed_execution", "external_reference", "legacy_record"]
+    },
+
+    "role": {
+      "enum": [
+        "invoker", "solutions_architect", "full_stack_developer",
+        "quality_engineer", "platform_engineer", "integration_engineer"
+      ]
+    },
+
+    "confidence": { "enum": ["VERIFIED", "DECLARED", "UNKNOWN"] },
+
+    "ref": {
+      "type": "object",
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "enum": ["approval", "dispatch", "evidence", "deferred"] },
+        "id": { "$ref": "spectree/common#/definitions/id" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

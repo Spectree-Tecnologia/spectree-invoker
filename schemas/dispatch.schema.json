@@ -1,0 +1,60 @@
+{
+  "$id": "spectree/dispatch",
+  "title": "Dispatch",
+  "description": "One mission handed to one specialist. The contract the card is never restated into.",
+  "type": "object",
+  "required": [
+    "schema_version", "dispatch_id", "change_id", "role", "mission",
+    "exit_criteria", "allowed_paths", "attempt", "max_attempts", "input_revision"
+  ],
+  "properties": {
+    "schema_version": { "$ref": "spectree/common#/definitions/schema_version" },
+    "dispatch_id": { "$ref": "spectree/common#/definitions/id" },
+    "change_id": { "$ref": "spectree/common#/definitions/id" },
+    "role": { "$ref": "spectree/common#/definitions/role" },
+
+    "mission": { "type": "string", "minLength": 1 },
+    "exit_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Each one verifiable by a command. A criterion nobody can run is not a criterion."
+    },
+    "required_reading": { "type": "array", "items": { "$ref": "spectree/common#/definitions/path" } },
+    "allowed_paths": { "type": "array", "minItems": 1, "items": { "$ref": "spectree/common#/definitions/path" } },
+
+    "required_capabilities": {
+      "type": "array",
+      "items": { "enum": ["shell", "git", "network", "browser", "subagents", "context_isolation", "database"] },
+      "description": "Checked against the harness report before dispatch. Missing capability is a refusal, not a warning."
+    },
+    "guardrails": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+
+    "attempt": { "type": "integer", "minimum": 1 },
+    "max_attempts": { "type": "integer", "minimum": 1, "maximum": 10 },
+    "timeout_seconds": { "type": "integer", "minimum": 1 },
+
+    "budget_key": {
+      "type": "string",
+      "description": "Attempts are counted against this key, not against the mission's wording. Renaming a mission does not reset its budget."
+    },
+
+    "input_revision": { "$ref": "spectree/common#/definitions/revision" },
+    "previous_attempt": {
+      "type": "object",
+      "required": ["cause", "new_hypothesis"],
+      "properties": {
+        "cause": { "type": "string", "minLength": 1 },
+        "new_hypothesis": { "type": "string", "minLength": 1 },
+        "progress": { "type": "string" },
+        "transient": { "type": "boolean" }
+      },
+      "additionalProperties": false,
+      "description": "Required from attempt 2 on. A retry with no new information is refused."
+    },
+
+    "output_refs": { "type": "array", "items": { "$ref": "spectree/common#/definitions/ref" } },
+    "created_at": { "$ref": "spectree/common#/definitions/timestamp" }
+  },
+  "additionalProperties": false
+}
