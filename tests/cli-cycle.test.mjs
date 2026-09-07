@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, tempDir, cleanup, REPO, now } from './helpers.mjs';
 
@@ -663,5 +663,63 @@ test('a report is read only when this run wrote it', () => {
 
     // Writing the report never counts as changing the content being measured.
     assert.equal(ev('e-report').fingerprint, ev('e-silent').fingerprint);
+  } finally { c.drop(); }
+});
+
+test('a reopening retires the approval on every path that reads one, not just in the confirmation', () => {
+  const c = consumer();
+  try {
+    upToImplemented(c);
+    assert.equal(prepare(c, ['--apply']).code, 0);
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'closure prepared on the branch']);
+    proveIt(c);
+    const candidate = c.git(['rev-parse', 'HEAD']).trim();
+    const integration = c.cli('digest', 'c1', '--gate', 'integration');
+    c.cli('record-approval', c.doc('ap2', approvalDoc('ap2', 'integration', integration.out, candidate)));
+    assert.equal(c.cli('transition', 'c1', 'integration_approved').code, 0);
+    const approvedRecord = JSON.parse(readFileSync(join(c.root, '.spectree/closure/c1.json'), 'utf8'));
+
+    // Reopened deliberately: the record is kept, the approval that covered it is retired.
+    const reopened = prepare(c, ['--apply', '--reopen', '--reason', 'the delta was amended after approval']);
+    assert.equal(reopened.code, 0, reopened.err);
+    const kept = readdirSync(join(c.root, '.spectree/closure')).filter((n) => n.includes('superseded'));
+    assert.equal(kept.length, 1, 'the approved record is preserved, not overwritten');
+    assert.deepEqual(JSON.parse(readFileSync(join(c.root, '.spectree/closure', kept[0]), 'utf8')), approvedRecord);
+    assert.deepEqual(
+      JSON.parse(readFileSync(join(c.root, '.spectree/closure/c1.json'), 'utf8')).supersedes_approval, ['ap2']);
+
+    // The merge happens anyway. Without a new approval NOTHING may advance — and the defect was
+    // exactly this: the confirmation after the merge refused, while `transition` walked the same
+    // change to `integrated` on the strength of the approval the reopening had retired.
+    // The reopening consolidated the same delta over the same content, so there is nothing to
+    // commit — and that is the sharp case: identical digests, so the retired approval would
+    // still match the gate exactly. Only the retirement stands between it and `integrated`.
+    c.git(['checkout', '-q', 'main']);
+    c.git(['merge', '--no-ff', '-q', '-m', 'merge change/c1', 'change/c1']);
+
+    const stateBefore = readFileSync(join(c.root, '.spectree/changes/c1.json'), 'utf8');
+    const trailBefore = readFileSync(join(c.root, '.spectree/history/c1.jsonl'), 'utf8');
+    const can = c.cli('can', 'c1', 'integrated');
+    assert.equal(can.code, 1, 'a retired approval is history, not authority');
+    assert.match(can.err, /E_MISSING_APPROVAL|E_APPROVAL/);
+    const moved = c.cli('transition', 'c1', 'integrated');
+    assert.equal(moved.code, 1, 'and the transition refuses for the same reason `can` did');
+    assert.equal(readFileSync(join(c.root, '.spectree/changes/c1.json'), 'utf8'), stateBefore, 'the state did not move');
+    assert.equal(readFileSync(join(c.root, '.spectree/history/c1.jsonl'), 'utf8'), trailBefore, 'and no transition was recorded');
+
+    // Resume separates the two rather than listing them side by side.
+    const resumed = JSON.parse(c.cli('resume', 'c1', '--json').out);
+    assert.deepEqual(resumed.approvals.map((a) => a.gate), ['scope'], 'only what is in force');
+    assert.deepEqual(resumed.approvals_retired.map((a) => a.approval_id), ['ap2'], 'the retired one is still visible as history');
+    assert.match(c.cli('resume', 'c1').out, /retired.*ap2/);
+
+    // A NEW approval, over the record that actually exists now, releases it.
+    const again = c.cli('digest', 'c1', '--gate', 'integration');
+    c.cli('record-approval', c.doc('ap3', approvalDoc('ap3', 'integration', again.out, c.git(['rev-parse', 'HEAD']).trim())));
+    assert.equal(c.cli('transition', 'c1', 'integrated').code, 0);
+
+    // And the old approvals are still in the store: retired, never deleted.
+    assert.deepEqual(
+      readdirSync(join(c.root, '.spectree/approvals')).sort(), ['ap1.json', 'ap2.json', 'ap3.json']);
   } finally { c.drop(); }
 });

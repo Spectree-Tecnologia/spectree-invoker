@@ -30,7 +30,7 @@ import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { canTransition, ASSERTS_FAILURE } from './lib/state-machine.mjs';
 import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
 import { launch } from './lib/launch.mjs';
-import { manifestPath, preparationCovers } from './lib/closure-prep.mjs';
+import { manifestPath, preparationCovers, approvalsInForce } from './lib/closure-prep.mjs';
 import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
 
@@ -89,10 +89,22 @@ function digests(change) {
  * never from the presence of an archive folder: a folder that moved says a move happened, and
  * only the manifest says what was true when it happened.
  */
+/** The closure manifest on disk, or null. It says which approvals a reopening retired. */
+function closureManifest(changeId) {
+  try { return JSON.parse(readFileSync(join(root, manifestPath(changeId)), 'utf8')); } catch { return null; }
+}
+
+/**
+ * The approvals with authority right now. Every path that reads an approval reads it through
+ * here: a retirement honoured by one command and ignored by the next is not a retirement.
+ */
+function inForce(changeId) {
+  return approvalsInForce(store.approvals(changeId), closureManifest(changeId));
+}
+
 function closureVerdict(change, d) {
   if (change.closure_mode === 'legacy') return { ok: true, legacy: true };
-  let manifest = null;
-  try { manifest = JSON.parse(readFileSync(join(root, manifestPath(change.change_id)), 'utf8')); } catch { /* none */ }
+  const manifest = closureManifest(change.change_id);
   return preparationCovers(manifest, {
     contractDigest: d.contract.digest, candidateDigest: d.content.digest, changeId: change.change_id,
   });
@@ -124,7 +136,10 @@ function resume(changeId) {
           blocked_from: change.blocked_from ?? null,
         }
       : null,
-    approvals: change ? store.approvals(change.change_id).map((a) => ({ gate: a.gate, by: a.granted_by?.identity, kind: a.granted_by?.kind, revision: a.revision })) : [],
+    approvals: change ? inForce(change.change_id).inForce.map((a) => ({ gate: a.gate, by: a.granted_by?.identity, kind: a.granted_by?.kind, revision: a.revision })) : [],
+    // Retired by a reopening: still in the trail, no longer authority. Resume that showed them
+    // beside the ones in force answered "is this change approved" with a list, not an answer.
+    approvals_retired: change ? inForce(change.change_id).retired.map((a) => ({ approval_id: a.approval_id, gate: a.gate, by: a.granted_by?.identity, revision: a.revision })) : [],
     // Valid HERE means: measured on the content that is on disk now. A revision match is the
     // fallback for evidence carrying no fingerprint, and it is the weaker claim -- saying
     // otherwise is how resume kept presenting runs from before an uncommitted edit as current.
@@ -160,7 +175,8 @@ function printResume(r) {
     if (r.change.blocked_reason) L.push(`blocked        ${r.change.blocked_reason}${r.change.blocked_from ? `  (recover to ${r.change.blocked_from})` : ''}`);
     L.push(`owns paths     ${r.change.allowed_paths.join(', ')}`);
   }
-  L.push(`approvals      ${r.approvals.length ? r.approvals.map((a) => `${a.gate} by ${a.by} (${a.kind})`).join('; ') : 'none'}`);
+  L.push(`approvals      ${r.approvals.length ? r.approvals.map((a) => `${a.gate} by ${a.by} (${a.kind})`).join('; ') : 'none in force'}`);
+  if (r.approvals_retired?.length) L.push(`  retired      ${r.approvals_retired.map((a) => `${a.approval_id} (${a.gate}) — replaced record, no authority`).join('; ')}`);
   L.push(`evidence here  ${r.evidence_valid_here.length ? r.evidence_valid_here.map((e) => `${e.property}=${e.result}`).join('; ') : 'none at this revision'}`);
   if (r.evidence_stale.length) L.push(`evidence stale ${r.evidence_stale.map((e) => `${e.property} (${e.why})`).join('; ')}`);
   L.push(`deferrals open ${r.actionable_deferrals.length ? r.actionable_deferrals.map((d) => `#${d.id} ${d.impact}/${d.owner}`).join('; ') : 'none'}`);
@@ -247,7 +263,9 @@ switch (cmd) {
     const d = digests(change);
     const verdict = canTransition(change, to, {
       evidence: store.evidence(id),
-      approvals: store.approvals(id),
+      // Retired approvals are history, not authority. Passing them here let a reopened
+      // closure walk to `integrated` on the approval its own reopening had retired.
+      approvals: inForce(id).inForce,
       revision: g.revision,
       contentDigest: d.content.digest,
       contractDigest: d.contract.digest,

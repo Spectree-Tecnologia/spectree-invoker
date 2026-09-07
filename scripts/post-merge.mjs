@@ -22,7 +22,7 @@ import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { contractDigestAt, contentDigestAt, gatedDigest } from './lib/digest.mjs';
 import { readDiff, classifyDiff } from './lib/diff.mjs';
 import { treatmentFor, aggregate } from './lib/ci-policy.mjs';
-import { manifestPath, preparationCovers } from './lib/closure-prep.mjs';
+import { manifestPath, preparationCovers, approvalsInForce } from './lib/closure-prep.mjs';
 import { canTransition, ORDER } from './lib/state-machine.mjs';
 import { pullRequest, runsForSha } from './lib/gh.mjs';
 
@@ -84,17 +84,16 @@ if (landed) {
 }
 if (landed && contract) {
   gated = gatedDigest(contract.digest, landed.digest);
-  // An approval the current preparation retired is not an authorisation. It was granted over a
-  // record that has since been reopened and replaced; letting it stand would mean a substituted
-  // artifact record inherits the approval of the one it replaced.
-  const retired = new Set(manifest?.supersedes_approval ?? []);
-  const approvals = store.approvals(changeId)
-    .filter((a) => a.gate === 'integration' && a.change_id === changeId && !retired.has(a.approval_id));
-  if (retired.size) {
+  // Through the shared rule, like every other consumer: an approval the current preparation
+  // retired was granted over a record that no longer exists, so it cannot authorise the one
+  // replacing it. Same definition here, in the gates, in `resume` and in the preparation.
+  const { inForce, retired } = approvalsInForce(store.approvals(changeId), manifest);
+  const approvals = inForce.filter((a) => a.gate === 'integration' && a.change_id === changeId);
+  if (retired.length) {
     step('the approval in force is not one this preparation retired', approvals.length > 0,
       approvals.length
-        ? `${retired.size} retired by the reopening, ${approvals.length} still standing`
-        : `every integration approval on record (${[...retired].join(', ')}) was retired when the closure was reopened; a new one is required`);
+        ? `${retired.length} retired by the reopening, ${approvals.length} still standing`
+        : `every integration approval on record (${retired.map((a) => a.approval_id).join(', ')}) was retired when the closure was reopened; a new one is required`);
   }
 
   // ONE approval has to satisfy every criterion. Checking the content against whichever approval

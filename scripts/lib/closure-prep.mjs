@@ -147,6 +147,25 @@ export function comparePreparation(existing, next) {
 const short = (d) => String(d ?? '').slice(0, 18);
 
 /**
+ * Which approvals are actually in force, and which the current preparation retired.
+ *
+ * One definition, called by every path that consumes an approval — the preparation's freeze, the
+ * state machine's gates, `resume`, and the confirmation after the merge. It was written three
+ * times as a local filter first, and each time some other consumer kept honouring an approval
+ * that had been retired: the confirmation refused a reopened closure while `transition` walked
+ * the same change to `integrated` on the strength of the approval the reopening had retired.
+ *
+ * A retired approval is not deleted and does not stop being history. It stops being AUTHORITY —
+ * it was granted over a record that no longer exists, and nothing granted over a replaced record
+ * can authorise the record replacing it.
+ */
+export function approvalsInForce(approvals = [], manifest = null) {
+  const retiredIds = new Set(manifest?.supersedes_approval ?? []);
+  const retired = approvals.filter((a) => retiredIds.has(a.approval_id));
+  return { inForce: approvals.filter((a) => !retiredIds.has(a.approval_id)), retired };
+}
+
+/**
  * Where a recorded preparation put the change folder.
  *
  * Read off the record, never recomputed. The archive name is `<YYYY-MM-DD>-<change-id>`, so a

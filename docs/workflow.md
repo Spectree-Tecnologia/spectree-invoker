@@ -134,9 +134,17 @@ node scripts/prepare-closure.mjs <change-id> --apply --reopen --reason "<why>"
 
 The reopening keeps the approved manifest at `.spectree/closure/<id>.superseded.<stamp>.json`,
 records `closure_reopened` with the reason in the trail, and lists the approvals it retired in
-the new manifest's `supersedes_approval`. The confirmation after the merge refuses those: a
-substituted record does not inherit the approval of the one it replaced, so **a new integration
-approval is required**.
+the new manifest's `supersedes_approval`. A substituted record does not inherit the approval of
+the one it replaced, so **a new integration approval is required**.
+
+**Retired means retired on every path**, and that is one shared rule (`approvalsInForce`) rather
+than a filter each command writes for itself — the preparation's freeze, the state machine's
+gates, `resume` and the confirmation after the merge all read approvals through it. Written as a
+local filter it held in the confirmation and nowhere else: `post-merge` refused a reopened
+closure while `state.mjs transition` walked the same change to `integrated` on the strength of
+the approval the reopening had retired. A retired approval is **not deleted** — it stays in the
+store and in the trail, and `resume` lists it under `approvals_retired`, separately from the ones
+in force. It stops being authority, not history.
 
 **An archived folder is not proof**: the folder says a move happened; only the
 manifest says what was true when it happened.

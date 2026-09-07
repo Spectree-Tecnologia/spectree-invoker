@@ -22,7 +22,7 @@ import { checkProposalDeltaContract } from './lib/closure.mjs';
 import { launch } from './lib/launch.mjs';
 import {
   PREP_CONTRACT_VERSION, manifestPath, consolidationCommand,
-  artifactsUnder, buildManifest, comparePreparation, recordedArchive,
+  artifactsUnder, buildManifest, comparePreparation, recordedArchive, approvalsInForce,
 } from './lib/closure-prep.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
@@ -200,12 +200,11 @@ const verdict = comparePreparation(existing, draft);
 // Frozen means: an integration approval names exactly what this manifest records. The condition
 // is about coverage, not about a state name or a code path — an approval that no longer matches
 // covers nothing, and freezes nothing.
-// An approval this preparation already retired covers nothing: it was retired precisely because
-// the record it was granted over no longer exists. Counting it would freeze every change that
-// was ever reopened, permanently, at the same digests it had before.
-const retired = new Set(existing?.supersedes_approval ?? []);
-const integrationApprovals = store.approvals(changeId)
-  .filter((a) => a.gate === 'integration' && !retired.has(a.approval_id));
+// Through the shared rule. An approval this preparation already retired covers nothing — it was
+// retired precisely because the record it was granted over no longer exists — and counting it
+// would freeze every change that was ever reopened, permanently, at the digests it had before.
+const integrationApprovals = approvalsInForce(store.approvals(changeId), existing)
+  .inForce.filter((a) => a.gate === 'integration');
 const covering = existing
   ? integrationApprovals.filter((a) => a.scope_digest === gatedDigest(existing.contract_digest, existing.candidate_digest))
   // No manifest, but an approval on record: the record that was approved is gone. Preparing over
