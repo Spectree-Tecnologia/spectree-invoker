@@ -23,6 +23,7 @@ const PLAN = /^(\s*)(\d+)\.\.(\d+)\s*$/;
 const BAILOUT = /^\s*Bail out!\s*(.*)$/;
 const YAML_OPEN = /^(\s*)---\s*$/;
 const YAML_CLOSE = /^(\s*)\.\.\.\s*$/;
+const SUBTEST = /^(\s*)#\s*Subtest:/;
 
 const indentOf = (line) => /^\s*/.exec(line)[0].length;
 
@@ -45,6 +46,24 @@ export function parseTap(text) {
   const stack = [open(0, 0)];
   const top = () => stack[stack.length - 1];
 
+  /**
+   * Put a line at its indentation, opening and closing groups as needed, and return the group
+   * it belongs to. Closing a group leaves its parent owed one result — the verdict the parent
+   * prints for that subtest.
+   */
+  const locate = (indent, lineNo) => {
+    while (stack.length > 1 && indent < top().indent) {
+      const closed = stack.pop();
+      const parent = top();
+      if (parent.awaiting) {
+        problems.push(`the group starting at line ${parent.awaiting.line} closed without a result in its parent`);
+      }
+      parent.awaiting = closed;
+    }
+    if (indent > top().indent) stack.push(open(indent, lineNo));
+    return top();
+  };
+
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
 
@@ -59,26 +78,22 @@ export function parseTap(text) {
     const bail = BAILOUT.exec(raw);
     if (bail) { bailout = bail[1] || 'no reason given'; continue; }
 
+    // `# Subtest: <name>` announces a child, at the indentation of the document announcing it.
+    // It is the only line that marks an intermediate level BEFORE anything is reported in it,
+    // and without it `describe > describe > it` jumps straight from indent 0 to indent 8: the
+    // middle group would not exist yet when its child closed, and the child would be attached
+    // to the wrong parent. A comment is not a result, so this opens context and records nothing.
+    const marker = SUBTEST.exec(raw);
+    if (marker) { locate(marker[1].length, i + 1); continue; }
+
     const plan = PLAN.exec(raw);
     const res = plan ? null : RESULT.exec(raw);
-    if (!plan && !res) continue; // comments, `TAP version`, blank lines, free text
+    if (!plan && !res) continue; // other comments, `TAP version`, blank lines, free text
 
     // The indentation of a structural line decides which document it belongs to. Deeper opens
     // a new group; shallower closes every group deeper than it. Coming back to a depth that
     // was closed opens a NEW group, because that is a sibling and not a continuation.
-    const indent = (plan ? plan[1] : res[1]).length;
-    while (stack.length > 1 && indent < top().indent) {
-      // A closed subtest is answered by ONE result in its parent, printed right after it.
-      // Remember that we are owed that result; if it never comes, the subtest is dangling and
-      // nothing in the parent says it ran.
-      const closed = stack.pop();
-      const parent = top();
-      if (parent.awaiting) {
-        problems.push(`the group starting at line ${parent.awaiting.line} closed without a result in its parent`);
-      }
-      parent.awaiting = closed;
-    }
-    if (indent > top().indent) stack.push(open(indent, i + 1));
+    locate((plan ? plan[1] : res[1]).length, i + 1);
 
     if (plan) {
       const from = Number(plan[2]);

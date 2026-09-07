@@ -810,3 +810,62 @@ test('18b. a subtest with no result in its parent is refused, counts or no count
   assert.equal(contradictory.result, 'INFRA_ERROR');
   assert.match(contradictory.reason, /recorded it as passing/);
 });
+
+// --- ninth round, finding 19: the middle group has to exist in time ---------
+
+test('19. describe > describe > it is accepted, with the middle group in the tree', async () => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const TARGET = 'Scenario: creation with a blank name';
+  const dir = tempDir('spectree-tap-nested-');
+  try {
+    writeFileSync(join(dir, 'sample.test.mjs'), [
+      "import { describe, it } from 'node:test';",
+      "import assert from 'node:assert/strict';",
+      `describe('group A', () => {`,
+      `  describe('nested', () => { it(${JSON.stringify(TARGET)}, () => { assert.equal(1, 2); }); });`,
+      '});',
+      `describe('group B', () => { it('other', () => { assert.ok(true); }); });`,
+    ].join('\n'));
+    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('NODE_TEST')));
+    let out = '', status = 0;
+    try {
+      out = execFileSync(process.execPath, ['--test', '--test-reporter=tap', 'sample.test.mjs'], { cwd: dir, encoding: 'utf8', env });
+    } catch (e) { out = (e.stdout ?? '') + (e.stderr ?? ''); status = e.status ?? 1; }
+    assert.notEqual(status, 0, 'the suite really did fail');
+
+    // The first RESULT line sits at indent 8: the group at indent 4 exists only because the
+    // `# Subtest:` marker announced it, and without it the child was attached to the root.
+    assert.match(out, /^ {8}not ok 1 - /m);
+    const tap = parseTap(out);
+    assert.deepEqual(tap.groups.map((g) => g.indent), [0, 4, 8, 4], 'root, group A, its nested group, then the sibling');
+    assert.deepEqual(
+      tap.groups.map((g) => g.parentResult?.name ?? null),
+      [null, 'group A', 'nested', 'group B'],
+      'every subtest is answered by the result its own parent printed',
+    );
+
+    const verdict = judgeFailingRun(tap, TARGET, status);
+    assert.equal(verdict.result, 'PASS', verdict.reason);
+
+    // Truncation is still refused, at the deepest level too.
+    const lines = out.split('\n');
+    const cut = lines.findIndex((l) => /^ {8}1\.\.\d+\s*$/.test(l));
+    assert.ok(cut > 0);
+    assert.equal(judgeFailingRun(parseTap(lines.slice(0, cut + 1).join('\n')), TARGET, status).result, 'INFRA_ERROR');
+  } finally { cleanup(dir); }
+});
+
+test('19b. a marker cannot invent a group that never reports anything', async () => {
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const TARGET = 'Scenario: creation with a blank name';
+  // The announcement is there and the subtest never arrives: that is not a finished run.
+  const r = judgeFailingRun(parseTap([
+    'TAP version 13',
+    '# Subtest: group A',
+    '    # Subtest: nested',
+    '1..1',
+    `not ok 1 - ${TARGET}`,
+  ].join('\n')), TARGET, 1);
+  assert.equal(r.result, 'INFRA_ERROR');
+  assert.match(r.reason, /no plan of its own|no result in its parent/);
+});

@@ -165,6 +165,9 @@ half-read:
   plan. Only `1..N` is read; a plan starting anywhere else is refused as unsupported;
 - **numbered** results, each number used once, and every number from 1 to N present — a result
   numbered outside its group's plan is refused, and so is a gap;
+- `# Subtest:` markers, which announce a child at the indentation of the document announcing
+  it. They are what makes `describe > describe > it` readable: its first result sits two levels
+  deep, and without the marker the middle group would not exist yet when its child closed;
 - a **closed top-level document**. A subtest that plans one test and reports one test is a tidy
   subtest, not a finished run: output cut off after it is refused, because the document that
   should have reported that subtest never said anything at all;

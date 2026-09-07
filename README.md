@@ -35,7 +35,7 @@ Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CL
 | `schemas/` | Os contratos estruturados: change, dispatch, evidence, deferred, approval |
 | `scripts/` | `build`, `check-plugin`, `state`, `verify-change`, `capabilities` |
 | `tests/` | 100 testes determinísticos + fixtures de avaliação comportamental |
-| `docs/` | [instalação](docs/install.md) · [compatibilidade](docs/compatibility.md) · [arquitetura](docs/architecture.md) |
+| `docs/` | [instalação](docs/install.md) · [compatibilidade](docs/compatibility.md) · [arquitetura](docs/architecture.md) · [manutenção](docs/maintenance.md) |
 | `CLAUDE.md`, `agents/`, `adapters/codex/dist/` | **Gerados.** Rode `node scripts/build.mjs`; não edite à mão |
 
 ```bash
