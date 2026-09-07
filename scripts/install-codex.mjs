@@ -64,6 +64,11 @@ function planCopy(from, to, label) {
   else plan.push({ op: existsSync(to) ? 'overwrite' : 'create', from, to, label });
 }
 
+function planWrite(content, to, label) {
+  if (existsSync(to) && readFileSync(to, 'utf8') === content) plan.push({ op: 'unchanged', to, label });
+  else plan.push({ op: existsSync(to) ? 'overwrite' : 'create', content, to, label });
+}
+
 // 1. the protocol document and the scripts the skill actually calls
 planCopy(join(dist, 'SQUAD.md'), join(squadRoot, 'SQUAD.md'), 'squad protocol');
 for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs']) {
@@ -75,6 +80,16 @@ for (const f of readdirSync(join(pkg, 'scripts', 'lib'))) {
 for (const f of readdirSync(join(pkg, 'schemas'))) {
   planCopy(join(pkg, 'schemas', f), join(squadRoot, 'schemas', f), 'schema');
 }
+
+// 1b. which build this is. A consumer carries no plugin.json and no protocol/, so without
+// this file the installed squad cannot say which version of itself it is running — and a boot
+// report that cannot name its own build is a report two different builds would write identically.
+const stamp = JSON.stringify({
+  package_version: JSON.parse(readFileSync(join(pkg, '.claude-plugin', 'plugin.json'), 'utf8')).version,
+  protocol_version: JSON.parse(readFileSync(join(pkg, 'protocol', 'manifest.json'), 'utf8')).protocol_version,
+  installed_by: 'scripts/install-codex.mjs',
+}, null, 2) + '\n';
+planWrite(stamp, join(squadRoot, 'installed.json'), 'which build this is');
 
 // 2. the skill
 planCopy(join(dist, 'skills', 'spectree-invoker', 'SKILL.md'), join(skillRoot, 'spectree-invoker', 'SKILL.md'), 'skill');
@@ -117,6 +132,7 @@ for (const p of plan) {
   if (p.op === 'unchanged') continue;
   mkdirSync(dirname(p.to), { recursive: true });
   if (p.op === 'append') writeFileSync(p.to, readFileSync(p.to, 'utf8').replace(/\s*$/, '\n') + POINTER);
+  else if (p.content !== undefined) writeFileSync(p.to, p.content);
   else if (p.to === agentsMd && !p.from) writeFileSync(p.to, `# AGENTS.md\n${POINTER}`);
   else cpSync(p.from, p.to);
 }

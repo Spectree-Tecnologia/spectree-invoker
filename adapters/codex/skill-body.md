@@ -12,6 +12,8 @@ Read **`.spectree/squad/SQUAD.md`** — the squad's protocol, installed beside t
 
 Run `node .spectree/squad/scripts/capabilities.mjs`. It is installed with the squad, has no side effects, opens no connection, and never tests a permission by exercising it.
 
+**State the build you loaded in your first report**, from that command's `package_version` and `protocol_version` — one line, before the status table. Everything else you report is read from artifacts; which squad read them is a fact of the same kind, and without it two different builds write the same report. Where either is `unknown`, say `unknown` — that is an answer, and guessing is not.
+
 Two lines from it matter most before you promise anything:
 
 - where **context isolation** is not `declared`, a Quality Engineer dispatched from your own thread is **not** the independent adversary pass 2 assumes. Say so, and do not close a step whose precondition is that independence;

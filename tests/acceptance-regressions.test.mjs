@@ -917,3 +917,61 @@ test('20b. and it still reports a package checker that is genuinely gone', () =>
     assert.match(facts['checkers.package_only'], /MISSING: build\.mjs/);
   } finally { cleanup(dir); }
 });
+
+// --- eleventh round, finding 21: a report that cannot name its own build ----
+
+test('21. capabilities names the build, in the package and in a consumer', () => {
+  const facts = (cwd, root) => Object.fromEntries(
+    JSON.parse(execFileSync(process.execPath, [join(root ?? REPO, 'scripts', 'capabilities.mjs'), '--json'],
+      { cwd, encoding: 'utf8' })).facts.map((f) => [f.name, f.value]));
+
+  const pkg = JSON.parse(readFileSync(join(REPO, '.claude-plugin', 'plugin.json'), 'utf8'));
+  const manifest = JSON.parse(readFileSync(join(REPO, 'protocol', 'manifest.json'), 'utf8'));
+
+  const here = facts(REPO);
+  assert.equal(here.package_version, pkg.version);
+  assert.equal(here.protocol_version, manifest.protocol_version);
+
+  // A consumer carries no plugin.json and no protocol/, so the installer stamps the build.
+  // Without it the installed squad could not say which version of itself it was running, and
+  // two different builds would write byte-identical boot reports.
+  const dir = tempDir('spectree-stamp-');
+  try {
+    execFileSync(process.execPath, [join(REPO, 'scripts', 'install-codex.mjs'), dir, '--apply'], { encoding: 'utf8' });
+    const stamp = JSON.parse(readFileSync(join(dir, '.spectree/squad/installed.json'), 'utf8'));
+    assert.equal(stamp.package_version, pkg.version);
+    assert.equal(stamp.protocol_version, manifest.protocol_version);
+
+    const consumer = facts(dir, join(dir, '.spectree', 'squad'));
+    assert.equal(consumer.package_version, pkg.version);
+    assert.equal(consumer.protocol_version, manifest.protocol_version);
+
+    // Idempotent like everything else the installer writes.
+    const second = execFileSync(process.execPath, [join(REPO, 'scripts', 'install-codex.mjs'), dir, '--apply'], { encoding: 'utf8' });
+    assert.match(second, /unchanged/);
+    assert.doesNotMatch(second, /overwrite/);
+  } finally { cleanup(dir); }
+});
+
+test('21b. where the build cannot be established it says unknown, not a guess', () => {
+  const dir = tempDir('spectree-nostamp-');
+  try {
+    const bare = join(dir, 'squad');
+    mkdirSync(join(bare, 'scripts'), { recursive: true });
+    cpSync(join(REPO, 'scripts', 'capabilities.mjs'), join(bare, 'scripts', 'capabilities.mjs'));
+    const facts = Object.fromEntries(
+      JSON.parse(execFileSync(process.execPath, [join(bare, 'scripts', 'capabilities.mjs'), '--json'],
+        { cwd: dir, encoding: 'utf8' })).facts.map((f) => [f.name, { value: f.value, confidence: f.confidence }]));
+    assert.equal(facts.package_version.value, 'unknown');
+    assert.equal(facts.package_version.confidence, 'UNKNOWN');
+    assert.equal(facts.protocol_version.value, 'unknown');
+  } finally { cleanup(dir); }
+});
+
+test('21c. both entrypoints tell the Invoker to state it', () => {
+  for (const f of ['commands/invoker.md', 'adapters/codex/dist/skills/spectree-invoker/SKILL.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /State the build you loaded in your first report/, `${f} must ask for it`);
+    assert.match(body, /package_version/, `${f} must name the fact`);
+  }
+});

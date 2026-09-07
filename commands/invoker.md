@@ -22,6 +22,8 @@ The target project's own `CLAUDE.md`, if it has one, is **not** this file and do
 
 Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/capabilities.mjs`. It has no side effects: it opens no connection, writes nothing, and never tests a permission by exercising it.
 
+**State the build you loaded in your first report**, from that command's `package_version` and `protocol_version` — one line, before the status table. Everything else you report is read from artifacts; which squad read them is a fact of the same kind, and without it two different builds write the same report. Where either is `unknown`, say `unknown` — that is an answer, and guessing is not.
+
 Read the operating mode and the role matrix before you promise anything the pipeline depends on. Two lines matter most:
 
 - where **context isolation** is not `declared`, a Quality Engineer dispatched from your own thread is **not** the independent adversary pass 2 assumes. Say so in the report, and do not close a step whose precondition is that independence;
