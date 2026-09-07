@@ -34,10 +34,7 @@ jobs:
         run: |
           set -eu
           mkdir -p /tmp/consumer
-          printf '# AGENTS.md
-
-This project uses pnpm. Do not overwrite this file.
-' > /tmp/consumer/AGENTS.md
+          printf '%s\n\n%s\n' '# AGENTS.md' 'This project uses pnpm. Do not overwrite this file.' > /tmp/consumer/AGENTS.md
           node scripts/install-codex.mjs /tmp/consumer            # dry run writes nothing
           grep -q 'Do not overwrite' /tmp/consumer/AGENTS.md
           node scripts/install-codex.mjs /tmp/consumer --apply
