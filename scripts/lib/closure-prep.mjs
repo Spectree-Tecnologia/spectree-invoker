@@ -136,8 +136,28 @@ const short = (d) => String(d ?? '').slice(0, 18);
  * folder is not proof: the folder says a move happened, the manifest says what was true when
  * it happened, and only the second one can be compared against what is on disk now.
  */
-export function preparationCovers(manifest, { contractDigest, candidateDigest }) {
+export function preparationCovers(manifest, { contractDigest, candidateDigest, changeId }) {
   if (!manifest) return refuse('E_PREP_MISSING', 'no closure preparation is on record for this change');
+
+  // Identity and shape first. A manifest whose contract version this build does not speak, or
+  // that belongs to another change, is not made acceptable by two digests happening to match —
+  // the digests only mean anything once it is established that this document is the one being
+  // talked about. The writer refuses to overwrite such a manifest, and the gate refuses to
+  // read it: both halves, or the refusal is only half a refusal.
+  if (manifest.manifest_version !== PREP_CONTRACT_VERSION) {
+    return refuse('E_PREP_CONTRACT_VERSION',
+      `the preparation follows contract ${manifest.manifest_version ?? '(none)'} and this build speaks ${PREP_CONTRACT_VERSION}`);
+  }
+  if (changeId && manifest.change_id !== changeId) {
+    return refuse('E_PREP_COLLISION', `that preparation belongs to "${manifest.change_id}", not to "${changeId}"`);
+  }
+  for (const field of ['change_id', 'base_revision', 'contract_digest', 'candidate_digest', 'prepared_at']) {
+    if (!manifest[field]) return refuse('E_PREP_MALFORMED', `the preparation records no ${field}`);
+  }
+  for (const field of ['artifacts', 'commands', 'blocking', 'deferred']) {
+    if (!Array.isArray(manifest[field])) return refuse('E_PREP_MALFORMED', `the preparation's ${field} is not a list`);
+  }
+
   if (manifest.blocking?.length) {
     return refuse('E_PREP_BLOCKED', `the preparation recorded ${manifest.blocking.length} blocking item(s): ${manifest.blocking.join('; ')}`);
   }

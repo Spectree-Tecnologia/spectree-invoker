@@ -93,7 +93,9 @@ function closureVerdict(change, d) {
   if (change.closure_mode === 'legacy') return { ok: true, legacy: true };
   let manifest = null;
   try { manifest = JSON.parse(readFileSync(join(root, manifestPath(change.change_id)), 'utf8')); } catch { /* none */ }
-  return preparationCovers(manifest, { contractDigest: d.contract.digest, candidateDigest: d.content.digest });
+  return preparationCovers(manifest, {
+    contractDigest: d.contract.digest, candidateDigest: d.content.digest, changeId: change.change_id,
+  });
 }
 
 /** The resume contract: everything needed to pick work back up, read from artifacts. */

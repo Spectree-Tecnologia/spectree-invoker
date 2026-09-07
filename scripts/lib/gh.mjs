@@ -23,21 +23,32 @@ const jsonOrThrow = (r, what) => {
 
 const run = (args, cwd) => launch(['gh', ...args], { cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
 
-/** One PR, only the fields the post-merge confirmation actually reads. */
+/**
+ * One PR, only the fields the post-merge confirmation reads — and only fields `gh` has.
+ *
+ * There is no `merged` field: `gh pr view --json merged` fails with "Unknown JSON field". The
+ * state is `MERGED` and `mergedAt` carries the moment, so those are what this asks for.
+ */
 export function pullRequest(number, { cwd, fields } = {}) {
   const want = fields ?? [
-    'number', 'state', 'merged', 'mergeCommit', 'headRefOid', 'headRefName',
+    'number', 'state', 'mergedAt', 'mergeCommit', 'headRefOid', 'headRefName',
     'baseRefName', 'url', 'title',
   ];
   return jsonOrThrow(run(['pr', 'view', String(number), '--json', want.join(',')], cwd), `pr ${number}`);
 }
 
-/** The checks on a ref, as name -> conclusion. Names are the CI's; conclusions are its words. */
-export function checksFor(ref, { cwd } = {}) {
+/**
+ * The workflow runs for one commit.
+ *
+ * `gh run list` reports WORKFLOW runs — `workflowName: "check"` — and a policy speaks in check
+ * names. Nothing here bridges the two by guessing: the caller maps them from what the project
+ * declares, and this only answers "what ran on this sha, and how did it end".
+ */
+export function runsForSha(sha, { cwd, limit = 50 } = {}) {
   const runs = jsonOrThrow(
-    run(['run', 'list', '--branch', ref, '--limit', '20', '--json', 'databaseId,name,status,conclusion,headSha,workflowName'], cwd),
-    `checks for ${ref}`);
-  return runs;
+    run(['run', 'list', '--limit', String(limit), '--json', 'databaseId,name,workflowName,status,conclusion,headSha'], cwd),
+    `runs for ${sha}`);
+  return runs.filter((r) => !sha || r.headSha === sha);
 }
 
 /**

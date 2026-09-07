@@ -146,7 +146,7 @@ export function contentDigest(root) {
     cwd: root, encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
   });
   const exclude = OPERATIONAL.map((p) => `:(exclude)${p}`);
-  let revision, tree, paths, dirty;
+  let revision, tree, paths, indexModes, dirty;
   try {
     revision = git(['rev-parse', 'HEAD']).trim();
     tree = git(['rev-parse', 'HEAD^{tree}']).trim();
@@ -157,6 +157,15 @@ export function contentDigest(root) {
       git(['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '.', ...exclude])
         .split('\0').filter(Boolean),
     )].filter((p) => !excluded(p)).sort();
+    // The mode git tracks, which is what a merge carries. Windows has no executable bit on the
+    // filesystem, so asking the filesystem would answer a different question from the one the
+    // other side of the merge is answering.
+    indexModes = new Map(
+      git(['ls-files', '-s', '-z', '--', '.', ...exclude]).split('\0').filter(Boolean).map((line) => {
+        const tab = line.indexOf('\t');
+        return [line.slice(tab + 1), line.slice(0, 6)];
+      }),
+    );
     dirty = git(['status', '--porcelain', '-z', '--', '.', ...exclude]).length > 0;
   } catch (e) {
     throw unavailable(`the content under ${root} cannot be determined`, e.message);
@@ -164,24 +173,77 @@ export function contentDigest(root) {
 
   // Content identity is git's own, asked per path for the file as it stands in the work tree.
   //
-  // Two earlier answers were both wrong, in opposite directions. Hashing tree entries plus a
-  // patch made the same bytes digest differently before and after a commit, so committing
-  // finished work invalidated the evidence and the closure preparation covering it — friction
-  // with no safety in it. Hashing the bytes on disk made the digest depend on the platform's
-  // line-ending conversion, so the same commit checked out on Windows was "different content".
-  // `git hash-object` applies the repository's own normalisation, which is the only definition
-  // of "the same content" that both ends of a merge can agree on.
+  // Earlier answers were wrong in three ways, and all three are fixed by the same shape.
+  // Hashing tree entries plus a patch made the same bytes digest differently before and after a
+  // commit. Hashing the bytes on disk made the digest depend on the platform's line-ending
+  // conversion. Hashing content without the mode let `chmod +x` — which changes what the file
+  // DOES — pass as no change at all.
+  //
+  // So an entry is `path + mode + blob`, exactly what a tree entry is, and `contentDigestAt`
+  // below produces the same shape from a commit. That is what makes a work tree and a merge
+  // commit comparable at all.
   const present = paths.filter((p) => existsSync(join(root, p)));
   const blobs = normalisedHashes(root, present);
   const byPath = new Map(present.map((p, i) => [p, blobs[i]]));
+
   const h = createHash('sha256');
-  for (const rel of paths) {
+  // A path that is not on disk is simply not part of the content. Recording it as deleted made
+  // the digest change again the moment the deletion was committed and the path left the index —
+  // the same content, two answers, and evidence invalidated for nothing.
+  for (const rel of present) {
     h.update(rel, 'utf8'); h.update('\0');
-    // A tracked path that is not on disk is a deletion: a legitimate state, and not a read
-    // failure to be papered over with a placeholder two versions could share.
-    h.update(byPath.get(rel) ?? '<deleted>', 'utf8'); h.update('\0');
+    h.update(modeOf(root, rel, indexModes), 'utf8'); h.update('\0');
+    h.update(byPath.get(rel), 'utf8'); h.update('\0');
   }
   return { digest: sha(h), revision, tree, dirty };
+}
+
+/** The mode git records: the index for a tracked file, the filesystem for one it has not seen. */
+function modeOf(root, rel, indexModes) {
+  const tracked = indexModes.get(rel);
+  if (tracked) return tracked;
+  try { return (statSync(join(root, rel)).mode & 0o111) ? '100755' : '100644'; }
+  catch { return '100644'; }
+}
+
+/**
+ * The same digest, for a commit that is not checked out — the merge, say.
+ *
+ * Comparing a merge against the local checkout answers the wrong question: the checkout is
+ * whatever the operator happens to have, and a post-merge confirmation that trusts it will
+ * close a change over a tree nobody approved.
+ *
+ * @returns {{ digest: string, revision: string, tree: string }}
+ */
+export function contentDigestAt(root, revision) {
+  const git = (args) => execFileSync('git', args, {
+    cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+  });
+  let resolved, tree, entries;
+  try {
+    resolved = git(['rev-parse', `${revision}^{commit}`]).trim();
+    tree = git(['rev-parse', `${revision}^{tree}`]).trim();
+    entries = git(['ls-tree', '-r', '-z', resolved]).split('\0').filter(Boolean).map((line) => {
+      const tab = line.indexOf('\t');
+      const [mode, type, blob] = line.slice(0, tab).split(/\s+/);
+      return { mode, type, blob, path: line.slice(tab + 1) };
+    });
+  } catch (e) {
+    throw unavailable(`the content of ${revision} cannot be read here — fetch it before confirming a merge you cannot see`, String(e.stderr || e.message));
+  }
+
+  const h = createHash('sha256');
+  for (const e of entries.filter((x) => !excluded(x.path)).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))) {
+    // A submodule (`commit`) or a symlink is not a file whose bytes this can compare. Refusing
+    // is the honest answer: unknown is never equivalence.
+    if (e.type !== 'blob') {
+      throw unavailable(`"${e.path}" in ${revision} is a ${e.type}, and this comparison only speaks about files`);
+    }
+    h.update(e.path, 'utf8'); h.update('\0');
+    h.update(e.mode, 'utf8'); h.update('\0');
+    h.update(e.blob, 'utf8'); h.update('\0');
+  }
+  return { digest: sha(h), revision: resolved, tree };
 }
 
 /** What an integration-class gate authorises: the contract AND the code it will carry. */

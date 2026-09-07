@@ -49,6 +49,11 @@ node scripts/prepare-closure.mjs <change-id>            # plan only, writes noth
 node scripts/prepare-closure.mjs <change-id> --apply
 ```
 
+**Everything that could block is decided before anything runs.** The ownership check covers the
+whole candidate — what is committed against the base *and* what is sitting uncommitted in the
+work tree — and a blocker stops the command from executing at all. A preparation that writes and
+then refuses is worse than one that refuses.
+
 It validates the proposal against the deltas on disk and the change's ownership, runs **the
 project's own** consolidation command, archives the change folder, records the deferrals the
 change is leaving behind, and writes one manifest at `.spectree/closure/<change-id>.json`:
@@ -68,9 +73,16 @@ The manifest lives under `.spectree/`, which every digest already excludes, so i
 of the candidate it describes.
 
 It is **idempotent** for the same contract and candidate (a second `--apply` reports
-`unchanged`), refuses a manifest belonging to another change (`E_PREP_COLLISION`) or written
-under another contract version, and refuses to be read as valid once either digest moves
-(`E_PREP_STALE`). **An archived folder is not proof**: the folder says a move happened; only the
+`unchanged`). A manifest belonging to another change (`E_PREP_COLLISION`), written under another
+contract version (`E_PREP_CONTRACT_VERSION`), or missing the fields it is read for
+(`E_PREP_MALFORMED`) is **refused without being overwritten**, `--apply` included: whatever it
+records is the only account of that preparation, and the run that refuses it is not the run that
+gets to destroy it. Both halves are enforced — the writer refuses to overwrite, and the gate
+refuses to read, because matching digests on a document written in another dialect is a
+coincidence and not agreement.
+
+A **stale** manifest is different in kind — same change, same contract version, content that
+moved — and re-preparing it with `--apply` is exactly the intended repair (`E_PREP_STALE`). **An archived folder is not proof**: the folder says a move happened; only the
 manifest says what was true when it happened.
 
 `integration_approved` requires a preparation that covers the candidate. A fix after preparation
@@ -106,6 +118,31 @@ node scripts/post-merge.mjs <change-id> --pr <number> --apply    # confirm and c
 Seven steps and no eighth: read the merge result, confirm the PR and its base branch, confirm
 the integrated content **is** the authorised candidate, check the checks the policy required,
 confirm the prepared artifacts are there, record the result in the trail, close.
+
+**Every content question is asked of the merge commit's tree, never of the local checkout.** The
+checkout is whatever the operator happens to have; a confirmation that trusts it will close a
+change over a tree nobody approved. So the digest comes from `git ls-tree` at the merge commit,
+the approved commit must be an **ancestor** of that merge — equal trees reached by an unrelated
+route is a coincidence, not an integration — and the prepared artifacts are looked for **in the
+merge**, not on disk. If the merge commit is not present locally, that is an impediment: fetch it
+before confirming something you cannot see.
+
+It is **resumable**. The remaining transitions are computed from the state on disk, so a rerun
+after a crash — or after success — repeats no event and refuses nothing that already happened.
+
+### Mapping the policy onto your CI
+
+`gh` reports **workflow runs** (`workflowName: "check"`); the policy speaks in check names.
+Nothing bridges those by guessing, so the project declares it:
+
+```json
+{ "ci": { "required_runs": ["check"] } }
+```
+
+or one list per treatment (`{"full": [...], "documented_closure": [...]}`). A project that has
+not declared it gets `E_CI_MAP_MISSING` — a check nobody mapped is a check nobody observed, and
+unknown is never permission. Runs are matched to the **merge commit's SHA**: a green run on
+another commit says nothing about this one.
 
 It is not a place for an architecture review, a rewrite of the roles, a recount of the backlog,
 an investigation into an auxiliary tool, or an opportunistic fix. A real failure stops the

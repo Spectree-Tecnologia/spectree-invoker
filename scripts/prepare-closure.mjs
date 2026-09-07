@@ -13,6 +13,7 @@
 // Exit codes: 0 prepared (or already prepared), 1 refused, 2 usage.
 
 import { existsSync, mkdirSync, renameSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { contractDigest, contentDigest } from './lib/digest.mjs';
@@ -56,9 +57,32 @@ try {
   note(`the candidate cannot be compared against its base (${e.code}): an unavailable comparison is unknown, never "nothing changed"`);
 }
 
-if (diff) {
-  const outside = outsideAllowedPaths(diff.files, change.allowed_paths);
-  if (outside.length) note(`${outside.length} path(s) outside this change's declared ownership: ${outside.slice(0, 5).map((o) => o.path).join(', ')}`);
+// Ownership is checked over the WHOLE candidate: what is committed against the base, and what
+// is sitting in the work tree uncommitted. The candidate includes both — the digests already
+// say so — and checking only base..HEAD let an unowned file that had not been committed yet
+// pass straight through.
+const localChanges = (() => {
+  try {
+    return [...new Set(
+      execFileSync('git', ['status', '--porcelain', '-z'], { cwd: root, encoding: 'utf8' })
+        .split('\0').filter(Boolean)
+        // Porcelain v1 -z: "XY <path>", and a rename is "XY <to>\0<from>" — both ends matter.
+        .map((entry) => entry.slice(3))
+        .filter(Boolean),
+    )].map((path) => ({ status: 'L', path }));
+  } catch (e) {
+    note(`the uncommitted part of the candidate cannot be read (${e.message.split('\n')[0]})`);
+    return [];
+  }
+})();
+
+const candidateFiles = [...(diff?.files ?? []), ...localChanges];
+if (candidateFiles.length) {
+  const outside = outsideAllowedPaths(candidateFiles, change.allowed_paths)
+    .filter((o) => !o.path.startsWith('.spectree/'));
+  if (outside.length) {
+    note(`${outside.length} path(s) outside this change's declared ownership: ${[...new Set(outside.map((o) => o.path))].slice(0, 5).join(', ')}`);
+  }
 }
 
 // The modules a proposal named and the deltas on disk must be the same set. A module named with
@@ -116,10 +140,31 @@ const draft = buildManifest({
   preparedAt: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
 });
 const verdict = comparePreparation(existing, draft);
-if (verdict.state === 'incompatible' || verdict.state === 'stale') {
+
+// An incompatible manifest is refused outright, `--apply` included. It is not this run's to
+// overwrite: whatever it records was written under a contract this build does not speak, or for
+// another change, and running the consolidation over it would destroy the only account of what
+// that preparation did. A STALE manifest is different in kind — same change, same contract
+// version, content that moved — and re-preparing it is exactly the intended repair.
+if (verdict.state === 'incompatible') {
   console.error(`${verdict.code}: ${verdict.message}`);
-  if (verdict.state === 'stale') console.error('  Re-run the preparation: what was prepared no longer describes what would be integrated.');
+  console.error(`  Nothing was run and nothing was written. Move or remove ${manifestPath(changeId).split('\\').join('/')} deliberately if that is what you mean to do.`);
+  process.exit(1);
+}
+if (verdict.state === 'stale') {
+  console.error(`${verdict.code}: ${verdict.message}`);
+  console.error('  Re-run the preparation: what was prepared no longer describes what would be integrated.');
   if (!apply) process.exit(1);
+}
+
+// Everything that blocks integration is known BEFORE anything runs. The consolidation writes to
+// the project; running it and then reporting a blocker leaves the work half-done and the report
+// saying it refused.
+if (blocking.length && apply) {
+  console.error(`REFUSED — ${blocking.length} blocking item(s), and nothing was run:`);
+  for (const b of blocking) console.error(`  - ${b}`);
+  console.error('\nFix these first. A preparation that writes and then refuses is worse than one that refuses.');
+  process.exit(1);
 }
 
 // --- 4. report, then act --------------------------------------------------------------------
@@ -185,10 +230,13 @@ const deferred = store.present
 const manifest = buildManifest({
   changeId, baseRevision: change.base_revision,
   contractDigest: contract.digest,
-  // Recomputed AFTER the writes: the candidate is what would be integrated, and the archival
-  // is part of it. The manifest itself lives under `.spectree/`, which every digest excludes,
-  // so it never enters its own identity.
-  candidateDigest: (() => { try { return contentDigest(root).digest; } catch { return candidate.digest; } })(),
+  candidateDigest: (() => {
+    // Recomputed AFTER the writes: the candidate is what would be integrated, and the archival
+    // is part of it. No fallback to the pre-write digest — that would file this preparation
+    // against a candidate that no longer exists, which is the exact confusion it exists to stop.
+    try { return contentDigest(root).digest; }
+    catch (e) { die(`${e.code}: the content could not be re-read after preparing (${e.message}); nothing may be recorded about a candidate that cannot be established`, 1); }
+  })(),
   artifacts, commands, blocking, deferred,
   preparedAt: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
 });

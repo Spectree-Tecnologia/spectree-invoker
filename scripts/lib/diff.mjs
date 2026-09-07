@@ -59,7 +59,15 @@ export const DEFAULT_TEST_PATTERNS = [
 
 // A living spec is a behavioural contract, not documentation: it is what a test is written
 // from, so a change to it is never "just docs".
-const PROTOCOL = [/^protocol\//, /^schemas\//, /^adapters\//, /^docs\/specs\//];
+// Behavioural contracts, wherever they live. `docs/specs/` is the living spec; a change folder's
+// `proposal.md` and its `specs/` delta are the contract a gate was granted against, open or
+// archived. Classifying those by their folder — "it is under docs/, so it is documentation" —
+// is how a contract change would earn the documentary treatment.
+const PROTOCOL = [
+  /^protocol\//, /^schemas\//, /^adapters\//, /^docs\/specs\//,
+  /^docs\/changes\/(?:archive\/)?[^/]+\/proposal\.md$/i,
+  /^docs\/changes\/(?:archive\/)?[^/]+\/specs\//i,
+];
 
 // The operational trail records what happened. It defines nothing, so it cannot change
 // behaviour — which is why it is narrow on purpose: this one prefix, and no other.

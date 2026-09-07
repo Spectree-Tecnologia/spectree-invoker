@@ -89,8 +89,11 @@ export const REQUIRED_CHECKS = {
  * @param {string} treatment
  * @param {Record<string,string>} observed  check name -> conclusion, as the CI reported it
  */
-export function aggregate(treatment, observed = {}) {
-  const required = REQUIRED_CHECKS[treatment];
+export function aggregate(treatment, observed = {}, requiredOverride) {
+  // The names a project's CI actually reports are the project's, not this file's. Where the
+  // caller supplies them, those are the required set; the built-in list is the default for a
+  // caller that has its own names already.
+  const required = requiredOverride ?? REQUIRED_CHECKS[treatment];
   if (!required) {
     return { ok: false, code: 'E_UNKNOWN_TREATMENT', message: `no required set is declared for treatment "${treatment}"` };
   }
