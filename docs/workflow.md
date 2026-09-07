@@ -56,10 +56,12 @@ this change is removing. An occupied archive slot is found in the same preflight
 that writes and then refuses is worse than one that refuses.
 
 **And the consolidation command is held to the same ownership.** Running a command the project
-supplied is not approving whatever it writes: if it goes outside the change's declared paths,
-the preparation refuses, archives nothing, and writes no manifest. What the command wrote is
-left exactly where it is — removing it automatically would destroy work nobody chose to
-destroy.
+supplied is not approving whatever it writes. Afterwards the **whole** candidate is recomputed —
+`base..HEAD` as it stands now, plus what is uncommitted — because a command that *commits* its
+trespass would otherwise empty the only list being read. If anything is outside the change's
+declared paths, the preparation refuses, archives nothing, and writes no manifest. What the
+command wrote, or committed, is left exactly where it is: removing it automatically would
+destroy work nobody chose to destroy.
 
 It validates the proposal against the deltas on disk and the change's ownership, runs **the
 project's own** consolidation command, archives the change folder, records the deferrals the
@@ -89,7 +91,15 @@ refuses to read, because matching digests on a document written in another diale
 coincidence and not agreement.
 
 A **stale** manifest is different in kind — same change, same contract version, content that
-moved — and re-preparing it with `--apply` is exactly the intended repair (`E_PREP_STALE`). **An archived folder is not proof**: the folder says a move happened; only the
+moved — and re-preparing it with `--apply` is exactly the intended repair (`E_PREP_STALE`).
+
+And a third state sits between those two. The preparation can still be valid — same contract,
+same candidate — while the RECORD of what it produced falls behind it: ticking a box in
+`tasks.md` changes a prepared artifact without moving either digest. Re-running `--apply` then
+reports **`refreshed`**: only the artifact record is brought up to date, no consolidation is
+re-run, no folder is moved, and because neither digest moves, **nothing that was proven about
+them is invalidated**. Progress is not scope, and it is not a candidate either — the alternative
+was a confirmation that refused an artifact for being exactly as it should be. **An archived folder is not proof**: the folder says a move happened; only the
 manifest says what was true when it happened.
 
 `integration_approved` requires a preparation that covers the candidate. A fix after preparation

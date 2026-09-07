@@ -320,11 +320,87 @@ test('the consolidation command is itself held to the change\'s ownership', () =
     const r = spawnSync(process.execPath, [join(REPO, 'scripts/prepare-closure.mjs'), 'c1', '--apply'],
       { cwd: repo.root, encoding: 'utf8' });
     assert.equal(r.status, 1, 'running a command is not approving whatever it writes');
-    assert.match(r.stderr, /wrote 1 path\(s\) outside this change's declared ownership/);
+    assert.match(r.stderr, /left 1 path\(s\) outside this change's declared ownership/);
+    assert.doesNotMatch(r.stderr, /spec consolidation failed/, 'the refusal is the ownership one, not a broken script');
     assert.match(r.stderr, /outside\.txt/);
     assert.equal(existsSync(join(repo.root, '.spectree/closure/c1.json')), false, 'and no manifest says it was prepared');
     assert.equal(existsSync(join(repo.root, 'docs/changes/c1')), true, 'nothing was archived');
     assert.equal(existsSync(join(repo.root, 'outside.txt')), true,
       'and the file the command wrote is left alone: removing it automatically would destroy work nobody chose to destroy');
+  } finally { cleanup(repo.root); }
+});
+
+// --- progress is not a candidate, and a commit is not an escape --------------
+
+test('ticking a task refreshes the artifact record without re-preparing anything', () => {
+  const f = fixture();
+  try {
+    writeFileSync(join(f.root, 'docs/changes/c1/tasks.md'), '- [ ] build it\n');
+    f.git(['add', '-A']); f.git(['commit', '-qm', 'a task list']);
+    assert.equal(f.prep('--apply').code, 0);
+    const first = f.manifest();
+    const archive = `docs/changes/archive/${new Date().toISOString().slice(0, 10)}-c1`;
+    assert.ok(first.artifacts.some((a) => a.path.endsWith('tasks.md')), 'the record covers the whole folder');
+
+    // Pass 2 finished; the box gets ticked. Neither digest moves — the task list is in neither.
+    writeFileSync(join(f.root, `${archive}/tasks.md`), '- [x] build it\n');
+    const again = f.prep('--apply');
+    assert.equal(again.code, 0, again.err);
+    assert.match(again.out, /refreshed/);
+
+    const second = f.manifest();
+    assert.equal(second.contract_digest, first.contract_digest, 'the contract did not move');
+    assert.equal(second.candidate_digest, first.candidate_digest, 'and neither did the candidate');
+    assert.ok(second.artifacts_refreshed_at, 'the record says when it was brought up to date');
+    assert.notDeepEqual(second.artifacts, first.artifacts, 'and it now describes what is on disk');
+
+    // Which is the property the confirmation after the merge actually checks.
+    const onDisk = execFileSync('git', ['hash-object', `${archive}/tasks.md`], { cwd: f.root, encoding: 'utf8' }).trim();
+    assert.equal(second.artifacts.find((a) => a.path.endsWith('tasks.md')).digest, onDisk);
+
+    // Nothing was re-run and nothing was moved a second time.
+    const trail = readFileSync(join(f.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    assert.equal(trail.filter((e) => e.type === 'closure_prepared').length, 1);
+    assert.equal(trail.filter((e) => e.type === 'closure_artifacts_refreshed').length, 1);
+  } finally { f.drop(); }
+});
+
+test('a consolidation that COMMITS its trespass is still a trespass', () => {
+  const repo = gitRepo({ 'src/app.js': 'export const x = 1;\n', '.gitignore': '.spectree/\n' });
+  try {
+    const store = new Store(repo.root);
+    // A command that writes outside the change's paths and commits it, then exits 0. Looking
+    // only at the uncommitted half let exactly this pass: committing emptied the list.
+    const script = [
+      "const { writeFileSync } = require('node:fs');",
+      "const { execFileSync } = require('node:child_process');",
+      "writeFileSync('outside.txt', 'outside declared ownership');",
+      "execFileSync('git', ['add', 'outside.txt']);",
+      "execFileSync('git', ['commit', '-qm', 'the command commits its own trespass']);",
+    ].join('');
+    store.init({
+      project_id: 'fixture', protocol_version: '1.0.0',
+      closure: { consolidate: [process.execPath, '-e', script] },
+    });
+    store.putChange({
+      schema_version: '1.0.0', project_id: 'fixture', change_id: 'c1', change_type: 'feature',
+      protocol_version: '1.0.0', adapter: 'codex', base_revision: repo.base, scope: 'fixture',
+      allowed_paths: ['src', 'docs'], deltaless: true, state: 'implemented',
+    }, { event: { type: 'opened' } });
+    mkdirSync(join(repo.root, 'docs/changes/c1'), { recursive: true });
+    writeFileSync(join(repo.root, 'docs/changes/c1/proposal.md'), '# proposal\n');
+    repo.git(['add', '-A']); repo.git(['commit', '-qm', 'the proposal']);
+
+    const r = spawnSync(process.execPath, [join(REPO, 'scripts/prepare-closure.mjs'), 'c1', '--apply'],
+      { cwd: repo.root, encoding: 'utf8' });
+    assert.equal(r.status, 1, 'committing a trespass does not launder it');
+    // The refusal has to be the OWNERSHIP one. A broken consolidation script also mentions the
+    // path — in the syntax error it echoes — and that is not this test passing.
+    assert.match(r.stderr, /left 1 path\(s\) outside this change's declared ownership: outside\.txt/);
+    assert.doesNotMatch(r.stderr, /spec consolidation failed/);
+    assert.equal(existsSync(join(repo.root, '.spectree/closure/c1.json')), false);
+    assert.equal(existsSync(join(repo.root, 'docs/changes/c1')), true, 'nothing was archived');
+    // The commit stays: reverting somebody's work is theirs to decide, not this command's.
+    assert.match(repo.git(['show', '--name-only', '--format=', 'HEAD']), /outside\.txt/);
   } finally { cleanup(repo.root); }
 });

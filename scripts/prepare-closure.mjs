@@ -223,7 +223,36 @@ if (!apply) {
 }
 
 if (verdict.state === 'unchanged' && !blocking.length) {
-  console.log(`unchanged — ${changeId} is already prepared for this candidate and this contract.`);
+  // The preparation is still valid: same contract, same candidate. But the RECORD of what it
+  // produced can fall behind it — ticking a box in `tasks.md` changes a prepared artifact
+  // without changing either digest, and the confirmation after the merge then refuses an
+  // artifact that is exactly as it should be.
+  //
+  // So the record is refreshed and nothing else is: no consolidation is re-run, no folder is
+  // moved, and neither digest moves — which is why no evidence and no approval is invalidated.
+  // Progress is not scope, and it is not a candidate either.
+  const current = artifactsUnder(root, archiveRel.split('\\').join('/'), 'archived');
+  const same = JSON.stringify(current) === JSON.stringify(existing.artifacts ?? []);
+  if (same) {
+    console.log(`unchanged — ${changeId} is already prepared for this candidate and this contract.`);
+    process.exit(0);
+  }
+  const refreshed = {
+    ...existing,
+    artifacts: current,
+    artifacts_refreshed_at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+  };
+  writeFileSync(join(root, manifestPath(changeId)), `${JSON.stringify(refreshed, null, 2)}\n`);
+  store.appendHistory(changeId, {
+    type: 'closure_artifacts_refreshed',
+    at: refreshed.artifacts_refreshed_at,
+    contract_digest: refreshed.contract_digest,
+    candidate_digest: refreshed.candidate_digest,
+    artifacts: current.length,
+    schema_version: SCHEMA_VERSION,
+  });
+  console.log(`refreshed — ${changeId} keeps its preparation; only the record of ${current.length} artifact(s) was brought up to date.`);
+  console.log('  The contract and the candidate did not move, so nothing that was proven about them was invalidated.');
   process.exit(0);
 }
 
@@ -246,9 +275,14 @@ if (ran.error || ran.status !== 0) {
 // declared paths has approved, by running it, exactly what the check exists to refuse.
 if (!blocking.length) {
   try {
-    const after = trespasses(uncommittedPaths());
+    // The WHOLE candidate again, recomputed: base..HEAD as it stands now, plus what is
+    // uncommitted. Looking only at the uncommitted half let a consolidation command that
+    // COMMITTED its trespass pass clean — the files were outside the change and outside the
+    // check, because committing them emptied the only list being read.
+    const committed = classifyDiff(readDiff(change.base_revision, 'HEAD', { cwd: root })).files;
+    const after = trespasses([...committed, ...uncommittedPaths()]);
     if (after.length) {
-      note(`the consolidation command wrote ${after.length} path(s) outside this change's declared ownership: ${after.slice(0, 5).join(', ')}`);
+      note(`the consolidation command left ${after.length} path(s) outside this change's declared ownership: ${after.slice(0, 5).join(', ')}`);
     }
   } catch (e) {
     note(`the candidate could not be re-read after the consolidation (${e.message.split('\n')[0]})`);
@@ -260,8 +294,8 @@ if (blocking.length) {
   for (const b of blocking) console.error(`  - ${b}`);
   // Nothing is archived and nothing is deleted. What the command wrote stays where it is: it is
   // work, and removing it automatically would destroy something nobody chose to destroy.
-  console.error('\nNothing was archived and nothing was removed. The files the command wrote are still there,');
-  console.error('for you to keep or revert deliberately.');
+  console.error('\nNothing was archived and nothing was removed. Whatever the command wrote — or committed —');
+  console.error('is still there, for you to keep or revert deliberately.');
   process.exit(1);
 }
 
