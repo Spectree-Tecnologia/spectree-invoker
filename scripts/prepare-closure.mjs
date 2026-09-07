@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, renameSync, writeFileSync, readFileSync, readdir
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
-import { contractDigest, contentDigest } from './lib/digest.mjs';
+import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
 import { readDiff, classifyDiff, outsideAllowedPaths } from './lib/diff.mjs';
 import { checkProposalDeltaContract } from './lib/closure.mjs';
 import { launch } from './lib/launch.mjs';
@@ -31,10 +31,15 @@ const changeId = argv[0];
 const apply = argv.includes('--apply');
 const asJson = argv.includes('--json');
 const legacy = argv.includes('--legacy');
+const reopen = argv.includes('--reopen');
+const reopenReason = (() => {
+  const i = argv.indexOf('--reason');
+  return i >= 0 ? argv[i + 1] : undefined;
+})();
 const die = (msg, code = 2) => { console.error(msg); process.exit(code); };
 
 if (!changeId || changeId.startsWith('--')) {
-  die('usage: prepare-closure.mjs <change-id> [--apply] [--legacy] [--json]');
+  die('usage: prepare-closure.mjs <change-id> [--apply] [--legacy] [--json] [--reopen --reason "<why>"]');
 }
 
 const store = new Store(root);
@@ -184,6 +189,56 @@ const draft = buildManifest({
 });
 const verdict = comparePreparation(existing, draft);
 
+// --- 3b. the record freezes where it is relied on, on EVERY path -----------------------------
+//
+// The freeze belongs to the RECORD, not to one branch of this script. Attached to the refresh
+// path alone it was walked around in four commands: alter the code so the preparation reads
+// `stale`, re-prepare — which rewrites the artifact list from whatever is on disk — restore the
+// code, re-prepare again. The manifest comes back to the approved digests carrying a substituted
+// artifact record, with no reopening and no new approval anywhere. Same defect, other door.
+//
+// Frozen means: an integration approval names exactly what this manifest records. The condition
+// is about coverage, not about a state name or a code path — an approval that no longer matches
+// covers nothing, and freezes nothing.
+// An approval this preparation already retired covers nothing: it was retired precisely because
+// the record it was granted over no longer exists. Counting it would freeze every change that
+// was ever reopened, permanently, at the same digests it had before.
+const retired = new Set(existing?.supersedes_approval ?? []);
+const integrationApprovals = store.approvals(changeId)
+  .filter((a) => a.gate === 'integration' && !retired.has(a.approval_id));
+const covering = existing
+  ? integrationApprovals.filter((a) => a.scope_digest === gatedDigest(existing.contract_digest, existing.candidate_digest))
+  // No manifest, but an approval on record: the record that was approved is gone. Preparing over
+  // that writes a new one under an approval nobody granted for it.
+  : integrationApprovals;
+const frozen = covering.length > 0;
+const frozenBy = covering.map((a) => a.approval_id).join(', ');
+
+if (reopen && !frozen) {
+  die('--reopen is only meaningful for a preparation an integration approval covers; this one is not frozen', 2);
+}
+if (reopen && !reopenReason) {
+  die('--reopen requires --reason "<why>": reopening retires an approval, and an approval is not retired anonymously', 2);
+}
+
+// Refused BEFORE the consolidation runs and before anything is written. `unchanged` is the one
+// outcome that changes nothing, so it is allowed to reach its own check below — which refuses
+// the moment the artifact record on disk differs from the approved one.
+if (frozen && !reopen && verdict.state !== 'unchanged') {
+  const how = existing
+    ? `integration approval ${frozenBy} names exactly what it records`
+    : `integration approval ${frozenBy} is on record and the manifest it approved is gone`;
+  console.error(`E_PREP_FROZEN: this preparation may not be replaced — ${how}`);
+  console.error(`  ${verdict.code ?? verdict.state}: ${verdict.message ?? 'a different preparation would be written'}`);
+  console.error('  Nothing was run and nothing was written. The approved record is the reference the merge is');
+  console.error('  checked against; re-preparing over it substitutes that reference without anyone approving');
+  console.error('  the substitution. Reopen deliberately instead:');
+  console.error(`    node scripts/prepare-closure.mjs ${changeId} --apply --reopen --reason "<why>"`);
+  console.error('  which keeps the approved record, retires the approval that covered it, and requires a new');
+  console.error('  integration approval before the merge can be confirmed.');
+  process.exit(1);
+}
+
 // An incompatible manifest is refused outright, `--apply` included. It is not this run's to
 // overwrite: whatever it records was written under a contract this build does not speak, or for
 // another change, and running the consolidation over it would destroy the only account of what
@@ -198,6 +253,48 @@ if (verdict.state === 'stale') {
   console.error(`${verdict.code}: ${verdict.message}`);
   console.error('  Re-run the preparation: what was prepared no longer describes what would be integrated.');
   if (!apply) process.exit(1);
+}
+
+// --- 3c. the artifact record, read before either mode acts -----------------------------------
+//
+// A pure read, so the dry run answers exactly what `--apply` would do. Computed here rather than
+// inside the refresh branch because both of its refusals are about the RECORD, and a rule that
+// only fires on one path is a rule with a door next to it.
+const record = (() => {
+  if (verdict.state !== 'unchanged' || !existing) return null;
+  const recorded = existing.artifacts ?? [];
+  const where = recordedArchive(existing);
+
+  // The folder the preparation NAMED, never one recomputed from today's date. Ambiguous, absent
+  // or gone is a refusal: an empty artifact list written over a real one is the record of what
+  // was prepared being deleted by the command whose whole job is to keep it accurate.
+  if (!where.ok && recorded.length) {
+    return { fatal: `${where.code}: ${where.message}`, why: 'The recorded artifacts stay as they are: an empty list is not a safe default, it is the confirmation after the merge losing everything it had to compare against.' };
+  }
+  if (where.ok && !existsSync(join(root, where.dir))) {
+    return { fatal: `E_PREP_MISSING: the preparation archived ${where.dir}, and it is not there now`, why: 'Restore the folder, or re-prepare deliberately — the record is not updated to agree with a directory that disappeared.' };
+  }
+  const current = where.ok ? artifactsUnder(root, where.dir, 'archived') : [];
+  return { recorded, current, same: JSON.stringify(current) === JSON.stringify(recorded) };
+})();
+
+if (record?.fatal) {
+  console.error(record.fatal);
+  console.error(`  Nothing was run and nothing was written. ${record.why}`);
+  process.exit(1);
+}
+
+// The record freezes at the integration approval. Before it, a ticked box is progress and the
+// record catching up is maintenance. After it, that same write updates the reference using the
+// very thing it exists to compare against — a merge that altered a prepared artifact was
+// refused, refreshed, then accepted, with the tool having erased its own evidence.
+if (frozen && !reopen && record && !record.same) {
+  console.error(`E_PREP_FROZEN: this preparation is covered by integration approval ${frozenBy}, so its artifact record is final`);
+  console.error(`  ${record.current.length} artifact(s) on disk differ from the ${record.recorded.length} recorded. Nothing was run and nothing was written.`);
+  console.error('  The record is the reference the merge is checked against; refreshing it here would make');
+  console.error(`  any alteration self-approving. Reopen it deliberately instead:`);
+  console.error(`    node scripts/prepare-closure.mjs ${changeId} --apply --reopen --reason "<why>"`);
+  process.exit(1);
 }
 
 // Everything that blocks integration is known BEFORE anything runs. The consolidation writes to
@@ -232,7 +329,9 @@ if (!apply) {
   process.exit(blocking.length ? 1 : 0);
 }
 
-if (verdict.state === 'unchanged' && !blocking.length) {
+// A reopening is a deliberate re-preparation, so it never takes the refresh shortcut: the whole
+// consolidation runs again and the record is rebuilt, with the approval it replaced retired.
+if (verdict.state === 'unchanged' && !blocking.length && !reopen) {
   // The preparation is still valid: same contract, same candidate. But the RECORD of what it
   // produced can fall behind it — ticking a box in `tasks.md` changes a prepared artifact
   // without changing either digest, and the confirmation after the merge then refuses an
@@ -244,46 +343,11 @@ if (verdict.state === 'unchanged' && !blocking.length) {
   //
   // Two things bound it, and without either one the refresh becomes a way of erasing the record
   // it exists to maintain.
-  const recorded = existing.artifacts ?? [];
-  const where = recordedArchive(existing);
-
-  // (a) It reads the folder the preparation NAMED, not the one today's date computes. Ambiguous
-  // or absent is a refusal: an empty artifact list written over a real one is the record of what
-  // was prepared being deleted by a command whose whole job is to keep it accurate.
-  if (!where.ok && recorded.length) {
-    console.error(`${where.code}: ${where.message}`);
-    console.error('  Nothing was written. The recorded artifacts stay as they are: an empty list is not a safe default,');
-    console.error('  it is the confirmation after the merge losing everything it had to compare against.');
-    process.exit(1);
-  }
-  if (where.ok && !existsSync(join(root, where.dir))) {
-    console.error(`E_PREP_MISSING: the preparation archived ${where.dir}, and it is not there now`);
-    console.error('  Nothing was written. Restore the folder, or re-prepare deliberately — the record is not');
-    console.error('  updated to agree with a directory that disappeared.');
-    process.exit(1);
-  }
-
-  const current = where.ok ? artifactsUnder(root, where.dir, 'archived') : [];
-  const same = JSON.stringify(current) === JSON.stringify(recorded);
-  if (same) {
+  if (record.same) {
     console.log(`unchanged — ${changeId} is already prepared for this candidate and this contract.`);
     process.exit(0);
   }
-
-  // (b) The record freezes at the integration approval. Before it, a ticked box is progress and
-  // the record catching up is maintenance. After it, that same write updates the reference using
-  // the very thing it exists to compare against — a merge that altered a prepared artifact is
-  // refused, refreshed, and then accepted, with the tool having erased its own evidence. Past
-  // that boundary a revision goes back through approval, explicitly.
-  const integration = store.approvals(changeId).filter((a) => a.gate === 'integration');
-  if (integration.length) {
-    console.error(`E_PREP_FROZEN: this preparation is covered by integration approval ${integration.map((a) => a.approval_id).join(', ')}, so its artifact record is final`);
-    console.error(`  ${current.length} artifact(s) on disk differ from the ${recorded.length} recorded. Nothing was written.`);
-    console.error('  The record is the reference the merge is checked against; refreshing it here would make');
-    console.error('  any alteration self-approving. Reopen the change and re-approve integration instead.');
-    process.exit(1);
-  }
-
+  const { current } = record;
   const refreshed = {
     ...existing,
     artifacts: current,
@@ -371,12 +435,38 @@ const manifest = buildManifest({
     catch (e) { die(`${e.code}: the content could not be re-read after preparing (${e.message}); nothing may be recorded about a candidate that cannot be established`, 1); }
   })(),
   archivePath: existsSync(archiveDest) ? archiveRel : undefined,
+  // Carried forward until a new approval is granted: a reopening that let the next ordinary
+  // re-preparation drop the list would retire an approval for exactly one run.
+  supersedesApproval: [...new Set([
+    ...(existing?.supersedes_approval ?? []),
+    ...(reopen ? covering.map((a) => a.approval_id) : []),
+  ])],
   artifacts, commands, blocking, deferred,
   preparedAt: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
 });
 
 const file = join(root, manifestPath(changeId));
 mkdirSync(dirname(file), { recursive: true });
+
+// The approved record is KEPT, not overwritten. A reopening that destroyed it would leave no
+// account of what the retired approval was granted over — which is the whole thing the freeze
+// exists to protect.
+if (reopen && existing) {
+  const keptRel = join('.spectree', 'closure', `${changeId}.superseded.${manifest.prepared_at.replace(/[:.]/g, '-')}.json`);
+  writeFileSync(join(root, keptRel), `${JSON.stringify(existing, null, 2)}\n`);
+  store.appendHistory(changeId, {
+    type: 'closure_reopened',
+    at: manifest.prepared_at,
+    reason: reopenReason,
+    superseded_approvals: covering.map((a) => a.approval_id),
+    kept_at: keptRel.split('\\').join('/'),
+    schema_version: SCHEMA_VERSION,
+  });
+  console.error(`REOPENED — ${covering.length} integration approval(s) retired: ${frozenBy}`);
+  console.error(`  The record they covered is kept at ${keptRel.split('\\').join('/')}.`);
+  console.error('  A new integration approval is required before the merge can be confirmed.');
+}
+
 writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
 
 store.appendHistory(changeId, {

@@ -64,6 +64,9 @@ if (pr) {
   step('merge commit named', Boolean(mergeOid), mergeOid ? mergeOid.slice(0, 12) : 'the PR reports no merge commit, so there is nothing to compare against');
 }
 
+// The manifest is read before the approvals, because it says which approvals are retired.
+const manifest = (() => { try { return JSON.parse(readFileSync(join(root, manifestPath(changeId)), 'utf8')); } catch { return null; } })();
+
 // --- 3. is what LANDED the candidate that was authorised? ------------------------------------
 // Against the merge commit's tree, never the checkout. The two are different questions, and the
 // checkout answers the one nobody asked.
@@ -81,7 +84,18 @@ if (landed) {
 }
 if (landed && contract) {
   gated = gatedDigest(contract.digest, landed.digest);
-  const approvals = store.approvals(changeId).filter((a) => a.gate === 'integration' && a.change_id === changeId);
+  // An approval the current preparation retired is not an authorisation. It was granted over a
+  // record that has since been reopened and replaced; letting it stand would mean a substituted
+  // artifact record inherits the approval of the one it replaced.
+  const retired = new Set(manifest?.supersedes_approval ?? []);
+  const approvals = store.approvals(changeId)
+    .filter((a) => a.gate === 'integration' && a.change_id === changeId && !retired.has(a.approval_id));
+  if (retired.size) {
+    step('the approval in force is not one this preparation retired', approvals.length > 0,
+      approvals.length
+        ? `${retired.size} retired by the reopening, ${approvals.length} still standing`
+        : `every integration approval on record (${[...retired].join(', ')}) was retired when the closure was reopened; a new one is required`);
+  }
 
   // ONE approval has to satisfy every criterion. Checking the content against whichever approval
   // matches and the ancestry against whichever happens to be first lets two different documents
@@ -142,7 +156,6 @@ if (treatment) {
 }
 
 // --- 5. the artifacts the preparation said it produced ---------------------------------------
-const manifest = (() => { try { return JSON.parse(readFileSync(join(root, manifestPath(changeId)), 'utf8')); } catch { return null; } })();
 if (change.closure_mode === 'legacy') {
   step('closure preparation', true, 'this change closes the legacy way, and said so before integration');
 } else if (contract && landed) {

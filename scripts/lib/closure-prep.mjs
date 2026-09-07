@@ -88,6 +88,7 @@ export function artifactsUnder(root, dir, op) {
 export function buildManifest({
   changeId, baseRevision, contractDigest, candidateDigest, archivePath,
   artifacts = [], commands = [], blocking = [], deferred = [], preparedAt,
+  supersedesApproval = [],
 }) {
   return {
     manifest_version: PREP_CONTRACT_VERSION,
@@ -99,6 +100,10 @@ export function buildManifest({
     // the date the preparation ran, and anything that derives it from `new Date()` later is
     // asking about a different folder the moment the clock passes midnight.
     ...(archivePath ? { archive_path: posix(archivePath) } : {}),
+    // The approvals this preparation replaced. An integration approval named here was granted
+    // over a record that no longer exists, so it cannot authorise this one: a reopening that
+    // left the old approval usable would be a substitution wearing a reopening's clothes.
+    ...(supersedesApproval.length ? { supersedes_approval: [...supersedesApproval].sort() } : {}),
     artifacts,
     commands,
     blocking,

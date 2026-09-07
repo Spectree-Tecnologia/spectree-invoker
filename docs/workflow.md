@@ -112,12 +112,31 @@ that the record cannot name, is refused (`E_PREP_MISSING`, `E_PREP_MALFORMED`): 
 not a safe default, it is the confirmation after the merge losing everything it had to compare
 against.
 
-And the record **freezes at the integration approval** (`E_PREP_FROZEN`). Before it, a ticked box
-is progress and the record catching up is maintenance. After it, that same write updates the
+And the record **freezes** (`E_PREP_FROZEN`). Before the integration approval, a ticked box is
+progress and the record catching up is maintenance. After it, that same write updates the
 reference using the very thing it exists to compare against — a merge that altered a prepared
 artifact was refused, refreshed, then accepted, with the tool having erased its own evidence.
-Past that boundary a revision goes back through approval, explicitly. The digests stay separate
-either way, so a checkbox still never invalidates a QA pass.
+The digests stay separate either way, so a checkbox still never invalidates a QA pass.
+
+**Frozen is a property of the record, not of a code path.** It holds when an integration approval
+names exactly what the manifest records — so every route that would replace it is refused, before
+the consolidation runs and before anything is written: the refresh, a `stale` re-preparation, and
+a run where the manifest was deleted while its approval stayed on record. Attached to the refresh
+alone it was walked around in four commands: move the code so the preparation reads `stale`,
+re-prepare (which rewrites the artifact list from whatever is on disk), restore the code,
+re-prepare again — same digests, same approvals, substituted record.
+
+Replacing an approved record is done deliberately, and it costs the approval:
+
+```bash
+node scripts/prepare-closure.mjs <change-id> --apply --reopen --reason "<why>"
+```
+
+The reopening keeps the approved manifest at `.spectree/closure/<id>.superseded.<stamp>.json`,
+records `closure_reopened` with the reason in the trail, and lists the approvals it retired in
+the new manifest's `supersedes_approval`. The confirmation after the merge refuses those: a
+substituted record does not inherit the approval of the one it replaced, so **a new integration
+approval is required**.
 
 **An archived folder is not proof**: the folder says a move happened; only the
 manifest says what was true when it happened.

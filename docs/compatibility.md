@@ -33,7 +33,7 @@ a rendered file is not a harness that loaded it.
 
 `engines` declares `node >= 20.11.0`; 24.17.0 and 22.23.2 were actually exercised.
 
-The suite is **191 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
+The suite is **194 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
 
 ## Implemented, real validation pending
 

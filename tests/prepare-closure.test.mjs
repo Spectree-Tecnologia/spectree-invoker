@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { writeFileSync, mkdirSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, readdirSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { Store } from '../scripts/lib/store.mjs';
 import { contentDigest, contractDigest, gatedDigest } from '../scripts/lib/digest.mjs';
@@ -500,5 +500,117 @@ test('the artifact record freezes at the integration approval', () => {
     assert.match(r.err, /E_PREP_FROZEN/);
     assert.match(r.err, /ap-integration/);
     assert.deepEqual(f.manifest().artifacts, approved.artifacts, 'the reference is untouched');
+  } finally { f.drop(); }
+});
+
+test('the freeze protects the record, not one code path: stale re-preparation is refused too', () => {
+  const f = fixture();
+  try {
+    writeFileSync(join(f.root, 'docs/changes/c1/tasks.md'), '- [x] reviewed and implemented\n');
+    f.git(['add', '-A']); f.git(['commit', '-qm', 'a task list']);
+    assert.equal(f.prep('--apply').code, 0);
+    f.git(['add', '-A']); f.git(['commit', '-qm', 'the prepared candidate']);
+    const approved = f.manifest();
+    const archive = approved.artifacts.find((a) => a.path.endsWith('tasks.md')).path;
+
+    f.store.putApproval({
+      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
+      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
+      scope_digest: gatedDigest(approved.contract_digest, approved.candidate_digest),
+      revision: f.git(['rev-parse', 'HEAD']).trim(), timestamp: now(),
+    });
+
+    // The alteration the confirmation after the merge exists to catch.
+    writeFileSync(join(f.root, archive), '- [ ] NOT the prepared record\n');
+    unlinkSync(join(f.root, '.spectree/ran'));
+
+    // The way around the freeze: move the CODE so the preparation reads `stale`, re-prepare —
+    // which rewrites the artifact list from whatever is on disk — then put the code back and
+    // prepare again. Four commands, and the manifest returns to the approved digests carrying a
+    // substituted record. Both halves must refuse, and refuse before anything runs.
+    const original = readFileSync(join(f.root, 'src/app.js'), 'utf8');
+    writeFileSync(join(f.root, 'src/app.js'), 'export const x = 2;\n');
+    const detour = f.prep('--apply');
+    assert.equal(detour.code, 1, 'a stale re-preparation over an approved record is a substitution');
+    assert.match(detour.err, /E_PREP_FROZEN/);
+    assert.match(detour.err, /ap-integration/);
+    assert.match(detour.err, /nothing was written/i);
+    assert.equal(f.ran(), false, 'and the consolidation must not have run');
+
+    writeFileSync(join(f.root, 'src/app.js'), original);
+    const back = f.prep('--apply');
+    assert.equal(back.code, 1, 'and neither does restoring the code turn it into a refresh');
+    assert.match(back.err, /E_PREP_FROZEN/);
+    assert.equal(f.ran(), false);
+
+    assert.deepEqual(f.manifest(), approved, 'the approved record is byte-for-byte what it was');
+
+    // The dry run says the same thing rather than reporting a plan nobody may execute.
+    assert.equal(f.prep().code, 1);
+    assert.match(f.prep().err, /E_PREP_FROZEN/);
+  } finally { f.drop(); }
+});
+
+test('reopening keeps the approved record and retires the approval that covered it', () => {
+  const f = fixture();
+  try {
+    writeFileSync(join(f.root, 'docs/changes/c1/tasks.md'), '- [x] built\n');
+    f.git(['add', '-A']); f.git(['commit', '-qm', 'a task list']);
+    assert.equal(f.prep('--apply').code, 0);
+    f.git(['add', '-A']); f.git(['commit', '-qm', 'the prepared candidate']);
+    const approved = f.manifest();
+    f.store.putApproval({
+      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
+      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
+      scope_digest: gatedDigest(approved.contract_digest, approved.candidate_digest),
+      revision: f.git(['rev-parse', 'HEAD']).trim(), timestamp: now(),
+    });
+
+    assert.equal(f.prep('--apply', '--reopen').code, 2, 'reopening is not done anonymously');
+    const r = f.prep('--apply', '--reopen', '--reason', 'the delta was amended after approval');
+    assert.equal(r.code, 0, `${r.err}
+${r.out}`);
+    assert.match(r.err, /REOPENED/);
+
+    const next = f.manifest();
+    assert.deepEqual(next.supersedes_approval, ['ap-integration'],
+      'the approval that covered the replaced record cannot authorise the one replacing it');
+
+    // The record it was granted over is kept, not overwritten.
+    const kept = readdirSync(join(f.root, '.spectree/closure')).filter((n) => n.includes('superseded'));
+    assert.equal(kept.length, 1);
+    assert.deepEqual(JSON.parse(readFileSync(join(f.root, '.spectree/closure', kept[0]), 'utf8')), approved);
+
+    const trail = readFileSync(join(f.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    const reopened = trail.find((e) => e.type === 'closure_reopened');
+    assert.equal(reopened.reason, 'the delta was amended after approval');
+    assert.deepEqual(reopened.superseded_approvals, ['ap-integration']);
+
+    // And an ordinary re-preparation afterwards does not quietly un-retire it.
+    writeFileSync(join(f.root, 'src/app.js'), 'export const x = 3;\n');
+    assert.equal(f.prep('--apply').code, 0);
+    assert.deepEqual(f.manifest().supersedes_approval, ['ap-integration']);
+  } finally { f.drop(); }
+});
+
+test('an approval on record with no manifest to cover freezes as well', () => {
+  const f = fixture();
+  try {
+    assert.equal(f.prep('--apply').code, 0);
+    const approved = f.manifest();
+    f.store.putApproval({
+      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
+      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
+      scope_digest: gatedDigest(approved.contract_digest, approved.candidate_digest),
+      revision: f.git(['rev-parse', 'HEAD']).trim(), timestamp: now(),
+    });
+    unlinkSync(join(f.root, '.spectree/closure/c1.json'));
+    unlinkSync(join(f.root, '.spectree/ran'));
+
+    const r = f.prep('--apply');
+    assert.equal(r.code, 1, 'deleting the record is not a way to write a new one under the old approval');
+    assert.match(r.err, /E_PREP_FROZEN/);
+    assert.equal(f.ran(), false);
+    assert.equal(f.manifest(), null, 'and nothing was written in its place');
   } finally { f.drop(); }
 });
