@@ -34,13 +34,20 @@ function fixture({ allowed = ['src', 'docs'], baseFiles = {} } = {}) {
   writeFileSync(join(repo.root, 'docs/changes/c1/proposal.md'), '# proposal\n\nno delta\n');
   repo.git(['add', '-A']); repo.git(['commit', '-qm', 'the proposal']);
 
-  const prep = (...args) => {
+  const run = (args, env) => {
     const r = spawnSync(process.execPath, [join(REPO, 'scripts/prepare-closure.mjs'), 'c1', ...args],
-      { cwd: repo.root, encoding: 'utf8' });
+      { cwd: repo.root, encoding: 'utf8', env: { ...process.env, ...env } });
     return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
   };
+  const prep = (...args) => run(args);
+  /** The same run, a day later on the wall clock. Nothing on disk moves. */
+  const prepTomorrow = (...args) => run(args, {
+    SPECTREE_CLOCK_AHEAD_DAYS: '1',
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${join(REPO, 'tests/fixtures/clock-ahead.cjs').split('\\').join('/')}`.trim(),
+  });
   return {
-    ...repo, store, change, prep,
+    ...repo, store, change, prep, prepTomorrow,
+    writeManifest: (m) => writeFileSync(join(repo.root, '.spectree/closure/c1.json'), `${JSON.stringify(m, null, 2)}\n`),
     ran: () => existsSync(join(repo.root, '.spectree/ran')),
     manifest: () => { try { return JSON.parse(readFileSync(join(repo.root, '.spectree/closure/c1.json'), 'utf8')); } catch { return null; } },
     drop: () => cleanup(repo.root),
@@ -403,4 +410,95 @@ test('a consolidation that COMMITS its trespass is still a trespass', () => {
     // The commit stays: reverting somebody's work is theirs to decide, not this command's.
     assert.match(repo.git(['show', '--name-only', '--format=', 'HEAD']), /outside\.txt/);
   } finally { cleanup(repo.root); }
+});
+
+// --- the record is read where it was written, and frozen where it is relied on ---------------
+
+test('resuming the next day refreshes the folder that was prepared, not the one today names', () => {
+  const f = fixture();
+  try {
+    writeFileSync(join(f.root, 'docs/changes/c1/tasks.md'), '- [ ] build it\n');
+    f.git(['add', '-A']); f.git(['commit', '-qm', 'a task list']);
+    assert.equal(f.prep('--apply').code, 0);
+    const first = f.manifest();
+    const archive = first.archive_path;
+    assert.ok(archive, 'the preparation records where the folder went');
+    assert.equal(first.artifacts.length, 2);
+
+    // Nothing moved and nothing was touched — only the calendar.
+    const quiet = f.prepTomorrow('--apply');
+    assert.equal(quiet.code, 0, quiet.err);
+    assert.match(quiet.out, /unchanged/);
+    assert.equal(f.manifest().artifacts.length, 2, 'a day passing does not empty the record');
+
+    // And a box ticked the next day still refreshes against the real folder.
+    writeFileSync(join(f.root, `${archive}/tasks.md`), '- [x] build it\n');
+    const again = f.prepTomorrow('--apply');
+    assert.equal(again.code, 0, again.err);
+    assert.match(again.out, /refreshed/);
+    const second = f.manifest();
+    assert.equal(second.artifacts.length, 2, 'the record still covers the whole folder');
+    assert.equal(second.archive_path, archive, 'and still points at the folder that was prepared');
+    const onDisk = execFileSync('git', ['hash-object', `${archive}/tasks.md`], { cwd: f.root, encoding: 'utf8' }).trim();
+    assert.equal(second.artifacts.find((a) => a.path.endsWith('tasks.md')).digest, onDisk);
+  } finally { f.drop(); }
+});
+
+test('a location that is gone or cannot be named refuses instead of recording an empty list', () => {
+  for (const [what, mangle] of [
+    ['a folder that is not there', (m) => ({ ...m, archive_path: 'docs/changes/archive/1999-01-01-c1' })],
+    ['a record that names no folder', (m) => {
+      const { archive_path: _, ...rest } = m;
+      return { ...rest, artifacts: [
+        { path: 'docs/changes/archive/2020-01-01-c1/proposal.md', op: 'archived', digest: 'sha1:a' },
+        { path: 'docs/changes/archive/2020-01-02-c1/tasks.md', op: 'archived', digest: 'sha1:b' },
+      ] };
+    }],
+  ]) {
+    const f = fixture();
+    try {
+      writeFileSync(join(f.root, 'docs/changes/c1/tasks.md'), '- [ ] build it\n');
+      f.git(['add', '-A']); f.git(['commit', '-qm', 'a task list']);
+      assert.equal(f.prep('--apply').code, 0);
+      const before = mangle(f.manifest());
+      f.writeManifest(before);
+
+      const r = f.prep('--apply');
+      assert.equal(r.code, 1, `${what}: refused`);
+      assert.match(r.err, /E_PREP_(MISSING|MALFORMED)/);
+      assert.deepEqual(f.manifest().artifacts, before.artifacts, `${what}: the record is left exactly as it was`);
+      assert.equal(f.manifest().artifacts.length > 0, true, `${what}: and it is not emptied`);
+    } finally { f.drop(); }
+  }
+});
+
+test('the artifact record freezes at the integration approval', () => {
+  const f = fixture();
+  try {
+    writeFileSync(join(f.root, 'docs/changes/c1/tasks.md'), '- [ ] build it\n');
+    f.git(['add', '-A']); f.git(['commit', '-qm', 'a task list']);
+    assert.equal(f.prep('--apply').code, 0);
+    const archive = f.manifest().archive_path;
+
+    // Before the approval: progress is progress, and the record catches up.
+    writeFileSync(join(f.root, `${archive}/tasks.md`), '- [x] build it\n');
+    assert.match(f.prep('--apply').out, /refreshed/);
+    const approved = f.manifest();
+
+    f.store.putApproval({
+      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
+      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
+      scope_digest: gatedDigest(f.manifest().contract_digest, f.manifest().candidate_digest),
+      revision: f.git(['rev-parse', 'HEAD']).trim(), timestamp: now(),
+    });
+
+    // After it, the same edit is the merge altering a prepared artifact — and refreshing the
+    // record here would update the reference using the very thing it exists to compare against.
+    writeFileSync(join(f.root, `${archive}/tasks.md`), '- [ ] actually it was never built\n');
+    const r = f.prep('--apply');
+    assert.equal(r.code, 1, 'an approved record is not updated to agree with what changed under it');
+    assert.match(r.err, /E_PREP_FROZEN/);
+    assert.match(r.err, /ap-integration/);
+    assert.deepEqual(f.manifest().artifacts, approved.artifacts, 'the reference is untouched');
+  } finally { f.drop(); }
 });

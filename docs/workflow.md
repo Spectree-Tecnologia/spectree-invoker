@@ -99,7 +99,27 @@ same candidate — while the RECORD of what it produced falls behind it: ticking
 reports **`refreshed`**: only the artifact record is brought up to date, no consolidation is
 re-run, no folder is moved, and because neither digest moves, **nothing that was proven about
 them is invalidated**. Progress is not scope, and it is not a candidate either — the alternative
-was a confirmation that refused an artifact for being exactly as it should be. **An archived folder is not proof**: the folder says a move happened; only the
+was a confirmation that refused an artifact for being exactly as it should be.
+
+Two things bound that refresh, and without either one it becomes a way of erasing the record it
+exists to maintain.
+
+It reads the folder the manifest **names** (`archive_path`), never one recomputed from today's
+date — the archive slot is `<YYYY-MM-DD>-<change-id>`, so anything deriving it from the clock is
+asking about a different folder the moment midnight passes. A resumption the next day found
+nothing there and wrote an **empty** artifact list over the real one. A location that is gone, or
+that the record cannot name, is refused (`E_PREP_MISSING`, `E_PREP_MALFORMED`): an empty list is
+not a safe default, it is the confirmation after the merge losing everything it had to compare
+against.
+
+And the record **freezes at the integration approval** (`E_PREP_FROZEN`). Before it, a ticked box
+is progress and the record catching up is maintenance. After it, that same write updates the
+reference using the very thing it exists to compare against — a merge that altered a prepared
+artifact was refused, refreshed, then accepted, with the tool having erased its own evidence.
+Past that boundary a revision goes back through approval, explicitly. The digests stay separate
+either way, so a checkbox still never invalidates a QA pass.
+
+**An archived folder is not proof**: the folder says a move happened; only the
 manifest says what was true when it happened.
 
 `integration_approved` requires a preparation that covers the candidate. A fix after preparation

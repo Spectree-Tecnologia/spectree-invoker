@@ -86,7 +86,7 @@ export function artifactsUnder(root, dir, op) {
  * to approve integration, and a manifest nobody reads is a file, not a control.
  */
 export function buildManifest({
-  changeId, baseRevision, contractDigest, candidateDigest,
+  changeId, baseRevision, contractDigest, candidateDigest, archivePath,
   artifacts = [], commands = [], blocking = [], deferred = [], preparedAt,
 }) {
   return {
@@ -95,6 +95,10 @@ export function buildManifest({
     base_revision: baseRevision,
     contract_digest: contractDigest,
     candidate_digest: candidateDigest,
+    // Where the folder actually went. Recorded because it is not recomputable: the name carries
+    // the date the preparation ran, and anything that derives it from `new Date()` later is
+    // asking about a different folder the moment the clock passes midnight.
+    ...(archivePath ? { archive_path: posix(archivePath) } : {}),
     artifacts,
     commands,
     blocking,
@@ -136,6 +140,33 @@ export function comparePreparation(existing, next) {
 }
 
 const short = (d) => String(d ?? '').slice(0, 18);
+
+/**
+ * Where a recorded preparation put the change folder.
+ *
+ * Read off the record, never recomputed. The archive name is `<YYYY-MM-DD>-<change-id>`, so a
+ * re-run on a later day computes a folder that does not exist — and a refresh that looked there
+ * found nothing, wrote an EMPTY artifact list over the real one, and left the confirmation after
+ * the merge comparing the merge against nothing at all.
+ *
+ * `archive_path` is authoritative. For a manifest written before that field existed the location
+ * is derived from the artifacts themselves, and only when they agree on one: two folders, or
+ * none, is an answer nobody can give, so it is refused rather than guessed.
+ *
+ * @returns {{ ok: true, dir: string } | { ok: false, code: string, message: string }}
+ */
+export function recordedArchive(manifest) {
+  if (manifest?.archive_path) return { ok: true, dir: posix(manifest.archive_path) };
+  const dirs = [...new Set(
+    (manifest?.artifacts ?? [])
+      .map((a) => /^(docs\/changes\/archive\/[^/]+)\//.exec(posix(String(a?.path ?? '')))?.[1])
+      .filter(Boolean),
+  )];
+  if (dirs.length === 1) return { ok: true, dir: dirs[0] };
+  return refuse('E_PREP_MALFORMED', dirs.length
+    ? `the preparation's artifacts span ${dirs.length} archive folders (${dirs.join(', ')}), so it records no single location`
+    : 'the preparation records no archive location, and none can be derived from its artifacts');
+}
 
 /**
  * A prepared closure is only proof for the candidate it was prepared against. An archived

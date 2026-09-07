@@ -22,7 +22,7 @@ import { checkProposalDeltaContract } from './lib/closure.mjs';
 import { launch } from './lib/launch.mjs';
 import {
   PREP_CONTRACT_VERSION, manifestPath, consolidationCommand,
-  artifactsUnder, buildManifest, comparePreparation,
+  artifactsUnder, buildManifest, comparePreparation, recordedArchive,
 } from './lib/closure-prep.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
@@ -141,7 +141,17 @@ if (!consolidation.ok) {
 }
 
 // --- 3. the plan ----------------------------------------------------------------------------
-const archiveName = `${new Date().toISOString().slice(0, 10)}-${changeId}`;
+// The slot this change occupies under archive/. Today's date names a NEW one; a change that was
+// already archived keeps the slot it went into, whichever day that was. Recomputing the name
+// from the clock made every re-run after midnight look at a folder that does not exist — and
+// then report zero artifacts for a change whose artifacts were sitting right there.
+const archiveRoot = join(root, 'docs', 'changes', 'archive');
+const slot = new RegExp(`^\\d{4}-\\d{2}-\\d{2}-${changeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+const occupied = listDirs(archiveRoot).filter((d) => slot.test(d));
+if (occupied.length > 1) {
+  note(`this change occupies ${occupied.length} archive slots (${occupied.join(', ')}); which one is the preparation is not a question this tool may answer by guessing`);
+}
+const archiveName = occupied[0] ?? `${new Date().toISOString().slice(0, 10)}-${changeId}`;
 const archiveRel = join('docs', 'changes', 'archive', archiveName);
 const archiveDest = join(root, archiveRel);
 const alreadyArchived = !existsSync(changeDir) && existsSync(archiveDest);
@@ -231,12 +241,49 @@ if (verdict.state === 'unchanged' && !blocking.length) {
   // So the record is refreshed and nothing else is: no consolidation is re-run, no folder is
   // moved, and neither digest moves — which is why no evidence and no approval is invalidated.
   // Progress is not scope, and it is not a candidate either.
-  const current = artifactsUnder(root, archiveRel.split('\\').join('/'), 'archived');
-  const same = JSON.stringify(current) === JSON.stringify(existing.artifacts ?? []);
+  //
+  // Two things bound it, and without either one the refresh becomes a way of erasing the record
+  // it exists to maintain.
+  const recorded = existing.artifacts ?? [];
+  const where = recordedArchive(existing);
+
+  // (a) It reads the folder the preparation NAMED, not the one today's date computes. Ambiguous
+  // or absent is a refusal: an empty artifact list written over a real one is the record of what
+  // was prepared being deleted by a command whose whole job is to keep it accurate.
+  if (!where.ok && recorded.length) {
+    console.error(`${where.code}: ${where.message}`);
+    console.error('  Nothing was written. The recorded artifacts stay as they are: an empty list is not a safe default,');
+    console.error('  it is the confirmation after the merge losing everything it had to compare against.');
+    process.exit(1);
+  }
+  if (where.ok && !existsSync(join(root, where.dir))) {
+    console.error(`E_PREP_MISSING: the preparation archived ${where.dir}, and it is not there now`);
+    console.error('  Nothing was written. Restore the folder, or re-prepare deliberately — the record is not');
+    console.error('  updated to agree with a directory that disappeared.');
+    process.exit(1);
+  }
+
+  const current = where.ok ? artifactsUnder(root, where.dir, 'archived') : [];
+  const same = JSON.stringify(current) === JSON.stringify(recorded);
   if (same) {
     console.log(`unchanged — ${changeId} is already prepared for this candidate and this contract.`);
     process.exit(0);
   }
+
+  // (b) The record freezes at the integration approval. Before it, a ticked box is progress and
+  // the record catching up is maintenance. After it, that same write updates the reference using
+  // the very thing it exists to compare against — a merge that altered a prepared artifact is
+  // refused, refreshed, and then accepted, with the tool having erased its own evidence. Past
+  // that boundary a revision goes back through approval, explicitly.
+  const integration = store.approvals(changeId).filter((a) => a.gate === 'integration');
+  if (integration.length) {
+    console.error(`E_PREP_FROZEN: this preparation is covered by integration approval ${integration.map((a) => a.approval_id).join(', ')}, so its artifact record is final`);
+    console.error(`  ${current.length} artifact(s) on disk differ from the ${recorded.length} recorded. Nothing was written.`);
+    console.error('  The record is the reference the merge is checked against; refreshing it here would make');
+    console.error('  any alteration self-approving. Reopen the change and re-approve integration instead.');
+    process.exit(1);
+  }
+
   const refreshed = {
     ...existing,
     artifacts: current,
@@ -323,6 +370,7 @@ const manifest = buildManifest({
     try { return contentDigest(root).digest; }
     catch (e) { die(`${e.code}: the content could not be re-read after preparing (${e.message}); nothing may be recorded about a candidate that cannot be established`, 1); }
   })(),
+  archivePath: existsSync(archiveDest) ? archiveRel : undefined,
   artifacts, commands, blocking, deferred,
   preparedAt: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
 });

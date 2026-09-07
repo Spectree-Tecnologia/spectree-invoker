@@ -8,7 +8,7 @@ a rendered file is not a harness that loaded it.
 | Surface | Version | How it was established |
 |---|---|---|
 | Node.js | 24.17.0 · 22.23.2 | the whole suite runs on both: 136 deterministic tests here, and the same suite in CI |
-| Ubuntu 24.04 | GitHub runner | CI ran the full suite: **188 tests, 187 pass, 0 fail, 1 skipped** — the skip is the `cmd.exe` argument-transport test, which says it is Windows-only |
+| Ubuntu 24.04 | GitHub runner | CI ran the full suite at the last pushed revision: **188 tests, 187 pass, 0 fail, 1 skipped** — the skip is the `cmd.exe` argument-transport test, which says it is Windows-only |
 | Windows | win32/x64 | the suite ran here; the diff layer is exercised against real `git` with spaces and non-ASCII names |
 | git | 2.54.0 | `readDiff` is tested against a real repository, including rename, deletion and a `-z` round trip |
 | Protocol → adapters | — | `build.mjs --check` runs in CI; a hand edit to any generated file fails it |
@@ -33,7 +33,7 @@ a rendered file is not a harness that loaded it.
 
 `engines` declares `node >= 20.11.0`; 24.17.0 and 22.23.2 were actually exercised.
 
-The suite is **188 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
+The suite is **191 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
 
 ## Implemented, real validation pending
 
