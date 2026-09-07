@@ -7,7 +7,8 @@ a rendered file is not a harness that loaded it.
 
 | Surface | Version | How it was established |
 |---|---|---|
-| Node.js | 24.17.0 | the whole suite runs on it: 136 deterministic tests |
+| Node.js | 24.17.0 · 22.23.2 | the whole suite runs on both: 136 deterministic tests here, and the same suite in CI |
+| Ubuntu 24.04 | GitHub runner | CI ran the full suite: **136 tests, 135 pass, 0 fail, 1 skipped** — the skip is the `cmd.exe` argument-transport test, which says it is Windows-only |
 | Windows | win32/x64 | the suite ran here; the diff layer is exercised against real `git` with spaces and non-ASCII names |
 | git | 2.54.0 | `readDiff` is tested against a real repository, including rename, deletion and a `-z` round trip |
 | Protocol → adapters | — | `build.mjs --check` runs in CI; a hand edit to any generated file fails it |
@@ -24,7 +25,7 @@ a rendered file is not a harness that loaded it.
 | Path handling | — | an untracked file whose name git escapes (accents, spaces) is read and its content counts; a path that is present and unreadable raises `E_CONTENT_UNAVAILABLE` instead of being hashed as a placeholder |
 | Concurrency | — | two processes park on a barrier and are released together onto the same change: one lands, the other is refused with `E_CONCURRENT_UPDATE`, and only the winner appends a history event |
 
-`engines` declares `node >= 20.11.0`; only 24.17.0 was actually exercised.
+`engines` declares `node >= 20.11.0`; 24.17.0 and 22.23.2 were actually exercised.
 
 The suite is **136 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
 
@@ -34,7 +35,7 @@ The suite is **136 deterministic tests**, and it writes nothing inside the packa
 |---|---|
 | **Claude Code, at this commit** | The surface the harness loads — `.claude-plugin/plugin.json`, `commands/`, `agents/` — has the **same file set and the same frontmatter keys** at this commit as at the commit currently loaded; only the content inside changed. So the load path is exercised and the shape is unchanged, but **this commit itself has not been loaded**: the installed copy is a cache of `410a429`, and reaching it needs the merge and a `claude plugin update`. Loading is the last step, not a prerequisite of the work. |
 | **OpenAI Codex** | The skill, the five specialists in `.codex/agents/`, the protocol document and the scripts are generated, installed into a synthetic consumer, and the installed scripts run there — including a full gate cycle driven by the installed commands. Agent locations follow the official custom-agent documentation (`.codex/agents/`, `~/.codex/agents/`). **No Codex session has loaded them**, and no Codex is present in this environment, so the harness has never dispatched one of these specialists. |
-| Linux / macOS | Not run. Nothing in the code is Windows-specific — paths are normalised to POSIX and no shell string is assembled — but that is an argument, not a result. |
+| macOS | Not run. Nothing in the code is macOS-specific and Linux now passes, but that is an argument, not a result. |
 
 **Nothing above is claimed as proven compatibility.** Where a harness was unavailable, the
 implementation and its independent tests are complete and the line reads *implemented;
