@@ -117,6 +117,12 @@ before pass 2. Then the integration approval, recorded with the `preparation` bl
 confirmation produces. If a record has to be replaced after approval, `--reopen --reason "<why>"`
 is the door, and it costs the approval: the old one is retired durably and a new one is required.
 
+**A write that was interrupted is finished, not repeated.** `--resume` completes an operation
+recorded at `observed` or `persisting` without running the consolidation again. At `started` the
+command's result was never observed, so nothing decides it for you: either
+`--resume --consolidation-ran --reason "<what you checked>"` or `--abandon --reason "<why>"`, and
+both are recorded. Whatever the command wrote is never reverted automatically.
+
 **The project declares its CI as an identity, not a list of names.**
 `ci: { version: 2, required_runs: { <treatment>: { workflow, jobs, event, branch } } }`. A run
 title, a job name and a workflow identity are three different things; the moment they disagree

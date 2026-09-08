@@ -21,13 +21,13 @@ import { buildManifest, validArchivePath, preparationCovers, compareArtifacts, r
 import { resolveCi, aggregate, TREATMENT } from '../scripts/lib/ci-policy.mjs';
 import { latestRun } from '../scripts/lib/gh.mjs';
 import { contentDigest } from '../scripts/lib/digest.mjs';
-import { gitRepo, cleanup, now, REPO, integrationApproval } from './helpers.mjs';
+import { gitRepo, cleanup, now, REPO, integrationApproval, recordIntegrationApproval } from './helpers.mjs';
 
 const snapshot = (over = {}) => buildManifest({
   changeId: 'c1', projectId: 'proj', generation: 1, baseRevision: 'a'.repeat(40),
   contractDigest: 'sha256:contract', candidateDigest: 'sha256:candidate',
   archivePath: 'docs/changes/archive/2026-01-01-c1',
-  artifacts: [{ path: 'docs/changes/archive/2026-01-01-c1/proposal.md', type: 'blob', op: 'archived', digest: 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391' }],
+  artifacts: [{ path: 'docs/changes/archive/2026-01-01-c1/proposal.md', type: 'blob', mode: '100644', op: 'archived', digest: 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391' }],
   preparedAt: now(), ...over,
 });
 
@@ -42,7 +42,7 @@ test('a preparation digest covers the record and ignores the clock', () => {
   // The artifact record IS part of the identity: that is the half content and contract never had.
   const moved = snapshot({
     preparationId: a.preparation_id,
-    artifacts: [{ path: 'docs/changes/archive/2026-01-01-c1/proposal.md', type: 'blob', op: 'archived', digest: 'aa9de29bb2d1d6434b8b29ae775ad8c2e48c5391' }],
+    artifacts: [{ path: 'docs/changes/archive/2026-01-01-c1/proposal.md', type: 'blob', mode: '100644', op: 'archived', digest: 'aa9de29bb2d1d6434b8b29ae775ad8c2e48c5391' }],
   });
   assert.notEqual(a.preparation_digest, moved.preparation_digest);
 
@@ -56,7 +56,7 @@ test('a snapshot edited by hand no longer digests to what it records', () => {
     contractDigest: 'sha256:contract', candidateDigest: 'sha256:candidate', changeId: 'c1', generation: 1,
   }).ok, true);
 
-  const tampered = { ...s, artifacts: [...s.artifacts, { path: 'x', type: 'blob', op: 'archived', digest: 'bb9de29bb2d1d6434b8b29ae775ad8c2e48c5391' }] };
+  const tampered = { ...s, artifacts: [...s.artifacts, { path: 'x', type: 'blob', mode: '100644', op: 'archived', digest: 'bb9de29bb2d1d6434b8b29ae775ad8c2e48c5391' }] };
   const v = preparationCovers(tampered, {
     contractDigest: 'sha256:contract', candidateDigest: 'sha256:candidate', changeId: 'c1', generation: 1,
   });
@@ -134,10 +134,19 @@ test('a control that cannot be read blocks; it is not an empty list of retiremen
   assert.equal(orphan.ok, false);
   assert.equal(orphan.code, 'E_LIFECYCLE_MISSING');
 
-  // And a change with no closure at all is simply not blocked by any of this.
+  // A change with no closure at all is not BLOCKED by any of this — but an integration approval
+  // with no durable record behind it is still not authority. Half an approval, written when the
+  // control update never landed, must never read as a whole one.
   const fresh = approvalsInForce(approvals, null, { lifecycle: null });
   assert.equal(fresh.ok, true);
-  assert.equal(fresh.inForce.length, 1);
+  assert.deepEqual(fresh.inForce, []);
+  assert.deepEqual(fresh.unrecorded.map((a) => a.approval_id), ['ap2']);
+
+  // With the control recording it, it is authority.
+  const recorded = approvalsInForce(approvals, null, {
+    lifecycle: { ...emptyLifecycle('c1', 'proj'), approved: [{ approval_id: 'ap2' }] },
+  });
+  assert.deepEqual(recorded.inForce.map((a) => a.approval_id), ['ap2']);
 });
 
 test('an integration approval names the preparation and the integration it authorises', () => {
@@ -163,39 +172,112 @@ test('an integration approval names the preparation and the integration it autho
 
 // --- receipts ---------------------------------------------------------------------------------
 
+const whole = (over = {}) => buildReceipt({
+  changeId: 'c1', repository: 'o/r', pr: 21, headSha: 'h'.repeat(40), mergeCommit: 'm'.repeat(40),
+  baseBranch: 'main', preparationId: 'prep-1', generation: 1, preparationDigest: 'sha256:p',
+  approvalId: 'ap', contractDigest: 'sha256:k', candidateDigest: 'sha256:c',
+  runs: [{ workflow: 'check', run_id: 1, attempt: 1, conclusion: 'success' }],
+  operationId: 'op-1', ...over,
+});
+
 test('a receipt is about one merge of one preparation under one approval', () => {
-  const r = buildReceipt({
-    changeId: 'c1', repository: 'o/r', pr: 21, headSha: 'h', mergeCommit: 'm', baseBranch: 'main',
-    preparationId: 'prep-1', generation: 1, preparationDigest: 'sha256:p', approvalId: 'ap',
-    runs: [], operationId: 'op-1',
-  });
-  assert.equal(receiptCovers(r, { changeId: 'c1', mergeCommit: 'm', generation: 1, preparationId: 'prep-1' }).ok, true);
+  const r = whole();
+  assert.equal(receiptCovers(r, { changeId: 'c1', mergeCommit: 'm'.repeat(40), generation: 1, preparationId: 'prep-1' }).ok, true);
   assert.equal(receiptCovers(null, { changeId: 'c1' }).code, 'E_INTEGRATION_NOT_OBSERVED');
   assert.equal(receiptCovers({ corrupt: true }, { changeId: 'c1' }).code, 'E_INTEGRATION_NOT_OBSERVED');
   assert.equal(receiptCovers(r, { changeId: 'c2' }).code, 'E_INTEGRATION_NOT_OBSERVED');
   assert.equal(receiptCovers(r, { changeId: 'c1', mergeCommit: 'other' }).code, 'E_INTEGRATION_NOT_OBSERVED');
   // A reopening after the confirmation moves the generation, and the old receipt stops covering.
-  const later = receiptCovers(r, { changeId: 'c1', mergeCommit: 'm', generation: 2 });
+  const later = receiptCovers(r, { changeId: 'c1', mergeCommit: 'm'.repeat(40), generation: 2 });
   assert.equal(later.code, 'E_INTEGRATION_NOT_OBSERVED');
   assert.match(later.message, /generation 1 and this change is at generation 2/);
 });
 
+test('an incomplete receipt is not a receipt, whatever it happens to name correctly', () => {
+  // The record that reached `integrated` with no merge, no PR, no run and no approval anywhere:
+  // four keys, every one of them true, and every comparison the caller happened to ask for
+  // passing. Structure is checked BEFORE comparison now, so what it names is beside the point.
+  const stub = { receipt_version: '1.0.0', change_id: 'c1', generation: 1, preparation_id: 'prep-1' };
+  const v = receiptCovers(stub, { changeId: 'c1', generation: 1, preparationId: 'prep-1' });
+  assert.equal(v.code, 'E_RECEIPT_INCOMPLETE');
+  for (const field of ['repository', 'pr', 'head_sha', 'merge_commit', 'approval_id', 'observed_at']) {
+    assert.match(v.message, new RegExp(field), `${field} is named as missing`);
+  }
+
+  // Each identity removed on its own is refused on its own.
+  for (const field of ['repository', 'pr', 'head_sha', 'merge_commit', 'base_branch',
+    'preparation_id', 'generation', 'preparation_digest', 'approval_id',
+    'contract_digest', 'candidate_digest', 'operation_id']) {
+    const missing = { ...whole(), [field]: null };
+    assert.equal(receiptCovers(missing, { changeId: 'c1' }).code, 'E_RECEIPT_INCOMPLETE', `${field} is required`);
+  }
+  // A receipt that observed no run observed no CI.
+  assert.equal(receiptCovers({ ...whole(), runs: [] }, { changeId: 'c1' }).code, 'E_RECEIPT_INCOMPLETE');
+
+  // A legacy closure legitimately carries fewer — and says so on the change. An ABSENCE of the
+  // v2 fields is never read as a declaration of legacy.
+  assert.equal(receiptCovers(stub, { changeId: 'c1', legacy: true }).ok, false, 'legacy still needs a merge commit');
+  assert.equal(receiptCovers({ ...stub, merge_commit: 'm'.repeat(40), operation_id: 'op-1', observed_at: now() },
+    { changeId: 'c1', legacy: true }).ok, true);
+});
+
+test('a receipt the confirmation never wrote is a file, not an observation', () => {
+  const r = whole();
+  // The control is what says this squad observed it. Without the pointer, a JSON dropped where a
+  // receipt goes would gain authority by naming a preparation that really exists.
+  assert.equal(receiptCovers(r, { changeId: 'c1', lifecycle: emptyLifecycle('c1', 'p') }).code, 'E_RECEIPT_UNRECORDED');
+  assert.equal(receiptCovers(r, {
+    changeId: 'c1',
+    lifecycle: { ...emptyLifecycle('c1', 'p'), receipt: { merge_commit: 'm'.repeat(40), generation: 1 } },
+  }).ok, true);
+  assert.equal(receiptCovers(r, {
+    changeId: 'c1',
+    lifecycle: { ...emptyLifecycle('c1', 'p'), receipt: { merge_commit: 'z'.repeat(40), generation: 1 } },
+  }).code, 'E_RECEIPT_UNRECORDED');
+
+  // And the approval it names has to still be authority.
+  assert.equal(receiptCovers(r, {
+    changeId: 'c1',
+    lifecycle: { ...emptyLifecycle('c1', 'p'), receipt: { merge_commit: 'm'.repeat(40), generation: 1 } },
+    inForceIds: new Set(['someone-else']),
+  }).code, 'E_INTEGRATION_NOT_OBSERVED');
+});
+
 // --- artifacts --------------------------------------------------------------------------------
 
-test('an artifact added to the frozen set is as wrong as one removed from it', () => {
+test('an artifact is its path, its content, its mode and its type — and nothing may join it', () => {
   const m = snapshot();
   const under = 'docs/changes/archive/2026-01-01-c1';
-  const present = () => 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
+  const blob = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
+  const present = () => ({ mode: '100644', type: 'blob', blob });
 
   assert.equal(compareArtifacts(m, present, [`${under}/proposal.md`]).ok, true);
   assert.deepEqual(compareArtifacts(m, () => null, [`${under}/proposal.md`]).missing, [`${under}/proposal.md`]);
-  assert.deepEqual(compareArtifacts(m, () => 'other', [`${under}/proposal.md`]).altered, [`${under}/proposal.md`]);
+  assert.deepEqual(
+    compareArtifacts(m, () => ({ mode: '100644', type: 'blob', blob: 'other' }), [`${under}/proposal.md`]).altered,
+    [`${under}/proposal.md`]);
+
+  // The mode with the SAME blob. An archived file is outside the code digest and outside the
+  // contract digest, so nothing else in the system could have seen this.
+  const remoded = compareArtifacts(m, () => ({ mode: '100755', type: 'blob', blob }), [`${under}/proposal.md`]);
+  assert.equal(remoded.ok, false);
+  assert.match(remoded.message, /100644 -> 100755/);
+
+  // A record with no mode cannot answer the question, and silence is not agreement.
+  const old = { ...m, artifacts: m.artifacts.map(({ mode, ...rest }) => rest) };
+  assert.match(compareArtifacts(old, present, [`${under}/proposal.md`]).message, /carries no mode/);
+
   // The half that walking only the record could never see.
   assert.deepEqual(
     compareArtifacts(m, present, [`${under}/proposal.md`, `${under}/snuck-in.md`]).added,
     [`${under}/snuck-in.md`]);
-  // A caller that cannot enumerate the tree gets the two comparisons it can actually make.
-  assert.equal(compareArtifacts(m, present, null).ok, true);
+
+  // A tree that could not be listed is UNKNOWN. Comparing it as an empty one would report that
+  // nothing was added, which is a claim nobody made.
+  const unlisted = compareArtifacts(m, present, null);
+  assert.equal(unlisted.ok, false);
+  assert.equal(unlisted.unknownAdditions, true);
+  assert.match(unlisted.message, /unknown is not empty/);
 });
 
 // --- the write boundary -------------------------------------------------------------------------
@@ -528,7 +610,7 @@ test('a reopening is refused once the change has integrated', () => {
   const f = preparable();
   try {
     assert.equal(f.prep('--apply').code, 0);
-    f.store.putApproval(integrationApproval({
+    recordIntegrationApproval(f.root, 'c1', integrationApproval({
       approvalId: 'ap-integration', changeId: 'c1', manifest: f.manifest(),
       scopeDigest: 'sha256:whatever-the-gate-said', revision: f.git(['rev-parse', 'HEAD']).trim(),
     }));
@@ -548,7 +630,7 @@ test('a reason that is another flag is a missing reason', () => {
   const f = preparable();
   try {
     assert.equal(f.prep('--apply').code, 0);
-    f.store.putApproval(integrationApproval({
+    recordIntegrationApproval(f.root, 'c1', integrationApproval({
       approvalId: 'ap-integration', changeId: 'c1', manifest: f.manifest(),
       scopeDigest: 'sha256:whatever', revision: f.git(['rev-parse', 'HEAD']).trim(),
     }));

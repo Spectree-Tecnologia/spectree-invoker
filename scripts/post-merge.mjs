@@ -30,7 +30,7 @@ import { canTransition, ORDER } from './lib/state-machine.mjs';
 import {
   readLifecycle, pendingOperation, beginOperation, advanceOperation, completeOperation,
   buildReceipt, writeReceipt, readReceipt, receiptCovers,
-  approvalCoversPreparation, approvalCoversTarget, newOperationId, PHASE,
+  approvalCoversPreparation, approvalCoversTarget, newOperationId, updateLifecycle, PHASE,
 } from './lib/lifecycle.mjs';
 import { pullRequest, runsForCommit, latestRun, runView, repository } from './lib/gh.mjs';
 
@@ -104,6 +104,7 @@ if (pr) {
 // --- 3. is what LANDED the candidate that was authorised? ------------------------------------
 // Against the merge commit's tree, never the checkout. The two are different questions, and the
 // checkout answers the one nobody asked.
+const legacyMode = change.closure_mode === 'legacy';
 let contract = null, landed = null, gated = null, authorising = null;
 if (mergeOid) {
   try { landed = contentDigestAt(root, mergeOid); }
@@ -136,7 +137,6 @@ if (landed && contract && authority.ok) {
   // ONE approval has to satisfy EVERY criterion. Checking the content against whichever approval
   // matches and the ancestry against whichever happens to be first lets two different documents
   // each supply half an authorisation, and the order of files on disk decide the verdict.
-  const legacyMode = change.closure_mode === 'legacy';
   const reasons = new Map();
   const candidates = approvals.filter((a) => {
     if (a.scope_digest !== gated) { reasons.set(a.approval_id, 'names other content'); return false; }
@@ -237,18 +237,119 @@ if (change.closure_mode === 'legacy') {
   step('closure preparation covers what landed', covers.ok === true,
     covers.ok ? `snapshot ${manifest.preparation_id} (generation ${manifest.generation}, contract ${manifest.manifest_version})` : `${covers.code}: ${covers.message}`);
 
-  // Present is not enough, and neither is "every recorded artifact is there": a file ADDED
-  // inside the frozen folder during the merge belongs to nobody's record, and walking only the
-  // record could never see it.
-  const treePaths = (() => {
+  // The merge's tree, read ONCE as entries rather than as names. `git rev-parse <merge>:<path>`
+  // answers with a blob and nothing else — so a merge that changed only the MODE of an archived
+  // file, keeping the blob, passed clean: that file is outside the code digest and outside the
+  // contract digest, and the artifact record was the only thing left that could have seen it.
+  //
+  // A listing that fails is UNKNOWN, and unknown is not an empty tree.
+  const tree = (() => {
     try {
-      return git(['ls-tree', '-r', '--name-only', '-z', landed.revision]).split('\0').filter(Boolean);
+      const entries = new Map();
+      for (const line of git(['ls-tree', '-r', '-z', landed.revision]).split('\0')) {
+        if (!line) continue;
+        const tab = line.indexOf('\t');
+        if (tab < 0) continue;
+        const [mode, type, blob] = line.slice(0, tab).split(/\s+/);
+        entries.set(line.slice(tab + 1), { mode, type, blob });
+      }
+      return entries;
     } catch { return null; }
   })();
-  const cmp = compareArtifacts(manifest, (p) => {
-    try { return git(['rev-parse', `${landed.revision}:${p}`]); } catch { return null; }
-  }, treePaths);
+  const cmp = compareArtifacts(
+    manifest,
+    (p) => tree?.get(p) ?? null,
+    tree ? [...tree.keys()] : null,
+  );
   step('prepared artifacts are in the merge, unchanged and alone', cmp.ok, cmp.message);
+}
+
+// --- 6. the transitions this confirmation would perform, decided BEFORE any write ------------
+//
+// The defect: the preflight validated everything about the MERGE, wrote the receipt and the
+// observation event, and only then asked the state machine — which refused on a missing piece of
+// evidence that had been knowable all along. A business refusal then looked exactly like a
+// persistence that failed half way.
+//
+// So the candidate receipt is built in memory and the whole walk to `closed` is rehearsed against
+// it. Nothing here writes; a plan that cannot reach `closed` is an impediment like any other.
+const candidateReceipt = (landed && contract) ? buildReceipt({
+  changeId, repository: repo, pr: prNumber, headSha: pr?.headRefOid, mergeCommit: mergeOid,
+  baseBranch: pr?.baseRefName,
+  preparationId: manifest?.preparation_id, generation: manifest?.generation,
+  preparationDigest: manifest?.preparation_digest,
+  approvalId: authorising?.approval_id,
+  contractDigest: contract.digest, candidateDigest: landed.digest,
+  runs: observedRuns, operationId: 'op-planned',
+}) : null;
+
+const closureVerdict = legacyMode
+  ? { ok: true, legacy: true }
+  : preparationCovers(manifest, {
+    contractDigest: contract?.digest, candidateDigest: landed?.digest, changeId,
+    generation: lifecycle?.generation ?? null,
+  });
+
+/** The context every rehearsal and every real transition shares. One definition, one answer. */
+const contextFor = (receipt) => ({
+  evidence: store.evidence(changeId),
+  approvals: authority.inForce,
+  authority,
+  revision: landed?.revision, contentDigest: landed?.digest, contractDigest: contract?.digest,
+  closure: closureVerdict,
+  receipt: receiptCovers(receipt, {
+    changeId, mergeCommit: mergeOid,
+    generation: manifest?.generation ?? null,
+    preparationId: manifest?.preparation_id ?? null,
+    preparationDigest: manifest?.preparation_digest ?? null,
+    repository: repo, pr: Number(prNumber), headSha: pr?.headRefOid, baseBranch: pr?.baseRefName,
+    contractDigest: contract?.digest, candidateDigest: landed?.digest,
+    legacy: legacyMode,
+    // The pointer check is skipped while rehearsing: the control cannot name a receipt that has
+    // not been written yet, and requiring it here would refuse every first confirmation.
+    lifecycle: null,
+    inForceIds: new Set(authority.inForce.map((a) => a.approval_id)),
+  }),
+  preparation: (a) => (legacyMode ? { ok: true } : approvalCoversPreparation(a, manifest)),
+  scopeDigests: {
+    scope: contract?.digest, ambiguity: contract?.digest,
+    integration: gated, irreversible: gated, exposure: gated,
+  },
+});
+
+/** Which states this confirmation still has to enter, and whether every one of them would hold. */
+const plannedSteps = [];
+if (candidateReceipt && !impediments.length) {
+  let rehearsed = { ...change };
+  const target = ORDER.indexOf('closed');
+  for (;;) {
+    const at = ORDER.indexOf(rehearsed.state);
+    if (at >= target) break;
+    const to = ORDER[at + 1];
+    if (to !== 'integrated' && to !== 'closed') {
+      step('reachable from here', false,
+        `the change is at "${rehearsed.state}", and a post-merge confirmation does not carry it forward from there`);
+      break;
+    }
+    // `closure.merged` is written by this confirmation, so the rehearsal is told it will exist.
+    const ctx = contextFor(candidateReceipt);
+    if (to === 'closed' && !ctx.evidence.some((e) => e.property === 'closure.merged' && !e.superseded_by)) {
+      ctx.evidence = [...ctx.evidence, {
+        property: 'closure.merged', result: 'PASS', source_kind: 'observed_execution',
+        revision: landed.revision, executor: { role: 'platform_engineer' },
+      }];
+    }
+    const verdict = canTransition(rehearsed, to, ctx);
+    if (!verdict.ok) {
+      step(`the change can enter "${to}"`, false, `${verdict.code}: ${verdict.message}`);
+      break;
+    }
+    plannedSteps.push(to);
+    rehearsed = { ...rehearsed, state: to };
+  }
+  if (!impediments.length && plannedSteps.length === 0 && change.state !== 'closed') {
+    step('there is something left to confirm', false, `the change is at "${change.state}" and nothing was planned`);
+  }
 }
 
 // --- report ----------------------------------------------------------------------------------
@@ -260,6 +361,7 @@ const summary = {
   pr: pr ? { number: pr.number, url: pr.url, merge_commit: mergeOid, base: pr.baseRefName, head: pr.headRefOid } : null,
   treatment: treatment?.treatment ?? null,
   runs: observedRuns,
+  planned: plannedSteps,
   steps, impediments, closed: change.state === 'closed',
   metrics: { ...metrics, elapsed_ms: elapsed() },
 };
@@ -284,12 +386,16 @@ if (!apply) {
   process.exit(0);
 }
 
-// --- 6. the receipt, then the states, as one resumable operation ------------------------------
-// Every precondition above has already held. Nothing below observes anything new: it records
-// what was observed and moves the change, and re-running it after a crash repeats no event.
+// --- 7. the writes. Every question above has already been answered, including the transitions.
+//
+// Nothing below decides anything: it records what was observed, points the control at it, and
+// performs the walk that was rehearsed. A refusal that could be known before this line belongs
+// before this line — a business refusal that arrives after the receipt and the observation event
+// have been written looks exactly like a persistence that failed half way, and it is not one.
 const operationId = (() => {
   const existing = readReceipt(root, changeId);
-  if (existing && !existing.corrupt && existing.merge_commit === mergeOid && existing.operation_id) return existing.operation_id;
+  if (existing && !existing.corrupt && !existing.unreadable
+      && existing.merge_commit === mergeOid && existing.operation_id) return existing.operation_id;
   return newOperationId('confirm');
 })();
 
@@ -297,30 +403,41 @@ try {
   beginOperation(root, changeId, {
     kind: 'confirm', operationId, projectId: project?.project_id,
     detail: { pr: Number(prNumber), merge_commit: mergeOid },
+    plan: { pr: Number(prNumber), merge_commit: mergeOid, steps: plannedSteps },
+    // Reserved against the revision every decision above was computed at.
+    expectedRevision: lifecycle?.revision,
   });
-} catch (e) { die(`${e.code}: ${e.message}`, 1); }
+} catch (e) {
+  die(`${e.code}: ${e.message}` +
+    (e.code === 'E_CONCURRENT_UPDATE'
+      ? '\n  The closure moved between this confirmation\'s decision and its reservation. Nothing was written.'
+      : ''), 1);
+}
 advanceOperation(root, changeId, operationId, PHASE.OBSERVED, { runs: observedRuns.length });
 
 // A resume observes the same integration again; it does not produce a second observation of it.
 // Re-stamping the moment would make two runs of the same confirmation disagree about when the
 // merge was seen, and the later one would win for no reason at all.
 const existingReceipt = readReceipt(root, changeId);
-const sameIntegration = existingReceipt && !existingReceipt.corrupt
+const sameIntegration = existingReceipt && !existingReceipt.corrupt && !existingReceipt.unreadable
   && existingReceipt.merge_commit === mergeOid
   && existingReceipt.preparation_id === (manifest?.preparation_id ?? null)
   && existingReceipt.approval_id === (authorising?.approval_id ?? null);
 
-const receipt = sameIntegration ? existingReceipt : buildReceipt({
-  changeId, repository: repo, pr: prNumber, headSha: pr?.headRefOid, mergeCommit: mergeOid,
-  baseBranch: pr?.baseRefName,
-  preparationId: manifest?.preparation_id, generation: manifest?.generation,
-  preparationDigest: manifest?.preparation_digest,
-  approvalId: authorising?.approval_id,
-  contractDigest: contract.digest, candidateDigest: landed.digest,
-  runs: observedRuns, operationId,
-});
+const receipt = sameIntegration ? existingReceipt : { ...candidateReceipt, operation_id: operationId };
 advanceOperation(root, changeId, operationId, PHASE.PERSISTING);
 if (!sameIntegration) writeReceipt(root, changeId, receipt);
+
+// The control points at the receipt BEFORE the gate reads it: a receipt the confirmation never
+// wrote is a file, and the pointer is what tells the two apart.
+updateLifecycle(root, changeId, (cur) => ({
+  ...cur,
+  receipt: {
+    pr: receipt.pr, merge_commit: receipt.merge_commit, generation: receipt.generation,
+    preparation_id: receipt.preparation_id, approval_id: receipt.approval_id,
+    observed_at: receipt.observed_at, operation_id: operationId,
+  },
+}));
 
 store.appendHistory(changeId, {
   // A stable id, so the same confirmation twice is one event and not two.
@@ -354,53 +471,26 @@ if (!store.evidence(changeId).some((e) => e.property === 'closure.merged' && !e.
   });
 }
 
-const closure = change.closure_mode === 'legacy'
-  ? { ok: true, legacy: true }
-  : preparationCovers(manifest, {
-    contractDigest: contract.digest, candidateDigest: landed.digest, changeId,
-    generation: lifecycle?.generation ?? null,
-  });
-
-const ctx = () => ({
-  evidence: store.evidence(changeId),
-  approvals: authority.inForce,
-  authority,
-  revision: landed.revision, contentDigest: landed.digest, contractDigest: contract.digest, closure,
-  receipt: receiptCovers(receipt, {
-    changeId, mergeCommit: mergeOid,
-    generation: manifest?.generation ?? null,
-    preparationId: manifest?.preparation_id ?? null,
-  }),
-  preparation: (a) => (change.closure_mode === 'legacy' ? { ok: true } : approvalCoversPreparation(a, manifest)),
-  scopeDigests: {
-    scope: contract.digest, ambiguity: contract.digest,
-    integration: gated, irreversible: gated, exposure: gated,
-  },
-});
-
 const target = ORDER.indexOf('closed');
 for (;;) {
   const current = store.change(changeId);
   const at = ORDER.indexOf(current.state);
   if (at >= target) break;
   const to = ORDER[at + 1];
-  if (to !== 'integrated' && to !== 'closed') {
-    step('reachable from here', false, `the change is at "${current.state}", and a post-merge confirmation does not carry it forward from there`);
-    break;
-  }
-  const verdict = canTransition(current, to, ctx());
+  const verdict = canTransition(current, to, contextFor(receipt));
   if (!verdict.ok) {
-    console.error(`post-merge stopped at ${to}: ${verdict.code}: ${verdict.message}`);
+    // Reaching here means something changed underneath a rehearsal that had held. It is a real
+    // failure, not a refusal that was knowable earlier, and it says so.
+    console.error(`post-merge stopped at ${to} AFTER the observation was recorded: ${verdict.code}: ${verdict.message}`);
+    console.error('  The receipt and the observation stand: they describe a merge that really happened.');
+    console.error(`  The change is at "${current.state}"; resolve the impediment and confirm again.`);
     process.exit(1);
   }
   store.putChange({ ...current, state: to, evaluated_revision: landed.revision },
     { event: { type: 'transition', from: current.state, to, operation_id: operationId }, expected: current.state_revision });
 }
 
-completeOperation(root, changeId, operationId, (cur) => ({
-  ...cur,
-  receipt: { pr: receipt.pr, merge_commit: receipt.merge_commit, generation: receipt.generation, observed_at: receipt.observed_at },
-}));
+completeOperation(root, changeId, operationId);
 
 const final = store.change(changeId);
 summary.closed = final.state === 'closed';

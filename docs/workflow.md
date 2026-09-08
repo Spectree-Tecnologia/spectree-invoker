@@ -191,14 +191,57 @@ records it rather than making it. What the references buy is that a merge is con
 Every closure write records its phase before its effects: `intent`, `started`, `observed`,
 `persisting`, `done`. An interrupted run is therefore a state rather than a silence — `resume`
 prints the phase and the recovery, and the gates refuse to authorise over a set nobody finished
-applying. The one phase nothing resolves on its own is **`started`**: an external command was
-launched and its result was never observed, so whether it ran is a question for a person, and
-re-running it for convenience is a decision this squad does not make.
+applying.
+
+Every state named has a command that acts on it, because a message recommending a recovery the
+tool does not implement is worse than no message:
+
+| Phase | What happened | What finishes it |
+|---|---|---|
+| `intent` | nothing ran | re-run the command |
+| `started` | the command was launched, its result never observed | **a person decides** (below) |
+| `observed` | the result is recorded, nothing persisted | `--apply --resume` |
+| `persisting` | persistence stopped part way | `--apply --resume` |
+
+`--resume` finishes the operation that was reserved — the same `preparation_id`, the same
+generation — and it does **not** run the consolidation again: the result is already on record, and
+re-running it would make a recovery an execution.
+
+`started` is the one phase nothing resolves on its own, because whether the command ran is
+genuinely unknown. Two explicit answers exist and both are recorded in the trail:
+
+```bash
+node scripts/prepare-closure.mjs <id> --apply --resume --consolidation-ran --reason "<what you checked>"
+node scripts/prepare-closure.mjs <id> --apply --abandon --reason "<why>"
+```
 
 A refusal in the preflight guarantees nothing was run and nothing was written. That guarantee
 does **not** extend to a command the project supplied and this squad launched: what it wrote, or
-committed, is preserved and reported, because removing it automatically would destroy work
-nobody chose to destroy.
+committed, is preserved and reported — including by `--abandon` — because removing it
+automatically would destroy work nobody chose to destroy.
+
+A lock is broken only when its owner can be identified and is demonstrably gone, and the breaking
+is announced. Never for being old: a slow consolidation is not an abandoned one.
+
+### Applying a plan against the world it was computed in
+
+Every write reserves against the closure control revision behind its decision. A dry run returns
+that revision as `expected_control_revision`, and:
+
+```bash
+node scripts/prepare-closure.mjs <id> --apply --expect-control <revision>
+```
+
+applies the plan under it. An approval, a refresh or a reopening landing in between makes the
+reservation fail with `E_CONCURRENT_UPDATE` — nothing runs, nothing is written. This is what makes
+the boundary transactional rather than merely locked: a lock taken at write time does not make a
+decision taken before it fresh, and that is exactly how a refresh came to overwrite a record that
+had been approved a moment earlier.
+
+Recording an integration approval is one transaction for the same reason: the durable entry and
+the document are written inside a single critical section, control first. A crash between them
+leaves no authority in either direction — an approval file with no control entry is **not**
+authority, and a control entry naming a file that is not there authorises nothing.
 
 ### A project with no consolidation mechanism
 
@@ -231,8 +274,17 @@ integrated content **is** the authorised candidate, check the jobs the policy re
 the prepared artifacts are there **unchanged and alone**, write the receipt, close.
 
 **The receipt is what makes `integrated` and `closed` reachable at all.** It records the
-repository, the PR, the merge commit, the preparation, the approval, and each workflow run with
-its attempt and jobs, plus the moment they were observed. The state machine requires it, so a
+repository, the PR, the head, the base branch, the merge commit, the preparation and its digest,
+the approval, the contract and candidate digests, and each workflow run with its attempt and jobs,
+plus the moment they were observed.
+
+Every one of those is **required**, and structure is checked before any comparison. A record that
+carried four true keys — change, generation, preparation and version — and nothing else used to
+authorise `integrated` with no merge, no PR, no run and no approval anywhere, because the check
+compared only the fields its caller had assembled. It is also checked against the closure control:
+a receipt the confirmation never wrote is a file, and the pointer is what tells the two apart. A
+`legacy` closure carries fewer fields and **says so on the change** — an absence of the v2 fields
+is never read as a declaration of legacy. The state machine requires it, so a
 `state transition <id> integrated` on its own is refused with `E_INTEGRATION_NOT_OBSERVED` —
 which is the defect it exists for: the confirmation refused a reopened closure while a plain
 transition walked the same change to `integrated` on an approval that had been retired.
@@ -251,9 +303,12 @@ a tree nobody approved. So:
   that quietly rewrote a proposal moves nothing the code comparison can see;
 - the prepared artifacts are compared **by content** in the merge — existence was the weakest
   question that could be asked about them;
-- the prepared artifacts are compared against the frozen inventory in **three** directions:
-  missing, altered, and **added** — a file that appeared inside the archived folder during the
-  merge belongs to nobody's record, and walking only the record could never see it;
+- the prepared artifacts are compared against the frozen inventory in **four** directions:
+  missing, altered content, altered **mode or type**, and **added**. The addition was invisible
+  because the comparison walked the record; the mode was invisible because the record held only a
+  blob — and an archived file is outside the code digest and outside the contract digest, so
+  `100644` becoming `100755` with the same blob had nothing anywhere to catch it. A tree that
+  cannot be listed is **unknown**, and unknown is not an empty tree;
 - **one** approval must satisfy every criterion: it names this contract, this tree, this
   preparation and this PR, *and* it was granted at a commit inside this merge. Letting one
   approval supply the content match and another the ancestry means the order of files on disk

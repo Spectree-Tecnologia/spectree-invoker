@@ -24,6 +24,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync, closeSync, unlinkSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { hostname } from 'node:os';
 
 export const LIFECYCLE_VERSION = '1.0.0';
 export const PREP_CONTRACT_VERSION = '2.0.0';
@@ -48,13 +49,23 @@ export const PHASE = {
   DONE: 'done',
 };
 
-/** Phases that mean the operation is still open, with what a resume must do about each. */
+/** Phases go forward. A phase that could move backwards is a phase that proves nothing. */
+export const PHASE_ORDER = [PHASE.INTENT, PHASE.STARTED, PHASE.OBSERVED, PHASE.PERSISTING, PHASE.DONE];
+
+/**
+ * What a resume must do about each phase, and — the part that was missing — the command that
+ * actually does it. A message telling the operator to "re-run to persist it" beside a re-run that
+ * refuses is worse than no message: it names a recovery the tool does not implement.
+ */
 export const RECOVERY = {
   [PHASE.INTENT]: 'nothing was started; re-run the command',
   [PHASE.STARTED]: 'an external command was started and its result was never observed; decide explicitly whether it ran',
-  [PHASE.OBSERVED]: 'the result was observed and not yet persisted; re-run to persist it',
-  [PHASE.PERSISTING]: 'persistence was interrupted part way; re-run to finish it',
+  [PHASE.OBSERVED]: 'the result was observed and not yet persisted; re-run with --resume to persist it, without running the command again',
+  [PHASE.PERSISTING]: 'persistence was interrupted part way; re-run with --resume to finish only the steps that are missing',
 };
+
+/** Phases a `--resume` can carry forward on its own, because nothing about them is uncertain. */
+export const RESUMABLE = new Set([PHASE.OBSERVED, PHASE.PERSISTING]);
 
 // --- identity ---------------------------------------------------------------------------------
 
@@ -167,16 +178,29 @@ const writeAtomic = (file, text) => {
 export function withLifecycleLock(root, changeId, fn, { attempts = 150, waitMs = 20 } = {}) {
   const file = join(root, lockPath(changeId));
   mkdirSync(dirname(file), { recursive: true });
+  let brokenOnce = false;
   for (let i = 0; i < attempts; i++) {
     let fd;
     try { fd = openSync(file, 'wx'); }
     catch (e) {
       if (e.code !== 'EEXIST') throw e;
+      // A lock is never broken for being OLD — a slow consolidation is not an abandoned one.
+      // It is broken only when its owner can be identified and is demonstrably gone, and the
+      // breaking is announced. A process that died holding it would otherwise wedge the change
+      // permanently, which is not safety, it is a different failure.
+      if (!brokenOnce && ownerIsGone(file)) {
+        brokenOnce = true;
+        process.emitWarning(
+          `the closure lock for ${changeId} was held by a process that is no longer running; breaking it once. ` +
+          'Any operation it left open is still recorded, and is recovered explicitly.',
+          'SpectreeLock');
+        try { unlinkSync(file); } catch { /* somebody else got there first */ }
+      }
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs);
       continue;
     }
     try {
-      writeFileSync(fd, JSON.stringify({ pid: process.pid, at: stamp() }));
+      writeFileSync(fd, JSON.stringify({ pid: process.pid, host: hostname(), at: stamp() }));
       return fn();
     } finally {
       closeSync(fd);
@@ -191,10 +215,27 @@ export function withLifecycleLock(root, changeId, fn, { attempts = 150, waitMs =
 }
 
 /**
+ * Is the process that holds this lock gone?
+ *
+ * Only answerable on the machine that took it, and only for a pid this process may signal.
+ * Anything else — another host, an unreadable lock, a pid that still answers — is "unknown", and
+ * unknown leaves the lock alone. Signal 0 tests for existence without delivering anything.
+ */
+function ownerIsGone(file) {
+  let owner;
+  try { owner = JSON.parse(readFileSync(file, 'utf8')); } catch { return false; }
+  if (!owner || typeof owner.pid !== 'number') return false;
+  if (owner.host && owner.host !== hostname()) return false;
+  if (owner.pid === process.pid) return false;
+  try { process.kill(owner.pid, 0); return false; }
+  catch (e) { return e.code === 'ESRCH'; }
+}
+
+/**
  * Read-modify-write of the control, under the lock, with an optional expected revision.
  * `mutate` receives the document and returns the next one; it must not perform effects.
  */
-export function updateLifecycle(root, changeId, mutate, { expectedRevision, projectId } = {}) {
+export function updateLifecycle(root, changeId, mutate, { expectedRevision, projectId, after } = {}) {
   return withLifecycleLock(root, changeId, () => {
     const read = readLifecycle(root, changeId);
     if (read.present && !read.doc) {
@@ -210,14 +251,27 @@ export function updateLifecycle(root, changeId, mutate, { expectedRevision, proj
     }
     const next = { ...mutate(current), revision: current.revision + 1, updated_at: stamp() };
     writeAtomic(join(root, lifecyclePath(changeId)), `${JSON.stringify(next, null, 2)}\n`);
+    // A document that must be atomic with the control is written HERE, inside the same critical
+    // section, and after it. The order matters and is deliberate: an approval file with no control
+    // entry is not authority, while a control entry naming a file that is not there authorises
+    // nothing either — so a crash between them fails closed in both directions.
+    if (after) after(next);
     return next;
   });
 }
 
 // --- operations ---------------------------------------------------------------------------------
 
-/** Open an operation. Recorded BEFORE any effect, so an interrupted run is identifiable. */
-export function beginOperation(root, changeId, { kind, operationId, detail, expectedRevision, projectId }) {
+/**
+ * Open an operation. Recorded BEFORE any effect, so an interrupted run is identifiable — and
+ * reserved against the control revision the caller's DECISION was computed on, which is what
+ * makes this a compare-and-set rather than a lock taken after the fact.
+ *
+ * The defect: a refresh took its lock after its preflight, an approval landed in between, and
+ * the refresh then applied a decision computed before that approval existed. A lock on each write
+ * does not make a stale decision fresh.
+ */
+export function beginOperation(root, changeId, { kind, operationId, detail, plan, expectedRevision, projectId }) {
   const id = operationId ?? newOperationId(kind);
   const doc = updateLifecycle(root, changeId, (cur) => {
     if (cur.operation && cur.operation.phase !== PHASE.DONE && cur.operation.operation_id !== id) {
@@ -227,27 +281,86 @@ export function beginOperation(root, changeId, { kind, operationId, detail, expe
       e.code = 'E_OPERATION_PENDING';
       throw e;
     }
-    return { ...cur, operation: { operation_id: id, kind, phase: PHASE.INTENT, at: stamp(), detail: detail ?? null } };
+    return {
+      ...cur,
+      operation: {
+        operation_id: id, kind, phase: PHASE.INTENT, at: stamp(), owner_pid: process.pid,
+        detail: detail ?? null,
+        // The plan is written before the first effect and never replaced, so a recovery can
+        // finish the operation instead of guessing at what it was going to do.
+        plan: plan ?? null,
+      },
+    };
   }, { expectedRevision, projectId });
   return { operationId: id, lifecycle: doc };
 }
 
+/**
+ * Move an operation forward. Ownership and direction are both checked: one process may not
+ * advance another's operation, and a phase never moves backwards — either would let two runs
+ * describe one write as if it were theirs.
+ */
 export function advanceOperation(root, changeId, operationId, phase, detail) {
   return updateLifecycle(root, changeId, (cur) => {
     if (!cur.operation || cur.operation.operation_id !== operationId) {
-      const e = new Error(`no open operation ${operationId} on ${changeId}`);
+      const e = new Error(
+        `no open operation ${operationId} on ${changeId}` +
+        (cur.operation ? ` — the open one is ${cur.operation.operation_id} (${cur.operation.kind}, ${cur.operation.phase})` : ''));
       e.code = 'E_OPERATION_UNKNOWN';
       throw e;
     }
-    return { ...cur, operation: { ...cur.operation, phase, at: stamp(), ...(detail ? { detail } : {}) } };
+    const from = PHASE_ORDER.indexOf(cur.operation.phase);
+    const to = PHASE_ORDER.indexOf(phase);
+    if (to < 0 || to < from) {
+      const e = new Error(`${changeId}: an operation does not go from "${cur.operation.phase}" to "${phase}"`);
+      e.code = 'E_OPERATION_PHASE';
+      throw e;
+    }
+    return {
+      ...cur,
+      operation: {
+        ...cur.operation,
+        phase, at: stamp(),
+        // Merged, never replaced: `observed` used to overwrite the detail with an exit code, and
+        // what the operation had planned was gone by the time anyone came to finish it.
+        detail: { ...(cur.operation.detail ?? {}), ...(detail ?? {}) },
+      },
+    };
   });
 }
 
 /** Close the operation and commit whatever it decided, in the same locked section. */
 export function completeOperation(root, changeId, operationId, mutate = (x) => x) {
   return updateLifecycle(root, changeId, (cur) => {
+    if (cur.operation && cur.operation.operation_id !== operationId && cur.operation.phase !== PHASE.DONE) {
+      const e = new Error(`${changeId}: ${operationId} may not complete the operation reserved by ${cur.operation.operation_id}`);
+      e.code = 'E_OPERATION_UNKNOWN';
+      throw e;
+    }
     const next = mutate(cur);
     return { ...next, operation: { ...(cur.operation ?? { operation_id: operationId, kind: 'unknown' }), phase: PHASE.DONE, at: stamp() } };
+  });
+}
+
+/**
+ * Abandon an open operation deliberately, leaving whatever it wrote where it is.
+ *
+ * The escape from the one phase nothing resolves on its own — `started`, where the command may
+ * or may not have run. It is not a repair: it records that a person looked and decided, and the
+ * files the command produced are untouched.
+ */
+export function abandonOperation(root, changeId, operationId, reason) {
+  return updateLifecycle(root, changeId, (cur) => {
+    if (!cur.operation || cur.operation.operation_id !== operationId) {
+      const e = new Error(`no open operation ${operationId} on ${changeId}`);
+      e.code = 'E_OPERATION_UNKNOWN';
+      throw e;
+    }
+    return {
+      ...cur,
+      abandoned: [...(cur.abandoned ?? []), { ...cur.operation, abandoned_at: stamp(), reason }],
+      operation: null,
+    };
   });
 }
 
@@ -308,10 +421,20 @@ export function approvalsInForce(approvals = [], manifest = null, { lifecycle = 
     // and not the other is still a retirement.
     ...(manifest?.supersedes_approval ?? []),
   ]);
+  // An INTEGRATION approval is authority only where the durable control also records it. A file
+  // dropped into `.spectree/approvals/` is a document; authority is the pair, and half an
+  // approval — written when the control update did not land — must never read as a whole one.
+  const recorded = new Set((lifecycle?.approved ?? []).map((r) => r.approval_id));
+  const unrecorded = approvals.filter((a) => a.gate === 'integration' && !retiredIds.has(a.approval_id) && !recorded.has(a.approval_id));
+  const live = approvals.filter((a) => !retiredIds.has(a.approval_id))
+    .filter((a) => a.gate !== 'integration' || recorded.has(a.approval_id));
   return {
     ok: true,
-    inForce: approvals.filter((a) => !retiredIds.has(a.approval_id)),
+    inForce: live,
     retired: approvals.filter((a) => retiredIds.has(a.approval_id)),
+    // Reported rather than silently dropped: "no approval on record" and "an approval the durable
+    // control never recorded" are different problems with different repairs.
+    unrecorded,
     generation: lifecycle?.generation ?? null,
     blocked: false,
   };
@@ -397,10 +520,110 @@ export function buildReceipt({
   };
 }
 
+/**
+ * Every identity an integration receipt must carry under the v2 flow.
+ *
+ * The defect: `receiptCovers` compared only the fields the caller happened to pass an expectation
+ * for, so a four-key JSON naming an existing preparation authorised `integrated` with no merge, no
+ * PR, no run and no approval anywhere. A record that is structurally not a receipt does not become
+ * one by being placed where a receipt goes.
+ *
+ * This is a check on a MALFORMED record, and that is all it claims. A local directory is not made
+ * resistant to an agent that can rewrite every file in it, and nothing here should be read as
+ * saying otherwise.
+ */
+const RECEIPT_REQUIRED = [
+  'receipt_version', 'change_id', 'repository', 'pr', 'head_sha', 'merge_commit', 'base_branch',
+  'preparation_id', 'generation', 'preparation_digest', 'approval_id',
+  'contract_digest', 'candidate_digest', 'operation_id', 'observed_at',
+];
+
 export function readReceipt(root, changeId) {
   const f = join(root, receiptPath(changeId));
   if (!existsSync(f)) return null;
-  try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return { corrupt: true }; }
+  let text;
+  try { text = readFileSync(f, 'utf8'); }
+  catch (e) { return { unreadable: true, code: 'E_RECEIPT_UNREADABLE', message: `the integration receipt cannot be read (${e.code ?? e.message})` }; }
+  try { return JSON.parse(text); }
+  catch { return { corrupt: true, code: 'E_RECEIPT_CORRUPT', message: 'the integration receipt is not valid JSON; corrupt is not the same as absent' }; }
+}
+
+/**
+ * Does the receipt on record actually describe the integration being claimed?
+ *
+ * Used by the state machine, so that `state transition … integrated` cannot walk past the
+ * confirmation, and by the confirmation itself — one definition, so neither can omit a comparison
+ * because its caller did not assemble the context.
+ *
+ * `legacy` drops only the v2 identity fields, and it is a DECLARED mode on the change: an absence
+ * of those fields is never read as legacy.
+ */
+export function receiptCovers(receipt, {
+  changeId, mergeCommit, generation, preparationId, preparationDigest: prepDigest,
+  approvalId, repository, pr, headSha, baseBranch, contractDigest, candidateDigest,
+  legacy = false, lifecycle = null, inForceIds = null,
+} = {}) {
+  if (!receipt) {
+    return refuse('E_INTEGRATION_NOT_OBSERVED',
+      'no integration receipt is on record; `integrated` is reached by confirming a merge with post-merge.mjs, not by asserting it');
+  }
+  if (receipt.unreadable || receipt.corrupt) {
+    return refuse('E_INTEGRATION_NOT_OBSERVED', receipt.message ?? 'the integration receipt cannot be read, which is not the same as absent');
+  }
+  if (receipt.receipt_version !== '1.0.0') {
+    return refuse('E_INTEGRATION_NOT_OBSERVED', `the receipt follows version ${receipt.receipt_version ?? '(none)'} and this build speaks 1.0.0`);
+  }
+  // Structure BEFORE comparison. Comparing only what the caller asked about is how an incomplete
+  // record authorised an integration nobody observed.
+  const required = legacy
+    ? ['receipt_version', 'change_id', 'merge_commit', 'operation_id', 'observed_at']
+    : RECEIPT_REQUIRED;
+  const missing = required.filter((k) => receipt[k] === undefined || receipt[k] === null || receipt[k] === '');
+  if (missing.length) {
+    return refuse('E_RECEIPT_INCOMPLETE',
+      `the integration receipt records no ${missing.join(', ')}; a receipt names the whole integration it observed, ` +
+      'and a record missing any of it is not an observation');
+  }
+  if (!legacy && (!Array.isArray(receipt.runs) || receipt.runs.length === 0)) {
+    return refuse('E_RECEIPT_INCOMPLETE', 'the integration receipt records no observed run; the checks the policy required are part of what was observed');
+  }
+  // And it has to be the receipt this squad wrote, not a document that named a real preparation.
+  if (lifecycle) {
+    const pointer = lifecycle.receipt;
+    if (!pointer) {
+      return refuse('E_RECEIPT_UNRECORDED',
+        'the closure control records no integration receipt; a receipt that the confirmation never wrote is a file, not an observation');
+    }
+    if (pointer.merge_commit !== receipt.merge_commit || Number(pointer.generation) !== Number(receipt.generation)) {
+      return refuse('E_RECEIPT_UNRECORDED',
+        `the closure control observed merge ${String(pointer.merge_commit).slice(0, 8)} at generation ${pointer.generation}, and this receipt says ${String(receipt.merge_commit).slice(0, 8)} at ${receipt.generation}`);
+    }
+  }
+
+  const mismatch = (field, want, got) => refuse('E_INTEGRATION_NOT_OBSERVED',
+    `the receipt's ${field} is ${String(got).slice(0, 12)} and this is about ${String(want).slice(0, 12)}`);
+  if (changeId && receipt.change_id !== changeId) return mismatch('change', changeId, receipt.change_id);
+  if (mergeCommit && receipt.merge_commit !== mergeCommit) return mismatch('merge commit', mergeCommit, receipt.merge_commit);
+  if (generation !== undefined && generation !== null && Number(receipt.generation) !== Number(generation)) {
+    return refuse('E_INTEGRATION_NOT_OBSERVED',
+      `the receipt observed generation ${receipt.generation} and this change is at generation ${generation}; a reopening after the confirmation needs a new one`);
+  }
+  if (preparationId && receipt.preparation_id !== preparationId) return mismatch('preparation', preparationId, receipt.preparation_id);
+  if (prepDigest && receipt.preparation_digest !== prepDigest) return mismatch('preparation digest', prepDigest, receipt.preparation_digest);
+  if (approvalId && receipt.approval_id !== approvalId) return mismatch('approval', approvalId, receipt.approval_id);
+  // The approval it names has to still BE authority. A receipt written before a reopening names an
+  // approval that was retired by it, and a receipt is an observation, not a way to keep one alive.
+  if (!legacy && inForceIds && !inForceIds.has(receipt.approval_id)) {
+    return refuse('E_INTEGRATION_NOT_OBSERVED',
+      `the receipt was observed under approval ${receipt.approval_id}, which is not in force`);
+  }
+  if (repository && receipt.repository !== repository) return mismatch('repository', repository, receipt.repository);
+  if (pr !== undefined && pr !== null && Number(receipt.pr) !== Number(pr)) return mismatch('PR', pr, receipt.pr);
+  if (headSha && receipt.head_sha !== headSha) return mismatch('head', headSha, receipt.head_sha);
+  if (baseBranch && receipt.base_branch !== baseBranch) return mismatch('base branch', baseBranch, receipt.base_branch);
+  if (contractDigest && receipt.contract_digest !== contractDigest) return mismatch('contract', contractDigest, receipt.contract_digest);
+  if (candidateDigest && receipt.candidate_digest !== candidateDigest) return mismatch('candidate', candidateDigest, receipt.candidate_digest);
+  return { ok: true };
 }
 
 export function writeReceipt(root, changeId, receipt) {
@@ -408,37 +631,3 @@ export function writeReceipt(root, changeId, receipt) {
   return receipt;
 }
 
-/**
- * Does the receipt on record actually describe the integration being claimed?
- *
- * Used by the state machine, so that `state transition … integrated` cannot walk past the
- * confirmation. A receipt for another PR, another merge or an older generation is a receipt
- * about something else.
- */
-export function receiptCovers(receipt, { changeId, mergeCommit, generation, preparationId, approvalId } = {}) {
-  if (!receipt) {
-    return refuse('E_INTEGRATION_NOT_OBSERVED',
-      'no integration receipt is on record; `integrated` is reached by confirming a merge with post-merge.mjs, not by asserting it');
-  }
-  if (receipt.corrupt) return refuse('E_INTEGRATION_NOT_OBSERVED', 'the integration receipt is corrupt, which is not the same as absent');
-  if (receipt.receipt_version !== '1.0.0') {
-    return refuse('E_INTEGRATION_NOT_OBSERVED', `the receipt follows version ${receipt.receipt_version ?? '(none)'} and this build speaks 1.0.0`);
-  }
-  if (changeId && receipt.change_id !== changeId) {
-    return refuse('E_INTEGRATION_NOT_OBSERVED', `that receipt belongs to "${receipt.change_id}", not to "${changeId}"`);
-  }
-  if (mergeCommit && receipt.merge_commit !== mergeCommit) {
-    return refuse('E_INTEGRATION_NOT_OBSERVED', `the receipt observed merge ${String(receipt.merge_commit).slice(0, 8)}, and this is about ${String(mergeCommit).slice(0, 8)}`);
-  }
-  if (generation !== undefined && generation !== null && Number(receipt.generation) !== Number(generation)) {
-    return refuse('E_INTEGRATION_NOT_OBSERVED',
-      `the receipt observed generation ${receipt.generation} and this change is at generation ${generation}; a reopening after the confirmation needs a new one`);
-  }
-  if (preparationId && receipt.preparation_id !== preparationId) {
-    return refuse('E_INTEGRATION_NOT_OBSERVED', `the receipt observed preparation ${receipt.preparation_id}, and the current one is ${preparationId}`);
-  }
-  if (approvalId && receipt.approval_id !== approvalId) {
-    return refuse('E_INTEGRATION_NOT_OBSERVED', `the receipt names approval ${receipt.approval_id}, not ${approvalId}`);
-  }
-  return { ok: true };
-}

@@ -4,6 +4,8 @@
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
+import * as storeModule from '../scripts/lib/store.mjs';
+import * as lifecycleModule from '../scripts/lib/lifecycle.mjs';
 import { execFileSync } from 'node:child_process';
 
 export const REPO = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
@@ -215,3 +217,35 @@ export const greenRun = (sha, { id = 1, attempt = 1, jobs = ['classify', 'plugin
   },
   jobs: jobs.map((name) => ({ name, status: 'completed', conclusion })),
 });
+
+/**
+ * Record an integration approval the way `state.mjs record-approval` does: the document AND the
+ * durable entry in the closure control.
+ *
+ * A fixture that wrote only the file was building a state no real project can be in — an approval
+ * with no durable record is half an approval, and the runtime now refuses to read it as whole
+ * authority. Fixtures that construct impossible states prove things about impossible states.
+ */
+export function recordIntegrationApproval(root, changeId, doc) {
+  const { Store } = storeModule;
+  new Store(root).putApproval(doc);
+  const f = join(root, '.spectree', 'closure', `${changeId}.lifecycle.json`);
+  mkdirSync(dirname(f), { recursive: true });
+  const cur = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : lifecycleModule.emptyLifecycle(changeId, null);
+  const next = {
+    ...cur,
+    revision: (cur.revision ?? 0) + 1,
+    approved: [
+      ...(cur.approved ?? []).filter((r) => r.approval_id !== doc.approval_id),
+      ...(doc.preparation ? [{
+        approval_id: doc.approval_id,
+        preparation_id: doc.preparation.preparation_id,
+        generation: doc.preparation.generation,
+        preparation_digest: doc.preparation.preparation_digest,
+        at: doc.timestamp,
+      }] : []),
+    ],
+  };
+  writeFileSync(f, `${JSON.stringify(next, null, 2)}\n`);
+  return doc;
+}

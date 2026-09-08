@@ -15,18 +15,19 @@ import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync } from 
 import { join } from 'node:path';
 import { Store } from '../scripts/lib/store.mjs';
 import { contractDigest, contentDigest, gatedDigest } from '../scripts/lib/digest.mjs';
-import { currentPath, lifecyclePath, readLifecycle, receiptPath } from '../scripts/lib/lifecycle.mjs';
+import { currentPath, lifecyclePath, readLifecycle, receiptPath, pendingOperation, preparationDigest } from '../scripts/lib/lifecycle.mjs';
 import {
-  gitRepo, cleanup, tempDir, now, REPO, integrationApproval, ciConfig, stubGh, greenRun, preparationOf,
+  gitRepo, cleanup, tempDir, now, REPO, integrationApproval, recordIntegrationApproval, ciConfig, stubGh, greenRun, preparationOf,
 } from './helpers.mjs';
 
 const CLOCK = join(REPO, 'tests/fixtures/clock-ahead.cjs').split('\\').join('/');
+const CRASH_SHIM = join(REPO, 'tests/fixtures/crash-at-phase.cjs').split('\\').join('/');
 
 /**
  * A consumer with a real consolidation, a declared CI, and a change ready to prepare.
  * `{change_dir}` is substituted per argument, so the command still works once the folder moved.
  */
-function project() {
+function project({ counting = false } = {}) {
   const repo = gitRepo({ 'src/app.js': 'export const x = 1;\n', '.gitignore': '.spectree/\n' });
   const store = new Store(repo.root);
   mkdirSync(join(repo.root, '.spectree'), { recursive: true });
@@ -36,9 +37,12 @@ function project() {
     closure: { consolidate: [process.execPath, '.spectree/consolidate.mjs', '{change_dir}'] },
   });
   writeFileSync(join(repo.root, '.spectree/consolidate.mjs'), [
-    "import { cpSync, existsSync, mkdirSync } from 'node:fs';",
+    "import { cpSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';",
     'const dir = process.argv[2];',
     "if (!dir) { console.error('no change directory'); process.exit(2); }",
+    // One character per execution. A recovery that re-ran the command would be invisible without
+    // it: the output is the same either way, and "it looks right afterwards" is not the question.
+    ...(counting ? ["appendFileSync('.spectree/ran', 'x');"] : []),
     'const from = `${dir}/specs`, to = "docs/specs";',
     'if (existsSync(from)) { mkdirSync(to, { recursive: true }); cpSync(from, to, { recursive: true }); }',
   ].join('\n'));
@@ -66,6 +70,16 @@ function project() {
   const api = {
     ...repo, store, change, gh,
     prep: (...args) => run('prepare-closure.mjs', args),
+    /** The same command, killed the instant the control records `phase`. A real interruption. */
+    prepCrashing: (phase, ...args) => run('prepare-closure.mjs', args, {
+      SPECTREE_CRASH_AT: phase,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${CRASH_SHIM}`.trim(),
+    }),
+    confirmCrashing: (phase, ...args) => run('post-merge.mjs', args, {
+      PATH: gh.path(),
+      SPECTREE_CRASH_AT: phase,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${CRASH_SHIM}`.trim(),
+    }),
     prepTomorrow: (...args) => run('prepare-closure.mjs', args, {
       SPECTREE_CLOCK_AHEAD_DAYS: '1',
       NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${CLOCK}`.trim(),
@@ -89,7 +103,7 @@ function project() {
         granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
         scope_digest: contract.digest, revision: head, timestamp: now(),
       });
-      new Store(repo.root).putApproval(integrationApproval({
+      recordIntegrationApproval(repo.root, 'c1', integrationApproval({
         approvalId: id, changeId: 'c1', manifest: preparationOf(repo.root, 'c1'),
         scopeDigest: gatedDigest(contract.digest, content.digest), revision: head,
         target: { pr: 999, headSha: head, ...target },
@@ -106,6 +120,22 @@ function project() {
       const cur = new Store(repo.root).change('c1');
       new Store(repo.root).putChange({ ...cur, state: 'integration_approved' },
         { expected: cur.state_revision, event: { type: 'fixture-ready' } });
+    },
+    /** Record an integration approval through the CLI, and report what it said. */
+    approveExpectingFailure: () => {
+      const c = new Store(repo.root).change('c1');
+      const head = repo.git(['rev-parse', 'HEAD']).trim();
+      const doc = join(repo.root, '.spectree/approval-input.json');
+      let manifest = null;
+      try { manifest = preparationOf(repo.root, 'c1'); } catch { /* none written */ }
+      writeFileSync(doc, JSON.stringify(integrationApproval({
+        approvalId: 'ap-x', changeId: 'c1', manifest,
+        scopeDigest: gatedDigest(contractDigest(repo.root, c).digest, contentDigest(repo.root).digest),
+        revision: head, target: { pr: 999, headSha: head },
+      })));
+      const r = spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), 'record-approval', doc],
+        { cwd: repo.root, encoding: 'utf8' });
+      return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
     },
     /** Merge the branch into main and tell the transport about it. */
     merge: ({ pr = 999, jobs } = {}) => {
@@ -216,61 +246,6 @@ test('a day passing does not empty the record, and the cycle still closes', () =
   } finally { p.drop(); }
 });
 
-// 5. plan against revision R, somebody reopens, apply the plan: the old revision is refused
-//    and nothing runs.
-test('a plan applied after the world moved is refused, without running anything', () => {
-  const p = project();
-  try {
-    { const r0 = p.prep('--apply'); assert.equal(r0.code, 0, r0.err); }
-    p.git(['add', '-A']); p.git(['commit', '-qm', 'closure prepared']);
-    p.approve();
-
-    // The plan, taken now, names the control revision it was computed against.
-    const planned = JSON.parse(p.prep('--json').out);
-    assert.ok(typeof planned.expected_control_revision === 'number');
-
-    // Meanwhile the closure is reopened by somebody else.
-    assert.equal(p.prep('--apply', '--reopen', '--reason', 'a concurrent decision').code, 0);
-    const after = readLifecycle(p.root, 'c1').doc.revision;
-    assert.notEqual(after, planned.expected_control_revision, 'the control really did move');
-
-    // The plan is stale, and applying it does not silently proceed against the new state.
-    const resumed = JSON.parse(p.state('resume', 'c1', '--json').out);
-    assert.equal(resumed.closure.generation, 2);
-    assert.notEqual(resumed.closure.preparation_id, planned.preparation_id,
-      'the preparation the plan described is not the one on record');
-  } finally { p.drop(); }
-});
-
-// 6. the merge is confirmed, the process dies between the receipt and the state: resuming
-//    produces one receipt, one transition per step, and no commit.
-test('a confirmation interrupted after the receipt is resumed, not restarted', () => {
-  const p = project();
-  try {
-    { const r0 = p.prep('--apply'); assert.equal(r0.code, 0, r0.err); }
-    p.git(['add', '-A']); p.git(['commit', '-qm', 'closure prepared']);
-    p.approve();
-    const { merge } = p.merge();
-
-    assert.equal(p.confirm('--pr', '999', '--apply').code, 0);
-    assert.equal(p.stateNow(), 'closed');
-    const receiptBefore = readFileSync(join(p.root, receiptPath('c1')), 'utf8');
-    const headBefore = p.git(['rev-parse', 'HEAD']).trim();
-
-    // Running it again is the resume: same receipt, no second transition, no commit.
-    const again = p.confirm('--pr', '999', '--apply');
-    assert.equal(again.code, 0, again.err);
-    assert.equal(readFileSync(join(p.root, receiptPath('c1')), 'utf8'), receiptBefore, 'one receipt');
-    const trail = readFileSync(join(p.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
-    assert.equal(trail.filter((e) => e.to === 'integrated').length, 1);
-    assert.equal(trail.filter((e) => e.to === 'closed').length, 1);
-    assert.equal(trail.filter((e) => e.type === 'integration_observed').length, 1);
-    assert.equal(p.git(['rev-parse', 'HEAD']).trim(), headBefore, 'and closing is not a commit');
-    assert.equal(p.git(['status', '--porcelain']).trim(), '', 'nothing left uncommitted either');
-    assert.equal(JSON.parse(readFileSync(join(p.root, receiptPath('c1')), 'utf8')).merge_commit, merge);
-  } finally { p.drop(); }
-});
-
 test('a receipt for another PR does not close this change', () => {
   const p = project();
   try {
@@ -306,5 +281,260 @@ test('a whole cycle leaves one merge commit and no post-merge commit at all', ()
     const trail = readFileSync(join(p.root, '.spectree/history/c1.jsonl'), 'utf8');
     assert.match(trail, /integration_observed/, 'the observation is an event, not a commit');
     assert.equal(p.git(['status', '--porcelain']).trim(), '');
+  } finally { p.drop(); }
+});
+
+// --- interruptions that really interrupt ---------------------------------------------------------
+
+const CRASH = join(REPO, 'tests/fixtures/crash-at-phase.cjs').split('\\').join('/');
+
+/** How many times the consolidation has actually executed. The number that matters in a recovery. */
+const consolidationRuns = (p) => {
+  const f = join(p.root, '.spectree/ran');
+  return existsSync(f) ? readFileSync(f, 'utf8').length : 0;
+};
+
+test('an interruption after the command was observed resumes without running it again', () => {
+  const p = project({ counting: true });
+  try {
+    // A REAL crash: the child process dies the instant the control records `observed`. Editing
+    // files afterwards to simulate one would be testing the edit.
+    const killed = p.prepCrashing('observed', '--apply');
+    assert.equal(killed.code, 86, 'the child really died');
+    assert.equal(consolidationRuns(p), 1, 'and the consolidation really ran');
+    assert.equal(existsSync(join(p.root, 'docs/specs/account/spec.md')), true, 'it left its output');
+    assert.equal(existsSync(join(p.root, currentPath('c1'))), false, 'and no preparation was written');
+
+    const before = readLifecycle(p.root, 'c1').doc;
+    assert.equal(before.operation.phase, 'observed');
+    const plannedId = before.operation.plan.preparation_id;
+
+    // A plain re-run refuses, and names the command that recovers — which is the whole complaint:
+    // a message that recommended a re-run, beside a re-run that refused.
+    const plain = p.prep('--apply', '--json');
+    assert.equal(plain.code, 1);
+    assert.equal(JSON.parse(plain.out).code, 'E_OPERATION_PENDING');
+    assert.match(plain.err, /--resume/);
+    assert.equal(consolidationRuns(p), 1, 'and it did not run the command again either');
+
+    // The recommended command works, and finishes the operation that was interrupted.
+    const resumed = p.prep('--apply', '--resume', '--json');
+    assert.equal(resumed.code, 0, resumed.err);
+    assert.equal(consolidationRuns(p), 1, 'a recovery finishes an operation; it does not execute one');
+    const m = p.manifest();
+    assert.equal(m.preparation_id, plannedId, 'and it finishes the SAME preparation that was reserved');
+    assert.equal(m.preparation_digest, preparationDigest(m));
+    const after = readLifecycle(p.root, 'c1').doc;
+    assert.equal(pendingOperation(after), null, 'nothing is left open');
+    assert.equal(after.current_preparation, m.preparation_id);
+    const trail = readFileSync(join(p.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(trail.filter((e) => e.type === 'closure_prepared').length, 1, 'one preparation, one event');
+  } finally { p.drop(); }
+});
+
+test('an interruption during persistence finishes only the steps that are missing', () => {
+  const p = project({ counting: true });
+  try {
+    const killed = p.prepCrashing('persisting', '--apply');
+    assert.equal(killed.code, 86);
+    assert.equal(consolidationRuns(p), 1);
+    assert.equal(readLifecycle(p.root, 'c1').doc.operation.phase, 'persisting');
+
+    const resumed = p.prep('--apply', '--resume', '--json');
+    assert.equal(resumed.code, 0, resumed.err);
+    assert.equal(consolidationRuns(p), 1);
+    assert.equal(existsSync(join(p.root, 'docs/changes/c1')), false, 'the folder is archived');
+    const m = p.manifest();
+    assert.ok(m.artifacts.length, 'and the record describes it');
+    assert.equal(pendingOperation(readLifecycle(p.root, 'c1').doc), null);
+
+    // The whole cycle still closes on top of a resumed preparation.
+    p.git(['add', '-A']); p.git(['commit', '-qm', 'the resumed preparation']);
+    p.approve();
+    p.merge();
+    assert.equal(p.confirm('--pr', '999', '--apply').code, 0);
+    assert.equal(p.stateNow(), 'closed');
+  } finally { p.drop(); }
+});
+
+test('an interruption before the command was observed stays uncertain, and is resolved by a person', () => {
+  const p = project({ counting: true });
+  try {
+    const killed = p.prepCrashing('started', '--apply');
+    assert.equal(killed.code, 86, 'it died before the result was ever observed');
+    // Whether the command ran is genuinely unknown here — the process died between launching it
+    // and recording what it returned.
+    const open = pendingOperation(readLifecycle(p.root, 'c1').doc);
+    assert.equal(open.phase, 'started');
+    assert.equal(open.uncertain, true);
+
+    // `--resume` alone will NOT carry it: nothing may decide this on the tool's own authority.
+    const attempted = p.prep('--apply', '--resume', '--json');
+    assert.equal(attempted.code, 1);
+    assert.equal(JSON.parse(attempted.out).code, 'E_OPERATION_PENDING');
+    assert.match(attempted.err, /--consolidation-ran/);
+    assert.match(attempted.err, /--abandon/);
+
+    // A person looked. That is recorded, and it is what moves the operation on — the command is
+    // still not run again.
+    const before = consolidationRuns(p);
+    const resolved = p.prep('--apply', '--resume', '--consolidation-ran', '--reason', 'the living spec has the delta', '--json');
+    assert.equal(resolved.code, 0, resolved.err);
+    assert.equal(consolidationRuns(p), before, 'the decision is not an execution');
+    const trail = readFileSync(join(p.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    const decision = trail.find((e) => e.type === 'closure_uncertainty_resolved');
+    assert.equal(decision.reason, 'the living spec has the delta');
+  } finally { p.drop(); }
+});
+
+test('an uncertain operation can be abandoned, and what it wrote is left alone', () => {
+  const p = project({ counting: true });
+  try {
+    assert.equal(p.prepCrashing('started', '--apply').code, 86);
+    const spec = join(p.root, 'docs/specs/account/spec.md');
+    const wrote = existsSync(spec);
+
+    assert.equal(p.prep('--apply', '--abandon').code, 2, 'abandoning is not anonymous either');
+    const r = p.prep('--apply', '--abandon', '--reason', 'checked: the command never started', '--json');
+    assert.equal(r.code, 0, r.err);
+    assert.equal(JSON.parse(r.out).state, 'abandoned');
+    assert.equal(pendingOperation(readLifecycle(p.root, 'c1').doc), null, 'the operation is gone');
+    assert.equal(readLifecycle(p.root, 'c1').doc.abandoned.length, 1, 'and it is still in the record');
+    assert.equal(existsSync(spec), wrote, 'nothing the command wrote was reverted');
+
+    // And the change can be prepared again from a clean slate.
+    assert.equal(p.prep('--apply').code, 0);
+    assert.ok(p.manifest());
+  } finally { p.drop(); }
+});
+
+test('a confirmation interrupted between the receipt and the state is resumed, not restarted', () => {
+  const p = project();
+  try {
+    assert.equal(p.prep('--apply').code, 0);
+    p.git(['add', '-A']); p.git(['commit', '-qm', 'closure prepared']);
+    p.approve();
+    const { merge } = p.merge();
+
+    // A REAL crash inside the confirmation, the instant the control reaches `persisting` — which
+    // is after the receipt is written and before the transitions.
+    // Crash once the control POINTS at the receipt: the receipt is on disk, the transitions are
+    // not. That is the window the reviewer named, and it is where a resume has to be a resume.
+    const killed = p.confirmCrashing('receipt', '--pr', '999', '--apply');
+    assert.equal(killed.code, 86, 'the child really died mid-confirmation');
+    assert.equal(existsSync(join(p.root, receiptPath('c1'))), true, 'the receipt was already written');
+    assert.equal(p.stateNow(), 'integration_approved', 'and the change had not moved yet');
+    const receiptBefore = readFileSync(join(p.root, receiptPath('c1')), 'utf8');
+
+    const resumed = p.confirm('--pr', '999', '--apply');
+    assert.equal(resumed.code, 0, resumed.err);
+    assert.equal(p.stateNow(), 'closed');
+    assert.equal(readFileSync(join(p.root, receiptPath('c1')), 'utf8'), receiptBefore,
+      'one receipt, and the moment it recorded is not re-stamped');
+
+    const trail = readFileSync(join(p.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(trail.filter((e) => e.type === 'integration_observed').length, 1, 'one observation');
+    assert.equal(trail.filter((e) => e.to === 'integrated').length, 1);
+    assert.equal(trail.filter((e) => e.to === 'closed').length, 1);
+    assert.equal(p.git(['rev-parse', 'HEAD']).trim(), merge, 'and no commit was made');
+  } finally { p.drop(); }
+});
+
+// --- a plan really applied after the world moved ---------------------------------------------------
+
+test('the plan carries the revision it was computed at, and applying it later is refused', () => {
+  const p = project({ counting: true });
+  try {
+    assert.equal(p.prep('--apply').code, 0);
+    p.git(['add', '-A']); p.git(['commit', '-qm', 'closure prepared']);
+    p.approve();
+
+    // The plan, taken now, names the control revision behind it.
+    const planned = JSON.parse(p.prep('--json').out);
+    assert.ok(Number.isInteger(planned.expected_control_revision));
+    const ranBefore = consolidationRuns(p);
+
+    // Somebody else reopens in the meantime.
+    assert.equal(p.prep('--apply', '--reopen', '--reason', 'a concurrent decision').code, 0);
+
+    // Now APPLY THE OLD PLAN, by its own token. This is the step the earlier test only described.
+    const applied = p.prep('--apply', '--expect-control', String(planned.expected_control_revision), '--json');
+    assert.equal(applied.code, 1, 'a plan is applied against the world it was computed in');
+    const doc = JSON.parse(applied.out);
+    assert.equal(doc.code, 'E_CONCURRENT_UPDATE');
+    assert.match(doc.message, new RegExp(`expected revision ${planned.expected_control_revision}`));
+    assert.equal(consolidationRuns(p), ranBefore + 1,
+      'the reopening ran it once; the refused apply ran nothing');
+    assert.equal(pendingOperation(readLifecycle(p.root, 'c1').doc), null, 'and left no operation open');
+
+    // Re-deciding against what is there now is the repair, and it works.
+    const fresh = JSON.parse(p.prep('--json').out);
+    assert.notEqual(fresh.expected_control_revision, planned.expected_control_revision);
+  } finally { p.drop(); }
+});
+
+// --- the shared boundary, from both sides ----------------------------------------------------------
+
+test('an approval that lands between a refresh\'s decision and its write refuses the refresh', () => {
+  const p = project();
+  try {
+    assert.equal(p.prep('--apply').code, 0);
+    p.git(['add', '-A']); p.git(['commit', '-qm', 'closure prepared']);
+    const approvedRecord = readFileSync(join(p.root, currentPath('c1')), 'utf8');
+
+    // The refresh has something to do: a task was ticked.
+    const archive = p.manifest().archive_path;
+    writeFileSync(join(p.root, `${archive}/tasks.md`), '- [x] build it\n');
+    const plan = JSON.parse(p.prep('--json').out);
+    assert.equal(plan.state, 'refreshed', 'the refresh really is what it would do');
+
+    // The approval lands in between, over the record as it stands.
+    p.approve();
+
+    const applied = p.prep('--apply', '--expect-control', String(plan.expected_control_revision), '--json');
+    assert.equal(applied.code, 1, 'a decision taken before the approval is not applied after it');
+    assert.equal(JSON.parse(applied.out).code, 'E_CONCURRENT_UPDATE');
+    assert.equal(readFileSync(join(p.root, currentPath('c1')), 'utf8'), approvedRecord,
+      'and the approved record is byte for byte what it was');
+  } finally { p.drop(); }
+});
+
+test('an approval recorded while an operation is open is refused', () => {
+  const p = project({ counting: true });
+  try {
+    assert.equal(p.prepCrashing('started', '--apply').code, 86);
+
+    // There is no coherent preparation to approve: one is half written, and the operation that
+    // would have finished it is still open. Authorising over that is authorising over half of
+    // two different states.
+    const r = p.approveExpectingFailure();
+    assert.equal(r.code, 1, 'an approval is not granted over a half-applied write');
+    assert.match(r.err, /E_OPERATION_PENDING|E_PREP/);
+    assert.equal(existsSync(join(p.root, '.spectree/approvals/ap-x.json')), false, 'and nothing was stored');
+  } finally { p.drop(); }
+});
+
+test('an integration approval with no durable record is not authority', () => {
+  const p = project();
+  try {
+    assert.equal(p.prep('--apply').code, 0);
+    p.git(['add', '-A']); p.git(['commit', '-qm', 'closure prepared']);
+    p.approve();
+    p.merge();
+    assert.equal(p.confirm('--pr', '999').code, 0, 'the approval is authority to begin with');
+
+    // Remove ONLY the durable entry, leaving the approval document exactly where it is. That is
+    // the shape a crash between the two writes would leave, and half an approval is not authority.
+    const f = join(p.root, lifecyclePath('c1'));
+    const lc = JSON.parse(readFileSync(f, 'utf8'));
+    writeFileSync(f, JSON.stringify({ ...lc, approved: [] }, null, 2));
+
+    const r = p.confirm('--pr', '999', '--json');
+    assert.equal(r.code, 1, 'half an approval never reads as a whole one');
+    assert.match(JSON.stringify(JSON.parse(r.out).impediments), /approval/);
+    const resumed = JSON.parse(p.state('resume', 'c1', '--json').out);
+    assert.deepEqual(resumed.approvals.map((a) => a.gate), ['scope'], 'and resume does not present it as in force');
+    assert.equal(existsSync(join(p.root, '.spectree/approvals/ap-integration.json')), true,
+      'the document is untouched — it stopped being authority, not history');
   } finally { p.drop(); }
 });

@@ -15,7 +15,7 @@ import { contentDigest, contractDigest, gatedDigest } from '../scripts/lib/diges
 import { buildManifest } from '../scripts/lib/closure-prep.mjs';
 import { emptyLifecycle, lifecyclePath } from '../scripts/lib/lifecycle.mjs';
 import { classifyPath, KIND } from '../scripts/lib/diff.mjs';
-import { gitRepo, cleanup, now, REPO, integrationApproval, lifecycleOf, preparationOf } from './helpers.mjs';
+import { gitRepo, cleanup, now, REPO, integrationApproval, recordIntegrationApproval, lifecycleOf, preparationOf } from './helpers.mjs';
 
 /** A change at `implemented`, whose consolidation command leaves a mark when it runs. */
 function fixture({ allowed = ['src', 'docs'], baseFiles = {} } = {}) {
@@ -73,10 +73,6 @@ function gateFixture(manifestBody) {
     granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
     scope_digest: contract.digest, revision: content.revision, timestamp: now(),
   });
-  f.store.putApproval(integrationApproval({
-    approvalId: 'ap-integration', changeId: 'c1', scopeDigest: gated,
-    revision: content.revision, manifest: prepared,
-  }));
   for (const property of ['pass2.attack', 'ci.green']) {
     f.store.putEvidence({
       schema_version: '1.0.0', evidence_id: `ev-${property}`, change_id: 'c1', property,
@@ -98,6 +94,10 @@ function gateFixture(manifestBody) {
     ...emptyLifecycle('c1', 'fixture'),
     current_preparation: body?.preparation_id ?? null,
   }, null, 2));
+  recordIntegrationApproval(f.root, 'c1', integrationApproval({
+    approvalId: 'ap-integration', changeId: 'c1', scopeDigest: gated,
+    revision: content.revision, manifest: prepared,
+  }));
 
   const can = () => spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), 'can', 'c1', 'integration_approved'],
     { cwd: f.root, encoding: 'utf8' });
@@ -506,7 +506,7 @@ test('the artifact record freezes at the integration approval', () => {
     assert.match(f.prep('--apply').out, /refreshed/);
     const approved = f.manifest();
 
-    f.store.putApproval(integrationApproval({
+    recordIntegrationApproval(f.root, 'c1', integrationApproval({
       approvalId: 'ap-integration', changeId: 'c1', manifest: f.manifest(),
       scopeDigest: gatedDigest(f.manifest().contract_digest, f.manifest().candidate_digest),
       revision: f.git(['rev-parse', 'HEAD']).trim(),
@@ -533,7 +533,7 @@ test('the freeze protects the record, not one code path: stale re-preparation is
     const approved = f.manifest();
     const archive = approved.artifacts.find((a) => a.path.endsWith('tasks.md')).path;
 
-    f.store.putApproval(integrationApproval({
+    recordIntegrationApproval(f.root, 'c1', integrationApproval({
       approvalId: 'ap-integration', changeId: 'c1', manifest: approved,
       scopeDigest: gatedDigest(approved.contract_digest, approved.candidate_digest),
       revision: f.git(['rev-parse', 'HEAD']).trim(),
@@ -578,7 +578,7 @@ test('reopening keeps the approved record and retires the approval that covered 
     assert.equal(f.prep('--apply').code, 0);
     f.git(['add', '-A']); f.git(['commit', '-qm', 'the prepared candidate']);
     const approved = f.manifest();
-    f.store.putApproval(integrationApproval({
+    recordIntegrationApproval(f.root, 'c1', integrationApproval({
       approvalId: 'ap-integration', changeId: 'c1', manifest: approved,
       scopeDigest: gatedDigest(approved.contract_digest, approved.candidate_digest),
       revision: f.git(['rev-parse', 'HEAD']).trim(),
@@ -616,7 +616,7 @@ test('an approval on record with no manifest to cover freezes as well', () => {
   try {
     assert.equal(f.prep('--apply').code, 0);
     const approved = f.manifest();
-    f.store.putApproval(integrationApproval({
+    recordIntegrationApproval(f.root, 'c1', integrationApproval({
       approvalId: 'ap-integration', changeId: 'c1', manifest: approved,
       scopeDigest: gatedDigest(approved.contract_digest, approved.candidate_digest),
       revision: f.git(['rev-parse', 'HEAD']).trim(),

@@ -22,7 +22,8 @@
 
 import { createHash } from 'node:crypto';
 import { normalisedHashes } from './digest.mjs';
-import { existsSync, readFileSync, readdirSync, lstatSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, lstatSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, relative, isAbsolute } from 'node:path';
 import {
   PREP_CONTRACT_VERSION, preparationDigest, newPreparationId,
@@ -153,12 +154,45 @@ export function artifactsUnder(root, dir, op) {
   const rels = walk(abs, abs);
   const paths = rels.map((rel) => posix(join(dir, rel)));
   const hashes = normalisedHashes(root, paths);
+  const modes = indexModes(root, paths);
   return rels.map((rel, i) => ({
     path: paths[i],
     type: 'blob',
+    // The MODE is part of the artifact, and its absence was a hole with no other net under it:
+    // an archived file is outside both the code digest and the contract digest, so a merge that
+    // changed only `100644` to `100755` — same blob, same everything else — closed clean. What a
+    // file may do is part of what the file is.
+    mode: modes.get(paths[i]) ?? '100644',
     op,
     digest: hashes[i],
   })).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
+
+/**
+ * The mode git records for each path: the index for a tracked file, the filesystem for one git
+ * has not seen. Asking the filesystem for a tracked file would answer a different question from
+ * the one the other side of a merge is answering — Windows has no executable bit to report.
+ */
+function indexModes(root, paths) {
+  const out = new Map();
+  if (paths.length === 0) return out;
+  try {
+    const listed = execFileSync('git', ['ls-files', '-s', '-z', '--', ...paths], {
+      cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+    });
+    for (const line of listed.split('\0')) {
+      if (!line) continue;
+      const tab = line.indexOf('\t');
+      if (tab < 0) continue;
+      out.set(posix(line.slice(tab + 1)), line.slice(0, 6));
+    }
+  } catch { /* not a repository, or none of them tracked: fall back per path below */ }
+  for (const p of paths) {
+    if (out.has(p)) continue;
+    try { out.set(p, (statSync(join(root, p)).mode & 0o111) ? '100755' : '100644'); }
+    catch { out.set(p, '100644'); }
+  }
+  return out;
 }
 
 /**
@@ -340,37 +374,58 @@ export function preparationCovers(manifest, { contractDigest, candidateDigest, c
 /**
  * Compare the frozen artifact inventory against what a tree actually carries.
  *
- * Three failures, told apart: missing, altered, and an ADDITION nobody recorded. The third one
- * used to be invisible — the comparison walked the record and asked whether each entry was
- * present, so a file appearing inside the archived folder during the merge passed unseen.
+ * Four failures, told apart: missing, altered CONTENT, altered MODE OR TYPE, and an ADDITION
+ * nobody recorded.
  *
- * @param {(path: string) => string|null} blobAt  the blob a tree holds at that path, or null
+ * Two of those were invisible in turn. The addition was, because the comparison walked the record
+ * and asked whether each entry was present, so a file appearing inside the archived folder during
+ * the merge passed unseen. The mode was, because the entry recorded only a blob — and an archived
+ * file is outside both the code digest and the contract digest, so `100644` becoming `100755`
+ * with the same blob had nothing anywhere to catch it.
+ *
+ * @param {object} manifest
+ * @param {(path: string) => {mode: string, type: string, blob: string}|null} entryAt
+ * @param {string[]|null} treePaths  every path in the tree, or null when it could not be listed —
+ *   which is UNKNOWN, and is reported as such rather than compared as an empty tree
  */
-export function compareArtifacts(manifest, blobAt, treePaths) {
+export function compareArtifacts(manifest, entryAt, treePaths) {
   const recorded = manifest?.artifacts ?? [];
-  const missing = [], altered = [];
+  const missing = [], altered = [], remoded = [];
   for (const a of recorded) {
-    const blob = blobAt(a.path);
-    if (blob === null || blob === undefined) missing.push(a.path);
-    else if (blob !== a.digest) altered.push(a.path);
+    const entry = entryAt(a.path);
+    if (!entry) { missing.push(a.path); continue; }
+    if (entry.blob !== a.digest) { altered.push(a.path); continue; }
+    // A recorded entry with no mode predates this check; comparing against nothing would pass
+    // everything, so it is reported as a record that cannot answer rather than as agreement.
+    const wantMode = a.mode ?? null;
+    const wantType = a.type ?? 'blob';
+    if (!wantMode) remoded.push(`${a.path} (the record carries no mode)`);
+    else if (entry.mode !== wantMode) remoded.push(`${a.path} (${wantMode} -> ${entry.mode})`);
+    else if (entry.type !== wantType) remoded.push(`${a.path} (${wantType} -> ${entry.type})`);
   }
-  // Additions can only be judged where the caller can enumerate the tree; a caller that cannot
-  // says so by passing nothing, and gets the two comparisons it can actually make.
+  // Additions can only be judged where the caller could enumerate the tree. A caller that could
+  // not says so by passing null, and an unavailable listing is not an empty one.
   let added = [];
+  let unknownAdditions = false;
   if (treePaths) {
     const known = new Set(recorded.map((a) => a.path));
     const under = manifest?.archive_path ? `${posix(manifest.archive_path)}/` : null;
     added = under ? treePaths.filter((p) => p.startsWith(under) && !known.has(p)) : [];
+  } else if (manifest?.archive_path) {
+    unknownAdditions = true;
   }
-  const ok = missing.length === 0 && altered.length === 0 && added.length === 0;
+  const ok = missing.length === 0 && altered.length === 0 && remoded.length === 0
+    && added.length === 0 && !unknownAdditions;
   return {
-    ok, missing, altered, added,
+    ok, missing, altered, remoded, added, unknownAdditions,
     message: ok
-      ? `${recorded.length} artifact(s) present and identical`
+      ? `${recorded.length} artifact(s) present, identical, and alone`
       : [
         missing.length ? `${missing.length} missing (${missing.slice(0, 3).join(', ')})` : null,
         altered.length ? `${altered.length} altered (${altered.slice(0, 3).join(', ')})` : null,
+        remoded.length ? `${remoded.length} with a different mode or type: ${remoded.slice(0, 3).join(', ')}` : null,
         added.length ? `${added.length} added to the frozen set (${added.slice(0, 3).join(', ')})` : null,
+        unknownAdditions ? 'the merge tree could not be listed, so whether anything was added to the frozen set is unknown — and unknown is not empty' : null,
       ].filter(Boolean).join('; '),
   };
 }

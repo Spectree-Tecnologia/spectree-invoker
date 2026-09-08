@@ -33,7 +33,7 @@ import {
 } from './lib/closure-prep.mjs';
 import {
   readLifecycle, updateLifecycle, beginOperation, advanceOperation, completeOperation,
-  pendingOperation, newPreparationId, newOperationId, PHASE,
+  abandonOperation, pendingOperation, newPreparationId, newOperationId, PHASE, RESUMABLE,
 } from './lib/lifecycle.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
@@ -52,8 +52,19 @@ const flagValue = (name) => {
   return v === undefined || v.startsWith('--') ? undefined : v;
 };
 const reopenReason = flagValue('reason');
+const resume = argv.includes('--resume');
+const abandon = argv.includes('--abandon');
+// The one honest escape from `started`: the operator looked and says the command did run, so the
+// operation carries on from `observed` WITHOUT running it again. It is a recorded human decision,
+// not a repair, which is why it needs a reason like a reopening does.
+const consolidationRan = argv.includes('--consolidation-ran');
+// The token a dry run hands back. Applying a plan means applying it against the world the plan was
+// computed in — without it, `--apply` re-reads and reserves against whatever is there NOW, so a
+// plan taken before a reopening would be applied after it as if nothing had happened. Same idea as
+// `state.mjs transition --expect`.
+const expectControl = flagValue('expect-control');
 
-const USAGE = 'usage: prepare-closure.mjs <change-id> [--apply] [--legacy] [--json] [--reopen --reason "<why>"]';
+const USAGE = 'usage: prepare-closure.mjs <change-id> [--apply] [--legacy] [--json] [--reopen --reason "<why>"]\n                                     [--resume [--consolidation-ran]] [--abandon --reason "<why>"]';
 
 /** One structured document on every path — `--json` never prints a plan on one and prose on another. */
 function answer(doc, { code = 0 } = {}) {
@@ -95,15 +106,83 @@ if (lc.present && !lc.doc) {
 const lifecycle = lc.doc;
 const generation = lifecycle?.generation ?? 1;
 
+// A plan is applied against the world it was computed in. Checked HERE, before any branch —
+// `unchanged` writes nothing and would have exited cleanly, reporting that a stale plan had been
+// applied when what actually happened is that it was never applied at all.
+if (expectControl !== undefined && Number(expectControl) !== (lifecycle?.revision ?? 0)) {
+  refuse('E_CONCURRENT_UPDATE',
+    `the closure control moved underneath this write: expected revision ${expectControl}, found ${lifecycle?.revision ?? 0}`,
+    [
+      'This plan was computed against a closure that has since moved — an approval, a refresh or a',
+      'reopening landed in between. Nothing was run and nothing was written.',
+      'Read it again and decide against what is there now.',
+    ]);
+}
+
 const open = pendingOperation(lifecycle);
+
+// Abandoning is decided about an operation, so it is handled before anything else is computed.
+if (abandon) {
+  if (!open) die('--abandon needs an unfinished operation to abandon; there is none', 2);
+  if (!reopenReason || !reopenReason.trim()) {
+    die('--abandon requires --reason "<why>": abandoning records that a person looked and decided, and that is not done anonymously', 2);
+  }
+  if (!apply) die('--abandon writes; add --apply', 2);
+  abandonOperation(root, changeId, open.operation_id, reopenReason);
+  store.appendHistory(changeId, {
+    event_id: `closure_operation_abandoned:${open.operation_id}`,
+    type: 'closure_operation_abandoned',
+    at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+    operation_id: open.operation_id, kind: open.kind, phase: open.phase, reason: reopenReason,
+    schema_version: SCHEMA_VERSION,
+  });
+  console.error(`abandoned ${open.kind} operation ${open.operation_id} (was at "${open.phase}")`);
+  console.error('  Whatever it wrote is still there, untouched. Nothing was reverted.');
+  answer({ change_id: changeId, apply, state: 'abandoned', operation_id: open.operation_id, phase: open.phase, reason: reopenReason });
+}
+
 if (open && !(reopen && open.kind === 'reopen')) {
+  // `started` is the one phase nothing resolves on its own: the command may or may not have run.
+  // `--consolidation-ran` is the operator saying they looked — recorded, and it moves the
+  // operation to `observed` rather than running anything.
+  if (open.phase === PHASE.STARTED && resume && consolidationRan && apply) {
+    if (!reopenReason || !reopenReason.trim()) {
+      die('--consolidation-ran requires --reason "<why>": it records a human decision about a command whose result nobody observed', 2);
+    }
+    advanceOperation(root, changeId, open.operation_id, PHASE.OBSERVED, { resolved_by_operator: reopenReason });
+    store.appendHistory(changeId, {
+      event_id: `closure_uncertainty_resolved:${open.operation_id}`,
+      type: 'closure_uncertainty_resolved',
+      at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+      operation_id: open.operation_id, reason: reopenReason, schema_version: SCHEMA_VERSION,
+    });
+    console.error(`recorded: the consolidation of ${open.operation_id} did run — ${reopenReason}`);
+  } else if (!(resume && RESUMABLE.has(open.phase) && apply)) {
+    refuse('E_OPERATION_PENDING',
+      `${changeId} has an unfinished ${open.kind} operation (${open.operation_id}) at phase "${open.phase}"`,
+      [
+        open.recovery,
+        open.uncertain
+          ? `Either:  --apply --resume --consolidation-ran --reason "<what you checked>"   (it ran; continue without running it again)`
+          : `Recover it with:  node scripts/prepare-closure.mjs ${changeId} --apply --resume`,
+        open.uncertain
+          ? `or:      --apply --abandon --reason "<why>"                                   (drop the operation; what it wrote stays)`
+          : `or drop it with:  node scripts/prepare-closure.mjs ${changeId} --apply --abandon --reason "<why>"`,
+        'Nothing was run and nothing was written.',
+      ],
+      { pending_operation: open });
+  }
+}
+
+/** The operation this run is finishing, re-read after any resolution above. */
+const resuming = resume && apply ? pendingOperation(readLifecycle(root, changeId).doc) : null;
+if (resume && apply && !resuming) {
+  die(`--resume needs an unfinished operation to resume; ${changeId} has none`, 2);
+}
+if (resuming && !RESUMABLE.has(resuming.phase)) {
   refuse('E_OPERATION_PENDING',
-    `${changeId} has an unfinished ${open.kind} operation (${open.operation_id}) at phase "${open.phase}"`,
-    [open.uncertain
-      ? 'An external command was started and its result was never observed. Decide explicitly whether it ran; this will not run it again for convenience.'
-      : open.recovery,
-      'Nothing was run and nothing was written.'],
-    { pending_operation: open });
+    `${changeId}: an operation at "${resuming.phase}" is not resumable on its own`,
+    [resuming.recovery, 'Nothing was run and nothing was written.'], { pending_operation: resuming });
 }
 
 // --- 1. the change's own contract ---------------------------------------------------------
@@ -229,8 +308,11 @@ if (existingRead.present && !existingRead.doc) {
 }
 const existing = existingRead.doc;
 
-const preparationId = reopen || !existing ? newPreparationId() : existing.preparation_id ?? newPreparationId();
-const nextGeneration = reopen ? generation + 1 : generation;
+// A resumed operation keeps the identity it reserved before its first effect. Minting a new one
+// would finish a different preparation from the one that was interrupted, under the same words.
+const preparationId = resuming?.plan?.preparation_id
+  ?? (reopen || !existing ? newPreparationId() : existing.preparation_id ?? newPreparationId());
+const nextGeneration = resuming?.plan?.generation ?? (reopen ? generation + 1 : generation);
 
 const draft = buildManifest({
   changeId, projectId: project?.project_id, generation: nextGeneration, preparationId,
@@ -421,22 +503,45 @@ if (verdict.state === 'unchanged' && !blocking.length && !reopen) {
   // no consolidation is re-run, no folder is moved, and neither digest moves — which is why
   // no evidence and no approval is invalidated. Progress is not scope, and it is not a
   // candidate either.
+  // A refresh mints a NEW preparation id, because the artifact record is part of the identity:
+  // keeping the id would leave two different documents claiming to be one immutable snapshot,
+  // and an approval naming that id could no longer say which of them it covered.
+  const refreshedId = newPreparationId();
   const refreshed = buildManifest({
     ...toBuildArgs(existing),
+    preparationId: refreshedId,
     artifacts: record.current,
     preparedAt: existing.prepared_at,
   });
   const at = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   const opId = newOperationId('refresh');
-  beginOperation(root, changeId, { kind: 'refresh', operationId: opId, projectId: project?.project_id, detail: { preparation_id: existing.preparation_id } });
+  try {
+    beginOperation(root, changeId, {
+      kind: 'refresh', operationId: opId, projectId: project?.project_id,
+      detail: { from_preparation: existing.preparation_id },
+      plan: { preparation_id: refreshedId, generation: existing.generation, archive_path: existing.archive_path, reopen: false, superseded: [] },
+      // The decision above was computed at this control revision. An approval landing between the
+      // two is exactly the race that let a refresh rewrite a record approved a moment earlier.
+      expectedRevision: expectControl === undefined ? lifecycle?.revision : Number(expectControl),
+    });
+  } catch (e) {
+    refuse(e.code ?? 'E_OPERATION_PENDING', e.message, [
+      e.code === 'E_CONCURRENT_UPDATE'
+        ? 'The closure moved between this refresh\'s decision and its reservation — an approval or a reopening landed in between. Nothing was written; re-read and decide again.'
+        : 'Nothing was written.',
+    ]);
+  }
   advanceOperation(root, changeId, opId, PHASE.PERSISTING);
-  writeFileSync(join(root, manifestPath(changeId)), `${JSON.stringify({ ...refreshed, artifacts_refreshed_at: at }, null, 2)}\n`);
-  completeOperation(root, changeId, opId, (cur) => ({ ...cur, current_preparation: refreshed.preparation_id }));
+  const body = `${JSON.stringify({ ...refreshed, artifacts_refreshed_at: at }, null, 2)}\n`;
+  mkdirSync(dirname(join(root, snapshotPath(changeId, refreshedId))), { recursive: true });
+  writeFileSync(join(root, snapshotPath(changeId, refreshedId)), body);
+  writeFileSync(join(root, manifestPath(changeId)), body);
   store.appendHistory(changeId, {
     event_id: `closure_artifacts_refreshed:${opId}`,
     type: 'closure_artifacts_refreshed',
     at,
     operation_id: opId,
+    from_preparation: existing.preparation_id,
     preparation_id: refreshed.preparation_id,
     preparation_digest: refreshed.preparation_digest,
     contract_digest: refreshed.contract_digest,
@@ -444,6 +549,7 @@ if (verdict.state === 'unchanged' && !blocking.length && !reopen) {
     artifacts: record.current.length,
     schema_version: SCHEMA_VERSION,
   });
+  completeOperation(root, changeId, opId, (cur) => ({ ...cur, current_preparation: refreshed.preparation_id }));
   if (!asJson) {
     console.log(`refreshed — ${changeId} keeps its preparation; only the record of ${record.current.length} artifact(s) was brought up to date.`);
     console.log('  The contract and the candidate did not move, so nothing that was proven about them was invalidated.');
@@ -468,23 +574,43 @@ function toBuildArgs(m) {
 }
 
 // --- 5. the write. One operation, phases recorded before the effects. -------------------------
-const operationId = newOperationId(reopen ? 'reopen' : 'prepare');
-try {
-  beginOperation(root, changeId, {
-    kind: reopen ? 'reopen' : 'prepare',
-    operationId,
-    projectId: project?.project_id,
-    detail: { preparation_id: preparationId, generation: nextGeneration, reason: reopenReason ?? null },
-    expectedRevision: lifecycle?.revision,
-  });
-} catch (e) {
-  refuse(e.code ?? 'E_OPERATION_PENDING', e.message, ['Nothing was run and nothing was written.']);
+//
+// The reservation carries `expectedRevision`: the control revision this run's DECISION was
+// computed against. If anything moved in between — an approval landing, a reopening — the
+// reservation fails and nothing is applied. A lock taken at write time does not make a decision
+// taken before it fresh, and that is how a refresh overwrote a record approved a moment earlier.
+const operationId = resuming?.operation_id ?? newOperationId(reopen ? 'reopen' : 'prepare');
+if (!resuming) {
+  try {
+    beginOperation(root, changeId, {
+      kind: reopen ? 'reopen' : 'prepare',
+      operationId,
+      projectId: project?.project_id,
+      detail: { reason: reopenReason ?? null },
+      // Written before the first effect and never replaced, so a recovery finishes the operation
+      // that was interrupted instead of guessing at what it had planned.
+      plan: {
+        preparation_id: preparationId,
+        generation: nextGeneration,
+        archive_path: archiveRel,
+        reopen,
+        superseded: covering.map((a) => a.approval_id),
+      },
+      expectedRevision: expectControl === undefined ? lifecycle?.revision : Number(expectControl),
+    });
+  } catch (e) {
+    refuse(e.code ?? 'E_OPERATION_PENDING', e.message, [
+      e.code === 'E_CONCURRENT_UPDATE'
+        ? 'The closure moved between this run\'s decision and its reservation. Nothing was applied; re-read and decide again.'
+        : 'Nothing was run and nothing was written.',
+    ]);
+  }
 }
 
 // A reopening SUSPENDS the previous authority before any effect. Interrupted half way, the old
 // approval must already be unusable — otherwise a crash in the middle leaves a retired record
 // still authorising a merge.
-if (reopen) {
+if (reopen && !resuming) {
   const at = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   updateLifecycle(root, changeId, (cur) => ({
     ...cur,
@@ -536,21 +662,36 @@ if (reopen) {
 const changeDirNow = existsSync(changeDir) ? `docs/changes/${changeId}` : (alreadyArchived ? archiveRel : `docs/changes/${changeId}`);
 const resolved = resolveCommand(consolidation.command, { changeId, changeDir: changeDirNow });
 
-advanceOperation(root, changeId, operationId, PHASE.STARTED, { command: commandDigest(resolved) });
-const ran = launch(resolved, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-advanceOperation(root, changeId, operationId, PHASE.OBSERVED, { exit_code: ran.status ?? null });
-
-const output = `${ran.stdout ?? ''}${ran.stderr ?? ''}`;
-if (output) process.stderr.write(output.endsWith('\n') ? output : `${output}\n`);
-const consolidationRecord = {
-  command_digest: commandDigest(resolved),
-  argv_length: resolved.length,
-  exit_code: ran.status ?? null,
-  result: ran.error ? 'INFRA_ERROR' : ran.status === 0 ? 'PASS' : 'FAIL',
-};
-commands.push({ check: resolved.join(' '), exit_code: ran.status ?? null, result: consolidationRecord.result });
-if (ran.error || ran.status !== 0) {
-  note(`spec consolidation failed (${ran.error ? ran.error.message : `exit ${ran.status}`}); the delta was not merged into the living spec`);
+let consolidationRecord;
+if (resuming) {
+  // Observed once, recorded once. Re-running a command whose result is already on record would
+  // make a recovery an execution, and the whole point of recording the phase is that it is not.
+  consolidationRecord = resuming.detail?.consolidation ?? {
+    command_digest: commandDigest(resolved), argv_length: resolved.length,
+    exit_code: null, result: 'PASS',
+    note: 'resumed from a recorded observation',
+  };
+  commands.push({ check: resolved.join(' '), exit_code: consolidationRecord.exit_code, result: consolidationRecord.result });
+  console.error(`resuming ${operationId} from "${resuming.phase}" — the consolidation is NOT run again.`);
+} else {
+  advanceOperation(root, changeId, operationId, PHASE.STARTED, { command: commandDigest(resolved) });
+  const ran = launch(resolved, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const output = `${ran.stdout ?? ''}${ran.stderr ?? ''}`;
+  if (output) process.stderr.write(output.endsWith('\n') ? output : `${output}\n`);
+  consolidationRecord = {
+    command_digest: commandDigest(resolved),
+    argv_length: resolved.length,
+    exit_code: ran.status ?? null,
+    result: ran.error ? 'INFRA_ERROR' : ran.status === 0 ? 'PASS' : 'FAIL',
+  };
+  advanceOperation(root, changeId, operationId, PHASE.OBSERVED, { consolidation: consolidationRecord });
+  commands.push({ check: resolved.join(' '), exit_code: ran.status ?? null, result: consolidationRecord.result });
+  if (ran.error || ran.status !== 0) {
+    note(`spec consolidation failed (${ran.error ? ran.error.message : `exit ${ran.status}`}); the delta was not merged into the living spec`);
+  }
+}
+if (consolidationRecord.result !== 'PASS' && resuming) {
+  note(`the recorded consolidation of this operation ${consolidationRecord.result === 'FAIL' ? 'failed' : 'did not run'}; a resume finishes an operation, it does not repair one`);
 }
 
 // What the consolidation itself did goes through the same ownership check. It is a command the
@@ -659,13 +800,9 @@ mkdirSync(dirname(snapFile), { recursive: true });
 writeFileSync(snapFile, `${JSON.stringify(manifest, null, 2)}\n`);
 writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
 
-completeOperation(root, changeId, operationId, (cur) => ({
-  ...cur,
-  generation: nextGeneration,
-  current_preparation: preparationId,
-  project_id: cur.project_id ?? project?.project_id ?? null,
-}));
-
+// The event first, then the close. A crash between them would otherwise lose the trail entry for
+// a write that had already happened, and an operation reported as finished with nothing recorded
+// about it is the one shape a trail may not take.
 store.appendHistory(changeId, {
   event_id: `closure_prepared:${operationId}`,
   type: 'closure_prepared',
@@ -683,8 +820,15 @@ store.appendHistory(changeId, {
   schema_version: SCHEMA_VERSION,
 });
 
+completeOperation(root, changeId, operationId, (cur) => ({
+  ...cur,
+  generation: nextGeneration,
+  current_preparation: preparationId,
+  project_id: cur.project_id ?? project?.project_id ?? null,
+}));
+
 if (!asJson) {
-  console.log(`prepared ${changeId}  (generation ${nextGeneration}, ${preparationId})`);
+  console.log(`${resuming ? 'resumed and prepared' : 'prepared'} ${changeId}  (generation ${nextGeneration}, ${preparationId})`);
   console.log(`  contract   ${manifest.contract_digest.slice(0, 22)}...`);
   console.log(`  candidate  ${manifest.candidate_digest.slice(0, 22)}...`);
   console.log(`  identity   ${manifest.preparation_digest.slice(0, 22)}...`);

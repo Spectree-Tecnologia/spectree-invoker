@@ -173,6 +173,9 @@ function resume(changeId) {
     // Retired by a reopening: still in the trail, no longer authority. Resume that showed them
     // beside the ones in force answered "is this change approved" with a list, not an answer.
     approvals_retired: change ? (cc?.authority.retired ?? []).map((a) => ({ approval_id: a.approval_id, gate: a.gate, by: a.granted_by?.identity, revision: a.revision })) : [],
+    // An integration approval whose durable record is missing: history, never authority, and a
+    // specific enough problem to name rather than fold into "no approval on record".
+    approvals_unrecorded: change ? (cc?.authority.unrecorded ?? []).map((a) => ({ approval_id: a.approval_id, gate: a.gate })) : [],
     authority_available: change ? (cc?.authority.ok !== false) : null,
     authority_problem: change && cc?.authority.ok === false ? { code: cc.authority.code, message: cc.authority.message } : null,
     closure: change ? {
@@ -228,6 +231,9 @@ function printResume(r) {
   }
   L.push(`approvals      ${r.approvals.length ? r.approvals.map((a) => `${a.gate} by ${a.by} (${a.kind})`).join('; ') : 'none in force'}`);
   if (r.approvals_retired?.length) L.push(`  retired      ${r.approvals_retired.map((a) => `${a.approval_id} (${a.gate}) — replaced record, no authority`).join('; ')}`);
+  if (r.approvals_unrecorded?.length) {
+    L.push(`  unrecorded   ${r.approvals_unrecorded.map((a) => `${a.approval_id} (${a.gate}) — the closure control never recorded it, so it is not authority`).join('; ')}`);
+  }
   if (r.authority_problem) L.push(`authority      UNAVAILABLE — ${r.authority_problem.code}: ${r.authority_problem.message}`);
   if (r.closure) {
     L.push(`closure        generation ${r.closure.generation ?? '?'}${r.closure.preparation_id ? `, ${r.closure.preparation_id}` : ', not prepared'}${r.closure.problem ? `  [${r.closure.problem.code}]` : ''}`);
@@ -357,10 +363,19 @@ switch (cmd) {
       contentDigest: d.content.digest,
       contractDigest: d.contract.digest,
       closure: closureVerdict(change, d, cc),
-      // The merge is OBSERVED by post-merge.mjs, never asserted here.
+      // The merge is OBSERVED by post-merge.mjs, never asserted here — and the receipt is checked
+      // WHOLE. Comparing only the fields this caller happened to assemble is how a four-key JSON
+      // naming a real preparation reached `integrated` with no merge, no PR and no run anywhere.
       receipt: ['integrated', 'closed'].includes(to)
         ? receiptCovers(cc.receipt, {
-          changeId: id, generation: cc.generation, preparationId: cc.manifest?.preparation_id,
+          changeId: id,
+          generation: cc.generation,
+          preparationId: cc.manifest?.preparation_id,
+          preparationDigest: cc.manifest?.preparation_digest,
+          contractDigest: d.contract.digest,
+          legacy: change.closure_mode === 'legacy',
+          lifecycle: cc.lifecycle,
+          inForceIds: new Set(cc.authority.inForce.map((a) => a.approval_id)),
         })
         : undefined,
       preparation: (a) => approvalCoversPreparation(a, cc.manifest),
@@ -387,6 +402,18 @@ switch (cmd) {
     } else if (change.state === 'blocked') {
       delete next.blocked_from;
       delete next.blocked_reason;
+    }
+    // The closure control is re-read immediately before the write. `state_revision` catches a
+    // concurrent transition, but a reopening moves the GENERATION and the authority without
+    // touching it — so a transition decided a moment earlier would apply against an approval that
+    // had already been retired.
+    const afterDecision = closureContext(id);
+    if ((cc.lifecycle?.revision ?? null) !== (afterDecision.lifecycle?.revision ?? null)) {
+      console.error(`REFUSED ${change.state} -> ${to}`);
+      console.error('  E_CONCURRENT_UPDATE: the closure moved between this decision and this write ' +
+        `(control revision ${cc.lifecycle?.revision ?? 'none'} -> ${afterDecision.lifecycle?.revision ?? 'none'}).`);
+      console.error('  Nothing was written. Read it again and decide against what is there now.');
+      process.exit(1);
     }
     const saved = store.putChange(next, { event: { type: 'transition', from: change.state, to }, expected: change.state_revision });
     console.log(`${change.state} -> ${to}  (state_revision ${saved.state_revision})`);
@@ -569,6 +596,14 @@ switch (cmd) {
         if (doc.gate === 'integration' && doc.change_id) {
           const cc = closureContext(doc.change_id);
           if (cc.authority.ok === false) die(`${cc.authority.code}: ${cc.authority.message}`, 1);
+          // An unfinished write comes FIRST: whatever is on disk is half of two different states,
+          // and approving over it approves neither of them. It is also the sharper diagnosis —
+          // "there is no preparation to name" is true and sends the operator looking in the wrong
+          // place when the reason there is none is a write that stopped part way.
+          if (cc.pending) {
+            die(`E_OPERATION_PENDING: ${doc.change_id} has an unfinished ${cc.pending.kind} operation ` +
+                `(${cc.pending.operation_id}) at phase "${cc.pending.phase}". ${cc.pending.recovery}`, 1);
+          }
           const legacyMode = store.change(doc.change_id)?.closure_mode === 'legacy';
           if (!legacyMode) {
             if (!doc.preparation) {
@@ -585,23 +620,36 @@ switch (cmd) {
             if (!covers.ok) die(`${covers.code}: ${covers.message}`, 1);
           }
         }
-        store.putApproval(doc);
-        // Bind it durably: the snapshot it names becomes the approved reference, and no later
-        // path writes over that file.
+        // ONE transaction for an integration approval: the durable entry and the document itself
+        // are written inside the same critical section, reserved against the control revision this
+        // decision was taken at. Two separate boundaries left half an approval readable as whole
+        // authority, and let a refresh that had already decided overwrite the record being
+        // approved a moment later.
         if (doc.gate === 'integration' && doc.change_id && doc.preparation) {
-          updateLifecycle(root, doc.change_id, (cur) => ({
-            ...cur,
-            approved: [
-              ...cur.approved.filter((r) => r.approval_id !== doc.approval_id),
-              {
-                approval_id: doc.approval_id,
-                preparation_id: doc.preparation.preparation_id,
-                generation: doc.preparation.generation,
-                preparation_digest: doc.preparation.preparation_digest,
-                at: doc.timestamp,
-              },
-            ],
-          }));
+          const cc = closureContext(doc.change_id);
+          try {
+            updateLifecycle(root, doc.change_id, (cur) => ({
+              ...cur,
+              approved: [
+                ...cur.approved.filter((r) => r.approval_id !== doc.approval_id),
+                {
+                  approval_id: doc.approval_id,
+                  preparation_id: doc.preparation.preparation_id,
+                  generation: doc.preparation.generation,
+                  preparation_digest: doc.preparation.preparation_digest,
+                  at: doc.timestamp,
+                },
+              ],
+            }), {
+              expectedRevision: cc.lifecycle?.revision,
+              after: () => store.putApproval(doc),
+            });
+          } catch (e) {
+            die(`${e.code ?? 'E_APPROVAL_NOT_RECORDED'}: ${e.message}` +
+                (e.code === 'E_CONCURRENT_UPDATE'
+                  ? '\n  The closure moved between reading the preparation and recording the approval. Nothing was written; read it again.'
+                  : ''), 1);
+          }
           store.appendHistory(doc.change_id, {
             event_id: `integration_approved_record:${doc.approval_id}`,
             type: 'integration_approval_recorded',
@@ -611,6 +659,8 @@ switch (cmd) {
             generation: doc.preparation.generation,
             schema_version: SCHEMA_VERSION,
           });
+        } else {
+          store.putApproval(doc);
         }
         console.log(`recorded approval ${doc.approval_id} for gate ${doc.gate}`);
       }

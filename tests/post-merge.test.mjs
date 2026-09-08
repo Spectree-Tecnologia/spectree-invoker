@@ -17,7 +17,7 @@ import { Store } from '../scripts/lib/store.mjs';
 import { contractDigestAt, contentDigestAt, gatedDigest } from '../scripts/lib/digest.mjs';
 import { buildManifest } from '../scripts/lib/closure-prep.mjs';
 import { emptyLifecycle, lifecyclePath, snapshotPath, currentPath } from '../scripts/lib/lifecycle.mjs';
-import { gitRepo, tempDir, cleanup, now, REPO, stubGh, greenRun, integrationApproval, ciConfig } from './helpers.mjs';
+import { gitRepo, tempDir, cleanup, now, REPO, stubGh, greenRun, integrationApproval, ciConfig, recordIntegrationApproval } from './helpers.mjs';
 
 /**
  * A change that reached `integration_approved`, with a merge on `main` and an approval bound to
@@ -83,12 +83,19 @@ function fixture({
   if (prepared) {
     // The artifacts as they stood on the CANDIDATE: that is what a preparation would have
     // recorded, and what the merge is then checked against.
-    const blobFor = (p) => execFileSync('git', ['rev-parse', `${candidate}:${p}`], { cwd: repo.root, encoding: 'utf8' }).trim();
+    // Path, TYPE, MODE and blob — the whole tree entry, because a merge that changes only the
+    // mode changes what the file may do and nothing else would see it.
+    const entryFor = (p) => {
+      const line = execFileSync('git', ['ls-tree', candidate, '--', p], { cwd: repo.root, encoding: 'utf8' }).trim();
+      const [meta] = line.split('	');
+      const [mode, type, blob] = meta.split(/\s+/);
+      return { path: p, type, mode, op: 'archived', digest: blob };
+    };
     manifest = buildManifest({
       changeId: 'c1', projectId: 'fixture', generation: 1, baseRevision: base,
       contractDigest: landedContract.digest, candidateDigest: landed.digest, preparedAt: now(),
       archivePath: 'docs/changes/archive/2026-01-01-c1',
-      artifacts: [contractFile, taskFile].map((p) => ({ path: p, type: 'blob', op: 'archived', digest: blobFor(p) })),
+      artifacts: [contractFile, taskFile].map(entryFor),
     });
     mkdirSync(join(repo.root, '.spectree/closure/c1'), { recursive: true });
     writeFileSync(join(repo.root, currentPath('c1')), JSON.stringify(manifest, null, 2));
@@ -115,7 +122,7 @@ function fixture({
   if (extraAncestorApproval) {
     // Named so it sorts FIRST: an ancestor, for other content. And the matching one is granted
     // at a commit that is not in the merge at all.
-    store.putApproval(integrationApproval({
+    recordIntegrationApproval(repo.root, 'c1', integrationApproval({
       approvalId: 'ap-a-ancestor', changeId: 'c1', scopeDigest: 'sha256:something-else-entirely',
       revision: ancestor, manifest, target,
     }));
@@ -127,13 +134,13 @@ function fixture({
     repo.git(['add', '-A']); repo.git(['commit', '-qm', 'the same content, off to one side']);
     const sibling = repo.git(['rev-parse', 'HEAD']).trim();
     repo.git(['checkout', '-q', 'candidate']);
-    store.putApproval(integrationApproval({
+    recordIntegrationApproval(repo.root, 'c1', integrationApproval({
       approvalId: 'ap-z-matching', changeId: 'c1',
       scopeDigest: gatedDigest(contractDigestAt(repo.root, merge, change).digest, contentDigestAt(repo.root, merge).digest),
       revision: sibling, manifest, target,
     }));
   } else {
-    store.putApproval(integrationApproval({
+    recordIntegrationApproval(repo.root, 'c1', integrationApproval({
       approvalId: 'ap-integration', changeId: 'c1', scopeDigest: approvedGate,
       revision: candidate, manifest, target,
     }));

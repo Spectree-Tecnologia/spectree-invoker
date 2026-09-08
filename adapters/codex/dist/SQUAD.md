@@ -275,18 +275,36 @@ confirmation into a second delivery. A real failure stops the closure and produc
 impediment; a short confirmation that hides one is worse than a long one.
 
 **And it produces a receipt, which `integrated` and `closed` require.** The receipt names the
-repository, the PR, the merge commit, the preparation, the approval and the workflow runs with
-their attempts, and the moment they were observed. Without it a `state transition … integrated`
+repository, the PR, the head, the base branch, the merge commit, the preparation and its digest,
+the approval, the contract and candidate digests, and the workflow runs with their attempts, plus
+the moment they were observed. Every one of those is **required**, and the check is on the record's
+structure before any comparison: a four-key document naming a real preparation is not a receipt,
+however true each of its four keys happens to be. The closure control also has to point at it, so
+a file placed where a receipt goes is a file. Without it a `state transition … integrated`
 asserted an integration nobody had looked at, and the two commands disagreed about the same
 merge. A receipt is an observation about ONE merge of ONE preparation: after a reopening it
 stops covering, and a historical receipt is never a claim that a later re-run of the CI is green.
 
-**A write that stopped part way is a state, not a silence.** Every closure write records its
-phase before its effects — intent, started, observed, persisting, done — so an interrupted run is
-identifiable. `resume` reports the phase and the recovery, and the gates refuse to authorise over
-a set nobody finished applying. The one phase nothing resolves automatically is *started*: an
-external command was launched and its result was never observed, so whether it ran is a question
-for a human, and running it again for convenience is a decision this squad does not make.
+**A write that stopped part way is a state, not a silence — and every state named has a command
+that acts on it.** Every closure write records its phase before its effects: intent, started,
+observed, persisting, done. `resume` reports the phase and the recovery, and the gates refuse to
+authorise over a set nobody finished applying.
+
+`--resume` finishes an operation that was interrupted at *observed* or *persisting*, **without
+running the consolidation again** — the result is already recorded, and re-running it would make a
+recovery an execution. The one phase nothing resolves on its own is **started**: the command was
+launched and its result was never observed, so whether it ran is a question for a person. Two
+explicit answers exist and both are recorded — `--resume --consolidation-ran --reason "<what you
+checked>"`, or `--abandon --reason "<why>"`, which drops the operation and leaves everything the
+command wrote exactly where it is. A message that names a recovery the tool does not implement is
+worse than no message.
+
+**And a decision is applied against the world it was computed in.** Every write reserves against
+the closure control revision its decision was taken at; a dry run hands that revision back, and
+`--apply --expect-control <revision>` applies the plan under it. An approval, a refresh or a
+reopening landing in between makes the reservation fail — nothing runs and nothing is written. A
+lock taken at write time does not make a decision taken before it fresh, which is how a refresh
+came to overwrite a record that had been approved a moment earlier.
 
 **And a green never becomes a commit.** "CI passed" is an event about a revision, not part of
 the revision — recording it inside the content it describes starts another run, which produces
