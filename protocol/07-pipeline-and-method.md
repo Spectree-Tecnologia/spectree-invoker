@@ -44,13 +44,47 @@ A project that offers no mechanism for consolidating its living spec closes the 
 declared as such on the change. Nobody hand-edits `docs/specs/` to fill the gap: a spec written
 by the same agent that approves it proves nothing.
 
+**A preparation has an identity, and an integration approval names it.** The snapshot carries a
+`preparation_id`, a `generation` and a `preparation_digest` over its whole artifact inventory —
+because content and contract are the only things an approval used to name, and the artifact
+record is in neither. An approval that named only those two kept matching across a reopening
+that replaced exactly that record. Recording an integration approval therefore means reading
+those three fields off the current snapshot and naming the integration too: repository, PR, head
+and base branch. A merge is confirmed against the PR that was approved, never against any PR
+whose merged tree happens to match.
+
+**An approved record is frozen, on every path.** Refresh, `stale` re-preparation, a deleted
+manifest with the approval still on record: all of them are refused before anything runs.
+Replacing it is done deliberately with `--reopen --reason "<why>"`, which keeps the approved
+snapshot byte for byte, retires the approval that covered it, raises the generation, and puts
+the change back at `implemented` — so a new integration approval is required. Retirement is
+DURABLE: it lives in the closure control, not in the manifest, because a document a restore can
+replace cannot be the only place a retirement is written down. And it is one shared rule, read
+by the preparation, the gates, `resume` and the confirmation alike — a retirement honoured by one
+command and ignored by the next is not a retirement.
+
 **The post-merge phase is a confirmation, and it is finite.** Read the merge result, confirm the
 PR and its base, confirm the integrated content is the authorised candidate, check the required
-checks, confirm the prepared artifacts are present, record the result, close. It is not a place
+checks, confirm the prepared artifacts are present, unchanged **and alone** — a file added inside
+the frozen folder belongs to nobody's record — record the result, close. It is not a place
 for a fresh architecture review, a rewrite of the roles, a manual recount of the backlog, an
 investigation into an auxiliary tool, or an opportunistic fix — each of those turns a
 confirmation into a second delivery. A real failure stops the closure and produces an
 impediment; a short confirmation that hides one is worse than a long one.
+
+**And it produces a receipt, which `integrated` and `closed` require.** The receipt names the
+repository, the PR, the merge commit, the preparation, the approval and the workflow runs with
+their attempts, and the moment they were observed. Without it a `state transition … integrated`
+asserted an integration nobody had looked at, and the two commands disagreed about the same
+merge. A receipt is an observation about ONE merge of ONE preparation: after a reopening it
+stops covering, and a historical receipt is never a claim that a later re-run of the CI is green.
+
+**A write that stopped part way is a state, not a silence.** Every closure write records its
+phase before its effects — intent, started, observed, persisting, done — so an interrupted run is
+identifiable. `resume` reports the phase and the recovery, and the gates refuse to authorise over
+a set nobody finished applying. The one phase nothing resolves automatically is *started*: an
+external command was launched and its result was never observed, so whether it ran is a question
+for a human, and running it again for convenience is a decision this squad does not make.
 
 **And a green never becomes a commit.** "CI passed" is an event about a revision, not part of
 the revision — recording it inside the content it describes starts another run, which produces

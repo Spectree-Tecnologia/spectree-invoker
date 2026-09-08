@@ -11,35 +11,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { writeFileSync, mkdirSync, readFileSync, chmodSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Store } from '../scripts/lib/store.mjs';
 import { contractDigestAt, contentDigestAt, gatedDigest } from '../scripts/lib/digest.mjs';
 import { buildManifest } from '../scripts/lib/closure-prep.mjs';
-import { gitRepo, tempDir, cleanup, now, REPO } from './helpers.mjs';
-
-/** A `gh` on PATH that answers from a JSON file the test controls. */
-function stubGh(dir, { pr, runs }) {
-  const shim = join(dir, 'shim');
-  mkdirSync(shim, { recursive: true });
-  writeFileSync(join(shim, 'answers.json'), JSON.stringify({ pr, runs }));
-  writeFileSync(join(shim, 'gh.cjs'), [
-    "const { readFileSync } = require('node:fs');",
-    "const a = JSON.parse(readFileSync(require('node:path').join(__dirname, 'answers.json'), 'utf8'));",
-    "process.stdout.write(JSON.stringify(process.argv[2] === 'pr' ? a.pr : a.runs));",
-  ].join('\n'));
-  writeFileSync(join(shim, 'gh.cmd'), `@"${process.execPath}" "${join(shim, 'gh.cjs')}" %*\r\n`);
-  writeFileSync(join(shim, 'gh'), `#!/bin/sh\nexec "${process.execPath}" "${join(shim, 'gh.cjs')}" "$@"\n`);
-  try { chmodSync(join(shim, 'gh'), 0o755); } catch { /* Windows */ }
-  return shim;
-}
+import { emptyLifecycle, lifecyclePath, snapshotPath, currentPath } from '../scripts/lib/lifecycle.mjs';
+import { gitRepo, tempDir, cleanup, now, REPO, stubGh, greenRun, integrationApproval, ciConfig } from './helpers.mjs';
 
 /**
  * A change that reached `integration_approved`, with a merge on `main` and an approval bound to
  * whichever tree the caller says was authorised.
  */
 function fixture({
-  mergeDiffers = false, prepared = true, ci = ['check'],
+  mergeDiffers = false, prepared = true, ci = ['classify', 'plugin'],
   rewriteContractInMerge = false, extraAncestorApproval = false, alterArtifactInMerge = false,
 } = {}) {
   const repo = gitRepo({ 'app.js': 'export const n = 1;\n', '.gitignore': '.spectree/\n' });
@@ -82,8 +67,8 @@ function fixture({
 
   const store = new Store(repo.root);
   store.init({
-    project_id: 'fixture', protocol_version: '1.0.0',
-    ...(ci ? { ci: { required_runs: ci } } : {}),
+    project_id: 'fixture', protocol_version: '1.0.0', repository: 'fixture/repo',
+    ...(ci ? { ci: ciConfig(ci) } : {}),
   });
   const change = {
     schema_version: '1.0.0', project_id: 'fixture', change_id: 'c1', change_type: 'feature',
@@ -91,6 +76,31 @@ function fixture({
     allowed_paths: ['app.js', 'docs'], deltaless: true, state: 'integration_approved',
   };
   store.putChange(change, { event: { type: 'opened' } });
+
+  const landed = contentDigestAt(repo.root, merge);
+  const landedContract = contractDigestAt(repo.root, merge, change);
+  let manifest = null;
+  if (prepared) {
+    // The artifacts as they stood on the CANDIDATE: that is what a preparation would have
+    // recorded, and what the merge is then checked against.
+    const blobFor = (p) => execFileSync('git', ['rev-parse', `${candidate}:${p}`], { cwd: repo.root, encoding: 'utf8' }).trim();
+    manifest = buildManifest({
+      changeId: 'c1', projectId: 'fixture', generation: 1, baseRevision: base,
+      contractDigest: landedContract.digest, candidateDigest: landed.digest, preparedAt: now(),
+      archivePath: 'docs/changes/archive/2026-01-01-c1',
+      artifacts: [contractFile, taskFile].map((p) => ({ path: p, type: 'blob', op: 'archived', digest: blobFor(p) })),
+    });
+    mkdirSync(join(repo.root, '.spectree/closure/c1'), { recursive: true });
+    writeFileSync(join(repo.root, currentPath('c1')), JSON.stringify(manifest, null, 2));
+    writeFileSync(join(repo.root, snapshotPath('c1', manifest.preparation_id)), JSON.stringify(manifest, null, 2));
+  }
+  // The durable control. Authority lives here, so a fixture that skipped it would be testing a
+  // state no real project can be in.
+  mkdirSync(join(repo.root, '.spectree/closure'), { recursive: true });
+  writeFileSync(join(repo.root, lifecyclePath('c1')), JSON.stringify({
+    ...emptyLifecycle('c1', 'fixture'),
+    current_preparation: manifest?.preparation_id ?? null,
+  }, null, 2));
 
   // The approval names the tree that was actually reviewed: the candidate's, contract included.
   const approvedContract = contractDigestAt(repo.root, candidate, change);
@@ -101,14 +111,14 @@ function fixture({
     granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
     scope_digest: approvedContract.digest, revision: candidate, timestamp: now(),
   });
+  const target = { repository: 'fixture/repo', pr: 999, headSha: candidate, baseBranch: 'main' };
   if (extraAncestorApproval) {
     // Named so it sorts FIRST: an ancestor, for other content. And the matching one is granted
     // at a commit that is not in the merge at all.
-    store.putApproval({
-      schema_version: '1.0.0', approval_id: 'ap-a-ancestor', change_id: 'c1', gate: 'integration',
-      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
-      scope_digest: 'sha256:something-else-entirely', revision: ancestor, timestamp: now(),
-    });
+    store.putApproval(integrationApproval({
+      approvalId: 'ap-a-ancestor', changeId: 'c1', scopeDigest: 'sha256:something-else-entirely',
+      revision: ancestor, manifest, target,
+    }));
     repo.git(['checkout', '-q', '-b', 'sibling', base]);
     writeFileSync(join(repo.root, 'app.js'), 'export const n = 2;\n');
     mkdirSync(join(repo.root, 'docs/changes/c1'), { recursive: true });
@@ -117,22 +127,18 @@ function fixture({
     repo.git(['add', '-A']); repo.git(['commit', '-qm', 'the same content, off to one side']);
     const sibling = repo.git(['rev-parse', 'HEAD']).trim();
     repo.git(['checkout', '-q', 'candidate']);
-    store.putApproval({
-      schema_version: '1.0.0', approval_id: 'ap-z-matching', change_id: 'c1', gate: 'integration',
-      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
-      scope_digest: gatedDigest(contractDigestAt(repo.root, merge, change).digest, contentDigestAt(repo.root, merge).digest),
-      revision: sibling, timestamp: now(),
-    });
+    store.putApproval(integrationApproval({
+      approvalId: 'ap-z-matching', changeId: 'c1',
+      scopeDigest: gatedDigest(contractDigestAt(repo.root, merge, change).digest, contentDigestAt(repo.root, merge).digest),
+      revision: sibling, manifest, target,
+    }));
   } else {
-    store.putApproval({
-      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
-      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
-      scope_digest: approvedGate, revision: candidate, timestamp: now(),
-    });
+    store.putApproval(integrationApproval({
+      approvalId: 'ap-integration', changeId: 'c1', scopeDigest: approvedGate,
+      revision: candidate, manifest, target,
+    }));
   }
 
-  const landed = contentDigestAt(repo.root, merge);
-  const landedContract = contractDigestAt(repo.root, merge, change);
   for (const property of ['pass2.attack', 'ci.green']) {
     store.putEvidence({
       schema_version: '1.0.0', evidence_id: `ev-${property}`, change_id: 'c1', property,
@@ -142,39 +148,28 @@ function fixture({
       result: 'PASS', timestamp: now(),
     });
   }
-  if (prepared) {
-    // The artifacts as they stood on the CANDIDATE: that is what a preparation would have
-    // recorded, and what the merge is then checked against.
-    const blobFor = (p) => execFileSync('git', ['rev-parse', `${candidate}:${p}`], { cwd: repo.root, encoding: 'utf8' }).trim();
-    mkdirSync(join(repo.root, '.spectree/closure'), { recursive: true });
-    writeFileSync(join(repo.root, '.spectree/closure/c1.json'), JSON.stringify(buildManifest({
-      changeId: 'c1', baseRevision: base, contractDigest: landedContract.digest,
-      candidateDigest: landed.digest, preparedAt: now(),
-      artifacts: [contractFile, taskFile].map((p) => ({ path: p, op: 'archived', digest: blobFor(p) })),
-    })));
-  }
 
   const pr = {
     number: 999, state: 'MERGED', mergedAt: now(), mergeCommit: { oid: merge },
     headRefOid: candidate, headRefName: 'candidate', baseRefName: 'main',
     url: 'https://example.invalid/pr/999',
   };
-  const runs = (ci ?? ['check']).map((name) => ({
-    databaseId: 1, name, workflowName: name, status: 'completed', conclusion: 'success', headSha: merge,
-  }));
-  const shim = stubGh(tempDir('spectree-gh-'), { pr, runs });
+  const green = greenRun(merge);
+  const shim = stubGh(tempDir('spectree-gh-'), {
+    repo: 'fixture/repo', pr, runs: [green.run], jobs: { [String(green.run.databaseId)]: green.jobs },
+  });
 
   const post = (...args) => {
     const r = spawnSync(process.execPath, [join(REPO, 'scripts/post-merge.mjs'), 'c1', '--pr', '999', ...args], {
-      cwd: repo.root, encoding: 'utf8',
-      env: { ...process.env, PATH: `${shim}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH}` },
+      cwd: repo.root, encoding: 'utf8', env: { ...process.env, PATH: shim.path() },
     });
     return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
   };
   const stateNow = () => new Store(repo.root).change('c1').state;
-  const setRuns = (list) => writeFileSync(join(shim, 'answers.json'), JSON.stringify({ pr, runs: list }));
-  const drop = () => { cleanup(repo.root); cleanup(join(shim, '..')); };
-  return { ...repo, store, post, stateNow, setRuns, candidate, merge, base, drop };
+  /** Replace the runs (and their jobs) the transport reports for this merge. */
+  const setRuns = (runs, jobs) => shim.set({ repo: 'fixture/repo', pr, runs, jobs: jobs ?? {} });
+  const drop = () => { cleanup(repo.root); cleanup(join(shim.dir, '..')); };
+  return { ...repo, store, post, stateNow, setRuns, candidate, merge, base, manifest, green, drop };
 }
 
 test('a merge that landed different content does not close the change, however good the checkout looks', () => {
@@ -188,7 +183,7 @@ test('a merge that landed different content does not close the change, however g
     const summary = JSON.parse(r.out);
     const failed = summary.steps.filter((s) => !s.ok).map((s) => s.name);
     assert.ok(failed.includes('what landed is what was authorised'), `expected the content check to fail, got ${failed.join(', ')}`);
-    assert.ok(failed.includes('one approval covers both the content and the history'));
+    assert.ok(failed.includes('one approval covers the content and the history'));
     assert.equal(summary.closed, false);
     assert.equal(f.stateNow(), 'integration_approved', 'and nothing moved');
   } finally { f.drop(); }
@@ -199,7 +194,7 @@ test('a merge that carries the approved tree closes the change, and adds no comm
   try {
     const before = f.git(['rev-parse', 'HEAD']).trim();
     const dry = f.post('--json');
-    assert.equal(dry.code, 0, dry.err);
+    assert.equal(dry.code, 0, `${dry.err}\n${dry.out}`);
     assert.equal(JSON.parse(dry.out).closed, false, 'a plan closes nothing');
     assert.equal(f.stateNow(), 'integration_approved');
 
@@ -249,7 +244,8 @@ test('a required run that failed, was cancelled, or never reported stops the clo
   for (const conclusion of ['failure', 'cancelled', 'timed_out']) {
     const f = fixture();
     try {
-      f.setRuns([{ databaseId: 1, name: 'check', workflowName: 'check', status: 'completed', conclusion, headSha: f.merge }]);
+      const bad = greenRun(f.merge, { conclusion });
+      f.setRuns([bad.run], { [String(bad.run.databaseId)]: bad.jobs });
       const r = f.post('--apply', '--json');
       assert.equal(r.code, 1, `${conclusion} must not close`);
       assert.match(JSON.stringify(JSON.parse(r.out).impediments), /E_CHECK_NOT_GREEN/);
@@ -262,15 +258,18 @@ test('a required run that failed, was cancelled, or never reported stops the clo
     none.setRuns([]);
     const r = none.post('--apply', '--json');
     assert.equal(r.code, 1, 'a run that never reported is not a run that passed');
-    assert.match(JSON.stringify(JSON.parse(r.out).impediments), /E_CHECK_MISSING/);
+    // Nothing ran at all: the refusal names the run that was never found, which is a sharper
+    // answer than a check that never reported inside a run nobody located.
+    assert.match(JSON.stringify(JSON.parse(r.out).impediments), /required run was found/);
   } finally { none.drop(); }
 
   const wrongSha = fixture();
   try {
-    wrongSha.setRuns([{ databaseId: 1, name: 'check', workflowName: 'check', status: 'completed', conclusion: 'success', headSha: 'f'.repeat(40) }]);
+    const elsewhere = greenRun('f'.repeat(40), { id: 5 });
+    wrongSha.setRuns([elsewhere.run], { [String(elsewhere.run.databaseId)]: elsewhere.jobs });
     const r = wrongSha.post('--apply', '--json');
     assert.equal(r.code, 1, 'a green run on another commit says nothing about this one');
-    assert.match(JSON.stringify(JSON.parse(r.out).impediments), /E_CHECK_MISSING/);
+    assert.match(JSON.stringify(JSON.parse(r.out).impediments), /required run was found/);
   } finally { wrongSha.drop(); }
 });
 
@@ -307,13 +306,58 @@ test('the fields asked of gh are fields gh has', () => {
   assert.match(src, /workflowName/, 'runs are matched on the workflow name gh actually reports');
 });
 
-test('gh is asked for one PR and one run list, not for a log to re-read', () => {
-  const src = readFileSync(join(REPO, 'scripts/lib/gh.mjs'), 'utf8');
-  assert.match(src, /--json/, 'every query names its fields');
-  assert.doesNotMatch(src, /gh\W+api\W+repos/, 'no unbounded API reads');
-  const post = readFileSync(join(REPO, 'scripts/post-merge.mjs'), 'utf8');
-  assert.equal((post.match(/pullRequest\(/g) ?? []).length, 1, 'the PR is read once');
-  assert.equal((post.match(/runsForSha\(/g) ?? []).length, 1, 'the runs are read once');
+test('a confirmation asks by identity and downloads no logs', () => {
+  const f = fixture();
+  try {
+    const r = f.post('--apply', '--json');
+    assert.equal(r.code, 0, r.err);
+    const m = JSON.parse(r.out).metrics;
+    // The count is bounded and reported rather than fixed at a magic number: the repository,
+    // the PR, the runs on that commit, and that one run's jobs. Pinning it at two once made a
+    // correct extra query look like a regression.
+    assert.ok(m.gh_calls > 0 && m.gh_calls <= 6, `bounded transport, got ${m.gh_calls}`);
+    assert.equal(m.log_bytes, 0, 'a green path downloads no log');
+    assert.ok(typeof m.elapsed_ms === 'number');
+
+    // And the queries themselves are scoped: repository, commit and workflow, server-side.
+    const src = readFileSync(join(REPO, 'scripts/lib/gh.mjs'), 'utf8');
+    assert.match(src, /'--repo'/, 'which repository is not a thing to infer');
+    assert.match(src, /'--commit'/, 'runs are asked for by commit, not filtered after the fact');
+    assert.match(src, /'--workflow'/);
+    assert.doesNotMatch(src, /gh\W+api\W+repos/, 'no unbounded API reads');
+  } finally { f.drop(); }
+});
+
+test('a full page of runs is an incomplete answer, and incomplete is not green', () => {
+  const f = fixture();
+  try {
+    // Thirty runs belonging to other commits, and the one being looked for is not among them.
+    // The old query fetched the most recent fifty of the whole repository and filtered
+    // afterwards, so this was reported as "it did not run".
+    const others = Array.from({ length: 30 }, (_, i) => greenRun('f'.repeat(40), { id: 100 + i }).run);
+    f.setRuns(others, {});
+    const r = f.post('--apply', '--json');
+    assert.equal(r.code, 1);
+    const failed = JSON.parse(r.out).steps.filter((s) => !s.ok);
+    assert.match(JSON.stringify(failed), /required run was found|never reported/);
+    assert.equal(f.stateNow(), 'integration_approved');
+  } finally { f.drop(); }
+});
+
+test('an older green attempt does not speak for the re-run that replaced it', () => {
+  const f = fixture();
+  try {
+    const old = greenRun(f.merge, { id: 1, attempt: 1 });
+    const rerun = greenRun(f.merge, { id: 2, attempt: 2, conclusion: 'failure' });
+    // Deliberately ordered with the green one first: the order of a response is not a decision.
+    f.setRuns([old.run, rerun.run], {
+      [String(old.run.databaseId)]: old.jobs,
+      [String(rerun.run.databaseId)]: rerun.jobs,
+    });
+    const r = f.post('--apply', '--json');
+    assert.equal(r.code, 1, 'the latest run of that workflow is the one that speaks');
+    assert.match(JSON.stringify(JSON.parse(r.out).impediments), /E_CHECK_NOT_GREEN/);
+  } finally { f.drop(); }
 });
 
 test('a merge that rewrote the contract does not close, even with the code untouched', () => {
@@ -343,7 +387,7 @@ test('one approval has to satisfy both halves; two cannot supply one each', () =
     assert.equal(r.code, 1);
     const summary = JSON.parse(r.out);
     const failed = summary.steps.filter((s) => !s.ok).map((s) => s.name);
-    assert.ok(failed.includes('one approval covers both the content and the history'), `got ${failed.join(', ')}`);
+    assert.ok(failed.includes('one approval covers the content and the history'), `got ${failed.join(', ')}`);
     assert.equal(f.stateNow(), 'integration_approved');
   } finally { f.drop(); }
 });
@@ -354,6 +398,6 @@ test('a prepared artifact altered in the merge is not the artifact that was prep
     const r = f.post('--apply', '--json');
     assert.equal(r.code, 1);
     const failed = JSON.parse(r.out).steps.filter((s) => !s.ok).map((s) => s.name);
-    assert.ok(failed.includes('prepared artifacts are in the merge, unchanged'), `got ${failed.join(', ')}`);
+    assert.ok(failed.includes('prepared artifacts are in the merge, unchanged and alone'), `got ${failed.join(', ')}`);
   } finally { f.drop(); }
 });

@@ -13,8 +13,9 @@ import { join } from 'node:path';
 import { Store } from '../scripts/lib/store.mjs';
 import { contentDigest, contractDigest, gatedDigest } from '../scripts/lib/digest.mjs';
 import { buildManifest } from '../scripts/lib/closure-prep.mjs';
+import { emptyLifecycle, lifecyclePath } from '../scripts/lib/lifecycle.mjs';
 import { classifyPath, KIND } from '../scripts/lib/diff.mjs';
-import { gitRepo, cleanup, now, REPO } from './helpers.mjs';
+import { gitRepo, cleanup, now, REPO, integrationApproval, lifecycleOf, preparationOf } from './helpers.mjs';
 
 /** A change at `implemented`, whose consolidation command leaves a mark when it runs. */
 function fixture({ allowed = ['src', 'docs'], baseFiles = {} } = {}) {
@@ -64,14 +65,18 @@ function gateFixture(manifestBody) {
   const contract = contractDigest(f.root, f.change);
   const content = contentDigest(f.root);
   const gated = gatedDigest(contract.digest, content.digest);
-  for (const gate of ['scope', 'integration']) {
-    f.store.putApproval({
-      schema_version: '1.0.0', approval_id: `ap-${gate}`, change_id: 'c1', gate,
-      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
-      scope_digest: gate === 'scope' ? contract.digest : gated,
-      revision: content.revision, timestamp: now(),
-    });
-  }
+  // Built ONCE: a preparation has a random identity, so calling the builder twice produces two
+  // different snapshots and an approval that names neither of them.
+  const prepared = typeof manifestBody === 'function' ? manifestBody({ contract, content }) : manifestBody;
+  f.store.putApproval({
+    schema_version: '1.0.0', approval_id: 'ap-scope', change_id: 'c1', gate: 'scope',
+    granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
+    scope_digest: contract.digest, revision: content.revision, timestamp: now(),
+  });
+  f.store.putApproval(integrationApproval({
+    approvalId: 'ap-integration', changeId: 'c1', scopeDigest: gated,
+    revision: content.revision, manifest: prepared,
+  }));
   for (const property of ['pass2.attack', 'ci.green']) {
     f.store.putEvidence({
       schema_version: '1.0.0', evidence_id: `ev-${property}`, change_id: 'c1', property,
@@ -85,8 +90,14 @@ function gateFixture(manifestBody) {
   f.store.putChange({ ...c, state: 'ci_green' }, { event: { type: 'transition', to: 'ci_green' }, expected: c.state_revision });
 
   mkdirSync(join(f.root, '.spectree/closure'), { recursive: true });
-  writeFileSync(join(f.root, '.spectree/closure/c1.json'), JSON.stringify(
-    typeof manifestBody === 'function' ? manifestBody({ contract, content }) : manifestBody));
+  const body = prepared;
+  writeFileSync(join(f.root, '.spectree/closure/c1.json'), JSON.stringify(body));
+  // Authority is durable, so a preparation with no control behind it is refused rather than
+  // read as "nothing was ever retired".
+  writeFileSync(join(f.root, lifecyclePath('c1')), JSON.stringify({
+    ...emptyLifecycle('c1', 'fixture'),
+    current_preparation: body?.preparation_id ?? null,
+  }, null, 2));
 
   const can = () => spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), 'can', 'c1', 'integration_approved'],
     { cwd: f.root, encoding: 'utf8' });
@@ -151,8 +162,9 @@ test('the gate refuses that manifest too, however well the digests match', () =>
   // build does not speak is not agreement — it is a coincidence between two dialects.
   const f = gateFixture(({ contract, content }) => ({
     ...buildManifest({
-      changeId: 'c1', baseRevision: contract.digest && content.revision,
+      changeId: 'c1', baseRevision: content.revision, generation: 1,
       contractDigest: contract.digest, candidateDigest: content.digest, preparedAt: now(),
+      archiveAbsentReason: 'a synthetic gate fixture archives nothing',
     }),
     manifest_version: '99.0.0',
   }));
@@ -178,8 +190,9 @@ test('a manifest belonging to another change is refused by the gate as well', ()
 
 test('a preparation that covers this candidate lets the gate through', () => {
   const f = gateFixture(({ contract, content }) => buildManifest({
-    changeId: 'c1', baseRevision: content.revision,
+    changeId: 'c1', baseRevision: content.revision, generation: 1,
     contractDigest: contract.digest, candidateDigest: content.digest, preparedAt: now(),
+    archiveAbsentReason: 'a synthetic gate fixture archives nothing',
   }));
   try {
     const can = f.can();
@@ -205,11 +218,19 @@ test('a stale preparation is a repair, not a collision: re-preparing is allowed'
 });
 
 test('a manifest missing the fields it is read for is malformed, not merely stale', () => {
-  const f = gateFixture({ manifest_version: '1.0.0', change_id: 'c1' });
+  // A snapshot of the right contract version, carrying an identity but missing the fields the
+  // gate reads. The refusal has to name what is wrong with the RECORD, not merely report that
+  // the digests do not line up — those are different repairs.
+  const f = gateFixture({
+    manifest_version: '2.0.0', change_id: 'c1', generation: 1,
+    preparation_id: 'prep-fixture', preparation_digest: 'sha256:whatever',
+    artifacts: [], commands: [], blocking: [], deferred: [],
+  });
   try {
     const can = f.can();
     assert.equal(can.status, 1);
     assert.match(can.stderr, /E_PREP_MALFORMED/);
+    assert.match(can.stderr, /records no (base_revision|contract_digest|candidate_digest|prepared_at)/);
   } finally { f.drop(); }
 });
 
@@ -485,12 +506,11 @@ test('the artifact record freezes at the integration approval', () => {
     assert.match(f.prep('--apply').out, /refreshed/);
     const approved = f.manifest();
 
-    f.store.putApproval({
-      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
-      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
-      scope_digest: gatedDigest(f.manifest().contract_digest, f.manifest().candidate_digest),
-      revision: f.git(['rev-parse', 'HEAD']).trim(), timestamp: now(),
-    });
+    f.store.putApproval(integrationApproval({
+      approvalId: 'ap-integration', changeId: 'c1', manifest: f.manifest(),
+      scopeDigest: gatedDigest(f.manifest().contract_digest, f.manifest().candidate_digest),
+      revision: f.git(['rev-parse', 'HEAD']).trim(),
+    }));
 
     // After it, the same edit is the merge altering a prepared artifact — and refreshing the
     // record here would update the reference using the very thing it exists to compare against.
@@ -513,12 +533,11 @@ test('the freeze protects the record, not one code path: stale re-preparation is
     const approved = f.manifest();
     const archive = approved.artifacts.find((a) => a.path.endsWith('tasks.md')).path;
 
-    f.store.putApproval({
-      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
-      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
-      scope_digest: gatedDigest(approved.contract_digest, approved.candidate_digest),
-      revision: f.git(['rev-parse', 'HEAD']).trim(), timestamp: now(),
-    });
+    f.store.putApproval(integrationApproval({
+      approvalId: 'ap-integration', changeId: 'c1', manifest: approved,
+      scopeDigest: gatedDigest(approved.contract_digest, approved.candidate_digest),
+      revision: f.git(['rev-parse', 'HEAD']).trim(),
+    }));
 
     // The alteration the confirmation after the merge exists to catch.
     writeFileSync(join(f.root, archive), '- [ ] NOT the prepared record\n');
@@ -559,12 +578,11 @@ test('reopening keeps the approved record and retires the approval that covered 
     assert.equal(f.prep('--apply').code, 0);
     f.git(['add', '-A']); f.git(['commit', '-qm', 'the prepared candidate']);
     const approved = f.manifest();
-    f.store.putApproval({
-      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
-      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
-      scope_digest: gatedDigest(approved.contract_digest, approved.candidate_digest),
-      revision: f.git(['rev-parse', 'HEAD']).trim(), timestamp: now(),
-    });
+    f.store.putApproval(integrationApproval({
+      approvalId: 'ap-integration', changeId: 'c1', manifest: approved,
+      scopeDigest: gatedDigest(approved.contract_digest, approved.candidate_digest),
+      revision: f.git(['rev-parse', 'HEAD']).trim(),
+    }));
 
     assert.equal(f.prep('--apply', '--reopen').code, 2, 'reopening is not done anonymously');
     const r = f.prep('--apply', '--reopen', '--reason', 'the delta was amended after approval');
@@ -577,9 +595,9 @@ ${r.out}`);
       'the approval that covered the replaced record cannot authorise the one replacing it');
 
     // The record it was granted over is kept, not overwritten.
-    const kept = readdirSync(join(f.root, '.spectree/closure')).filter((n) => n.includes('superseded'));
+    const kept = readdirSync(join(f.root, '.spectree/closure/c1')).filter((n) => n.endsWith('.approved.json'));
     assert.equal(kept.length, 1);
-    assert.deepEqual(JSON.parse(readFileSync(join(f.root, '.spectree/closure', kept[0]), 'utf8')), approved);
+    assert.deepEqual(JSON.parse(readFileSync(join(f.root, '.spectree/closure/c1', kept[0]), 'utf8')), approved);
 
     const trail = readFileSync(join(f.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     const reopened = trail.find((e) => e.type === 'closure_reopened');
@@ -598,12 +616,11 @@ test('an approval on record with no manifest to cover freezes as well', () => {
   try {
     assert.equal(f.prep('--apply').code, 0);
     const approved = f.manifest();
-    f.store.putApproval({
-      schema_version: '1.0.0', approval_id: 'ap-integration', change_id: 'c1', gate: 'integration',
-      granted_by: { identity: 'fixture', kind: 'human_in_session' }, channel: 'session',
-      scope_digest: gatedDigest(approved.contract_digest, approved.candidate_digest),
-      revision: f.git(['rev-parse', 'HEAD']).trim(), timestamp: now(),
-    });
+    f.store.putApproval(integrationApproval({
+      approvalId: 'ap-integration', changeId: 'c1', manifest: approved,
+      scopeDigest: gatedDigest(approved.contract_digest, approved.candidate_digest),
+      revision: f.git(['rev-parse', 'HEAD']).trim(),
+    }));
     unlinkSync(join(f.root, '.spectree/closure/c1.json'));
     unlinkSync(join(f.root, '.spectree/ran'));
 

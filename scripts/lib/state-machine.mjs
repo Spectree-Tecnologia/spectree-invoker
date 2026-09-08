@@ -28,6 +28,10 @@ export const CODES = {
   CAPABILITY_UNAVAILABLE: 'E_CAPABILITY_UNAVAILABLE',
   BLOCKED_RECOVERY: 'E_BLOCKED_RECOVERY',
   CLOSURE_NOT_PREPARED: 'E_CLOSURE_NOT_PREPARED',
+  INTEGRATION_NOT_OBSERVED: 'E_INTEGRATION_NOT_OBSERVED',
+  APPROVAL_PREPARATION: 'E_APPROVAL_PREPARATION',
+  OPERATION_PENDING: 'E_OPERATION_PENDING',
+  LIFECYCLE_UNAVAILABLE: 'E_LIFECYCLE_UNAVAILABLE',
 };
 
 /** The ordered pipeline. Every forward edge goes to the next state and to no other. */
@@ -77,7 +81,11 @@ export const ENTRY_REQUIREMENTS = {
       { property: 'ci.green', result: 'PASS', observed: true, fresh: true },
     ],
   },
+  // A merge is OBSERVED, never asserted. Without this, `state transition c1 integrated` walked
+  // straight past the confirmation that reads the PR, compares the merge tree and checks the
+  // required runs — and the two commands then disagreed about the same integration.
   integrated: {
+    receipt: true,
     approvals: ['scope', 'integration'],
     evidence: [
       { property: 'pass2.attack', result: 'PASS', observed: true, fresh: true, contract: true, independentOf: ['full_stack_developer'] },
@@ -85,6 +93,7 @@ export const ENTRY_REQUIREMENTS = {
     ],
   },
   closed: {
+    receipt: true,
     approvals: ['scope', 'integration'],
     evidence: [{ property: 'closure.merged', result: 'PASS', observed: true, fresh: false }],
   },
@@ -140,7 +149,24 @@ const refuse = (code, message, detail) => ({ ok: false, code, message, ...(detai
  * @param {number}   [ctx.expectedStateRevision]
  */
 export function canTransition(change, to, ctx = {}) {
-  const { evidence = [], approvals = [], revision, contentDigest, contractDigest, closure, scopeDigests = {}, expectedStateRevision } = ctx;
+  const {
+    evidence = [], approvals = [], revision, contentDigest, contractDigest, closure,
+    scopeDigests = {}, expectedStateRevision,
+    authority, receipt, preparation, pendingOperation,
+  } = ctx;
+
+  // Authority is decided once, in `lib/lifecycle.mjs`, and passed in. A caller that could not
+  // establish it says so, and that is a refusal: an unreadable closure control read as "nothing
+  // was ever retired" is how a retired approval came back to authorise a merge.
+  if (authority && authority.ok === false) {
+    return refuse(authority.code ?? CODES.LIFECYCLE_UNAVAILABLE, authority.message);
+  }
+  // A write that was interrupted part way leaves a set nobody has finished applying. Authorising
+  // over it means authorising over a state that is half of two different ones.
+  if (pendingOperation && to !== 'blocked') {
+    return refuse(CODES.OPERATION_PENDING,
+      `an unfinished ${pendingOperation.kind} operation (${pendingOperation.operation_id}) is open at phase "${pendingOperation.phase}": ${pendingOperation.recovery}`);
+  }
 
   if (expectedStateRevision !== undefined && expectedStateRevision !== (change.state_revision ?? 0)) {
     return refuse(CODES.CONCURRENT_UPDATE,
@@ -213,6 +239,17 @@ export function canTransition(change, to, ctx = {}) {
     }
     if (fresh.every((a) => a.granted_by?.kind === undefined)) {
       return refuse(CODES.MISSING_APPROVAL, `the "${gate}" approval names no granting party`);
+    }
+
+    // An integration approval names the PREPARATION it was granted over. Content and contract
+    // were the only things it used to name, and the artifact record is in neither — so the same
+    // approval kept matching across a reopening that replaced exactly that record.
+    if (gate === 'integration' && preparation) {
+      const covers = fresh.map((a) => ({ a, v: preparation(a) }));
+      if (!covers.some((c) => c.v.ok)) {
+        const first = covers[0]?.v ?? { code: CODES.APPROVAL_PREPARATION, message: 'no integration approval names this preparation' };
+        return refuse(first.code ?? CODES.APPROVAL_PREPARATION, first.message);
+      }
     }
   }
 
@@ -292,6 +329,17 @@ export function canTransition(change, to, ctx = {}) {
   // exist. Preparing early is what removes the second PR and the commits that only said the
   // previous run was green; requiring it here is what stops "prepared" from meaning "declared
   // integrated". A change that says `closure_mode: "legacy"` is exempt, and says so out loud.
+  // `integrated` and `closed` rest on an OBSERVATION of the merge: which repository, which PR,
+  // which merge commit, which preparation, which approval, which runs. Evidence recorded by hand
+  // is a claim; the receipt is what a confirmation actually saw.
+  if (need.receipt) {
+    if (!receipt) {
+      return refuse(CODES.INTEGRATION_NOT_OBSERVED,
+        `entering "${to}" requires an integration receipt, and none was supplied; confirm the merge with post-merge.mjs — a transition does not observe anything`);
+    }
+    if (!receipt.ok) return refuse(receipt.code ?? CODES.INTEGRATION_NOT_OBSERVED, receipt.message);
+  }
+
   if (to === 'integration_approved' && change.closure_mode !== 'legacy') {
     if (!closure) {
       return refuse(CODES.CLOSURE_NOT_PREPARED,

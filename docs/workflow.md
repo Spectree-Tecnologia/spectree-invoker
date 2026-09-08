@@ -69,14 +69,29 @@ change is leaving behind, and writes one manifest at `.spectree/closure/<change-
 
 | Field | What it pins |
 |---|---|
-| `manifest_version` | the preparation contract this was written under |
+| `manifest_version` | the preparation contract this was written under (**2.0.0**) |
 | `change_id`, `base_revision` | which change, against which immutable base |
+| `generation` | raised by every reopening |
+| `preparation_id` | this snapshot, collision-resistant, named by the approval |
+| `preparation_digest` | identity + contract + candidate + base + archive + the whole artifact inventory |
 | `contract_digest` | the Requirements it consolidated |
 | `candidate_digest` | the content it prepared — computed after the writes |
-| `artifacts` | what it produced, each with its own digest |
+| `archive_path` | where the folder went, or a **declared** reason there is none |
+| `artifacts` | what it produced, each with its own git blob |
+| `consolidation` | which command produced it, and how it exited |
 | `commands` | what it ran, and how each exited |
 | `blocking` | what stops integration |
 | `deferred` | what is being carried forward, not paid |
+
+`preparation_digest` deliberately **excludes** timestamps and display text, so the same
+preparation run a minute later is the same preparation. It deliberately **includes** the artifact
+inventory, which is the half content and contract never had — and the half an approval that named
+only those two kept matching across a reopening that replaced exactly that record.
+
+The current file at `.spectree/closure/<id>.json` is a projection. The immutable snapshot lives
+at `.spectree/closure/<id>/<preparation_id>.json`, and a reopening keeps the approved one beside
+it, **byte for byte**: a re-serialised document preserves the meaning and loses the document, and
+what a retired approval was granted over is the document.
 
 The manifest lives under `.spectree/`, which every digest already excludes, so it is never part
 of the candidate it describes.
@@ -153,6 +168,38 @@ manifest says what was true when it happened.
 invalidates it, and so does a Requirement added afterwards — the same rule that already
 invalidates a QA pass, for the same reason.
 
+### The integration approval
+
+It names three things now, and `record-approval` refuses one that does not:
+
+```json
+{
+  "gate": "integration",
+  "scope_digest": "<state.mjs digest <id> --gate integration>",
+  "preparation": { "preparation_id": "…", "generation": 1, "preparation_digest": "sha256:…" },
+  "integration_target": { "repository": "owner/name", "pr": 21, "head_sha": "…", "base_branch": "main" }
+}
+```
+
+The preparation reference is read off the current snapshot; the target is the integration being
+authorised. Nothing there grants anything — `granted_by` is the claim about a human, and the CLI
+records it rather than making it. What the references buy is that a merge is confirmed against
+**the PR that was approved**, never against any PR whose merged tree happens to match.
+
+### Recovery
+
+Every closure write records its phase before its effects: `intent`, `started`, `observed`,
+`persisting`, `done`. An interrupted run is therefore a state rather than a silence — `resume`
+prints the phase and the recovery, and the gates refuse to authorise over a set nobody finished
+applying. The one phase nothing resolves on its own is **`started`**: an external command was
+launched and its result was never observed, so whether it ran is a question for a person, and
+re-running it for convenience is a decision this squad does not make.
+
+A refusal in the preflight guarantees nothing was run and nothing was written. That guarantee
+does **not** extend to a command the project supplied and this squad launched: what it wrote, or
+committed, is preserved and reported, because removing it automatically would destroy work
+nobody chose to destroy.
+
 ### A project with no consolidation mechanism
 
 Declare the command once:
@@ -179,9 +226,21 @@ node scripts/post-merge.mjs <change-id> --pr <number>            # confirm only
 node scripts/post-merge.mjs <change-id> --pr <number> --apply    # confirm and close
 ```
 
-Seven steps and no eighth: read the merge result, confirm the PR and its base branch, confirm
-the integrated content **is** the authorised candidate, check the checks the policy required,
-confirm the prepared artifacts are there, record the result in the trail, close.
+Finite and no more: read the merge result, confirm the PR and its base branch, confirm the
+integrated content **is** the authorised candidate, check the jobs the policy required, confirm
+the prepared artifacts are there **unchanged and alone**, write the receipt, close.
+
+**The receipt is what makes `integrated` and `closed` reachable at all.** It records the
+repository, the PR, the merge commit, the preparation, the approval, and each workflow run with
+its attempt and jobs, plus the moment they were observed. The state machine requires it, so a
+`state transition <id> integrated` on its own is refused with `E_INTEGRATION_NOT_OBSERVED` —
+which is the defect it exists for: the confirmation refused a reopened closure while a plain
+transition walked the same change to `integrated` on an approval that had been retired.
+
+A receipt is an observation about ONE merge of ONE preparation under ONE approval. After a
+reopening it stops covering, and a historical receipt is never a claim that a later re-run of the
+CI is green: a contradicting observation is reported, and it does not erase the closure that was
+recorded.
 
 **Every question is asked of the merge commit's tree, never of the local checkout.** The checkout
 is whatever the operator happens to have; a confirmation that trusts it will close a change over
@@ -192,9 +251,46 @@ a tree nobody approved. So:
   that quietly rewrote a proposal moves nothing the code comparison can see;
 - the prepared artifacts are compared **by content** in the merge — existence was the weakest
   question that could be asked about them;
-- **one** approval must satisfy every criterion: it names this contract and this tree, *and* it
-  was granted at a commit inside this merge. Letting one approval supply the content match and
-  another the ancestry means the order of files on disk decides the verdict.
+- the prepared artifacts are compared against the frozen inventory in **three** directions:
+  missing, altered, and **added** — a file that appeared inside the archived folder during the
+  merge belongs to nobody's record, and walking only the record could never see it;
+- **one** approval must satisfy every criterion: it names this contract, this tree, this
+  preparation and this PR, *and* it was granted at a commit inside this merge. Letting one
+  approval supply the content match and another the ancestry means the order of files on disk
+  decides the verdict.
+
+### Asking GitHub by identity
+
+Every query is scoped server-side rather than filtered afterwards. `--repo` on everything;
+`gh run list --commit --event --branch --workflow`; then `gh run view` for that run's jobs. A
+list of the fifty most recent runs of the whole repository, filtered locally, meant that fifty
+runs belonging to other changes hid the one being asked about — and an answer that is missing
+because the question was too broad is not "it did not run". A full page is reported as
+**incomplete**, and incomplete is never green.
+
+The run that speaks is the **latest** run of that workflow on that commit, at its **latest
+attempt**. The order of a response is not a decision, and an older attempt that had been green is
+not evidence about the re-run that replaced it.
+
+A project declares its CI as an identity:
+
+```json
+"ci": {
+  "version": 2,
+  "required_runs": {
+    "full": { "workflow": "check", "jobs": ["classify", "plugin"], "event": "push", "branch": "main" }
+  }
+}
+```
+
+A bare legacy list of names is accepted only while it resolves to exactly one; two or more is
+`E_CI_MAP_AMBIGUOUS` and asks for migration, because a run title, a job name and a workflow
+identity are three different things. An empty required set is `E_CHECK_SET_EMPTY` — a policy that
+asks for nothing cannot certify anything — and a *required* job that was skipped is a refusal.
+
+On the green path nothing downloads a log; the confirmation reports its own counts
+(`gh_calls`, `git_calls`, `elapsed_ms`, `log_bytes`) so the cost is measured rather than
+asserted.
 
 If the merge commit is not here, that is an impediment: fetch it before confirming something you
 cannot see.
@@ -290,3 +386,29 @@ The operational target — one PR, and a post-merge phase that only confirms —
 synthetic cycle in `tests/cli-cycle.test.mjs` exercises end to end: one merge, and **zero commits
 after it**, asserted. The "under five minutes" figure is a hypothesis to measure on a real
 change, excluding human waiting and respecting every required check. No synthetic test proves it.
+
+## Migrating a consumer's closure records
+
+Installing updates code. Rewriting a project's records is a different act with a different blast
+radius, so the installer carries the migration and never runs it:
+
+```bash
+node .spectree/squad/scripts/migrate-closure.mjs            # plan only, writes nothing
+node .spectree/squad/scripts/migrate-closure.mjs --apply
+```
+
+It is idempotent. A v1 record is preserved **byte for byte** as history and never becomes an
+approved v2 preparation: a v1 record names no preparation, so no approval on record can be shown
+to have been granted over it, and inventing that link would be the tool manufacturing an
+authorisation nobody gave. Those changes are reported as needing a fresh preparation and a fresh
+integration approval. A corrupt record stops the migration rather than being migrated by
+guessing, and a control that exists and cannot be read blocks the gates until it is recovered —
+reading it as "nothing was ever retired" is exactly the substitution the record exists to refuse.
+
+## What is measured, and what is refused
+
+`contentDigest` speaks about files. A symlink is stored by git as its target string, so hashing
+one silently compares a pointer with a file; a junction on Windows has no honest reading at all;
+and an index with unmerged paths has more than one version of a path, so "the content" is not yet
+a question with an answer. All three are refused by name rather than hashed into a number nobody
+can reproduce. Support for them is not a correction to make quietly — it would be a new capability.

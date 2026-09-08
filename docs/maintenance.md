@@ -48,8 +48,37 @@ not**: a disposable repository has no remote and no PR to ask about.
 
 Criteria for closing: one real change taken through `post-merge.mjs --apply` against a real PR,
 with the refusal path exercised too (a merge whose content is not the authorised candidate must
-stop the closure). Until then the row in [compatibility.md](compatibility.md) says implemented,
-not verified.
+stop the closure, in a disposable repository — never by editing a production PR to manufacture a
+failure). Until then the row in [compatibility.md](compatibility.md) says implemented, not
+verified.
+
+Three things the offline tests specifically cannot answer, so they close with this item:
+
+- **`gh pr checks` exit 8.** Pending is reported through an exit code, and this treats that as an
+  answer rather than a transport failure. Only the real CLI can confirm the code and the shape.
+- **Server-side filtering.** `--commit`, `--event` and `--workflow` are the contract the run
+  discovery rests on. The stub honours them deliberately, so a query that never applied them could
+  not look correct here — but a `gh` that ignored one silently would still only show up live,
+  which is why an unfiltered result is refused with `E_GH_UNFILTERED`.
+- **A pending or failing run observed for real.** An offline fixture of a failure is a fixture. At
+  least one live observation of pending or red belongs in the same smoke as the green path.
+
+## M6 — delivery time is a hypothesis, not a measurement
+
+**Owner:** this repository.
+**Status:** open.
+
+The structural claims are asserted: one PR, one merge, no commit after it, and no rerun caused by
+recording that a run was green. Those are properties of the flow, and the tests hold them.
+
+The **time** is not measured. `post-merge.mjs` reports `gh_calls`, `git_calls`, `elapsed_ms` and
+`log_bytes` from a monotonic clock, which measures this squad's own work; it does not measure the
+GitHub queue, the runner, or a human deciding. Machine time, queue time and human waiting are
+three different numbers and nothing here should present them as one.
+
+Criteria for closing: a baseline and a result measured in the same environment on comparable
+scope, with those three separated, and enough observations that the word used is not "p95" for a
+sample of one. "Under five minutes" is not promised and is not a criterion.
 
 ## M2 — the supported TAP subset is narrow, deliberately
 

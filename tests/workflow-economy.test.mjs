@@ -11,7 +11,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { classifyDiff, classifyPath, KIND } from '../scripts/lib/diff.mjs';
-import { treatmentFor, aggregate, TREATMENT, REQUIRED_CHECKS } from '../scripts/lib/ci-policy.mjs';
+import { treatmentFor, aggregate, TREATMENT, REQUIRED_CHECKS, REQUIRED_JOBS } from '../scripts/lib/ci-policy.mjs';
 import { comparePreparation, preparationCovers, buildManifest, consolidationCommand } from '../scripts/lib/closure-prep.mjs';
 import { Store } from '../scripts/lib/store.mjs';
 import { gitRepo, commitAll, tempDir, cleanup, change, REPO } from './helpers.mjs';
@@ -91,19 +91,21 @@ test('a failed, cancelled, or missing required check cannot aggregate to green',
   assert.equal(aggregate(TREATMENT.FULL, green).ok, true);
 
   for (const bad of ['failure', 'cancelled', 'timed_out', 'skipped', 'neutral', 'action_required', '']) {
-    const r = aggregate(TREATMENT.FULL, { ...green, suite: bad });
+    const r = aggregate(TREATMENT.FULL, { ...green, plugin: bad });
     assert.equal(r.ok, false, `"${bad}" is not success`);
     assert.equal(r.code, 'E_CHECK_NOT_GREEN');
   }
 
   const missing = { ...green };
-  delete missing.suite;
+  delete missing.plugin;
   const r = aggregate(TREATMENT.FULL, missing);
   assert.equal(r.ok, false, 'a check that never reported is not a check that passed');
   assert.equal(r.code, 'E_CHECK_MISSING');
-  assert.deepEqual(r.missing, ['suite']);
+  assert.deepEqual(r.missing, ['plugin']);
 
   assert.equal(aggregate('something-nobody-declared', green).code, 'E_UNKNOWN_TREATMENT');
+  // A policy that asks for nothing cannot certify anything.
+  assert.equal(aggregate(TREATMENT.FULL, green, []).code, 'E_CHECK_SET_EMPTY');
 });
 
 test('the workflow requires the aggregate, and decides from the policy', () => {
@@ -119,8 +121,9 @@ test('the workflow requires the aggregate, and decides from the policy', () => {
 
 test('a merge that landed different content does not close the change', () => {
   const prepared = buildManifest({
-    changeId: 'c1', baseRevision: 'a'.repeat(40),
+    changeId: 'c1', baseRevision: 'a'.repeat(40), generation: 1,
     contractDigest: 'K1', candidateDigest: 'C1', preparedAt: '2026-01-01T00:00:00Z',
+    archiveAbsentReason: 'a unit fixture archives nothing',
   });
   assert.equal(preparationCovers(prepared, { contractDigest: 'K1', candidateDigest: 'C1' }).ok, true);
 
@@ -232,4 +235,91 @@ test('the installed consumer gets the closure and CI tooling, not just the state
       assert.ok(existsSync(join(dir, '.spectree/squad/scripts', f)), `${f} travels with the squad`);
     }
   } finally { cleanup(dir); }
+});
+
+// --- the workflow file itself, read as structure rather than as text ---------------------------
+
+/**
+ * A deliberately small YAML reader: mappings nested by indentation, block scalars folded into one
+ * value, and `- ` items collected as a list.
+ *
+ * It exists because this file has been broken twice by whitespace, and both times the only thing
+ * that noticed was CI — which is a slow way to learn that a `printf` wrote a literal newline at
+ * column 0. It is not a YAML implementation and does not pretend to be one; it reads the shape
+ * this workflow actually has, and a change that outgrows it will fail here rather than silently.
+ */
+function readWorkflow(text) {
+  const root = {};
+  const stack = [{ indent: -1, node: root, key: null }];
+  const lines = text.split('\n').map((l) => l.replace(/\r$/, ''));
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (!raw.trim() || raw.trim().startsWith('#')) continue;
+    const indent = raw.length - raw.trimStart().length;
+    const line = raw.trim();
+    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
+    const top = stack[stack.length - 1];
+    if (line.startsWith('- ')) {
+      const list = Array.isArray(top.node[top.key]) ? top.node[top.key] : (top.node[top.key] = []);
+      list.push(line.slice(2));
+      continue;
+    }
+    const m = /^([^:]+):\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const key = m[1];
+    const value = m[2];
+    if (value === '') {
+      const node = {};
+      top.node[key] = node;
+      stack.push({ indent, node, key });
+    } else if (value === '|' || value === '>-' || value === '>') {
+      const body = [];
+      while (i + 1 < lines.length) {
+        const next = lines[i + 1];
+        if (next.trim() && next.length - next.trimStart().length <= indent) break;
+        body.push(next.trim());
+        i++;
+      }
+      top.node[key] = body.join(' ');
+    } else {
+      top.node[key] = value;
+      stack.push({ indent, node: top.node, key });
+    }
+  }
+  return root;
+}
+
+test('the workflow parses, and its concurrency is decided by purpose rather than by ref', () => {
+  const text = readFileSync(join(REPO, '.github/workflows/check.yml'), 'utf8');
+  const wf = readWorkflow(text);
+  assert.deepEqual(Object.keys(wf.jobs), ['classify', 'plugin', 'required', 'tag'],
+    'the jobs are the ones the policy names');
+
+  // A superseded PR run validates a commit nobody will merge, so cancelling it is free. On main
+  // every run is the proof of ONE merge: grouping by ref let the next merge cancel the previous
+  // merge's evidence, which is exactly what a confirmation later goes looking for.
+  assert.match(wf.concurrency.group, /pull_request/);
+  assert.match(wf.concurrency.group, /github\.sha/, 'a push to main groups by SHA, not by ref');
+  assert.match(String(wf.concurrency['cancel-in-progress']), /pull_request/,
+    'cancellation is conditional on the event, not unconditional');
+
+  // The aggregate is the only thing a branch protection needs, and it requires exactly the jobs
+  // the policy declares — not a list promising checks nobody runs.
+  assert.equal(wf.jobs.required.if, 'always()');
+  assert.match(text, /needs: \[classify, plugin\]/);
+  for (const job of REQUIRED_JOBS.full) {
+    assert.ok(text.includes(`${job}=\${{ needs.${job}.result }}`), `${job} is aggregated by name`);
+  }
+
+  // Publication is not the validation a merge is confirmed against: it runs after the aggregate
+  // and is reported on its own, never folded into a generic green.
+  assert.equal(wf.jobs.tag.needs, 'required');
+  assert.ok(!REQUIRED_JOBS.full.includes('tag'), 'and tagging is not in the required set');
+
+  // The classifier writes the conservative `full` fallback and THEN exits 1 when the comparison
+  // is unavailable. Under `set -e` that exit killed the step before the fallback could be used.
+  const classify = text.slice(text.indexOf('  classify:'), text.indexOf('  plugin:'));
+  assert.doesNotMatch(classify, /set -eu/, 'the step does not die on the exit code that IS its report');
+  assert.match(classify, /set -u/, 'an unset variable is still a failure');
+  assert.match(classify, /--github-output \|\| true/);
 });

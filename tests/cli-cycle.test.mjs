@@ -11,7 +11,8 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { gitRepo, tempDir, cleanup, REPO, now } from './helpers.mjs';
+import { gitRepo, tempDir, cleanup, REPO, now, preparationOf, lifecycleOf, stubGh, greenRun } from './helpers.mjs';
+import { Store } from '../scripts/lib/store.mjs';
 
 /** A consumer project with the squad installed, exactly as a user would have it. */
 function consumer() {
@@ -33,6 +34,28 @@ function consumer() {
     return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
   };
   const cli = (...args) => script('state.mjs', ...args);
+  // The GitHub transport is stubbed; every digest, ancestry check, aggregate, receipt and
+  // transition around it is the real one.
+  const gh = stubGh(tempDir('spectree-gh-'), { repo: 'fixture/repo', pr: null, runs: [] });
+  const confirm = (...args) => {
+    const r = spawnSync(process.execPath, [join(repo.root, '.spectree/squad/scripts/post-merge.mjs'), 'c1', ...args],
+      { cwd: repo.root, encoding: 'utf8', env: { ...process.env, PATH: gh.path() } });
+    return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
+  };
+  /** The merge as GitHub would report it, plus one green run of `check` on the merge commit. */
+  const merged = ({ pr = 999, head, merge, base = 'main', runs, jobs } = {}) => {
+    const g = greenRun(merge);
+    gh.set({
+      repo: 'fixture/repo',
+      pr: {
+        number: pr, state: 'MERGED', mergedAt: now(), mergeCommit: { oid: merge },
+        headRefOid: head, headRefName: 'change/c1', baseRefName: base,
+        url: `https://example.invalid/pr/${pr}`,
+      },
+      runs: runs ?? [g.run],
+      jobs: jobs ?? { [String(g.run.databaseId)]: g.jobs },
+    });
+  };
   const doc = (name, body) => {
     const f = join(scratch, `${name}.json`);
     writeFileSync(f, JSON.stringify(body));
@@ -49,7 +72,7 @@ function consumer() {
     `${prints ? `console.log(${JSON.stringify(prints)});` : ''}process.exit(${exit})`,
   );
   const drop = () => { cleanup(repo.root); cleanup(scratch); };
-  return { ...repo, cli, script, doc, run, drop };
+  return { ...repo, cli, script, doc, run, drop, gh, confirm, merged };
 }
 
 const proposal = (text) => `# proposal\n\n${text}\n`;
@@ -81,6 +104,27 @@ const approvalDoc = (id, gate, digest, revision, extra = {}) => ({
   granted_by: { identity: 'founder', kind: 'human_in_session' },
   channel: 'session', scope_digest: digest, revision, timestamp: now(), ...extra,
 });
+
+/**
+ * An integration approval as the contract now requires one: bound to the content, to the
+ * PREPARATION SNAPSHOT it was granted over, and to the integration it authorises.
+ *
+ * The preparation reference is what the artifact record was always missing. Content and
+ * contract are in no way affected by a `tasks.md` inside the archived folder, so an approval
+ * naming only those two kept matching across a reopening that replaced exactly that record.
+ */
+const integrationDoc = (c, id, digest, revision, target = {}) => {
+  const m = preparationOf(c.root, 'c1');
+  return approvalDoc(id, 'integration', digest, revision, {
+    preparation: { preparation_id: m.preparation_id, generation: m.generation, preparation_digest: m.preparation_digest },
+    integration_target: {
+      repository: target.repository ?? 'fixture/repo',
+      pr: target.pr ?? 999,
+      head_sha: target.headSha ?? revision,
+      base_branch: target.baseBranch ?? 'main',
+    },
+  });
+};
 
 test('a gate is bound to the contract, and progress notes are not the contract', () => {
   const c = consumer();
@@ -159,13 +203,20 @@ test('the CLI blocks a change and can bring it back, without hand-editing JSON',
 
 /** Open, approve the scope, cut the branch, build the module: everything up to `implemented`. */
 function upToImplemented(c) {
-  c.cli('init', 'proj', '--', process.execPath, '.spectree/consolidate.mjs');
+  c.cli('init', 'proj', '--repository', 'fixture/repo', '--ci-workflow', 'check', '--ci-jobs', 'classify,plugin',
+        '--', process.execPath, '.spectree/consolidate.mjs', '{change_dir}');
   // The consumer's own spec consolidation, declared once at init. It lives under `.spectree/`
   // so that running it is not itself a change to the content being measured.
+  // A real, minimal consolidation: it copies the delta into the living spec, and it reads the
+  // change folder from `{change_dir}` so it still works once the preparation archived it. A
+  // command that only prints success proves nothing about the mechanism this depends on.
   writeFileSync(join(c.root, '.spectree/consolidate.mjs'), [
     "import { cpSync, existsSync, mkdirSync } from 'node:fs';",
-    "const from = 'docs/changes/c1/specs', to = 'docs/specs';",
-    'if (existsSync(from)) { mkdirSync(to, { recursive: true }); cpSync(from, to, { recursive: true }); }',
+    "const dir = process.argv[2];",
+    "if (!dir) { console.error('no change directory given'); process.exit(2); }",
+    "const from = `${dir}/specs`, to = 'docs/specs';",
+    "if (existsSync(from)) { mkdirSync(to, { recursive: true }); cpSync(from, to, { recursive: true }); }",
+    "else { console.log('deltaless: nothing to consolidate'); }",
   ].join('\n'));
   c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account,docs', '--modules', 'account');
   contractOnDisk(c);
@@ -297,6 +348,9 @@ test('an approval cannot carry new content past a QA and a CI that never saw it'
   const c = consumer();
   try {
     const { contract } = upToImplemented(c);
+    // An integration approval names the preparation it authorises, so there has to be one.
+    assert.equal(prepare(c, ['--apply']).code, 0);
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'closure prepared']);
     proveIt(c);
 
     const proven = c.cli('digest', 'c1', '--gate', 'integration').out;
@@ -305,7 +359,7 @@ test('an approval cannot carry new content past a QA and a CI that never saw it'
     writeFileSync(join(c.root, 'modules/account/account.js'), 'export const name = (s) => s;\n');
     const unproven = c.cli('digest', 'c1', '--gate', 'integration').out;
     assert.notEqual(unproven, proven, 'the candidate really is a different one');
-    c.cli('record-approval', c.doc('ap2', approvalDoc('ap2', 'integration', unproven, c.git(['rev-parse', 'HEAD']).trim())));
+    c.cli('record-approval', c.doc('ap2', integrationDoc(c, 'ap2', unproven, c.git(['rev-parse', 'HEAD']).trim())));
 
     const r = c.cli('can', 'c1', 'integration_approved');
     assert.equal(r.code, 1, 'a signature is authorisation, never validation');
@@ -358,37 +412,49 @@ test('one PR: the closure is prepared on the branch, and the merge is the only i
     assert.equal(missing.code, 1);
     assert.match(missing.err, /E_MISSING_APPROVAL/);
 
-    c.cli('record-approval', c.doc('ap2', approvalDoc('ap2', 'integration', integration.out, candidate)));
+    // Ticking the last task before the approval is progress, and the record catches up without
+    // re-consolidating anything.
+    const archived = preparationOf(c.root, 'c1').archive_path;
+    writeFileSync(join(c.root, `${archived}/tasks.md`), '- [x] build the account module\n');
+    const refreshed = prepare(c, ['--apply']);
+    assert.equal(refreshed.code, 0, refreshed.err);
+    assert.match(refreshed.out, /refreshed/);
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'the last task ticked']);
+
+    const candidate2 = c.git(['rev-parse', 'HEAD']).trim();
+    const gate = c.cli('digest', 'c1', '--gate', 'integration');
+    c.cli('record-approval', c.doc('ap2', integrationDoc(c, 'ap2', gate.out, candidate2, { headSha: candidate2 })));
     assert.equal(c.cli('transition', 'c1', 'integration_approved').code, 0);
 
     // ONE merge. `--no-ff` writes a new commit over an identical tree: the candidate that was
     // reviewed is the candidate being integrated, and the digest says so.
     c.git(['checkout', '-q', 'main']);
     c.git(['merge', '--no-ff', '-q', '-m', 'merge change/c1', 'change/c1']);
-    const merged = c.git(['rev-parse', 'HEAD']).trim();
-    assert.notEqual(merged, candidate, 'the revision moved');
-    assert.equal(c.cli('digest', 'c1', '--gate', 'integration').out, integration.out,
-      'and the content did not: the approval, the runs and the preparation still cover exactly this');
-    assert.equal(c.cli('transition', 'c1', 'integrated').code, 0);
+    const merge = c.git(['rev-parse', 'HEAD']).trim();
+    assert.notEqual(merge, candidate2, 'the revision moved');
 
-    const notClosed = c.cli('can', 'c1', 'closed');
-    assert.equal(notClosed.code, 1);
-    assert.match(notClosed.err, /closure\.merged/, 'closing needs the merge to have been observed');
+    // `integrated` is OBSERVED, never asserted: a transition on its own cannot reach it.
+    const asserted = c.cli('transition', 'c1', 'integrated');
+    assert.equal(asserted.code, 1, 'a transition does not observe a merge');
+    assert.match(asserted.err, /E_INTEGRATION_NOT_OBSERVED/);
 
-    // A real question about the two revisions, not a synthetic PASS.
-    const closure = c.cli('run', 'c1', 'closure.merged', '--role', 'platform_engineer', '--id', 'e-merge',
-      '--', 'git', 'merge-base', '--is-ancestor', candidate, merged);
-    assert.equal(closure.code, 0, closure.err);
-    assert.equal(c.cli('transition', 'c1', 'closed').code, 0);
+    c.merged({ head: candidate2, merge });
+    const planned = c.confirm('--pr', '999');
+    assert.equal(planned.code, 0, planned.err);
+    assert.equal(new Store(c.root).change('c1').state, 'integration_approved', 'a plan writes nothing');
+
+    const confirmed = c.confirm('--pr', '999', '--apply');
+    assert.equal(confirmed.code, 0, confirmed.err);
 
     // The point of the whole exercise: closing added no commit. The old flow ended with one
     // that said the previous run had been green, and that commit started another run.
-    assert.equal(c.git(['rev-parse', 'HEAD']).trim(), merged, 'no commit was made after the merge');
+    assert.equal(c.git(['rev-parse', 'HEAD']).trim(), merge, 'no commit was made after the merge');
     assert.equal(c.git(['status', '--porcelain']).trim(), '', 'and nothing is left uncommitted either');
 
     const done = c.cli('resume');
     assert.match(done.out, /change\s+none open/, 'a closed change is no longer open work');
     const history = readFileSync(join(c.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    assert.ok(history.some((h) => h.type === 'integration_observed'), 'the observation is in the trail');
     assert.deepEqual(history.map((h) => h.to).filter(Boolean), [
       'proposed', 'scope_approved', 'isolated', 'baselined', 'pass1_complete',
       'implemented', 'pass2_complete', 'ci_green', 'integration_approved', 'integrated', 'closed',
@@ -457,7 +523,7 @@ test('a merge that changes the tree is a different candidate, and is refused', (
     proveIt(c);
     const candidate = c.git(['rev-parse', 'HEAD']).trim();
     const integration = c.cli('digest', 'c1', '--gate', 'integration').out;
-    c.cli('record-approval', c.doc('ap2', approvalDoc('ap2', 'integration', integration, candidate)));
+    c.cli('record-approval', c.doc('ap2', integrationDoc(c, 'ap2', integration, candidate, { headSha: candidate })));
     assert.equal(c.cli('transition', 'c1', 'integration_approved').code, 0);
 
     // A merge that resolves into something else — the tree is not the reviewed tree.
@@ -494,7 +560,7 @@ test('adding a Requirement invalidates the QA, and the preparation, that never s
     // preparation — both of which were computed from Requirements that no longer exist.
     const rev = c.git(['rev-parse', 'HEAD']).trim();
     c.cli('record-approval', c.doc('ap1b', approvalDoc('ap1b', 'scope', c.cli('digest', 'c1').out, rev)));
-    c.cli('record-approval', c.doc('ap2', approvalDoc('ap2', 'integration', c.cli('digest', 'c1', '--gate', 'integration').out, rev)));
+    c.cli('record-approval', c.doc('ap2', integrationDoc(c, 'ap2', c.cli('digest', 'c1', '--gate', 'integration').out, rev)));
 
     const staleQa = c.cli('can', 'c1', 'integration_approved');
     assert.equal(staleQa.code, 1, 'a run cannot speak for Requirements it never saw');
@@ -508,7 +574,29 @@ test('adding a Requirement invalidates the QA, and the preparation, that never s
     assert.match(stalePrep.err, /E_CLOSURE_NOT_PREPARED/);
     assert.match(stalePrep.err, /E_PREP_STALE/);
 
-    assert.equal(prepare(c, ['--apply']).code, 0, 'preparing again against the contract as it now reads');
+    // And re-preparing over it is not a repair any more: an integration approval already names
+    // that snapshot, so replacing it is a REOPENING — which keeps the old record, retires the
+    // approval, and asks for a new one against the new generation.
+    const overwrite = prepare(c, ['--apply']);
+    assert.equal(overwrite.code, 1, 'an approved record is not silently replaced');
+    assert.match(overwrite.err, /E_PREP_FROZEN/);
+
+    const reopened = prepare(c, ['--apply', '--reopen', '--reason', 'the contract gained a Requirement after approval']);
+    assert.equal(reopened.code, 0, reopened.err);
+    assert.equal(new Store(c.root).change('c1').state, 'implemented', 'a reopening returns the change to the working point');
+
+    // The retired approval does not come back, however well the digests line up.
+    c.git(['add', '-A']); c.git(['commit', '-qm', 'the reopened closure']);
+    assert.equal(c.run('pass2.attack', { role: 'quality_engineer', independentOf: 'full_stack_developer', id: 'e-qa3' }).code, 0);
+    assert.equal(c.cli('transition', 'c1', 'pass2_complete').code, 0);
+    assert.equal(c.run('ci.green', { id: 'e-ci3' }).code, 0);
+    assert.equal(c.cli('transition', 'c1', 'ci_green').code, 0);
+    const still = c.cli('can', 'c1', 'integration_approved');
+    assert.equal(still.code, 1);
+    assert.match(still.err, /E_MISSING_APPROVAL|E_APPROVAL/);
+
+    const rev2 = c.git(['rev-parse', 'HEAD']).trim();
+    c.cli('record-approval', c.doc('ap4', integrationDoc(c, 'ap4', c.cli('digest', 'c1', '--gate', 'integration').out, rev2)));
     assert.equal(c.cli('can', 'c1', 'integration_approved').code, 0);
   } finally { c.drop(); }
 });
@@ -675,18 +763,23 @@ test('a reopening retires the approval on every path that reads one, not just in
     proveIt(c);
     const candidate = c.git(['rev-parse', 'HEAD']).trim();
     const integration = c.cli('digest', 'c1', '--gate', 'integration');
-    c.cli('record-approval', c.doc('ap2', approvalDoc('ap2', 'integration', integration.out, candidate)));
+    c.cli('record-approval', c.doc('ap2', integrationDoc(c, 'ap2', integration.out, candidate, { headSha: candidate })));
     assert.equal(c.cli('transition', 'c1', 'integration_approved').code, 0);
-    const approvedRecord = JSON.parse(readFileSync(join(c.root, '.spectree/closure/c1.json'), 'utf8'));
+    const approvedBytes = readFileSync(join(c.root, '.spectree/closure/c1.json'), 'utf8');
+    const approvedRecord = JSON.parse(approvedBytes);
 
     // Reopened deliberately: the record is kept, the approval that covered it is retired.
     const reopened = prepare(c, ['--apply', '--reopen', '--reason', 'the delta was amended after approval']);
     assert.equal(reopened.code, 0, reopened.err);
-    const kept = readdirSync(join(c.root, '.spectree/closure')).filter((n) => n.includes('superseded'));
+    const kept = readdirSync(join(c.root, '.spectree/closure/c1')).filter((n) => n.endsWith('.approved.json'));
     assert.equal(kept.length, 1, 'the approved record is preserved, not overwritten');
-    assert.deepEqual(JSON.parse(readFileSync(join(c.root, '.spectree/closure', kept[0]), 'utf8')), approvedRecord);
-    assert.deepEqual(
-      JSON.parse(readFileSync(join(c.root, '.spectree/closure/c1.json'), 'utf8')).supersedes_approval, ['ap2']);
+    // Byte for byte. A re-serialised document preserves the meaning and loses the document, and
+    // what a retired approval was granted over is the document.
+    assert.equal(readFileSync(join(c.root, '.spectree/closure/c1', kept[0]), 'utf8'), approvedBytes);
+    assert.deepEqual(JSON.parse(readFileSync(join(c.root, '.spectree/closure/c1.json'), 'utf8')).supersedes_approval, ['ap2']);
+    // And the durable control says so too, so restoring the old manifest restores nothing.
+    assert.deepEqual(lifecycleOf(c.root, 'c1').retired_approvals.map((r) => r.approval_id), ['ap2']);
+    assert.equal(lifecycleOf(c.root, 'c1').generation, 2);
 
     // The merge happens anyway. Without a new approval NOTHING may advance — and the defect was
     // exactly this: the confirmation after the merge refused, while `transition` walked the same
@@ -699,9 +792,12 @@ test('a reopening retires the approval on every path that reads one, not just in
 
     const stateBefore = readFileSync(join(c.root, '.spectree/changes/c1.json'), 'utf8');
     const trailBefore = readFileSync(join(c.root, '.spectree/history/c1.jsonl'), 'utf8');
+
+    // The reopening put the change back at the working point, so `integrated` is not even a
+    // step away any more — and it says so rather than reporting something about approvals.
     const can = c.cli('can', 'c1', 'integrated');
     assert.equal(can.code, 1, 'a retired approval is history, not authority');
-    assert.match(can.err, /E_MISSING_APPROVAL|E_APPROVAL/);
+    assert.match(can.err, /E_ILLEGAL_TRANSITION/);
     const moved = c.cli('transition', 'c1', 'integrated');
     assert.equal(moved.code, 1, 'and the transition refuses for the same reason `can` did');
     assert.equal(readFileSync(join(c.root, '.spectree/changes/c1.json'), 'utf8'), stateBefore, 'the state did not move');
@@ -711,12 +807,35 @@ test('a reopening retires the approval on every path that reads one, not just in
     const resumed = JSON.parse(c.cli('resume', 'c1', '--json').out);
     assert.deepEqual(resumed.approvals.map((a) => a.gate), ['scope'], 'only what is in force');
     assert.deepEqual(resumed.approvals_retired.map((a) => a.approval_id), ['ap2'], 'the retired one is still visible as history');
+    assert.equal(resumed.closure.generation, 2);
     assert.match(c.cli('resume', 'c1').out, /retired.*ap2/);
+
+    // Walk it back up. Every gate along the way passes on evidence that is genuinely current —
+    // the content never moved — and the one thing that does NOT come back is the authority.
+    c.git(['checkout', '-q', 'change/c1']);
+    assert.equal(c.run('pass2.attack', { role: 'quality_engineer', independentOf: 'full_stack_developer', id: 'e-qa2' }).code, 0);
+    assert.equal(c.cli('transition', 'c1', 'pass2_complete').code, 0);
+    assert.equal(c.run('ci.green', { id: 'e-ci2' }).code, 0);
+    assert.equal(c.cli('transition', 'c1', 'ci_green').code, 0);
+
+    // Identical digests to the ones `ap2` names, and it still authorises nothing.
+    assert.equal(c.cli('digest', 'c1', '--gate', 'integration').out, integration.out,
+      'the content really did come back to what the retired approval named');
+    const stillRefused = c.cli('can', 'c1', 'integration_approved');
+    assert.equal(stillRefused.code, 1, 'matching digests do not resurrect a retired approval');
+    assert.match(stillRefused.err, /E_MISSING_APPROVAL|E_APPROVAL/);
 
     // A NEW approval, over the record that actually exists now, releases it.
     const again = c.cli('digest', 'c1', '--gate', 'integration');
-    c.cli('record-approval', c.doc('ap3', approvalDoc('ap3', 'integration', again.out, c.git(['rev-parse', 'HEAD']).trim())));
-    assert.equal(c.cli('transition', 'c1', 'integrated').code, 0);
+    const head = c.git(['rev-parse', 'HEAD']).trim();
+    c.cli('record-approval', c.doc('ap3', integrationDoc(c, 'ap3', again.out, head, { headSha: head })));
+    assert.equal(c.cli('transition', 'c1', 'integration_approved').code, 0);
+
+    c.git(['checkout', '-q', 'main']);
+    const merge = c.git(['rev-parse', 'HEAD']).trim();
+    c.merged({ head, merge });
+    assert.equal(c.confirm('--pr', '999', '--apply').code, 0);
+    assert.equal(new Store(c.root).change('c1').state, 'closed');
 
     // And the old approvals are still in the store: retired, never deleted.
     assert.deepEqual(

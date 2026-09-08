@@ -16,7 +16,7 @@
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, statSync, lstatSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const posix = (s) => s.split('\\').join('/');
@@ -229,7 +229,14 @@ export function contentDigest(root) {
       }),
     );
     dirty = git(['status', '--porcelain', '-z', '--', '.', ...exclude]).length > 0;
+    // A conflicted index has more than one version of a path, so "the content" is not a
+    // question with an answer yet. Digesting whichever stage happened to be on disk would
+    // produce a number nobody could reproduce.
+    if (git(['ls-files', '-u', '-z', '--', '.', ...exclude]).length > 0) {
+      throw unavailable(`the index under ${root} has unmerged paths; resolve the conflict before anything is measured`);
+    }
   } catch (e) {
+    if (e.code === 'E_CONTENT_UNAVAILABLE') throw e;
     throw unavailable(`the content under ${root} cannot be determined`, e.message);
   }
 
@@ -244,7 +251,21 @@ export function contentDigest(root) {
   // So an entry is `path + mode + blob`, exactly what a tree entry is, and `contentDigestAt`
   // below produces the same shape from a commit. That is what makes a work tree and a merge
   // commit comparable at all.
-  const present = paths.filter((p) => existsSync(join(root, p)));
+  // Symlinks, sockets and anything else that is not a regular file are refused rather than
+  // hashed: git stores a symlink as its TARGET STRING, so hashing one silently compares a
+  // pointer with a file, and a junction on Windows has no honest reading at all.
+  const present = [];
+  for (const p of paths) {
+    let st;
+    try { st = lstatSync(join(root, p)); } catch { continue; }
+    if (st.isSymbolicLink()) {
+      throw unavailable(`"${p}" is a symbolic link, and this comparison only speaks about files`);
+    }
+    if (!st.isFile()) {
+      throw unavailable(`"${p}" is not a regular file, and this comparison only speaks about files`);
+    }
+    present.push(p);
+  }
   const blobs = normalisedHashes(root, present);
   const byPath = new Map(present.map((p, i) => [p, blobs[i]]));
 

@@ -15,7 +15,7 @@
 
 import { appendFileSync } from 'node:fs';
 import { readDiff, classifyDiff } from './lib/diff.mjs';
-import { treatmentFor, REQUIRED_CHECKS } from './lib/ci-policy.mjs';
+import { treatmentFor, REQUIRED_JOBS } from './lib/ci-policy.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const argv = process.argv.slice(2);
@@ -34,7 +34,7 @@ try {
   diff = classifyDiff(readDiff(base, head, { cwd: root }));
 } catch (e) {
   // An unavailable comparison is unknown. Unknown is the full suite, and it says why.
-  const answer = { treatment: 'full', reason: `${e.code}: ${e.message}`, checks: REQUIRED_CHECKS.full, files: 0 };
+  const answer = { treatment: 'full', reason: `${e.code}: ${e.message}`, checks: REQUIRED_JOBS.full, files: 0 };
   if (argv.includes('--json')) console.log(JSON.stringify(answer, null, 2));
   else console.error(`full — ${answer.reason}`);
   if (argv.includes('--github-output') && process.env.GITHUB_OUTPUT) {
@@ -48,7 +48,7 @@ const answer = {
   treatment: t.treatment,
   reason: t.reason,
   kinds: t.kinds,
-  checks: REQUIRED_CHECKS[t.treatment],
+  checks: REQUIRED_JOBS[t.treatment],
   files: diff.files.length,
   deciding: t.deciding.slice(0, 20).map((f) => ({ path: f.path, kinds: f.kinds, status: f.status })),
 };

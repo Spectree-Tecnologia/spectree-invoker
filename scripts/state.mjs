@@ -21,7 +21,7 @@
 //
 // Exit codes: 0 allowed/valid, 1 refused/invalid, 2 usage.
 
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -30,7 +30,11 @@ import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { canTransition, ASSERTS_FAILURE } from './lib/state-machine.mjs';
 import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
 import { launch } from './lib/launch.mjs';
-import { manifestPath, preparationCovers, approvalsInForce } from './lib/closure-prep.mjs';
+import { manifestPath, preparationCovers, approvalsInForce, readManifest } from './lib/closure-prep.mjs';
+import {
+  readLifecycle, readReceipt, receiptCovers, pendingOperation,
+  approvalCoversPreparation, updateLifecycle,
+} from './lib/lifecycle.mjs';
 import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
 
@@ -89,24 +93,52 @@ function digests(change) {
  * never from the presence of an archive folder: a folder that moved says a move happened, and
  * only the manifest says what was true when it happened.
  */
-/** The closure manifest on disk, or null. It says which approvals a reopening retired. */
+/** The closure manifest on disk, or null. Absence and corruption are different answers. */
 function closureManifest(changeId) {
-  try { return JSON.parse(readFileSync(join(root, manifestPath(changeId)), 'utf8')); } catch { return null; }
+  const r = readManifest(root, changeId);
+  if (r.present && !r.doc) return { corrupt: true, code: r.code, message: r.message };
+  return r.doc;
 }
 
 /**
- * The approvals with authority right now. Every path that reads an approval reads it through
- * here: a retirement honoured by one command and ignored by the next is not a retirement.
+ * Everything the closure lifecycle knows about a change, read once and shared.
+ *
+ * Authority, the receipt and any half-finished operation come from here — never from a filter
+ * a command writes for itself. A retirement honoured by one command and ignored by the next is
+ * not a retirement, and that is exactly how `transition ... integrated` walked past a refusal
+ * the confirmation had already issued.
  */
-function inForce(changeId) {
-  return approvalsInForce(store.approvals(changeId), closureManifest(changeId));
+function closureContext(changeId) {
+  const lc = readLifecycle(root, changeId);
+  const manifest = closureManifest(changeId);
+  const corruptManifest = manifest?.corrupt ? manifest : null;
+  const snapshot = corruptManifest ? null : manifest;
+  const authority = approvalsInForce(store.approvals(changeId), snapshot, {
+    lifecycle: lc.doc,
+    lifecycleError: lc.present && !lc.doc ? { code: lc.code, message: lc.message } : null,
+  });
+  return {
+    lifecycle: lc.doc,
+    manifest: snapshot,
+    manifestError: corruptManifest,
+    generation: lc.doc?.generation ?? null,
+    authority,
+    receipt: readReceipt(root, changeId),
+    pending: pendingOperation(lc.doc),
+  };
 }
 
-function closureVerdict(change, d) {
+/** The approvals with authority right now. */
+function inForce(changeId) {
+  return closureContext(changeId).authority;
+}
+
+function closureVerdict(change, d, cc) {
   if (change.closure_mode === 'legacy') return { ok: true, legacy: true };
-  const manifest = closureManifest(change.change_id);
-  return preparationCovers(manifest, {
-    contractDigest: d.contract.digest, candidateDigest: d.content.digest, changeId: change.change_id,
+  if (cc.manifestError) return { ok: false, code: cc.manifestError.code, message: cc.manifestError.message };
+  return preparationCovers(cc.manifest, {
+    contractDigest: d.contract.digest, candidateDigest: d.content.digest,
+    changeId: change.change_id, generation: cc.generation,
   });
 }
 
@@ -118,6 +150,7 @@ function resume(changeId) {
   const open = changes.filter((c) => c.state !== 'closed');
   const change = changeId ? store.change(changeId) : (open.find((c) => c.state !== 'blocked') ?? open[0] ?? null);
   const live = change ? store.evidence(change.change_id).filter((e) => !e.superseded_by) : [];
+  const cc = change ? closureContext(change.change_id) : null;
   let here = null;
   try { here = contentDigest(root).digest; } catch { /* no work tree: fall back to the revision */ }
 
@@ -136,10 +169,28 @@ function resume(changeId) {
           blocked_from: change.blocked_from ?? null,
         }
       : null,
-    approvals: change ? inForce(change.change_id).inForce.map((a) => ({ gate: a.gate, by: a.granted_by?.identity, kind: a.granted_by?.kind, revision: a.revision })) : [],
+    approvals: change ? (cc?.authority.inForce ?? []).map((a) => ({ approval_id: a.approval_id, gate: a.gate, by: a.granted_by?.identity, kind: a.granted_by?.kind, revision: a.revision })) : [],
     // Retired by a reopening: still in the trail, no longer authority. Resume that showed them
     // beside the ones in force answered "is this change approved" with a list, not an answer.
-    approvals_retired: change ? inForce(change.change_id).retired.map((a) => ({ approval_id: a.approval_id, gate: a.gate, by: a.granted_by?.identity, revision: a.revision })) : [],
+    approvals_retired: change ? (cc?.authority.retired ?? []).map((a) => ({ approval_id: a.approval_id, gate: a.gate, by: a.granted_by?.identity, revision: a.revision })) : [],
+    authority_available: change ? (cc?.authority.ok !== false) : null,
+    authority_problem: change && cc?.authority.ok === false ? { code: cc.authority.code, message: cc.authority.message } : null,
+    closure: change ? {
+      generation: cc?.generation ?? null,
+      preparation_id: cc?.manifest?.preparation_id ?? null,
+      preparation_digest: cc?.manifest?.preparation_digest ?? null,
+      problem: cc?.manifestError ? { code: cc.manifestError.code, message: cc.manifestError.message } : null,
+    } : null,
+    // A write that stopped part way is a fact resume has to state, with the recovery for it.
+    // Silence there is how a half-applied set gets authorised over.
+    pending_operation: cc?.pending
+      ? { operation_id: cc.pending.operation_id, kind: cc.pending.kind, phase: cc.pending.phase, uncertain: cc.pending.uncertain, recovery: cc.pending.recovery }
+      : null,
+    // The last integration observed. A historical receipt is not a claim that a later re-run of
+    // the CI is green; it says what was seen, when, and about which merge.
+    receipt: cc?.receipt && !cc.receipt.corrupt
+      ? { pr: cc.receipt.pr, merge_commit: cc.receipt.merge_commit, generation: cc.receipt.generation, approval_id: cc.receipt.approval_id, observed_at: cc.receipt.observed_at }
+      : cc?.receipt?.corrupt ? { corrupt: true } : null,
     // Valid HERE means: measured on the content that is on disk now. A revision match is the
     // fallback for evidence carrying no fingerprint, and it is the weaker claim -- saying
     // otherwise is how resume kept presenting runs from before an uncommitted edit as current.
@@ -177,6 +228,23 @@ function printResume(r) {
   }
   L.push(`approvals      ${r.approvals.length ? r.approvals.map((a) => `${a.gate} by ${a.by} (${a.kind})`).join('; ') : 'none in force'}`);
   if (r.approvals_retired?.length) L.push(`  retired      ${r.approvals_retired.map((a) => `${a.approval_id} (${a.gate}) — replaced record, no authority`).join('; ')}`);
+  if (r.authority_problem) L.push(`authority      UNAVAILABLE — ${r.authority_problem.code}: ${r.authority_problem.message}`);
+  if (r.closure) {
+    L.push(`closure        generation ${r.closure.generation ?? '?'}${r.closure.preparation_id ? `, ${r.closure.preparation_id}` : ', not prepared'}${r.closure.problem ? `  [${r.closure.problem.code}]` : ''}`);
+  }
+  // A write that stopped part way is a fact resume states, with the recovery for it. Silence
+  // there is how a half-applied set gets authorised over.
+  if (r.pending_operation) {
+    L.push(`recovery       ${r.pending_operation.kind} ${r.pending_operation.operation_id} stopped at "${r.pending_operation.phase}"`);
+    L.push(`               ${r.pending_operation.recovery}`);
+  }
+  // A historical receipt says what was seen about one merge. It is not a claim that a later
+  // re-run of the CI is green.
+  if (r.receipt) {
+    L.push(r.receipt.corrupt
+      ? 'receipt        corrupt — the integration observation cannot be read, which is not the same as absent'
+      : `receipt        PR #${r.receipt.pr}, merge ${String(r.receipt.merge_commit).slice(0, 8)}, generation ${r.receipt.generation}, observed ${r.receipt.observed_at}`);
+  }
   L.push(`evidence here  ${r.evidence_valid_here.length ? r.evidence_valid_here.map((e) => `${e.property}=${e.result}`).join('; ') : 'none at this revision'}`);
   if (r.evidence_stale.length) L.push(`evidence stale ${r.evidence_stale.map((e) => `${e.property} (${e.why})`).join('; ')}`);
   L.push(`deferrals open ${r.actionable_deferrals.length ? r.actionable_deferrals.map((d) => `#${d.id} ${d.impact}/${d.owner}`).join('; ') : 'none'}`);
@@ -196,12 +264,28 @@ switch (cmd) {
     // Windows the most likely command there is the node executable under "Program Files".
     const sep = argv.indexOf('--');
     const consolidate = sep >= 0 && argv.length > sep + 1 ? argv.slice(sep + 1) : null;
+    // Which workflow and which jobs certify a merge is the project's to declare, and it is
+    // declared as an identity — a workflow plus the jobs inside it — never as a bare list of
+    // names. A run title, a job name and a workflow identity are three different things, and the
+    // moment they disagree the wrong one is green.
+    const ciWorkflow = flag('ci-workflow');
+    const ciJobs = (flag('ci-jobs') ?? '').split(',').map((x) => x.trim()).filter(Boolean);
     const doc = store.init({
       project_id: id, protocol_version: '1.0.0',
       created_at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+      ...(flag('repository') ? { repository: flag('repository') } : {}),
       ...(consolidate ? { closure: { consolidate } } : {}),
+      ...(ciWorkflow && ciJobs.length ? {
+        ci: {
+          version: 2,
+          required_runs: Object.fromEntries(['full', 'documented_closure', 'operational_trail'].map((t) => [
+            t, { workflow: ciWorkflow, jobs: ciJobs, event: flag('ci-event', 'push'), branch: flag('ci-branch', 'main') },
+          ])),
+        },
+      } : {}),
     });
     console.log(`initialised .spectree for ${doc.project_id} (schema ${SCHEMA_VERSION})`);
+    if (!doc.ci) console.error('  no CI declared: `--ci-workflow <name> --ci-jobs a,b` before a merge can be confirmed');
     break;
   }
 
@@ -261,15 +345,25 @@ switch (cmd) {
     // work tree, never copied from an approval or a record, or the comparison would only
     // ever agree with itself.
     const d = digests(change);
+    const cc = closureContext(id);
     const verdict = canTransition(change, to, {
       evidence: store.evidence(id),
       // Retired approvals are history, not authority. Passing them here let a reopened
       // closure walk to `integrated` on the approval its own reopening had retired.
-      approvals: inForce(id).inForce,
+      approvals: cc.authority.inForce,
+      authority: cc.authority,
+      pendingOperation: cc.pending,
       revision: g.revision,
       contentDigest: d.content.digest,
       contractDigest: d.contract.digest,
-      closure: closureVerdict(change, d),
+      closure: closureVerdict(change, d, cc),
+      // The merge is OBSERVED by post-merge.mjs, never asserted here.
+      receipt: ['integrated', 'closed'].includes(to)
+        ? receiptCovers(cc.receipt, {
+          changeId: id, generation: cc.generation, preparationId: cc.manifest?.preparation_id,
+        })
+        : undefined,
+      preparation: (a) => approvalCoversPreparation(a, cc.manifest),
       scopeDigests: d.byGate,
       expectedStateRevision: has('expect') ? Number(flag('expect')) : undefined,
     });
@@ -465,7 +559,61 @@ switch (cmd) {
         console.log(`recorded evidence ${doc.evidence_id}: ${doc.property} = ${doc.result}`);
         console.error('  imported, not observed here: this satisfies only gates that do not require fresh evidence');
       }
-      else if (cmd === 'record-approval') { store.putApproval(doc); console.log(`recorded approval ${doc.approval_id} for gate ${doc.gate}`); }
+      else if (cmd === 'record-approval') {
+        // An INTEGRATION approval names what it authorises, and the artifact record is part of
+        // that. Content and contract were the only things it used to name, so the same approval
+        // kept matching across a reopening that replaced exactly that record.
+        //
+        // Nothing here grants anything. Filling in a reference is bookkeeping; `granted_by` is
+        // the claim about a human, and this command records it, never makes it.
+        if (doc.gate === 'integration' && doc.change_id) {
+          const cc = closureContext(doc.change_id);
+          if (cc.authority.ok === false) die(`${cc.authority.code}: ${cc.authority.message}`, 1);
+          const legacyMode = store.change(doc.change_id)?.closure_mode === 'legacy';
+          if (!legacyMode) {
+            if (!doc.preparation) {
+              die('an integration approval must name the preparation it authorises: ' +
+                  '{ "preparation": { "preparation_id", "generation", "preparation_digest" } }. ' +
+                  `Read them from ${manifestPath(doc.change_id).split('\\').join('/')}.`, 1);
+            }
+            if (!doc.integration_target) {
+              die('an integration approval must name the integration it authorises: ' +
+                  '{ "integration_target": { "repository", "pr", "head_sha", "base_branch" } }. ' +
+                  'A merge is confirmed against the PR that was approved, not against any PR whose tree happens to match.', 1);
+            }
+            const covers = approvalCoversPreparation(doc, cc.manifest);
+            if (!covers.ok) die(`${covers.code}: ${covers.message}`, 1);
+          }
+        }
+        store.putApproval(doc);
+        // Bind it durably: the snapshot it names becomes the approved reference, and no later
+        // path writes over that file.
+        if (doc.gate === 'integration' && doc.change_id && doc.preparation) {
+          updateLifecycle(root, doc.change_id, (cur) => ({
+            ...cur,
+            approved: [
+              ...cur.approved.filter((r) => r.approval_id !== doc.approval_id),
+              {
+                approval_id: doc.approval_id,
+                preparation_id: doc.preparation.preparation_id,
+                generation: doc.preparation.generation,
+                preparation_digest: doc.preparation.preparation_digest,
+                at: doc.timestamp,
+              },
+            ],
+          }));
+          store.appendHistory(doc.change_id, {
+            event_id: `integration_approved_record:${doc.approval_id}`,
+            type: 'integration_approval_recorded',
+            at: doc.timestamp,
+            approval_id: doc.approval_id,
+            preparation_id: doc.preparation.preparation_id,
+            generation: doc.preparation.generation,
+            schema_version: SCHEMA_VERSION,
+          });
+        }
+        console.log(`recorded approval ${doc.approval_id} for gate ${doc.gate}`);
+      }
       else { const it = store.putDeferred(doc); console.log(`deferred #${it.stable_id} [${it.status}] ${it.title ?? ''}`); }
     } catch (e) { die(e.message, 1); }
     break;
@@ -512,6 +660,22 @@ switch (cmd) {
     check('spectree/approval', store.approvals(), 'approval');
     check('spectree/dispatch', store.dispatches(), 'dispatch');
     check('spectree/deferred', store.deferred().items, 'deferred');
+    // The closure documents too. They carry their own semantic checks where they are read; this
+    // is the cheap structural pass over everything the project has stored.
+    const closureDir = join(root, '.spectree', 'closure');
+    if (existsSync(closureDir)) {
+      const preparations = [], receipts = [];
+      for (const name of readdirSync(closureDir)) {
+        if (!name.endsWith('.json')) continue;
+        let doc;
+        try { doc = JSON.parse(readFileSync(join(closureDir, name), 'utf8')); } catch { continue; }
+        if (name.endsWith('.receipt.json')) receipts.push(doc);
+        else if (name.endsWith('.lifecycle.json')) continue;
+        else if (doc.manifest_version) preparations.push(doc);
+      }
+      check('spectree/preparation', preparations, 'preparation');
+      check('spectree/receipt', receipts, 'receipt');
+    }
     if (bad) { console.error(`\nstate validate FAILED — ${bad} of ${seen} document(s) invalid`); process.exit(1); }
     console.log(`state validate OK -- ${seen} document(s).`);
     break;
