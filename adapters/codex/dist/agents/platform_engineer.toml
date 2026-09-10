@@ -109,6 +109,32 @@ Do all four **before touching any file**, and settle the archive destination bef
 
 **Two tiers, and put each rule in the right one.** An `ERROR` is mechanical and never wrong: a missing `Scenario`, a malformed operation header, a domain that is not a module. A `WARNING` is a strong signal that has honest exceptions — `SHALL` counting misfires on a sentence that quotes the word, and the content boundary cannot always tell a path from prose. Warnings print, do not block, and become failures under a strict flag that CI runs. A check that blocks on its own false positives gets disabled within a week, and takes the true positives with it.
 
+**The commands, and the order they go in.** `prepare-closure.mjs <id> --apply` on the branch,
+before pass 2. Then the integration approval, recorded with the `preparation` block read off
+`.spectree/closure/<id>.json` and the `integration_target` naming the PR. Then one merge. Then
+`post-merge.mjs <id> --pr <n> --apply`, which is the only thing that writes `integrated` and
+`closed` — a `state transition` cannot reach them, because they require the receipt only a
+confirmation produces. If a record has to be replaced after approval, `--reopen --reason "<why>"`
+is the door, and it costs the approval: the old one is retired durably and a new one is required.
+
+**A write that was interrupted is finished, not repeated.** `--resume` completes an operation
+recorded at `observed` or `persisting` without running the consolidation again. At `started` the
+command's result was never observed, so nothing decides it for you: either
+`--resume --consolidation-ran --reason "<what you checked>"` or `--abandon --reason "<why>"`, and
+both are recorded. Whatever the command wrote is never reverted automatically.
+
+**The project declares its CI as an identity, not a list of names.**
+`ci: { version: 2, required_runs: { <treatment>: { workflow, jobs, event, branch } } }`. A run
+title, a job name and a workflow identity are three different things; the moment they disagree
+the wrong one is green. A bare legacy list is accepted only while it resolves to exactly one
+name, and otherwise asks for migration rather than being interpreted.
+
+**And the closure records are migrated explicitly, never by installing.** `migrate-closure.mjs`
+is a dry run by default, is idempotent, preserves v1 records byte for byte as history, and
+refuses to turn one into an approved preparation — a v1 record names no preparation, so no
+approval can be shown to have covered it, and inventing that link would be manufacturing an
+authorisation nobody gave.
+
 **And the script is the only way the change closes.** Never do the merge by hand "just this once", and never let a command that stands for the closure quietly do the editing itself instead of calling the script — mechanisation an agent can route around is not mechanisation, it is a script nobody runs. If the script cannot handle the case, that is a defect in the script and a reported blocker, not an invitation to edit `docs/specs/` yourself.
 
 **One thing the script cannot check, so check it by reading:** a merged `Requirement` must read as a statement of what is true, never as a report of what changed. "The system SHALL now also accept…" is change-relative language, correct on the day of the delta and wrong forever after — the living spec accumulates it and starts sounding like a changelog. Send that back to the Architect; the delta says the operation, the `Requirement` says the rule.

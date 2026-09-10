@@ -147,7 +147,7 @@ if (marketplace) {
 }
 
 // --- 7. schemas parse and carry an $id ---------------------------------------
-const REQUIRED_SCHEMAS = ['common.json', 'change.schema.json', 'dispatch.schema.json', 'evidence.schema.json', 'deferred.schema.json', 'approval.schema.json'];
+const REQUIRED_SCHEMAS = ['common.json', 'change.schema.json', 'dispatch.schema.json', 'evidence.schema.json', 'deferred.schema.json', 'approval.schema.json', 'preparation.schema.json', 'receipt.schema.json'];
 for (const s of REQUIRED_SCHEMAS) {
   const doc = readJson(`schemas/${s}`);
   if (doc && !doc.$id) fail(`schemas/${s}`, 'missing $id');

@@ -1,0 +1,168 @@
+{
+  "$id": "spectree/receipt",
+  "title": "Integration receipt",
+  "description": "What a confirmation OBSERVED about one merge of one preparation under one approval. integrated and closed require it, so a transition cannot assert an integration nobody looked at. The v2 flow requires every identity field as well - that check lives in receiptCovers, because a legacy closure legitimately carries fewer, and an absence of fields is never read as a declaration of legacy. It is not a claim that a later re-run of the CI is green.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "receipt_version",
+    "change_id",
+    "merge_commit",
+    "operation_id",
+    "observed_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "spectree/common#/definitions/schema_version"
+    },
+    "receipt_version": {
+      "$ref": "spectree/common#/definitions/schema_version"
+    },
+    "change_id": {
+      "$ref": "spectree/common#/definitions/id"
+    },
+    "repository": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pr": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "head_sha": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "merge_commit": {
+      "$ref": "spectree/common#/definitions/revision"
+    },
+    "base_branch": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "preparation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "generation": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "preparation_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "approval_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "candidate_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runs": {
+      "type": "array",
+      "description": "Identified: workflow, run and attempt. An older attempt that had been green is not evidence about the re-run that replaced it.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "workflow": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "workflow_id": {
+            "type": [
+              "integer",
+              "string",
+              "null"
+            ]
+          },
+          "run_id": {
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "attempt": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "conclusion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "head_sha": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "jobs": {
+            "type": "array"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "operation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "observed_at": {
+      "$ref": "spectree/common#/definitions/timestamp"
+    }
+  },
+  "additionalProperties": false
+}

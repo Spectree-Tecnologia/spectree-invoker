@@ -14,6 +14,7 @@ import { tempDir, cleanup, change, evidence, approval, REPO } from './helpers.mj
 const REV = 'f'.repeat(40);
 const OLD = '0'.repeat(40);
 const scopeOk = { scope: 'D1', integration: 'D2' };
+const prepared = { ok: true };
 const scopeApproval = (o = {}) => approval({ approval_id: 'ap-scope', gate: 'scope', change_id: 'c1', scope_digest: 'D1', revision: REV, ...o });
 
 // --- finding 1: blocked was a bypass -----------------------------------------

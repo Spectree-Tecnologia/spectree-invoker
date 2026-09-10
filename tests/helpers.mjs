@@ -1,9 +1,11 @@
 // Synthetic fixtures. Nothing here reads a consumer project, needs a credential,
 // touches the network, or depends on anything outside this repository.
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
+import * as storeModule from '../scripts/lib/store.mjs';
+import * as lifecycleModule from '../scripts/lib/lifecycle.mjs';
 import { execFileSync } from 'node:child_process';
 
 export const REPO = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
@@ -86,7 +88,164 @@ export const change = (o = {}) => ({
   allowed_paths: o.allowed_paths ?? ['src/'],
   state: o.state ?? 'draft',
   ...(o.deltaless !== undefined ? { deltaless: o.deltaless } : {}),
+  ...(o.closure_mode ? { closure_mode: o.closure_mode } : {}),
   ...(o.modules_named ? { modules_named: o.modules_named } : {}),
   ...(o.state_revision !== undefined ? { state_revision: o.state_revision } : {}),
   ...(o.blocked_from ? { blocked_from: o.blocked_from } : {}),
 });
+
+// --- the closure lifecycle, as fixtures need it ------------------------------------------------
+
+/**
+ * The current preparation snapshot of a change, read the way every command reads it.
+ * A fixture that hand-builds one is testing its own arithmetic; this reads what was written.
+ */
+export function preparationOf(root, changeId) {
+  const f = join(root, '.spectree', 'closure', `${changeId}.json`);
+  return JSON.parse(readFileSync(f, 'utf8'));
+}
+
+export function lifecycleOf(root, changeId) {
+  const f = join(root, '.spectree', 'closure', `${changeId}.lifecycle.json`);
+  return existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+}
+
+/**
+ * An integration approval as the contract now requires one: bound to the content, to the
+ * preparation snapshot, and to the integration it authorises.
+ *
+ * Synthetic, and marked as such by the fixture identity. Nothing here is a human's consent; it
+ * stands in for the record a human's consent would produce.
+ */
+export function integrationApproval({
+  approvalId, changeId, scopeDigest, revision, manifest, target = {},
+}) {
+  return {
+    schema_version: '1.0.0',
+    approval_id: approvalId,
+    change_id: changeId,
+    gate: 'integration',
+    granted_by: { identity: 'fixture', kind: 'human_in_session' },
+    channel: 'session',
+    scope_digest: scopeDigest,
+    revision,
+    timestamp: now(),
+    ...(manifest?.preparation_id ? {
+      preparation: {
+        preparation_id: manifest.preparation_id,
+        generation: manifest.generation,
+        preparation_digest: manifest.preparation_digest,
+      },
+    } : {}),
+    integration_target: {
+      repository: target.repository ?? 'fixture/repo',
+      pr: target.pr ?? 999,
+      head_sha: target.headSha ?? revision,
+      base_branch: target.baseBranch ?? 'main',
+    },
+  };
+}
+
+/** The v2 CI declaration a project needs before a confirmation can read anything. */
+export const ciConfig = (jobs = ['classify', 'plugin']) => ({
+  version: 2,
+  required_runs: Object.fromEntries(['full', 'documented_closure', 'operational_trail'].map((t) => [
+    t, { workflow: 'check', jobs, event: 'push', branch: 'main' },
+  ])),
+});
+
+/**
+ * A `gh` that answers from a file instead of the network.
+ *
+ * It is a TRANSPORT stub and nothing else: the digests, the ancestry, the aggregate, the receipt
+ * and every transition around it are the real ones. It speaks the same sub-commands the code
+ * calls — `repo view`, `pr view`, `pr checks`, `run list`, `run view` — and it honours `--commit`,
+ * `--event`, `--branch` and `--workflow`, because a stub that ignored the filters would let a
+ * query that never applied them look correct.
+ *
+ * `answers.json` holds { repo, pr, runs, jobs, checks, prChecksExit }.
+ */
+export function stubGh(dir, answers) {
+  const shim = join(dir, 'shim');
+  mkdirSync(shim, { recursive: true });
+  writeFileSync(join(shim, 'answers.json'), JSON.stringify(answers));
+  writeFileSync(join(shim, 'gh.cjs'), [
+    "const { readFileSync } = require('node:fs');",
+    "const a = JSON.parse(readFileSync(require('node:path').join(__dirname, 'answers.json'), 'utf8'));",
+    'const argv = process.argv.slice(2);',
+    'const opt = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : undefined; };',
+    "const out = (x) => { process.stdout.write(JSON.stringify(x)); process.exit(0); };",
+    "if (argv[0] === 'repo') out({ nameWithOwner: a.repo ?? 'fixture/repo' });",
+    "if (argv[0] === 'pr' && argv[1] === 'view') out(a.pr);",
+    "if (argv[0] === 'pr' && argv[1] === 'checks') {",
+    '  process.stdout.write(JSON.stringify(a.checks ?? []));',
+    '  process.exit(a.prChecksExit ?? 0);',
+    '}',
+    "if (argv[0] === 'run' && argv[1] === 'list') {",
+    '  let runs = a.runs ?? [];',
+    "  const commit = opt('--commit'); if (commit) runs = runs.filter((r) => r.headSha === commit);",
+    "  const event = opt('--event'); if (event) runs = runs.filter((r) => !r.event || r.event === event);",
+    "  const wf = opt('--workflow'); if (wf) runs = runs.filter((r) => String(r.workflowName) === String(wf) || String(r.workflowDatabaseId) === String(wf));",
+    "  const limit = Number(opt('--limit') ?? 30);",
+    '  out(runs.slice(0, limit));',
+    '}',
+    "if (argv[0] === 'run' && argv[1] === 'view') {",
+    '  const id = argv[2];',
+    '  const run = (a.runs ?? []).find((r) => String(r.databaseId) === String(id));',
+    "  if (!run) { process.stderr.write('no such run'); process.exit(1); }",
+    "  out({ ...run, jobs: (a.jobs ?? {})[String(id)] ?? [] });",
+    '}',
+    "process.stderr.write('unsupported gh invocation: ' + argv.join(' '));",
+    'process.exit(2);',
+  ].join('\n'));
+  writeFileSync(join(shim, 'gh.cmd'), `@"${process.execPath}" "${join(shim, 'gh.cjs')}" %*\r\n`);
+  writeFileSync(join(shim, 'gh'), `#!/bin/sh\nexec "${process.execPath}" "${join(shim, 'gh.cjs')}" "$@"\n`);
+  try { chmodSync(join(shim, 'gh'), 0o755); } catch { /* Windows has no mode bit here */ }
+  return {
+    dir: shim,
+    path: (p = process.env.PATH) => `${shim}${process.platform === 'win32' ? ';' : ':'}${p}`,
+    set: (next) => writeFileSync(join(shim, 'answers.json'), JSON.stringify(next)),
+  };
+}
+
+/** One successful workflow run of `check`, with the two jobs the policy requires. */
+export const greenRun = (sha, { id = 1, attempt = 1, jobs = ['classify', 'plugin'], conclusion = 'success' } = {}) => ({
+  run: {
+    databaseId: id, name: 'check', workflowName: 'check', workflowDatabaseId: 77,
+    status: 'completed', conclusion, headSha: sha, event: 'push', attempt,
+    createdAt: new Date(2026, 0, 1, 0, 0, id).toISOString(), url: `https://example.invalid/run/${id}`,
+  },
+  jobs: jobs.map((name) => ({ name, status: 'completed', conclusion })),
+});
+
+/**
+ * Record an integration approval the way `state.mjs record-approval` does: the document AND the
+ * durable entry in the closure control.
+ *
+ * A fixture that wrote only the file was building a state no real project can be in — an approval
+ * with no durable record is half an approval, and the runtime now refuses to read it as whole
+ * authority. Fixtures that construct impossible states prove things about impossible states.
+ */
+export function recordIntegrationApproval(root, changeId, doc) {
+  const { Store } = storeModule;
+  new Store(root).putApproval(doc);
+  const f = join(root, '.spectree', 'closure', `${changeId}.lifecycle.json`);
+  mkdirSync(dirname(f), { recursive: true });
+  const cur = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : lifecycleModule.emptyLifecycle(changeId, null);
+  const next = {
+    ...cur,
+    revision: (cur.revision ?? 0) + 1,
+    approved: [
+      ...(cur.approved ?? []).filter((r) => r.approval_id !== doc.approval_id),
+      ...(doc.preparation ? [{
+        approval_id: doc.approval_id,
+        preparation_id: doc.preparation.preparation_id,
+        generation: doc.preparation.generation,
+        preparation_digest: doc.preparation.preparation_digest,
+        at: doc.timestamp,
+      }] : []),
+    ],
+  };
+  writeFileSync(f, `${JSON.stringify(next, null, 2)}\n`);
+  return doc;
+}

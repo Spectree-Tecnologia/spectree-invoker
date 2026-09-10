@@ -162,9 +162,25 @@ export class Store {
     return readFileSync(f, 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
   }
 
-  #putDoc(kind, schemaId, idField, doc) {
+  #putDoc(kind, schemaId, idField, doc, { immutable = false } = {}) {
     assertValid(schemaId, doc, `${kind} ${doc[idField]}`);
-    writeAtomic(p(this.root, kind, `${doc[idField]}.json`), JSON.stringify(doc, null, 2) + '\n');
+    const file = p(this.root, kind, `${doc[idField]}.json`);
+    const text = JSON.stringify(doc, null, 2) + '\n';
+    // An id is a name for one document, not a slot. Writing the same bytes again is idempotent —
+    // a resume replaying its own work — but a DIFFERENT document under an id that already exists
+    // silently rewrites what somebody authorised. A new authorisation gets a new id.
+    if (immutable && existsSync(file)) {
+      const before = readFileSync(file, 'utf8');
+      if (before !== text) {
+        const e = new Error(
+          `${kind}/${doc[idField]}.json already exists with different content. An id names one document: ` +
+          'repeating it byte for byte is idempotent, replacing it is not. Record a new one under a new id.');
+        e.code = 'E_DOCUMENT_CONFLICT';
+        throw e;
+      }
+      return doc;
+    }
+    writeAtomic(file, text);
     return doc;
   }
 
@@ -178,7 +194,7 @@ export class Store {
   putEvidence(doc) { return this.#putDoc('evidence', 'spectree/evidence', 'evidence_id', doc); }
   evidence(changeId) { return this.#listDocs('evidence', changeId); }
 
-  putApproval(doc) { return this.#putDoc('approvals', 'spectree/approval', 'approval_id', doc); }
+  putApproval(doc) { return this.#putDoc('approvals', 'spectree/approval', 'approval_id', doc, { immutable: true }); }
   approvals(changeId) { return this.#listDocs('approvals', changeId); }
 
   putDispatch(doc) { return this.#putDoc('dispatches', 'spectree/dispatch', 'dispatch_id', doc); }

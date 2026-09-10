@@ -1,0 +1,179 @@
+{
+  "$id": "spectree/preparation",
+  "title": "Closure preparation snapshot",
+  "description": "What one preparation produced, and the identity an integration approval names. Immutable once approved: the current file is a projection of the snapshot under .spectree/closure/<change>/<preparation_id>.json.",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "change_id",
+    "generation",
+    "preparation_id",
+    "base_revision",
+    "contract_digest",
+    "candidate_digest",
+    "artifacts",
+    "commands",
+    "blocking",
+    "deferred",
+    "prepared_at",
+    "preparation_digest"
+  ],
+  "properties": {
+    "manifest_version": {
+      "$ref": "spectree/common#/definitions/schema_version"
+    },
+    "project_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "change_id": {
+      "$ref": "spectree/common#/definitions/id"
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Raised by every reopening. An approval names one, so an approval cannot survive a reopening by digest coincidence."
+    },
+    "preparation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "preparation_digest": {
+      "type": "string",
+      "minLength": 8,
+      "description": "Over identity, contract, candidate, base, archive location and the canonical artifact inventory. Timestamps and display text are excluded, so the same preparation run twice is the same preparation."
+    },
+    "base_revision": {
+      "$ref": "spectree/common#/definitions/revision"
+    },
+    "contract_digest": {
+      "type": "string",
+      "minLength": 8
+    },
+    "candidate_digest": {
+      "type": "string",
+      "minLength": 8
+    },
+    "archive_path": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Where the change folder went. Recorded because it is not recomputable: the slot name carries the date the preparation ran."
+    },
+    "archive_absent_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Required when there is no archive_path. An absence nobody asserted is indistinguishable from a read that failed."
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "type",
+          "mode",
+          "digest"
+        ],
+        "properties": {
+          "path": {
+            "$ref": "spectree/common#/definitions/path"
+          },
+          "type": {
+            "enum": [
+              "blob"
+            ]
+          },
+          "op": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 8
+          },
+          "mode": {
+            "type": "string",
+            "pattern": "^[0-7]{6}$",
+            "description": "The mode git records. An archived file is outside both the code and the contract digest, so a mode change with an identical blob had nothing else to catch it."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "consolidation": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "command_digest": {
+          "type": "string"
+        },
+        "argv_length": {
+          "type": "integer"
+        },
+        "exit_code": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "result": {
+          "$ref": "spectree/common#/definitions/result"
+        },
+        "source": {
+          "enum": [
+            "observed_execution",
+            "operator_decision"
+          ],
+          "description": "Where this result came from. An operator_decision is a person saying the command ran after the process died before observing it: recorded, attributed, and never readable as an execution somebody watched."
+        },
+        "decided_because": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The reason the operator gave. Required in practice by the CLI when source is operator_decision."
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "commands": {
+      "type": "array"
+    },
+    "blocking": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "deferred": {
+      "type": "array"
+    },
+    "supersedes_approval": {
+      "type": "array",
+      "items": {
+        "$ref": "spectree/common#/definitions/id"
+      },
+      "description": "A PROJECTION of what a reopening retired. The durable record is the closure control; a document a restore can replace is not where authority lives."
+    },
+    "artifacts_refreshed_at": {
+      "$ref": "spectree/common#/definitions/timestamp"
+    },
+    "prepared_at": {
+      "$ref": "spectree/common#/definitions/timestamp"
+    }
+  },
+  "additionalProperties": false
+}

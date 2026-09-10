@@ -26,6 +26,10 @@
     "fingerprint": { "type": "string", "minLength": 8, "maxLength": 128 },
 
     "deltaless": { "type": "boolean" },
+    "closure_mode": {
+      "enum": ["prepared", "legacy"],
+      "description": "How this change closes. \"prepared\" (the default) consolidates specs and archives on the branch before the merge, so integration authorises a finished candidate. \"legacy\" is the older flow for a consumer that offers no consolidation mechanism, and it is an explicit statement, never a silent fallback."
+    },
     "scope": { "type": "string", "minLength": 1 },
     "named_absences": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "modules_named": { "type": "array", "items": { "type": "string", "minLength": 1 } },

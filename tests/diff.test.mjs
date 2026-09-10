@@ -31,7 +31,15 @@ test('an unrecognised path is source, never administrative by omission', () => {
 test('only the declared administrative patterns are administrative', () => {
   assert.equal(classifyPath('README.md'), KIND.ADMINISTRATIVE);
   assert.equal(classifyPath('docs/guide.md'), KIND.ADMINISTRATIVE);
-  assert.equal(classifyPath('docs/specs/ledger/spec.md'), KIND.SOURCE, 'the living spec is not administrative');
+  // The living spec is what a test is written from, so it is a behavioural contract and named
+  // as one. It was SOURCE before, which reached the same treatment by a less honest name.
+  assert.equal(classifyPath('docs/specs/ledger/spec.md'), KIND.PROTOCOL, 'the living spec is a contract, not documentation');
+});
+
+test('the operational trail is its own kind, and only that one prefix', () => {
+  assert.equal(classifyPath('.spectree/history/c1.jsonl'), KIND.OPERATIONAL);
+  assert.equal(classifyPath('.spectree/changes/c1.json'), KIND.SOURCE, 'current state is not the trail, and is not waved through');
+  assert.equal(classifyPath('history/c1.jsonl'), KIND.SOURCE);
 });
 
 test('Windows separators normalise, and traversal is refused', () => {

@@ -5,8 +5,61 @@ on:
   push:
     branches: [main]
 
+# Cancellation is decided by PURPOSE, not by ref.
+#
+# On a pull request a superseded run is validating a commit nobody is going to merge, so
+# cancelling it is free. On `main` every run is the proof of one merge, and a second merge
+# arriving must not cancel the first one's proof — grouping by ref did exactly that, and the
+# evidence a confirmation later looked for had been cancelled by the next merge.
+concurrency:
+  group: >-
+    check-${{ github.workflow }}-${{
+      github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || format('sha-{0}', github.sha)
+    }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # What this candidate has earned, from the FULL diff against the base — never from the last
+  # commit, the PR title, the commit prefix or a label. A log commit on top of a code change
+  # does not reclassify the code.
+  classify:
+    runs-on: ubuntu-latest
+    outputs:
+      treatment: ${{ steps.decide.outputs.treatment }}
+      checks: ${{ steps.decide.outputs.checks }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: decide
+        run: |
+          set -u
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.base_ref }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          git rev-parse --verify "$base" >/dev/null 2>&1 || base=""
+          if [ -z "$base" ]; then
+            # No base to compare against is unknown, and unknown is the full suite.
+            echo "treatment=full" >> "$GITHUB_OUTPUT"
+            echo "checks=classify,plugin" >> "$GITHUB_OUTPUT"
+            echo "no usable base ref; falling back to the full suite"
+            exit 0
+          fi
+          # The classifier exits 1 when the comparison is unavailable, and in that case it has
+          # ALREADY written the conservative `full` fallback to GITHUB_OUTPUT. Under `set -e`
+          # that exit aborted the step, so the fallback it had just written never ran. The exit
+          # code is the report, not a failure of the step.
+          node scripts/ci-treatment.mjs --base "$base" --github-output || true
+          node scripts/ci-treatment.mjs --base "$base" || true
+          grep -q '^treatment=' "$GITHUB_OUTPUT" || {
+            echo "::error::the classifier produced no treatment"
+            exit 1
+          }
+
   plugin:
+    needs: classify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,13 +77,17 @@ jobs:
       - name: deterministic suite and behavioural fixtures
         run: node --test tests/*.test.mjs
 
+      # The only steps a lighter treatment actually skips. They are named in
+      # `lib/ci-policy.mjs` as FULL_ONLY_STEPS, so the table and the workflow cannot drift.
       # No side effects, no network, no secrets — it only reports.
       - name: capability report
+        if: needs.classify.outputs.treatment == 'full'
         run: node scripts/capabilities.mjs
 
       # A synthetic consumer that already has its own AGENTS.md: the installer must
       # preserve it, be idempotent, and leave the scripts its skill calls runnable.
       - name: install into a synthetic consumer
+        if: needs.classify.outputs.treatment == 'full'
         run: |
           set -eu
           mkdir -p /tmp/consumer
@@ -41,15 +98,45 @@ jobs:
           grep -q 'Do not overwrite' /tmp/consumer/AGENTS.md
           test -f /tmp/consumer/.codex/agents/quality_engineer.toml
           test -f /tmp/consumer/.spectree/squad/scripts/state.mjs
+          test -f /tmp/consumer/.spectree/squad/scripts/lib/lifecycle.mjs
           node /tmp/consumer/.spectree/squad/scripts/capabilities.mjs > /dev/null
           node scripts/install-codex.mjs /tmp/consumer --apply | grep -q unchanged
+
+  # The aggregate, and the only job a branch protection needs to require. It fails when any
+  # required job failed, was cancelled, or did not report — none of which is a pass, and none
+  # of which may become one because the job that would have said so did not run.
+  #
+  # The required set is the one `lib/ci-policy.mjs` declares for every treatment: classify and
+  # plugin. A job deliberately not required may be skipped; a REQUIRED job that is skipped is a
+  # refusal, which is why `skipped` is checked for by name rather than folded into "not failed".
+  required:
+    needs: [classify, plugin]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: every required check reported success
+        run: |
+          set -eu
+          echo "treatment: ${{ needs.classify.outputs.treatment }}"
+          for r in "classify=${{ needs.classify.result }}" "plugin=${{ needs.plugin.result }}"; do
+            name="${r%%=*}"; result="${r#*=}"
+            echo "  $name = ${result:-<never reported>}"
+            if [ "$result" != "success" ]; then
+              echo "::error::$name is '${result:-<never reported>}', which is not success"
+              exit 1
+            fi
+          done
 
   # Every merge to main is a release: the version in plugin.json becomes a tag,
   # so a project pinned at 0.2.1 can be traced to the commit that was 0.2.1.
   # If the tag already exists on a different commit, the version was not bumped
   # and the job fails — that is the check, not an accident.
+  #
+  # It is publication, and publication is not the validation a merge is confirmed against: it
+  # is not in the required set, and its state is reported on its own rather than folded into a
+  # generic green.
   tag:
-    needs: plugin
+    needs: required
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

@@ -11,14 +11,146 @@
  5 Platform Engineer — green baseline, recorded against the base revision
  6 Quality Engineer — pass 1: one failing test per Scenario             <- skipped only when deltaless
  7 Full Stack Developers ×N — implementation, parallel by module
- 8 Quality Engineer — pass 2: attack, plus the scope lens
- 9 Platform Engineer — CI green, integration readiness
-10 [approval] integration, per the project's policy
-11 Platform Engineer — integrate
-12 Platform Engineer — closure: delta merge, archive, DEFERRED status, roles re-verified
-13 [gate 3] exposure / deploy, when applicable — a separate gate, never folded into 10
+ 8 Platform Engineer — closure PREPARED on the branch: delta merged into the living spec by
+     the project's own mechanism, folder archived, DEFERRED updated, one manifest   <- before 9
+ 9 Quality Engineer — pass 2: attack, plus the scope lens
+10 Platform Engineer — CI green, integration readiness
+11 [approval] integration, bound to this candidate
+12 Platform Engineer — ONE merge
+13 Platform Engineer — post-merge confirmation, then closed
+14 [gate 3] exposure / deploy, when applicable — a separate gate, never folded into 11
 [after module 1 closes] Platform Engineer reverse-engineers the project's roles + skills
 ```
+
+**Preparing the closure before the merge is not declaring the integration before it happens.**
+This is the ordering that removes a whole second delivery, and the sentence that keeps it honest.
+
+What used to happen after the merge — consolidating the delta into the living spec, archiving
+the change folder, updating the documents — is work on the *content*, so it belongs in the
+candidate that gets reviewed and merged. Doing it afterwards produced a second PR, and then a
+commit recording that the second PR was green, and then a run validating that commit. Three CI
+runs whose entire subject was the previous run.
+
+Two rules make the early preparation safe:
+
+- **the state is not touched.** Preparation writes files and one manifest. `integrated` and
+  `closed` are written after the merge is observed, and by nothing else;
+- **it happens before pass 2 and before CI**, because a candidate validated and then edited is
+  not the candidate that was validated. A fix after either one invalidates the preparation and
+  the evidence it travelled with — both are bound to content, and the same branch name is not
+  the same content.
+
+A project that offers no mechanism for consolidating its living spec closes the **legacy** way,
+declared as such on the change. Nobody hand-edits `docs/specs/` to fill the gap: a spec written
+by the same agent that approves it proves nothing.
+
+**A preparation has an identity, and an integration approval names it.** The snapshot carries a
+`preparation_id`, a `generation` and a `preparation_digest` over its whole artifact inventory —
+because content and contract are the only things an approval used to name, and the artifact
+record is in neither. An approval that named only those two kept matching across a reopening
+that replaced exactly that record. Recording an integration approval therefore means reading
+those three fields off the current snapshot and naming the integration too: repository, PR, head
+and base branch. A merge is confirmed against the PR that was approved, never against any PR
+whose merged tree happens to match.
+
+**One identity names one document.** A first preparation, a stale re-preparation and a reopening
+each reserve a NEW `preparation_id`; a refresh reserves its own; a resume keeps the one its
+interrupted operation reserved; `unchanged` writes nothing at all. Reusing an id for a
+re-preparation left the projection and the snapshot that id names holding different documents — one
+immutable reference designating two things, depending on which file the reader opened. Nothing is
+reported as prepared until the projection, the snapshot, the durable pointer and the reported
+digest all agree.
+
+**An approved record is frozen, on every path.** Refresh, `stale` re-preparation, a deleted
+manifest with the approval still on record: all of them are refused before anything runs.
+Replacing it is done deliberately with `--reopen --reason "<why>"`, which keeps the approved
+snapshot byte for byte, retires the approval that covered it, raises the generation, and puts
+the change back at `implemented` — so a new integration approval is required. Retirement is
+DURABLE: it lives in the closure control, not in the manifest, because a document a restore can
+replace cannot be the only place a retirement is written down. And it is one shared rule, read
+by the preparation, the gates, `resume` and the confirmation alike — a retirement honoured by one
+command and ignored by the next is not a retirement.
+
+**The post-merge phase is a confirmation, and it is finite.** Read the merge result, confirm the
+PR and its base, confirm the integrated content is the authorised candidate, check the required
+checks, confirm the prepared artifacts are present, unchanged **and alone** — a file added inside
+the frozen folder belongs to nobody's record — record the result, close. It is not a place
+for a fresh architecture review, a rewrite of the roles, a manual recount of the backlog, an
+investigation into an auxiliary tool, or an opportunistic fix — each of those turns a
+confirmation into a second delivery. A real failure stops the closure and produces an
+impediment; a short confirmation that hides one is worse than a long one.
+
+**And it produces a receipt, which `integrated` and `closed` require.** The receipt names the
+repository, the PR, the head, the base branch, the merge commit, the preparation and its digest,
+the approval, the contract and candidate digests, and the workflow runs with their attempts, plus
+the moment they were observed. Every one of those is **required**, and the check is on the record's
+structure before any comparison: a four-key document naming a real preparation is not a receipt,
+however true each of its four keys happens to be. Each recorded run is identified too — workflow,
+id, attempt, conclusion — because an empty object satisfied "a non-empty list of runs" and said
+nothing about any run.
+
+The bindings are assembled **once**, from the approved reference: the preparation, the EXACT
+approval in force over it, and the control's pointer. Which approval that is comes from the
+confirmation's own selection, or — at a gate, which has no confirmation to hand it one — from the
+approval the receipt names. Two approvals in force over the same preparation, authorising different
+PRs, is not resolved by taking the first: one of them fits the integration that happened, and the
+order of files on disk is not allowed to answer. Where nothing says which, that is a refusal
+(`E_APPROVAL_AMBIGUOUS`), never a pick. Building the expectation field by field at
+each call site is how the final gate came to ask about the change, the generation and the
+preparation while never asking about the repository, the PR, the head or the candidate digest — a
+receipt with all four rewritten passed. And the control points at the receipt by a digest of the
+**whole document**, because a pointer that agreed on the merge commit and the generation agreed on
+two fields out of fifteen. Without it a `state transition … integrated`
+asserted an integration nobody had looked at, and the two commands disagreed about the same
+merge. A receipt is an observation about ONE merge of ONE preparation: after a reopening it
+stops covering, and a historical receipt is never a claim that a later re-run of the CI is green.
+
+**A write that stopped part way is a state, not a silence — and every state named has a command
+that acts on it.** Every closure write records its phase before its effects: intent, started,
+observed, persisting, done. `resume` reports the phase and the recovery, and the gates refuse to
+authorise over a set nobody finished applying.
+
+`--resume` finishes an operation that was interrupted at *observed* or *persisting*, **without
+running the consolidation again** — the result is already recorded, and re-running it would make a
+recovery an execution. The one phase nothing resolves on its own is **started**: the command was
+launched and its result was never observed, so whether it ran is a question for a person. Two
+explicit answers exist and both are recorded — `--resume --consolidation-ran --reason "<what you
+checked>"`, or `--abandon --reason "<why>"`, which drops the operation and leaves everything the
+command wrote exactly where it is. A message that names a recovery the tool does not implement is
+worse than no message.
+
+**And a decision is applied against the world it was computed in.** Every write reserves against
+the closure control revision its decision was taken at; a dry run hands that revision back, and
+`--apply --expect-control <revision>` applies the plan under it. An approval, a refresh or a
+reopening landing in between makes the reservation fail — nothing runs and nothing is written. A
+lock taken at write time does not make a decision taken before it fresh, which is how a refresh
+came to overwrite a record that had been approved a moment earlier.
+
+**A state transition writes inside that same boundary**, not merely near it. The lock order is
+closure lifecycle first, change second, everywhere, so the two cannot cycle. Re-reading just before
+the write only narrows the window: a reopening that returns a change to the state it was already in
+does not move `state_revision`, so the change store's own optimistic check has nothing to object to,
+and the transition landed on top of an operation that was still running.
+
+**A recovery is bound to what the interrupted command actually ran against, and to what it
+produced.** The operation records its INPUTS before the command — the contract it read, the
+candidate, the declared consolidation command — and after it, the identity of the RESULT as well as
+the contract. The contract alone was half the obligation: with the delta untouched and the living
+spec replaced while the operation was stopped, every contract comparison agreed and the resumed
+preparation pinned the old success to content that command never produced. A resume compares the disk against those
+references instead of recomputing a fresh truth and filing it under the old result: a delta edited
+while the operation was stopped otherwise vanished from every comparison, and the resumed
+preparation claimed a contract that command never consolidated. Drift is a refusal, not a
+recalculation, and the command is never run again to resolve it.
+
+Nothing fills in a result that was never observed. `started` carries no consolidation outcome —
+that is what `started` means — and where a person resolves it, their decision is recorded with its
+own provenance (`source: operator_decision`, with the reason), never as an execution somebody
+watched.
+
+**And a green never becomes a commit.** "CI passed" is an event about a revision, not part of
+the revision — recording it inside the content it describes starts another run, which produces
+another event. Events belong to the operational trail, each naming the revision it applies to.
 
 **Step 4 precedes every write, including the Quality Engineer's.** Pass 1 writes test files; a pass 1 run before the branch exists writes them onto whatever is checked out. The branch is cut once, before step 5, and it is the same branch pass 1, the Developers and pass 2 all work on.
 
