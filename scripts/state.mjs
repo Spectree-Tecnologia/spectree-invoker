@@ -127,9 +127,14 @@ function closureContext(changeId) {
     pending: pendingOperation(lc.doc),
     // The one place the v2 integration bindings are assembled. Every gate reads this, so none of
     // them can omit a comparison by not having built it.
+    // A gate has no confirmation to hand it an approval, but it has the receipt — which names the
+    // one the integration was observed under. Resolving THAT one is the reading that ordering
+    // cannot decide; where there is no receipt and more than one approval covers the preparation,
+    // the expectation says so and the gate refuses rather than picking.
     expectation: integrationExpectation({
       changeId, manifest: snapshot, authority, lifecycle: lc.doc,
       legacy: store.change(changeId)?.closure_mode === 'legacy',
+      receipt: readReceipt(root, changeId),
     }),
   };
 }

@@ -29,7 +29,7 @@ import { launch } from './lib/launch.mjs';
 import {
   PREP_CONTRACT_VERSION, manifestPath, snapshotPath, consolidationCommand, resolveCommand,
   commandDigest, artifactsUnder, buildManifest, comparePreparation, recordedArchive,
-  readManifest, validArchivePath, approvalsInForce,
+  readManifest, validArchivePath, approvalsInForce, preparationDigest,
 } from './lib/closure-prep.mjs';
 import {
   readLifecycle, updateLifecycle, beginOperation, advanceOperation, completeOperation,
@@ -153,8 +153,13 @@ if (open && !(reopen && open.kind === 'reopen')) {
     // watched the command finish, a person looked at what it should have produced and said so.
     // Recording it as `observed_execution` would be exactly the fabrication that removing the
     // default PASS was about, so the source travels with it into the snapshot.
+    // The reference point is the disk AT THE MOMENT OF THE DECISION: the operator looked at this
+    // and said the command had run. Recording it is what lets a later resume tell "finishing what
+    // was decided" from "finishing something that changed since".
     let contractNow = null;
+    let candidateNow = null;
     try { contractNow = contractDigest(root, change).digest; } catch { /* named below if it matters */ }
+    try { candidateNow = contentDigest(root).digest; } catch { /* named below if it matters */ }
     advanceOperation(root, changeId, open.operation_id, PHASE.OBSERVED, {
       resolved_by_operator: reopenReason,
       consolidation: {
@@ -164,7 +169,7 @@ if (open && !(reopen && open.kind === 'reopen')) {
         source: 'operator_decision',
         decided_because: reopenReason,
       },
-      observed: { contract_digest: contractNow },
+      observed: { contract_digest: contractNow, candidate_digest: candidateNow },
     });
     store.appendHistory(changeId, {
       event_id: `closure_uncertainty_resolved:${open.operation_id}`,
@@ -324,10 +329,18 @@ if (existingRead.present && !existingRead.doc) {
 }
 const existing = existingRead.doc;
 
-// A resumed operation keeps the identity it reserved before its first effect. Minting a new one
+// Identity is decided by what this run IS.
+//
+// A resumed operation keeps the identity it reserved before its first effect — minting a new one
 // would finish a different preparation from the one that was interrupted, under the same words.
-const preparationId = resuming?.plan?.preparation_id
-  ?? (reopen || !existing ? newPreparationId() : existing.preparation_id ?? newPreparationId());
+// Everything else that reaches this point WRITES A NEW SNAPSHOT (a first preparation, a stale
+// re-preparation, a reopening), so it reserves a new identity. `unchanged` never gets here, and a
+// refresh has its own route with its own reservation.
+//
+// Reusing the existing id for a stale re-preparation left the projection and the snapshot that id
+// names holding different documents: one immutable reference designating two things, depending on
+// which file the reader happened to open.
+const preparationId = resuming?.plan?.preparation_id ?? newPreparationId();
 const nextGeneration = resuming?.plan?.generation ?? (reopen ? generation + 1 : generation);
 
 const draft = buildManifest({
@@ -784,6 +797,15 @@ if (resuming) {
   if (observedAfter && contract.digest !== observedAfter) {
     drift.push(`the contract moved after the command was observed (observed ${String(observedAfter).slice(0, 18)}…, now ${contract.digest.slice(0, 18)}…)`);
   }
+  // And the RESULT. This is the half the contract comparison cannot see: the delta untouched, the
+  // living spec replaced, and every other check agreeing.
+  const producedAfter = resuming.detail?.observed?.candidate_digest ?? null;
+  if (producedAfter && candidate.digest !== producedAfter) {
+    drift.push(`what the command produced is not what is here now (observed ${String(producedAfter).slice(0, 18)}…, now ${candidate.digest.slice(0, 18)}…)`);
+  }
+  if (!producedAfter) {
+    drift.push('the operation recorded no identity for what the command produced, so there is nothing to compare it against');
+  }
   if (inputs.command_digest && commandDigest(consolidation.command) !== inputs.command_digest) {
     drift.push('the consolidation command the project declares is not the one that ran');
   }
@@ -811,14 +833,25 @@ if (resuming) {
     exit_code: ran.status ?? null,
     result: ran.error ? 'INFRA_ERROR' : ran.status === 0 ? 'PASS' : 'FAIL',
   };
-  // The contract as it reads AFTER the command, recorded in the same write that records the
-  // observation. A resume compares the disk against this: the identity of what was actually
-  // consolidated, not a number computed later under an older result.
+  // What the command left behind, recorded in the same write that records the observation.
+  //
+  // The contract alone was half the obligation. It says what the consolidation was asked to
+  // consolidate; it says nothing about what came out. With the delta untouched and the living
+  // spec replaced during the pause, every contract comparison agreed and the resumed preparation
+  // pinned the old PASS to content that command never produced.
+  //
+  // The candidate digest is the result's identity: `docs/specs/` is content, while the archive,
+  // the trail and the squad's own records are excluded from it by construction — so the archival
+  // this operation is about to perform does not read as drift, and administrative progress does
+  // not either. It is taken AFTER the command, so a consolidation that legitimately rewrites its
+  // own output is recorded as it actually ended.
   let observedContract = null;
+  let observedCandidate = null;
   try { observedContract = contractDigest(root, change).digest; } catch { /* reported below */ }
+  try { observedCandidate = contentDigest(root).digest; } catch { /* reported below */ }
   advanceOperation(root, changeId, operationId, PHASE.OBSERVED, {
     consolidation: consolidationRecord,
-    observed: { contract_digest: observedContract },
+    observed: { contract_digest: observedContract, candidate_digest: observedCandidate },
   });
   commands.push({ check: resolved.join(' '), exit_code: ran.status ?? null, result: consolidationRecord.result });
   if (ran.error || ran.status !== 0) {
@@ -963,12 +996,30 @@ store.appendHistory(changeId, {
   schema_version: SCHEMA_VERSION,
 });
 
-completeOperation(root, changeId, operationId, (cur) => ({
+const control = completeOperation(root, changeId, operationId, (cur) => ({
   ...cur,
   generation: nextGeneration,
   current_preparation: preparationId,
   project_id: cur.project_id ?? project?.project_id ?? null,
 }));
+
+// Nothing is reported as prepared until the projection, the snapshot that identity names, the
+// durable pointer and the digest about to be printed all say the same thing. Success announced
+// while any of them disagreed is how one reference came to designate two documents.
+{
+  const disagreements = [];
+  const onDisk = readFileSync(file, 'utf8');
+  if (onDisk !== readFileSync(snapFile, 'utf8')) disagreements.push('the projection and the snapshot differ');
+  if (recorded.preparation_id !== preparationId) disagreements.push('the snapshot names another preparation');
+  if (control.current_preparation !== preparationId) disagreements.push('the durable pointer names another preparation');
+  if (recorded.preparation_digest !== preparationDigest(recorded)) disagreements.push('the snapshot does not digest to what it records');
+  if (disagreements.length) {
+    refuse('E_PREP_INCONSISTENT',
+      `${changeId} was written inconsistently: ${disagreements.join('; ')}`,
+      ['The files are left as they are for inspection. Nothing here overwrites a snapshot to make',
+        'the disagreement go away — that would discard the record it is disagreeing about.']);
+  }
+}
 
 if (!asJson) {
   console.log(`${resuming ? 'resumed and prepared' : 'prepared'} ${changeId}  (generation ${nextGeneration}, ${preparationId})`);

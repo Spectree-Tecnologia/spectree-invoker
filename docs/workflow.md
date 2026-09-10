@@ -83,6 +83,11 @@ change is leaving behind, and writes one manifest at `.spectree/closure/<change-
 | `blocking` | what stops integration |
 | `deferred` | what is being carried forward, not paid |
 
+A new identity is reserved per WRITE, not per change: a first preparation, a stale re-preparation
+and a reopening each get one, a refresh gets its own, and only a resume keeps the identity its
+interrupted operation reserved. Reusing it across a re-preparation left one immutable reference
+designating two documents — the projection said one thing and the snapshot it names said another.
+
 `preparation_digest` deliberately **excludes** timestamps and display text, so the same
 preparation run a minute later is the same preparation. It deliberately **includes** the artifact
 inventory, which is the half content and contract never had — and the half an approval that named
@@ -219,8 +224,14 @@ contract identity it observed after it. A resume compares the disk against those
 | Drift | What happens |
 |---|---|
 | the contract moved while the operation was stopped | `E_RESUME_INPUTS_CHANGED`, nothing written, the command **not** re-run |
+| what the command **produced** moved | the same — the delta untouched and the living spec replaced is the half a contract comparison cannot see |
 | the project changed `closure.consolidate` | the same |
 | the operation carries no recorded observation | `E_RESUME_NO_OBSERVATION` — nothing invents one |
+
+The result's identity is the candidate digest taken **after** the command, so a consolidation that
+legitimately rewrites its own output on the first run is recorded as it actually ended, while the
+archive, the trail and administrative progress sit outside that digest by construction and do not
+read as drift.
 
 Putting the drift back the way it was makes the operation resumable again: the refusal was about
 the difference, not a door that closed. And the comparison is on the **declared** command, not the
@@ -318,8 +329,13 @@ compared only the fields its caller had assembled. Each run is identified as wel
 attempt, conclusion. `runs: [{}]` satisfied "a non-empty list" and said nothing about any run.
 
 The expectation is built **once**, by `integrationExpectation`, from the approved reference — the
-preparation, the exact approval in force over it, and the control's pointer — and every gate reads
-that one object. Assembling it field by field at each call site is how the final gate came to
+preparation, the EXACT approval in force over it, and the control's pointer — and every gate reads
+that one object. Which approval that is never comes from position in a list: the confirmation hands
+over the one it selected against every criterion, and a gate resolves the one the receipt names.
+Two approvals over the same preparation authorising different PRs used to make the confirmation
+find the right one and then check the receipt against whichever came first on disk — a false
+negative with an exact answer available. Where nothing disambiguates, `E_APPROVAL_AMBIGUOUS` says
+so instead of choosing. Assembling it field by field at each call site is how the final gate came to
 compare the change, the generation and the preparation while never comparing the repository, the
 PR, the head or the candidate digest. It is deliberately **not** built from the local checkout:
 which candidate was observed is a question the approved reference answers.

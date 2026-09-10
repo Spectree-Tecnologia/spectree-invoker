@@ -626,11 +626,37 @@ export function receiptDigest(receipt) {
  * pointer. Deliberately NOT from the local checkout: which candidate was observed is a question the
  * approved reference answers, and the operator's disk is not that reference.
  */
-export function integrationExpectation({ changeId, manifest, authority, lifecycle, legacy = false }) {
+export function integrationExpectation({
+  changeId, manifest, authority, lifecycle, legacy = false, approval = null, receipt = null,
+}) {
   if (legacy) return { changeId, legacy: true, lifecycle };
   const approvals = (authority?.inForce ?? []).filter((a) => a.gate === 'integration' && a.change_id === changeId);
-  const approval = approvals.find((a) => a.preparation?.preparation_id === manifest?.preparation_id) ?? null;
-  const target = approval?.integration_target ?? {};
+
+  // WHICH approval, decided in one place and never by position in a list.
+  //
+  // Taking the first entry whose preparation matched was a false negative waiting to happen: with
+  // two approvals in force over the same preparation, authorising different PRs, the confirmation
+  // selected the one that satisfied everything and then checked the receipt against whichever came
+  // first on disk. There was an exact answer, and the order of files decided against it.
+  const covering = approvals.filter((a) => a.preparation?.preparation_id === manifest?.preparation_id);
+  let chosen = null;
+  let ambiguous = false;
+  if (approval) {
+    // The caller already selected it against every criterion, so that selection is the answer.
+    chosen = approval;
+  } else if (receipt?.approval_id) {
+    // A receipt names the approval its integration was observed under. Resolving THAT one is the
+    // only reading that cannot be decided by ordering.
+    chosen = covering.find((a) => a.approval_id === receipt.approval_id) ?? null;
+  } else if (covering.length === 1) {
+    chosen = covering[0];
+  } else if (covering.length > 1) {
+    // Refused explicitly rather than resolved by guessing. Picking "the most recent" would be a
+    // rule nobody stated, and picking the first is the defect this replaces.
+    ambiguous = true;
+  }
+
+  const target = chosen?.integration_target ?? {};
   return {
     changeId,
     repository: target.repository ?? undefined,
@@ -640,14 +666,15 @@ export function integrationExpectation({ changeId, manifest, authority, lifecycl
     preparationId: manifest?.preparation_id ?? undefined,
     generation: manifest?.generation ?? undefined,
     preparationDigest: manifest?.preparation_digest ?? undefined,
-    approvalId: approval?.approval_id ?? undefined,
+    approvalId: chosen?.approval_id ?? undefined,
     contractDigest: manifest?.contract_digest ?? undefined,
     candidateDigest: manifest?.candidate_digest ?? undefined,
     lifecycle,
     inForceIds: new Set(approvals.map((a) => a.approval_id)),
     // Reported so a caller can say WHY there is no expectation to check, rather than checking
     // nothing and calling that agreement.
-    approvalMissing: !approval,
+    approvalMissing: !chosen && !ambiguous,
+    ambiguousApproval: ambiguous ? covering.map((a) => a.approval_id) : null,
   };
 }
 
@@ -715,6 +742,12 @@ export function receiptCovers(receipt, {
     }
   }
   // An expectation this caller could not build is not an expectation that passed.
+  if (!legacy && expectation?.ambiguousApproval) {
+    return refuse('E_APPROVAL_AMBIGUOUS',
+      `${expectation.ambiguousApproval.length} integration approvals in force name this preparation ` +
+      `(${expectation.ambiguousApproval.join(', ')}) and nothing here says which one this integration was under. ` +
+      'The order of files on disk is not the answer.');
+  }
   if (!legacy && expectation?.approvalMissing) {
     return refuse('E_RECEIPT_UNVERIFIABLE',
       'no integration approval in force names the current preparation, so there is no approved reference to check this receipt against');

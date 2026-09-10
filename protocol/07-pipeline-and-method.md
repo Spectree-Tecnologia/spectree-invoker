@@ -53,6 +53,14 @@ those three fields off the current snapshot and naming the integration too: repo
 and base branch. A merge is confirmed against the PR that was approved, never against any PR
 whose merged tree happens to match.
 
+**One identity names one document.** A first preparation, a stale re-preparation and a reopening
+each reserve a NEW `preparation_id`; a refresh reserves its own; a resume keeps the one its
+interrupted operation reserved; `unchanged` writes nothing at all. Reusing an id for a
+re-preparation left the projection and the snapshot that id names holding different documents — one
+immutable reference designating two things, depending on which file the reader opened. Nothing is
+reported as prepared until the projection, the snapshot, the durable pointer and the reported
+digest all agree.
+
 **An approved record is frozen, on every path.** Refresh, `stale` re-preparation, a deleted
 manifest with the approval still on record: all of them are refused before anything runs.
 Replacing it is done deliberately with `--reopen --reason "<why>"`, which keeps the approved
@@ -81,8 +89,13 @@ however true each of its four keys happens to be. Each recorded run is identifie
 id, attempt, conclusion — because an empty object satisfied "a non-empty list of runs" and said
 nothing about any run.
 
-The bindings are assembled **once**, from the approved reference: the preparation, the exact
-approval in force over it, and the control's pointer. Building the expectation field by field at
+The bindings are assembled **once**, from the approved reference: the preparation, the EXACT
+approval in force over it, and the control's pointer. Which approval that is comes from the
+confirmation's own selection, or — at a gate, which has no confirmation to hand it one — from the
+approval the receipt names. Two approvals in force over the same preparation, authorising different
+PRs, is not resolved by taking the first: one of them fits the integration that happened, and the
+order of files on disk is not allowed to answer. Where nothing says which, that is a refusal
+(`E_APPROVAL_AMBIGUOUS`), never a pick. Building the expectation field by field at
 each call site is how the final gate came to ask about the change, the generation and the
 preparation while never asking about the repository, the PR, the head or the candidate digest — a
 receipt with all four rewritten passed. And the control points at the receipt by a digest of the
@@ -119,9 +132,12 @@ the write only narrows the window: a reopening that returns a change to the stat
 does not move `state_revision`, so the change store's own optimistic check has nothing to object to,
 and the transition landed on top of an operation that was still running.
 
-**A recovery is bound to what the interrupted command actually ran against.** The operation records
-its INPUTS before the command — the contract it read, the candidate, the declared consolidation
-command — and the identity it OBSERVED after it. A resume compares the disk against those
+**A recovery is bound to what the interrupted command actually ran against, and to what it
+produced.** The operation records its INPUTS before the command — the contract it read, the
+candidate, the declared consolidation command — and after it, the identity of the RESULT as well as
+the contract. The contract alone was half the obligation: with the delta untouched and the living
+spec replaced while the operation was stopped, every contract comparison agreed and the resumed
+preparation pinned the old success to content that command never produced. A resume compares the disk against those
 references instead of recomputing a fresh truth and filing it under the old result: a delta edited
 while the operation was stopped otherwise vanished from every comparison, and the resumed
 preparation claimed a contract that command never consolidated. Drift is a refusal, not a

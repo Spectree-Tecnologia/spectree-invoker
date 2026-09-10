@@ -302,8 +302,11 @@ let controlAfterPointer = null;
 
 // The v2 bindings, assembled ONCE from the approved reference — the same function the gates in
 // `state.mjs` read, so neither of them can omit a comparison by not having built it.
+// `authorising` was selected against EVERY criterion — content, contract, preparation, target and
+// ancestry. Handing that exact document to the expectation is what stops a second `find` from
+// answering the same question by position in a list.
 const expectation = integrationExpectation({
-  changeId, manifest, authority, lifecycle, legacy: legacyMode,
+  changeId, manifest, authority, lifecycle, legacy: legacyMode, approval: authorising,
 });
 
 /** The context every rehearsal and every real transition shares. One definition, one answer. */
