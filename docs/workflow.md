@@ -205,10 +205,35 @@ tool does not implement is worse than no message:
 
 `--resume` finishes the operation that was reserved — the same `preparation_id`, the same
 generation — and it does **not** run the consolidation again: the result is already on record, and
-re-running it would make a recovery an execution.
+re-running it would make a recovery an execution. It is routed by the operation's **kind**, before
+any ordinary shortcut: a refresh interrupted at `persisting` is finished, not answered by a run
+that reserves a second refresh and refuses its own predecessor; and `unchanged` — which is a
+statement about content — never stands in for "the operation finished", which is how a prepare
+that had written its projection reported success with the operation still open and no event in the
+trail.
+
+**And it is bound to what the interrupted command ran against.** The operation records its inputs
+before the command (the contract, the candidate, the declared consolidation command) and the
+contract identity it observed after it. A resume compares the disk against those:
+
+| Drift | What happens |
+|---|---|
+| the contract moved while the operation was stopped | `E_RESUME_INPUTS_CHANGED`, nothing written, the command **not** re-run |
+| the project changed `closure.consolidate` | the same |
+| the operation carries no recorded observation | `E_RESUME_NO_OBSERVATION` — nothing invents one |
+
+Putting the drift back the way it was makes the operation resumable again: the refusal was about
+the difference, not a door that closed. And the comparison is on the **declared** command, not the
+substituted one — `{change_dir}` resolves differently once the folder is archived, which this very
+operation does.
 
 `started` is the one phase nothing resolves on its own, because whether the command ran is
-genuinely unknown. Two explicit answers exist and both are recorded in the trail:
+genuinely unknown — and it carries no consolidation result, which is exactly what `started` means.
+Where a person resolves it, their decision becomes a record with its own provenance
+(`consolidation.source: "operator_decision"`, carrying the reason), never an `observed_execution`.
+A default PASS in that slot would be the tool asserting the observation nobody made.
+
+Two explicit answers exist and both are recorded in the trail:
 
 ```bash
 node scripts/prepare-closure.mjs <id> --apply --resume --consolidation-ran --reason "<what you checked>"
@@ -239,9 +264,17 @@ decision taken before it fresh, and that is exactly how a refresh came to overwr
 had been approved a moment earlier.
 
 Recording an integration approval is one transaction for the same reason: the durable entry and
-the document are written inside a single critical section, control first. A crash between them
-leaves no authority in either direction — an approval file with no control entry is **not**
-authority, and a control entry naming a file that is not there authorises nothing.
+the document are written inside a single critical section, control first, reserved against the
+revision of the read that **validated the preparation** — not a newer read taken just before the
+write, which would reserve against a world the decision never saw. A crash between the two leaves
+no authority in either direction: an approval file with no control entry is **not** authority, and
+a control entry naming a file that is not there authorises nothing.
+
+**A state transition writes inside that boundary too.** Lock order is closure lifecycle, then
+change, everywhere. Re-reading close to the write is not the same thing: a reopening that returns
+a change to the state it was already in does not move `state_revision`, so the change store's own
+check saw nothing, and a transition decided before that reopening landed on top of an operation
+that was still running.
 
 ### A project with no consolidation mechanism
 
@@ -281,10 +314,20 @@ plus the moment they were observed.
 Every one of those is **required**, and structure is checked before any comparison. A record that
 carried four true keys — change, generation, preparation and version — and nothing else used to
 authorise `integrated` with no merge, no PR, no run and no approval anywhere, because the check
-compared only the fields its caller had assembled. It is also checked against the closure control:
-a receipt the confirmation never wrote is a file, and the pointer is what tells the two apart. A
-`legacy` closure carries fewer fields and **says so on the change** — an absence of the v2 fields
-is never read as a declaration of legacy. The state machine requires it, so a
+compared only the fields its caller had assembled. Each run is identified as well: workflow, id,
+attempt, conclusion. `runs: [{}]` satisfied "a non-empty list" and said nothing about any run.
+
+The expectation is built **once**, by `integrationExpectation`, from the approved reference — the
+preparation, the exact approval in force over it, and the control's pointer — and every gate reads
+that one object. Assembling it field by field at each call site is how the final gate came to
+compare the change, the generation and the preparation while never comparing the repository, the
+PR, the head or the candidate digest. It is deliberately **not** built from the local checkout:
+which candidate was observed is a question the approved reference answers.
+
+It is also checked against the closure control, by a digest of the **whole receipt**: a pointer
+that agreed on the merge commit and the generation agreed on two fields out of fifteen, and every
+other binding could be rewritten underneath it. A `legacy` closure carries fewer fields and **says
+so on the change** — an absence of the v2 fields is never read as a declaration of legacy. The state machine requires it, so a
 `state transition <id> integrated` on its own is refused with `E_INTEGRATION_NOT_OBSERVED` —
 which is the defect it exists for: the confirmation refused a reopened closure while a plain
 transition walked the same change to `integrated` on an approval that had been retired.

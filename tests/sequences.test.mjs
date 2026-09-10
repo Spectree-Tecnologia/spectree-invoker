@@ -90,6 +90,17 @@ function project({ counting = false } = {}) {
         { cwd: repo.root, encoding: 'utf8' });
       return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
     },
+    /** The same command with extra environment — a barrier shim, say. */
+    stateWith: (env, ...args) => {
+      const r = spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), ...args],
+        { cwd: repo.root, encoding: 'utf8', env: { ...process.env, ...env } });
+      return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
+    },
+    /** Killed the instant a named file's bytes land — a boundary the phases do not name. */
+    prepCrashingOnWrite: (suffix, ...args) => run('prepare-closure.mjs', args, {
+      SPECTREE_CRASH_ON_WRITE: suffix,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${CRASH_SHIM}`.trim(),
+    }),
     manifest: () => preparationOf(repo.root, 'c1'),
     stateNow: () => new Store(repo.root).change('c1').state,
     /** Everything a change needs to be at `integration_approved` for the current preparation. */
@@ -536,5 +547,287 @@ test('an integration approval with no durable record is not authority', () => {
     assert.deepEqual(resumed.approvals.map((a) => a.gate), ['scope'], 'and resume does not present it as in force');
     assert.equal(existsSync(join(p.root, '.spectree/approvals/ap-integration.json')), true,
       'the document is untouched — it stopped being authority, not history');
+  } finally { p.drop(); }
+});
+
+// --- the transition inside the authority boundary -------------------------------------------------
+
+const BARRIER = join(REPO, 'tests/fixtures/barrier-at-lock.cjs').split('\\').join('/');
+
+/** A change prepared, approved, and put back at `implemented` so a forward transition is legal. */
+function readyToTransition() {
+  const p = project({ counting: true });
+  const r = p.prep('--apply');
+  assert.equal(r.code, 0, r.err);
+  p.git(['add', '-A']); p.git(['commit', '-qm', 'prepared']);
+  p.approve();
+  const c = new Store(p.root).change('c1');
+  new Store(p.root).putChange({ ...c, state: 'implemented' },
+    { expected: c.state_revision, event: { type: 'fixture-back-to-work' } });
+  // A slow consolidation, so a reopening really is still running when the barrier releases.
+  const script = join(p.root, '.spectree/consolidate.mjs');
+  writeFileSync(script, `${readFileSync(script, 'utf8')}\nAtomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);\n`);
+  return p;
+}
+
+test('a transition decided before a reopening does not land after it', () => {
+  const p = readyToTransition();
+  try {
+    const marker = join(p.root, '.spectree/barrier.json');
+    const stateBefore = readFileSync(join(p.root, '.spectree/changes/c1.json'), 'utf8');
+    const trailBefore = readFileSync(join(p.root, '.spectree/history/c1.jsonl'), 'utf8');
+
+    // The barrier fires at the transition's FIRST attempt on the closure lock — after its
+    // decision, before its write. A reopening runs to `started` while it waits.
+    //
+    // Held at the CHANGE lock, this same interleaving used to pass: a reopening that returns a
+    // change to the state it was already in does not move `state_revision`, so the change store's
+    // own optimistic check saw nothing to object to.
+    const r = p.stateWith({
+      SPECTREE_BARRIER_LOCK: '/closure/c1.lifecycle.lock',
+      SPECTREE_BARRIER_ARGV: JSON.stringify([
+        join(REPO, 'scripts/prepare-closure.mjs'), 'c1', '--apply', '--reopen', '--reason', 'a concurrent decision',
+      ]),
+      SPECTREE_BARRIER_UNTIL: 'reopen/started',
+      SPECTREE_BARRIER_OUT: marker,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${BARRIER}`.trim(),
+    }, 'transition', 'c1', 'pass2_complete');
+
+    const observed = JSON.parse(readFileSync(marker, 'utf8'));
+    assert.equal(observed.kind, 'reopen', 'the barrier really did hold until the reopening started');
+    assert.equal(observed.phase, 'started');
+
+    assert.equal(r.code, 1, 'a transition does not land on top of an operation that is still running');
+    assert.match(r.err, /E_OPERATION_PENDING|E_CONCURRENT_UPDATE/);
+    assert.equal(readFileSync(join(p.root, '.spectree/changes/c1.json'), 'utf8'), stateBefore,
+      'the state is byte for byte what it was');
+    // The trail DOES grow — the reopening is writing its own events while this waits. What must
+    // not be in it is a transition: comparing the whole file would be asserting that a concurrent
+    // operation wrote nothing, which is a different and false claim.
+    const trailNow = readFileSync(join(p.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split(String.fromCharCode(10)).map(JSON.parse);
+    assert.equal(trailNow.filter((e) => e.to === 'pass2_complete').length, 0, 'no transition event was written');
+    assert.ok(trailNow.length > trailBefore.trim().split(String.fromCharCode(10)).length, 'and the reopening did get on with its own work');
+
+    // And the reason it refused is still on record: the reopening's operation is open. Whether
+    // that reopening then finishes is not this test's subject — the barrier's child does not
+    // outlive the process holding it — and it is proven by the other ordering below, where the
+    // barrier waits for `done` and therefore keeps it alive.
+    const lc = readLifecycle(p.root, 'c1').doc;
+    assert.equal(pendingOperation(lc).kind, 'reopen');
+    assert.equal(lc.generation, 2, 'the reopening had already raised the generation');
+  } finally { p.drop(); }
+});
+
+test('the other ordering too: a reopening that COMPLETED under the barrier refuses the decision', () => {
+  const p = readyToTransition();
+  try {
+    const marker = join(p.root, '.spectree/barrier.json');
+    const stateBefore = readFileSync(join(p.root, '.spectree/changes/c1.json'), 'utf8');
+
+    // Same window, the other side of it: the reopening runs all the way to `done` while the
+    // transition waits. There is then no pending operation to object to — the only thing that says
+    // the world moved is the control's revision, which is what the reservation compares.
+    const r = p.stateWith({
+      SPECTREE_BARRIER_LOCK: '/closure/c1.lifecycle.lock',
+      SPECTREE_BARRIER_ARGV: JSON.stringify([
+        join(REPO, 'scripts/prepare-closure.mjs'), 'c1', '--apply', '--reopen', '--reason', 'a concurrent decision',
+      ]),
+      SPECTREE_BARRIER_UNTIL: 'reopen/done',
+      SPECTREE_BARRIER_OUT: marker,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${BARRIER}`.trim(),
+    }, 'transition', 'c1', 'pass2_complete');
+
+    const observed = JSON.parse(readFileSync(marker, 'utf8'));
+    assert.equal(observed.kind, 'reopen');
+    assert.equal(observed.phase, 'done', 'the reopening really did finish before the release');
+    assert.equal(pendingOperation(readLifecycle(p.root, 'c1').doc), null, 'so nothing was pending');
+
+    assert.equal(r.code, 1, 'and the decision still does not apply: it was taken against another world');
+    assert.match(r.err, /E_CONCURRENT_UPDATE/);
+    assert.equal(readFileSync(join(p.root, '.spectree/changes/c1.json'), 'utf8'), stateBefore);
+    assert.equal(readLifecycle(p.root, 'c1').doc.generation, 2);
+
+    // Deciding again, against what is there now, is the repair — and `pass2_complete` rests on the
+    // scope approval and the QA evidence, neither of which a reopening retires, so it goes through.
+    const again = p.state('transition', 'c1', 'pass2_complete');
+    assert.equal(again.code, 0, again.err);
+  } finally { p.drop(); }
+});
+
+test('with nobody competing, the same transition goes through', () => {
+  const p = readyToTransition();
+  try {
+    const r = p.state('transition', 'c1', 'pass2_complete');
+    assert.equal(r.code, 0, r.err);
+    assert.equal(p.stateNow(), 'pass2_complete');
+  } finally { p.drop(); }
+});
+
+// --- a recovery is bound to what the interrupted command actually ran against ---------------------
+
+test('a contract that moved while the operation was interrupted refuses the resume', () => {
+  const p = project({ counting: true });
+  try {
+    assert.equal(p.prepCrashing('observed', '--apply').code, 86);
+    assert.equal(consolidationRuns(p), 1);
+
+    // The delta is edited while the operation is stopped. The consolidation that ran consolidated
+    // Requirement `x`; the delta on disk now says something else.
+    writeFileSync(join(p.root, 'docs/changes/c1/specs/account/spec.md'),
+      '## ADDED Requirements\n\n### Requirement: DIFFERENT\n');
+
+    const r = p.prep('--apply', '--resume', '--json');
+    assert.equal(r.code, 1, 'a resume finishes an operation; it does not re-decide it under another contract');
+    const doc = JSON.parse(r.out);
+    assert.equal(doc.code, 'E_RESUME_INPUTS_CHANGED');
+    assert.match(JSON.stringify(doc.drift), /contract moved/);
+    assert.equal(consolidationRuns(p), 1, 'and it did not run the command again');
+    assert.equal(existsSync(join(p.root, currentPath('c1'))), false, 'no preparation was published');
+    assert.equal(pendingOperation(readLifecycle(p.root, 'c1').doc).phase, 'observed',
+      'the operation is still open, for a person to resolve');
+
+    // Putting the delta back makes it resumable again — the refusal was about the drift, not a
+    // door that closed for good.
+    writeFileSync(join(p.root, 'docs/changes/c1/specs/account/spec.md'),
+      '## ADDED Requirements\n\n### Requirement: x\n');
+    const again = p.prep('--apply', '--resume', '--json');
+    assert.equal(again.code, 0, again.err);
+    assert.equal(consolidationRuns(p), 1);
+  } finally { p.drop(); }
+});
+
+test('a resume with no recorded observation refuses instead of inventing one', () => {
+  const p = project({ counting: true });
+  try {
+    assert.equal(p.prepCrashing('started', '--apply').code, 86);
+    // `started` carries no consolidation result — that is what `started` means. The default that
+    // used to fill one in was the tool asserting an observation nobody made.
+    const open = pendingOperation(readLifecycle(p.root, 'c1').doc);
+    assert.equal(open.detail?.consolidation, undefined);
+
+    const r = p.prep('--apply', '--resume', '--json');
+    assert.equal(r.code, 1);
+    assert.match(JSON.stringify(JSON.parse(r.out).code), /E_OPERATION_PENDING|E_RESUME_NO_OBSERVATION/);
+
+    // The operator's decision becomes a record with its OWN provenance, not an observation.
+    assert.equal(p.prep('--apply', '--resume', '--consolidation-ran', '--reason', 'the living spec has the delta').code, 0);
+    const m = preparationOf(p.root, 'c1');
+    assert.equal(m.consolidation.source, 'operator_decision');
+    assert.equal(m.consolidation.decided_because, 'the living spec has the delta');
+    assert.notEqual(m.consolidation.source, 'observed_execution');
+  } finally { p.drop(); }
+});
+
+// --- recovery is routed by the operation's kind ----------------------------------------------------
+
+test('a refresh interrupted at persistence is finished, not replaced by a new one', () => {
+  const p = project({ counting: true });
+  try {
+    assert.equal(p.prep('--apply').code, 0);
+    p.git(['add', '-A']); p.git(['commit', '-qm', 'prepared']);
+    const archive = preparationOf(p.root, 'c1').archive_path;
+    writeFileSync(join(p.root, `${archive}/tasks.md`), '- [x] build it\n');
+
+    assert.equal(p.prepCrashing('persisting', '--apply').code, 86);
+    const open = pendingOperation(readLifecycle(p.root, 'c1').doc);
+    assert.equal(open.kind, 'refresh');
+    const reserved = open.plan.preparation_id;
+
+    const r = p.prep('--apply', '--resume', '--json');
+    assert.equal(r.code, 0, r.err);
+    const doc = JSON.parse(r.out);
+    assert.equal(doc.state, 'refreshed');
+    assert.equal(doc.resumed_operation, open.operation_id, 'it finished THAT refresh, not a new one');
+    assert.equal(doc.preparation_id, reserved, 'under the identity that refresh reserved');
+    assert.equal(consolidationRuns(p), 1);
+
+    const lc = readLifecycle(p.root, 'c1').doc;
+    assert.equal(pendingOperation(lc), null);
+    assert.equal(lc.current_preparation, preparationOf(p.root, 'c1').preparation_id,
+      'the pointer names the document that exists');
+    const trail = readFileSync(join(p.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(trail.filter((e) => e.type === 'closure_artifacts_refreshed').length, 1, 'one event for one operation');
+  } finally { p.drop(); }
+});
+
+test('a prepare that wrote its projection and nothing else is finished, not reported as done', () => {
+  const p = project({ counting: true });
+  try {
+    // Crash the instant the projection's bytes land: the snapshot exists, the trail does not, and
+    // the operation is open. The digests then match what was just written, so the `unchanged`
+    // shortcut used to answer 0 and leave all of that as it was.
+    const r0 = p.prepCrashingOnWrite('/closure/c1.json', '--apply');
+    assert.equal(r0.code, 86);
+    assert.equal(consolidationRuns(p), 1);
+    const projection = readFileSync(join(p.root, currentPath('c1')), 'utf8');
+    const open = pendingOperation(readLifecycle(p.root, 'c1').doc);
+    assert.equal(open.phase, 'persisting');
+
+    const r = p.prep('--apply', '--resume', '--json');
+    assert.equal(r.code, 0, r.err);
+    assert.equal(consolidationRuns(p), 1);
+    assert.equal(readFileSync(join(p.root, currentPath('c1')), 'utf8'), projection,
+      'the immutable snapshot is not re-stamped with a second `prepared_at`');
+
+    const lc = readLifecycle(p.root, 'c1').doc;
+    assert.equal(pendingOperation(lc), null, 'no pending operation behind a zero exit');
+    assert.equal(lc.current_preparation, JSON.parse(projection).preparation_id);
+    const trail = readFileSync(join(p.root, '.spectree/history/c1.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(trail.filter((e) => e.type === 'closure_prepared').length, 1);
+  } finally { p.drop(); }
+});
+
+// --- the receipt's bindings, one field at a time ----------------------------------------------------
+
+test('every binding of a receipt is compared, one removed field at a time', () => {
+  const p = project();
+  try {
+    assert.equal(p.prep('--apply').code, 0);
+    p.git(['add', '-A']); p.git(['commit', '-qm', 'prepared']);
+    p.approve();
+    p.merge();
+    assert.equal(p.confirm('--pr', '999', '--apply').code, 0);
+    assert.equal(p.stateNow(), 'closed');
+
+    // Replayed to the final gate, so `closed` is the transition under test.
+    const c = new Store(p.root).change('c1');
+    new Store(p.root).putChange({ ...c, state: 'integrated' },
+      { expected: c.state_revision, event: { type: 'fixture-replay-final-gate' } });
+
+    const path = join(p.root, receiptPath('c1'));
+    const pristine = readFileSync(path, 'utf8');
+    assert.equal(p.state('can', 'c1', 'closed').code, 0, 'the pristine receipt is authority');
+
+    // Rewritten, one field per case. Every one of these used to be invisible to this gate: the
+    // expectation was assembled field by field at the call site, and this call site never built
+    // the repository, the PR, the head or the candidate digest.
+    for (const [field, value] of [
+      ['repository', 'somebody/else'],
+      ['pr', 12345],
+      ['head_sha', 'b'.repeat(40)],
+      ['base_branch', 'not-main'],
+      ['merge_commit', 'c'.repeat(40)],
+      ['preparation_id', 'prep-somebody-else'],
+      ['generation', 9],
+      ['preparation_digest', `sha256:${'d'.repeat(64)}`],
+      ['approval_id', 'ap-somebody-else'],
+      ['contract_digest', `sha256:${'e'.repeat(64)}`],
+      ['candidate_digest', `sha256:${'f'.repeat(64)}`],
+      ['operation_id', 'op-somebody-else'],
+      ['observed_at', '2020-01-01T00:00:00Z'],
+      ['runs', [{}]],
+      ['runs', [{ workflow: 'check', run_id: 1, attempt: 1 }]],
+    ]) {
+      writeFileSync(path, JSON.stringify({ ...JSON.parse(pristine), [field]: value }));
+      const can = p.state('can', 'c1', 'closed');
+      const moved = p.state('transition', 'c1', 'closed');
+      assert.equal(can.code, 1, `${field} rewritten must refuse`);
+      assert.equal(moved.code, 1, `${field} rewritten must not move the state`);
+      assert.match(can.err, /E_RECEIPT_|E_INTEGRATION_NOT_OBSERVED/, `${field}: ${can.err}`);
+      assert.equal(new Store(p.root).change('c1').state, 'integrated', `${field}: the state did not move`);
+    }
+
+    writeFileSync(path, pristine);
+    assert.equal(p.state('can', 'c1', 'closed').code, 0, 'and the pristine receipt still is');
   } finally { p.drop(); }
 });

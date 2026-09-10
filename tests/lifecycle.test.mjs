@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { Store } from '../scripts/lib/store.mjs';
 import {
   approvalsInForce, approvalCoversPreparation, approvalCoversTarget,
-  buildReceipt, receiptCovers, preparationDigest, emptyLifecycle,
+  buildReceipt, receiptCovers, receiptDigest, preparationDigest, emptyLifecycle,
   readLifecycle, updateLifecycle, beginOperation, advanceOperation, pendingOperation,
   lifecyclePath, currentPath, snapshotPath, receiptPath, PHASE, LIFECYCLE_VERSION,
 } from '../scripts/lib/lifecycle.mjs';
@@ -226,20 +226,21 @@ test('a receipt the confirmation never wrote is a file, not an observation', () 
   // The control is what says this squad observed it. Without the pointer, a JSON dropped where a
   // receipt goes would gain authority by naming a preparation that really exists.
   assert.equal(receiptCovers(r, { changeId: 'c1', lifecycle: emptyLifecycle('c1', 'p') }).code, 'E_RECEIPT_UNRECORDED');
-  assert.equal(receiptCovers(r, {
-    changeId: 'c1',
-    lifecycle: { ...emptyLifecycle('c1', 'p'), receipt: { merge_commit: 'm'.repeat(40), generation: 1 } },
-  }).ok, true);
-  assert.equal(receiptCovers(r, {
-    changeId: 'c1',
-    lifecycle: { ...emptyLifecycle('c1', 'p'), receipt: { merge_commit: 'z'.repeat(40), generation: 1 } },
-  }).code, 'E_RECEIPT_UNRECORDED');
+
+  // The pointer names the WHOLE document. Naming it by merge commit and generation named two
+  // fields out of fifteen, and every other binding could be rewritten underneath the pointer.
+  const pointed = { ...emptyLifecycle('c1', 'p'), receipt: { receipt_digest: receiptDigest(r) } };
+  assert.equal(receiptCovers(r, { changeId: 'c1', lifecycle: pointed }).ok, true);
+  assert.equal(
+    receiptCovers({ ...r, repository: 'somebody/else' }, { changeId: 'c1', lifecycle: pointed }).code,
+    'E_RECEIPT_UNRECORDED', 'a field the old pointer never looked at');
+  assert.equal(
+    receiptCovers(r, { changeId: 'c1', lifecycle: { ...emptyLifecycle('c1', 'p'), receipt: { merge_commit: 'm'.repeat(40), generation: 1 } } }).code,
+    'E_RECEIPT_UNRECORDED', 'a pointer with no digest cannot say which document it observed');
 
   // And the approval it names has to still be authority.
   assert.equal(receiptCovers(r, {
-    changeId: 'c1',
-    lifecycle: { ...emptyLifecycle('c1', 'p'), receipt: { merge_commit: 'm'.repeat(40), generation: 1 } },
-    inForceIds: new Set(['someone-else']),
+    changeId: 'c1', lifecycle: pointed, inForceIds: new Set(['someone-else']),
   }).code, 'E_INTEGRATION_NOT_OBSERVED');
 });
 

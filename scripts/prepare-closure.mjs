@@ -149,7 +149,23 @@ if (open && !(reopen && open.kind === 'reopen')) {
     if (!reopenReason || !reopenReason.trim()) {
       die('--consolidation-ran requires --reason "<why>": it records a human decision about a command whose result nobody observed', 2);
     }
-    advanceOperation(root, changeId, open.operation_id, PHASE.OBSERVED, { resolved_by_operator: reopenReason });
+    // The decision becomes a RECORD with its own provenance. It is not an observation: nobody
+    // watched the command finish, a person looked at what it should have produced and said so.
+    // Recording it as `observed_execution` would be exactly the fabrication that removing the
+    // default PASS was about, so the source travels with it into the snapshot.
+    let contractNow = null;
+    try { contractNow = contractDigest(root, change).digest; } catch { /* named below if it matters */ }
+    advanceOperation(root, changeId, open.operation_id, PHASE.OBSERVED, {
+      resolved_by_operator: reopenReason,
+      consolidation: {
+        command_digest: open.plan?.inputs?.command_digest ?? null,
+        exit_code: null,
+        result: 'PASS',
+        source: 'operator_decision',
+        decided_because: reopenReason,
+      },
+      observed: { contract_digest: contractNow },
+    });
     store.appendHistory(changeId, {
       event_id: `closure_uncertainty_resolved:${open.operation_id}`,
       type: 'closure_uncertainty_resolved',
@@ -489,9 +505,63 @@ if (!apply) {
   }), { code: blocking.length || verdict.state === 'stale' ? 1 : 0 });
 }
 
+// --- 4b. a recovery is routed by the operation's KIND, before any normal shortcut --------------
+//
+// Two ways this went wrong. A refresh interrupted at `persisting` was met by a run that tried to
+// reserve a NEW refresh and refused its own predecessor. And a prepare that had already written
+// the projection was met by the `unchanged` shortcut — the digests matched the bytes it had just
+// written — so the run reported success with the operation still open and no event in the trail.
+//
+// `unchanged` is a statement about content. It is not a statement that an operation finished.
+if (resuming && resuming.kind === 'refresh') {
+  const plan = resuming.plan ?? {};
+  const where = plan.archive_path ? { ok: true, dir: plan.archive_path } : recordedArchive(existing, changeId);
+  if (!where.ok) refuse(where.code, where.message, ['The interrupted refresh names no archive location; nothing was written.']);
+  let current = [];
+  try { current = artifactsUnder(root, where.dir, 'archived'); }
+  catch (e) { refuse(e.code ?? 'E_PREP_MALFORMED', e.message, ['Nothing was written.']); }
+
+  // The same identity the interrupted refresh reserved, so the resume finishes THAT refresh.
+  const refreshed = buildManifest({
+    ...toBuildArgs(existing),
+    preparationId: plan.preparation_id ?? existing.preparation_id,
+    generation: plan.generation ?? existing.generation,
+    artifacts: current,
+    preparedAt: existing.prepared_at,
+  });
+  const at = existing.artifacts_refreshed_at ?? new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const body = `${JSON.stringify({ ...refreshed, artifacts_refreshed_at: at }, null, 2)}\n`;
+  const snap = join(root, snapshotPath(changeId, refreshed.preparation_id));
+  mkdirSync(dirname(snap), { recursive: true });
+  if (!existsSync(snap)) writeFileSync(snap, body);
+  writeFileSync(join(root, manifestPath(changeId)), existsSync(snap) ? readFileSync(snap, 'utf8') : body);
+  store.appendHistory(changeId, {
+    event_id: `closure_artifacts_refreshed:${resuming.operation_id}`,
+    type: 'closure_artifacts_refreshed',
+    at,
+    operation_id: resuming.operation_id,
+    from_preparation: resuming.detail?.from_preparation ?? null,
+    preparation_id: refreshed.preparation_id,
+    preparation_digest: refreshed.preparation_digest,
+    contract_digest: refreshed.contract_digest,
+    candidate_digest: refreshed.candidate_digest,
+    artifacts: current.length,
+    schema_version: SCHEMA_VERSION,
+  });
+  completeOperation(root, changeId, resuming.operation_id, (cur) => ({ ...cur, current_preparation: refreshed.preparation_id }));
+  if (!asJson) console.log(`resumed and refreshed — ${changeId} keeps its preparation; the record of ${current.length} artifact(s) is up to date.`);
+  answer(snapshotOf('refreshed', {
+    preparation_id: refreshed.preparation_id,
+    preparation_digest: refreshed.preparation_digest,
+    artifacts: current.length,
+    resumed_operation: resuming.operation_id,
+  }));
+}
+
 // A reopening is a deliberate re-preparation, so it never takes the refresh shortcut: the whole
 // consolidation runs again and the record is rebuilt, with the approval it replaced retired.
-if (verdict.state === 'unchanged' && !blocking.length && !reopen) {
+// And a RESUME never takes it either: an interrupted operation is finished, not short-circuited.
+if (verdict.state === 'unchanged' && !blocking.length && !reopen && !resuming) {
   if (record.same) {
     if (!asJson) console.log(`unchanged — ${changeId} is already prepared for this candidate and this contract.`);
     answer(snapshotOf('unchanged', { artifacts: record.recorded.length }));
@@ -595,6 +665,20 @@ if (!resuming) {
         archive_path: archiveRel,
         reopen,
         superseded: covering.map((a) => a.approval_id),
+        // The INPUTS this consolidation is about to run against. A recovery compares the disk to
+        // these, rather than recomputing a fresh truth and filing it under the old result: a delta
+        // edited while the operation was interrupted otherwise vanished from every comparison, and
+        // the resumed preparation claimed a contract that command never consolidated.
+        inputs: {
+          contract_digest: contract.digest,
+          contract_source: contract.source,
+          candidate_digest: candidate.digest,
+          // The DECLARED command, before substitution. `{change_dir}` resolves differently once
+          // the folder is archived — which this very operation does — so comparing the resolved
+          // form would report drift for the archive having happened. What this catches is the
+          // project changing `closure.consolidate` while the operation was interrupted.
+          command_digest: commandDigest(consolidation.command),
+        },
       },
       expectedRevision: expectControl === undefined ? lifecycle?.revision : Number(expectControl),
     });
@@ -666,11 +750,54 @@ let consolidationRecord;
 if (resuming) {
   // Observed once, recorded once. Re-running a command whose result is already on record would
   // make a recovery an execution, and the whole point of recording the phase is that it is not.
-  consolidationRecord = resuming.detail?.consolidation ?? {
-    command_digest: commandDigest(resolved), argv_length: resolved.length,
-    exit_code: null, result: 'PASS',
-    note: 'resumed from a recorded observation',
-  };
+  //
+  // There is no default. "The process reached `observed`" is not "the consolidation succeeded", and
+  // inventing a PASS where the observation is missing is inventing the observation.
+  consolidationRecord = resuming.detail?.consolidation ?? null;
+  if (!consolidationRecord) {
+    refuse('E_RESUME_NO_OBSERVATION',
+      `${operationId} reached "${resuming.phase}" with no recorded consolidation result`,
+      [
+        'A resume finishes an operation from what was observed. Nothing here invents that observation:',
+        '"the command ran" is not "the command consolidated", and the difference is the whole point',
+        'of recording the phase.',
+        `Decide it explicitly:  --apply --resume --consolidation-ran --reason "<what you checked>"`,
+        `or drop it:            --apply --abandon --reason "<why>"`,
+      ], { pending_operation: resuming });
+  }
+
+  // The world the interrupted command ran in, compared against the world now. A delta edited
+  // during the pause changes the contract, and pinning the old result under the new contract is a
+  // preparation for something that was never consolidated.
+  const inputs = resuming.plan?.inputs ?? null;
+  if (!inputs) {
+    refuse('E_RESUME_NO_INPUTS',
+      `${operationId} recorded no inputs, so what it ran against cannot be established`,
+      ['Nothing was written. Abandon it deliberately and prepare again:',
+        `  --apply --abandon --reason "<why>"`], { pending_operation: resuming });
+  }
+  const drift = [];
+  if (contract.digest !== inputs.contract_digest) {
+    drift.push(`the contract moved (ran against ${String(inputs.contract_digest).slice(0, 18)}…, now ${contract.digest.slice(0, 18)}…)`);
+  }
+  const observedAfter = resuming.detail?.observed?.contract_digest ?? null;
+  if (observedAfter && contract.digest !== observedAfter) {
+    drift.push(`the contract moved after the command was observed (observed ${String(observedAfter).slice(0, 18)}…, now ${contract.digest.slice(0, 18)}…)`);
+  }
+  if (inputs.command_digest && commandDigest(consolidation.command) !== inputs.command_digest) {
+    drift.push('the consolidation command the project declares is not the one that ran');
+  }
+  if (drift.length) {
+    refuse('E_RESUME_INPUTS_CHANGED',
+      `${operationId} cannot be resumed: what it ran against is not what is here now`,
+      [
+        ...drift,
+        'Nothing was written and the consolidation was NOT run again. A recovery finishes the',
+        'operation that was interrupted; it does not re-decide it under a different contract.',
+        `Abandon it and prepare again:  --apply --abandon --reason "<why>"`,
+      ], { pending_operation: resuming, drift });
+  }
+
   commands.push({ check: resolved.join(' '), exit_code: consolidationRecord.exit_code, result: consolidationRecord.result });
   console.error(`resuming ${operationId} from "${resuming.phase}" — the consolidation is NOT run again.`);
 } else {
@@ -684,7 +811,15 @@ if (resuming) {
     exit_code: ran.status ?? null,
     result: ran.error ? 'INFRA_ERROR' : ran.status === 0 ? 'PASS' : 'FAIL',
   };
-  advanceOperation(root, changeId, operationId, PHASE.OBSERVED, { consolidation: consolidationRecord });
+  // The contract as it reads AFTER the command, recorded in the same write that records the
+  // observation. A resume compares the disk against this: the identity of what was actually
+  // consolidated, not a number computed later under an older result.
+  let observedContract = null;
+  try { observedContract = contractDigest(root, change).digest; } catch { /* reported below */ }
+  advanceOperation(root, changeId, operationId, PHASE.OBSERVED, {
+    consolidation: consolidationRecord,
+    observed: { contract_digest: observedContract },
+  });
   commands.push({ check: resolved.join(' '), exit_code: ran.status ?? null, result: consolidationRecord.result });
   if (ran.error || ran.status !== 0) {
     note(`spec consolidation failed (${ran.error ? ran.error.message : `exit ${ran.status}`}); the delta was not merged into the living spec`);
@@ -795,10 +930,18 @@ const file = join(root, manifestPath(changeId));
 mkdirSync(dirname(file), { recursive: true });
 // The immutable snapshot first, then the projection: a reader that finds the pointer always
 // finds the document it points at.
+//
+// And on a RESUME the snapshot that already exists IS the record — rewriting it would stamp a new
+// `prepared_at` over an immutable document, so a resumed persistence produces the same bytes it
+// was interrupted writing rather than a second version of one preparation.
 const snapFile = join(root, snapshotPath(changeId, preparationId));
 mkdirSync(dirname(snapFile), { recursive: true });
-writeFileSync(snapFile, `${JSON.stringify(manifest, null, 2)}\n`);
-writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
+const body = resuming && existsSync(snapFile)
+  ? readFileSync(snapFile, 'utf8')
+  : `${JSON.stringify(manifest, null, 2)}\n`;
+if (!existsSync(snapFile)) writeFileSync(snapFile, body);
+writeFileSync(file, body);
+const recorded = JSON.parse(body);
 
 // The event first, then the close. A crash between them would otherwise lose the trail entry for
 // a write that had already happened, and an operation reported as finished with nothing recorded
@@ -806,14 +949,14 @@ writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
 store.appendHistory(changeId, {
   event_id: `closure_prepared:${operationId}`,
   type: 'closure_prepared',
-  at: manifest.prepared_at,
+  at: recorded.prepared_at,
   operation_id: operationId,
   generation: nextGeneration,
   preparation_id: preparationId,
-  preparation_digest: manifest.preparation_digest,
-  contract_digest: manifest.contract_digest,
-  candidate_digest: manifest.candidate_digest,
-  archive_path: manifest.archive_path,
+  preparation_digest: recorded.preparation_digest,
+  contract_digest: recorded.contract_digest,
+  candidate_digest: recorded.candidate_digest,
+  archive_path: recorded.archive_path,
   artifacts: artifacts.length,
   commands: commands.length,
   deferred: deferred.length,
@@ -829,18 +972,19 @@ completeOperation(root, changeId, operationId, (cur) => ({
 
 if (!asJson) {
   console.log(`${resuming ? 'resumed and prepared' : 'prepared'} ${changeId}  (generation ${nextGeneration}, ${preparationId})`);
-  console.log(`  contract   ${manifest.contract_digest.slice(0, 22)}...`);
-  console.log(`  candidate  ${manifest.candidate_digest.slice(0, 22)}...`);
-  console.log(`  identity   ${manifest.preparation_digest.slice(0, 22)}...`);
+  console.log(`  contract   ${recorded.contract_digest.slice(0, 22)}...`);
+  console.log(`  candidate  ${recorded.candidate_digest.slice(0, 22)}...`);
+  console.log(`  identity   ${recorded.preparation_digest.slice(0, 22)}...`);
   console.log(`  ${artifacts.length} artifact(s) archived, ${commands.length} command(s) run, ${deferred.length} deferral(s) carried`);
   console.log(`  contract version ${PREP_CONTRACT_VERSION}. Nothing was marked integrated or closed: that is the merge's job.`);
   if (reopen) console.log('  This preparation is NOT approved: the approval that covered the previous one was retired.');
 }
 answer({
   ...snapshotOf(reopen ? 'reopened' : 'prepared'),
-  preparation_digest: manifest.preparation_digest,
-  artifacts: artifacts.length,
+  preparation_digest: recorded.preparation_digest,
+  artifacts: recorded.artifacts.length,
   commands,
   deferred,
-  manifest,
+  ...(resuming ? { resumed_operation: resuming.operation_id } : {}),
+  manifest: recorded,
 });

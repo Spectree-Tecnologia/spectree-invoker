@@ -30,7 +30,8 @@ import { canTransition, ORDER } from './lib/state-machine.mjs';
 import {
   readLifecycle, pendingOperation, beginOperation, advanceOperation, completeOperation,
   buildReceipt, writeReceipt, readReceipt, receiptCovers,
-  approvalCoversPreparation, approvalCoversTarget, newOperationId, updateLifecycle, PHASE,
+  approvalCoversPreparation, approvalCoversTarget, newOperationId, updateLifecycle,
+  receiptDigest, integrationExpectation, PHASE,
 } from './lib/lifecycle.mjs';
 import { pullRequest, runsForCommit, latestRun, runView, repository } from './lib/gh.mjs';
 
@@ -296,25 +297,30 @@ const closureVerdict = legacyMode
     generation: lifecycle?.generation ?? null,
   });
 
+// Filled in once the pointer is written, below. The rehearsal does not read it.
+let controlAfterPointer = null;
+
+// The v2 bindings, assembled ONCE from the approved reference — the same function the gates in
+// `state.mjs` read, so neither of them can omit a comparison by not having built it.
+const expectation = integrationExpectation({
+  changeId, manifest, authority, lifecycle, legacy: legacyMode,
+});
+
 /** The context every rehearsal and every real transition shares. One definition, one answer. */
-const contextFor = (receipt) => ({
+const contextFor = (receipt, { checkPointer = true } = {}) => ({
   evidence: store.evidence(changeId),
   approvals: authority.inForce,
   authority,
   revision: landed?.revision, contentDigest: landed?.digest, contractDigest: contract?.digest,
   closure: closureVerdict,
   receipt: receiptCovers(receipt, {
-    changeId, mergeCommit: mergeOid,
-    generation: manifest?.generation ?? null,
-    preparationId: manifest?.preparation_id ?? null,
-    preparationDigest: manifest?.preparation_digest ?? null,
-    repository: repo, pr: Number(prNumber), headSha: pr?.headRefOid, baseBranch: pr?.baseRefName,
-    contractDigest: contract?.digest, candidateDigest: landed?.digest,
+    ...expectation,
+    mergeCommit: mergeOid,
     legacy: legacyMode,
-    // The pointer check is skipped while rehearsing: the control cannot name a receipt that has
-    // not been written yet, and requiring it here would refuse every first confirmation.
-    lifecycle: null,
-    inForceIds: new Set(authority.inForce.map((a) => a.approval_id)),
+    expectation,
+    // The pointer is skipped while REHEARSING: the control cannot name a receipt that has not been
+    // written yet, and requiring it there would refuse every first confirmation.
+    lifecycle: checkPointer ? (controlAfterPointer ?? lifecycle) : null,
   }),
   preparation: (a) => (legacyMode ? { ok: true } : approvalCoversPreparation(a, manifest)),
   scopeDigests: {
@@ -338,7 +344,7 @@ if (candidateReceipt && !impediments.length) {
       break;
     }
     // `closure.merged` is written by this confirmation, so the rehearsal is told it will exist.
-    const ctx = contextFor(candidateReceipt);
+    const ctx = contextFor(candidateReceipt, { checkPointer: false });
     if (to === 'closed' && !ctx.evidence.some((e) => e.property === 'closure.merged' && !e.superseded_by)) {
       ctx.evidence = [...ctx.evidence, {
         property: 'closure.merged', result: 'PASS', source_kind: 'observed_execution',
@@ -436,12 +442,17 @@ if (!sameIntegration) writeReceipt(root, changeId, receipt);
 
 // The control points at the receipt BEFORE the gate reads it: a receipt the confirmation never
 // wrote is a file, and the pointer is what tells the two apart.
-updateLifecycle(root, changeId, (cur) => ({
+// Captured, because the transitions below read the pointer this write creates — and the control
+// read at the top of this file predates it.
+controlAfterPointer = updateLifecycle(root, changeId, (cur) => ({
   ...cur,
   receipt: {
     pr: receipt.pr, merge_commit: receipt.merge_commit, generation: receipt.generation,
     preparation_id: receipt.preparation_id, approval_id: receipt.approval_id,
     observed_at: receipt.observed_at, operation_id: operationId,
+    // The whole document, in one field. Pointing at it by merge commit and generation named two
+    // fields out of fifteen, and every other binding could be rewritten underneath the pointer.
+    receipt_digest: receiptDigest(receipt),
   },
 }));
 

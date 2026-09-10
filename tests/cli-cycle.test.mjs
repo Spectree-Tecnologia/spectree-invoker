@@ -423,8 +423,10 @@ test('one PR: the closure is prepared on the branch, and the merge is the only i
 
     const candidate2 = c.git(['rev-parse', 'HEAD']).trim();
     const gate = c.cli('digest', 'c1', '--gate', 'integration');
-    c.cli('record-approval', c.doc('ap2', integrationDoc(c, 'ap2', gate.out, candidate2, { headSha: candidate2 })));
-    assert.equal(c.cli('transition', 'c1', 'integration_approved').code, 0);
+    const rec = c.cli('record-approval', c.doc('ap2', integrationDoc(c, 'ap2', gate.out, candidate2, { headSha: candidate2 })));
+    assert.equal(rec.code, 0, rec.err);
+    const t = c.cli('transition', 'c1', 'integration_approved');
+    assert.equal(t.code, 0, t.err);
 
     // ONE merge. `--no-ff` writes a new commit over an identical tree: the candidate that was
     // reviewed is the candidate being integrated, and the digest says so.

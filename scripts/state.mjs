@@ -33,7 +33,7 @@ import { launch } from './lib/launch.mjs';
 import { manifestPath, preparationCovers, approvalsInForce, readManifest } from './lib/closure-prep.mjs';
 import {
   readLifecycle, readReceipt, receiptCovers, pendingOperation,
-  approvalCoversPreparation, updateLifecycle,
+  approvalCoversPreparation, updateLifecycle, withAuthority, integrationExpectation,
 } from './lib/lifecycle.mjs';
 import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
@@ -125,6 +125,12 @@ function closureContext(changeId) {
     authority,
     receipt: readReceipt(root, changeId),
     pending: pendingOperation(lc.doc),
+    // The one place the v2 integration bindings are assembled. Every gate reads this, so none of
+    // them can omit a comparison by not having built it.
+    expectation: integrationExpectation({
+      changeId, manifest: snapshot, authority, lifecycle: lc.doc,
+      legacy: store.change(changeId)?.closure_mode === 'legacy',
+    }),
   };
 }
 
@@ -364,18 +370,18 @@ switch (cmd) {
       contractDigest: d.contract.digest,
       closure: closureVerdict(change, d, cc),
       // The merge is OBSERVED by post-merge.mjs, never asserted here — and the receipt is checked
-      // WHOLE. Comparing only the fields this caller happened to assemble is how a four-key JSON
-      // naming a real preparation reached `integrated` with no merge, no PR and no run anywhere.
+      // against the COMPLETE expectation, built once from the approved reference. Assembling the
+      // expectation field by field at each call site is how this gate came to ask about the change,
+      // the generation and the preparation while never asking about the repository, the PR, the
+      // head or the candidate digest: a receipt with all four rewritten passed.
+      //
+      // The expectation comes from the manifest and the approval in force, never from the local
+      // checkout — which candidate was observed is a question the approved reference answers.
       receipt: ['integrated', 'closed'].includes(to)
         ? receiptCovers(cc.receipt, {
-          changeId: id,
-          generation: cc.generation,
-          preparationId: cc.manifest?.preparation_id,
-          preparationDigest: cc.manifest?.preparation_digest,
-          contractDigest: d.contract.digest,
+          ...cc.expectation,
           legacy: change.closure_mode === 'legacy',
-          lifecycle: cc.lifecycle,
-          inForceIds: new Set(cc.authority.inForce.map((a) => a.approval_id)),
+          expectation: cc.expectation,
         })
         : undefined,
       preparation: (a) => approvalCoversPreparation(a, cc.manifest),
@@ -403,19 +409,23 @@ switch (cmd) {
       delete next.blocked_from;
       delete next.blocked_reason;
     }
-    // The closure control is re-read immediately before the write. `state_revision` catches a
-    // concurrent transition, but a reopening moves the GENERATION and the authority without
-    // touching it — so a transition decided a moment earlier would apply against an approval that
-    // had already been retired.
-    const afterDecision = closureContext(id);
-    if ((cc.lifecycle?.revision ?? null) !== (afterDecision.lifecycle?.revision ?? null)) {
+    // The write happens INSIDE the closure's authority boundary, against the control revision this
+    // decision was computed at. A second read just before the write only narrows the window: a
+    // reopening that returns the change to the state it was already in does not move
+    // `state_revision`, so the change store's own check sees nothing, and the transition landed on
+    // top of an operation that was still running.
+    //
+    // Lock order is lifecycle then change, everywhere, so the two cannot cycle.
+    let saved;
+    try {
+      saved = withAuthority(root, id, { expectedRevision: cc.lifecycle?.revision ?? null, requireIdle: to !== 'blocked' }, () =>
+        store.putChange(next, { event: { type: 'transition', from: change.state, to }, expected: change.state_revision }));
+    } catch (e) {
       console.error(`REFUSED ${change.state} -> ${to}`);
-      console.error('  E_CONCURRENT_UPDATE: the closure moved between this decision and this write ' +
-        `(control revision ${cc.lifecycle?.revision ?? 'none'} -> ${afterDecision.lifecycle?.revision ?? 'none'}).`);
+      console.error(`  ${e.code ?? 'E_REFUSED'}: ${e.message}`);
       console.error('  Nothing was written. Read it again and decide against what is there now.');
       process.exit(1);
     }
-    const saved = store.putChange(next, { event: { type: 'transition', from: change.state, to }, expected: change.state_revision });
     console.log(`${change.state} -> ${to}  (state_revision ${saved.state_revision})`);
     break;
   }
@@ -593,8 +603,11 @@ switch (cmd) {
         //
         // Nothing here grants anything. Filling in a reference is bookkeeping; `granted_by` is
         // the claim about a human, and this command records it, never makes it.
+        // ONE read for the whole command: the revision this reservation uses is the revision that
+        // validated the preparation being approved. A second, newer read taken just before the
+        // write would reserve against a world the decision never saw.
+        const cc = doc.gate === 'integration' && doc.change_id ? closureContext(doc.change_id) : null;
         if (doc.gate === 'integration' && doc.change_id) {
-          const cc = closureContext(doc.change_id);
           if (cc.authority.ok === false) die(`${cc.authority.code}: ${cc.authority.message}`, 1);
           // An unfinished write comes FIRST: whatever is on disk is half of two different states,
           // and approving over it approves neither of them. It is also the sharper diagnosis —
@@ -626,7 +639,6 @@ switch (cmd) {
         // authority, and let a refresh that had already decided overwrite the record being
         // approved a moment later.
         if (doc.gate === 'integration' && doc.change_id && doc.preparation) {
-          const cc = closureContext(doc.change_id);
           try {
             updateLifecycle(root, doc.change_id, (cur) => ({
               ...cur,

@@ -279,8 +279,17 @@ repository, the PR, the head, the base branch, the merge commit, the preparation
 the approval, the contract and candidate digests, and the workflow runs with their attempts, plus
 the moment they were observed. Every one of those is **required**, and the check is on the record's
 structure before any comparison: a four-key document naming a real preparation is not a receipt,
-however true each of its four keys happens to be. The closure control also has to point at it, so
-a file placed where a receipt goes is a file. Without it a `state transition … integrated`
+however true each of its four keys happens to be. Each recorded run is identified too — workflow,
+id, attempt, conclusion — because an empty object satisfied "a non-empty list of runs" and said
+nothing about any run.
+
+The bindings are assembled **once**, from the approved reference: the preparation, the exact
+approval in force over it, and the control's pointer. Building the expectation field by field at
+each call site is how the final gate came to ask about the change, the generation and the
+preparation while never asking about the repository, the PR, the head or the candidate digest — a
+receipt with all four rewritten passed. And the control points at the receipt by a digest of the
+**whole document**, because a pointer that agreed on the merge commit and the generation agreed on
+two fields out of fifteen. Without it a `state transition … integrated`
 asserted an integration nobody had looked at, and the two commands disagreed about the same
 merge. A receipt is an observation about ONE merge of ONE preparation: after a reopening it
 stops covering, and a historical receipt is never a claim that a later re-run of the CI is green.
@@ -305,6 +314,25 @@ the closure control revision its decision was taken at; a dry run hands that rev
 reopening landing in between makes the reservation fail — nothing runs and nothing is written. A
 lock taken at write time does not make a decision taken before it fresh, which is how a refresh
 came to overwrite a record that had been approved a moment earlier.
+
+**A state transition writes inside that same boundary**, not merely near it. The lock order is
+closure lifecycle first, change second, everywhere, so the two cannot cycle. Re-reading just before
+the write only narrows the window: a reopening that returns a change to the state it was already in
+does not move `state_revision`, so the change store's own optimistic check has nothing to object to,
+and the transition landed on top of an operation that was still running.
+
+**A recovery is bound to what the interrupted command actually ran against.** The operation records
+its INPUTS before the command — the contract it read, the candidate, the declared consolidation
+command — and the identity it OBSERVED after it. A resume compares the disk against those
+references instead of recomputing a fresh truth and filing it under the old result: a delta edited
+while the operation was stopped otherwise vanished from every comparison, and the resumed
+preparation claimed a contract that command never consolidated. Drift is a refusal, not a
+recalculation, and the command is never run again to resolve it.
+
+Nothing fills in a result that was never observed. `started` carries no consolidation outcome —
+that is what `started` means — and where a person resolves it, their decision is recorded with its
+own provenance (`source: operator_decision`, with the reason), never as an execution somebody
+watched.
 
 **And a green never becomes a commit.** "CI passed" is an event about a revision, not part of
 the revision — recording it inside the content it describes starts another run, which produces

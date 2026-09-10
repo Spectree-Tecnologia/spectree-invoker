@@ -125,6 +125,26 @@
         },
         "result": {
           "$ref": "spectree/common#/definitions/result"
+        },
+        "source": {
+          "enum": [
+            "observed_execution",
+            "operator_decision"
+          ],
+          "description": "Where this result came from. An operator_decision is a person saying the command ran after the process died before observing it: recorded, attributed, and never readable as an execution somebody watched."
+        },
+        "decided_because": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The reason the operator gave. Required in practice by the CLI when source is operator_decision."
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false

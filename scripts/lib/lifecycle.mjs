@@ -232,6 +232,50 @@ function ownerIsGone(file) {
 }
 
 /**
+ * Do something under the closure's authority boundary, without changing the control.
+ *
+ * For a write that lands in ANOTHER store — a state transition, which writes `changes/<id>.json`
+ * — the decision and the write have to sit inside the same critical section as the authority they
+ * rest on. Re-reading close to the write narrows the window; it does not close it, and a reopening
+ * that returns a change to the state it was already in does not move `state_revision`, so the
+ * change store's own optimistic check sees nothing.
+ *
+ * LOCK ORDER, and it is the only one used anywhere: closure lifecycle lock, then the change lock.
+ * Nothing takes the lifecycle lock while holding a change lock, so the two cannot cycle.
+ *
+ * @param {object} opts
+ * @param {number} [opts.expectedRevision]  the control revision the DECISION was computed at
+ * @param {boolean} [opts.requireIdle]      refuse while an operation is open
+ */
+export function withAuthority(root, changeId, { expectedRevision, requireIdle = true } = {}, fn) {
+  return withLifecycleLock(root, changeId, () => {
+    const read = readLifecycle(root, changeId);
+    if (read.present && !read.doc) {
+      const e = new Error(read.message);
+      e.code = read.code;
+      throw e;
+    }
+    const current = read.doc;
+    if (expectedRevision !== undefined && expectedRevision !== (current?.revision ?? null)) {
+      const e = new Error(
+        `the closure moved between this decision and this write: control revision ${expectedRevision} -> ${current?.revision ?? 'none'}`);
+      e.code = 'E_CONCURRENT_UPDATE';
+      throw e;
+    }
+    if (requireIdle) {
+      const open = pendingOperation(current);
+      if (open) {
+        const e = new Error(
+          `an unfinished ${open.kind} operation (${open.operation_id}) is open at phase "${open.phase}": ${open.recovery}`);
+        e.code = 'E_OPERATION_PENDING';
+        throw e;
+      }
+    }
+    return fn(current);
+  });
+}
+
+/**
  * Read-modify-write of the control, under the lock, with an optional expected revision.
  * `mutate` receives the document and returns the next one; it must not perform effects.
  */
@@ -538,6 +582,75 @@ const RECEIPT_REQUIRED = [
   'contract_digest', 'candidate_digest', 'operation_id', 'observed_at',
 ];
 
+/**
+ * The receipt's canonical identity.
+ *
+ * The control used to point at a receipt by merge commit and generation, which is two fields out
+ * of fifteen: every other binding could be rewritten and the pointer still agreed. A digest over
+ * the whole document is the complete comparison, and it is one field.
+ */
+export function receiptDigest(receipt) {
+  const canonical = JSON.stringify({
+    receipt_version: receipt.receipt_version ?? null,
+    change_id: receipt.change_id ?? null,
+    repository: receipt.repository ?? null,
+    pr: receipt.pr ?? null,
+    head_sha: receipt.head_sha ?? null,
+    merge_commit: receipt.merge_commit ?? null,
+    base_branch: receipt.base_branch ?? null,
+    preparation_id: receipt.preparation_id ?? null,
+    generation: receipt.generation ?? null,
+    preparation_digest: receipt.preparation_digest ?? null,
+    approval_id: receipt.approval_id ?? null,
+    contract_digest: receipt.contract_digest ?? null,
+    candidate_digest: receipt.candidate_digest ?? null,
+    operation_id: receipt.operation_id ?? null,
+    observed_at: receipt.observed_at ?? null,
+    runs: (receipt.runs ?? []).map((r) => [
+      r.workflow ?? null, String(r.workflow_id ?? ''), String(r.run_id ?? ''),
+      r.attempt ?? null, r.status ?? null, r.conclusion ?? null, r.head_sha ?? null, r.event ?? null,
+    ]),
+  });
+  return `sha256:${createHash('sha256').update(canonical, 'utf8').digest('hex')}`;
+}
+
+/**
+ * Every binding a v2 receipt must satisfy, built from the APPROVED reference and nothing else.
+ *
+ * The defect this replaces: `receiptCovers` compared only the fields whose expectation its caller
+ * happened to assemble, so `state.mjs` — which knew the change, the generation and the preparation
+ * — never asked about the repository, the PR, the head or the candidate digest. A receipt with all
+ * four rewritten passed the final gate.
+ *
+ * It is built from the manifest, the exact approval in force over that manifest, and the control's
+ * pointer. Deliberately NOT from the local checkout: which candidate was observed is a question the
+ * approved reference answers, and the operator's disk is not that reference.
+ */
+export function integrationExpectation({ changeId, manifest, authority, lifecycle, legacy = false }) {
+  if (legacy) return { changeId, legacy: true, lifecycle };
+  const approvals = (authority?.inForce ?? []).filter((a) => a.gate === 'integration' && a.change_id === changeId);
+  const approval = approvals.find((a) => a.preparation?.preparation_id === manifest?.preparation_id) ?? null;
+  const target = approval?.integration_target ?? {};
+  return {
+    changeId,
+    repository: target.repository ?? undefined,
+    pr: target.pr ?? undefined,
+    headSha: target.head_sha ?? undefined,
+    baseBranch: target.base_branch ?? undefined,
+    preparationId: manifest?.preparation_id ?? undefined,
+    generation: manifest?.generation ?? undefined,
+    preparationDigest: manifest?.preparation_digest ?? undefined,
+    approvalId: approval?.approval_id ?? undefined,
+    contractDigest: manifest?.contract_digest ?? undefined,
+    candidateDigest: manifest?.candidate_digest ?? undefined,
+    lifecycle,
+    inForceIds: new Set(approvals.map((a) => a.approval_id)),
+    // Reported so a caller can say WHY there is no expectation to check, rather than checking
+    // nothing and calling that agreement.
+    approvalMissing: !approval,
+  };
+}
+
 export function readReceipt(root, changeId) {
   const f = join(root, receiptPath(changeId));
   if (!existsSync(f)) return null;
@@ -561,7 +674,7 @@ export function readReceipt(root, changeId) {
 export function receiptCovers(receipt, {
   changeId, mergeCommit, generation, preparationId, preparationDigest: prepDigest,
   approvalId, repository, pr, headSha, baseBranch, contractDigest, candidateDigest,
-  legacy = false, lifecycle = null, inForceIds = null,
+  legacy = false, lifecycle = null, inForceIds = null, expectation = null,
 } = {}) {
   if (!receipt) {
     return refuse('E_INTEGRATION_NOT_OBSERVED',
@@ -584,19 +697,46 @@ export function receiptCovers(receipt, {
       `the integration receipt records no ${missing.join(', ')}; a receipt names the whole integration it observed, ` +
       'and a record missing any of it is not an observation');
   }
-  if (!legacy && (!Array.isArray(receipt.runs) || receipt.runs.length === 0)) {
-    return refuse('E_RECEIPT_INCOMPLETE', 'the integration receipt records no observed run; the checks the policy required are part of what was observed');
+  if (!legacy) {
+    if (!Array.isArray(receipt.runs) || receipt.runs.length === 0) {
+      return refuse('E_RECEIPT_INCOMPLETE', 'the integration receipt records no observed run; the checks the policy required are part of what was observed');
+    }
+    // An empty object in that array satisfied "a non-empty list of runs" and said nothing about
+    // any run. A run is identified or it is not a run.
+    for (const [i, r] of receipt.runs.entries()) {
+      const missing = ['workflow', 'run_id', 'attempt', 'conclusion'].filter((k) => r?.[k] === undefined || r?.[k] === null || r?.[k] === '');
+      if (missing.length) {
+        return refuse('E_RECEIPT_INCOMPLETE',
+          `the receipt's run ${i + 1} records no ${missing.join(', ')}; a run is identified by its workflow, its id, its attempt and how it ended`);
+      }
+      if (!Number.isInteger(Number(r.attempt))) {
+        return refuse('E_RECEIPT_INCOMPLETE', `the receipt's run ${i + 1} records attempt "${r.attempt}", which is not an attempt number`);
+      }
+    }
+  }
+  // An expectation this caller could not build is not an expectation that passed.
+  if (!legacy && expectation?.approvalMissing) {
+    return refuse('E_RECEIPT_UNVERIFIABLE',
+      'no integration approval in force names the current preparation, so there is no approved reference to check this receipt against');
   }
   // And it has to be the receipt this squad wrote, not a document that named a real preparation.
+  // Compared by the WHOLE document's digest: a pointer that agreed on the merge commit and the
+  // generation agreed on two fields out of fifteen, and every other binding could be rewritten
+  // underneath it.
   if (lifecycle) {
     const pointer = lifecycle.receipt;
     if (!pointer) {
       return refuse('E_RECEIPT_UNRECORDED',
         'the closure control records no integration receipt; a receipt that the confirmation never wrote is a file, not an observation');
     }
-    if (pointer.merge_commit !== receipt.merge_commit || Number(pointer.generation) !== Number(receipt.generation)) {
+    if (!pointer.receipt_digest) {
       return refuse('E_RECEIPT_UNRECORDED',
-        `the closure control observed merge ${String(pointer.merge_commit).slice(0, 8)} at generation ${pointer.generation}, and this receipt says ${String(receipt.merge_commit).slice(0, 8)} at ${receipt.generation}`);
+        'the closure control names a receipt but records no digest for it, so which document it observed cannot be established; re-confirm the merge');
+    }
+    const here = receiptDigest(receipt);
+    if (pointer.receipt_digest !== here) {
+      return refuse('E_RECEIPT_UNRECORDED',
+        `the receipt on disk is not the document the closure control observed (${String(pointer.receipt_digest).slice(0, 22)}… vs ${here.slice(0, 22)}…)`);
     }
   }
 
