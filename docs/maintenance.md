@@ -36,41 +36,32 @@ Four of those were introduced while fixing the previous one. That is what this e
 5. an unsupported or unparseable shape is **refused**, never half-read. Silence about what a run
    did is not evidence that it did it.
 
-## M5 — the post-merge path through `gh` has never run
+## M5 — the post-merge path through `gh`
 
 **Owner:** this repository.
-**Status:** open, and it cannot close in a synthetic consumer.
+**Status:** **closed**, observed on 2026-09-10 against
+`GilsonJunior-Developer/spectree-invoker-smoke-claude` — a disposable target created for this,
+authorised by the Founder in session. Nothing was run against a real consumer.
 
-`scripts/post-merge.mjs` reads a real PR, real checks and a real merge commit through the GitHub
-CLI. The decision logic under it — content equivalence, the required-check aggregate, whether a
-preparation covers what landed — is tested directly and offline. **The `gh` calls themselves are
-not**: a disposable repository has no remote and no PR to ask about.
+A change was driven open-to-`closed` by the INSTALLED CLIs in that repository, with real evidence,
+a real PR, a real merge and real `gh` calls. Three paths were exercised:
 
-Criteria for closing: one real change taken through `post-merge.mjs --apply` against a real PR,
-with the refusal path exercised too (a merge whose content is not the authorised candidate must
-stop the closure, in a disposable repository — never by editing a production PR to manufacture a
-failure). Until then the row in [compatibility.md](compatibility.md) says implemented, not
-verified.
+| Path | What happened |
+|---|---|
+| **positive** — PR #1 | merge `190cf34f7123`; the push run on `main` (`34431054767`, `verify=success`) was found by `--commit --event push --branch main --workflow check`; `post-merge --apply` closed the change; `state transition … integrated` on its own refused first with `E_INTEGRATION_NOT_OBSERVED`; the receipt names the repository, PR 1, head `7094859de982`, merge `190cf34f7123`, preparation `prep-98eca15f…`, approval `ap-int-c1` and `check#34431054767/attempt1=success jobs:[verify=success]`; **3 gh calls, 0 log bytes, `origin/main` unchanged by closing** |
+| **negative** — PR #2 | an extra commit pushed AFTER the approval, then merged. The confirmation refused on three independent grounds: the approval names other content, no approval covers both content and history, and `E_PREP_STALE`. **No receipt, no `integration_observed`, the state byte for byte what it was** |
+| **not green** — PR #3 | CI checks something the local suite does not, and the change does not satisfy it. Confirmed once while the run was still going (`E_CHECK_NOT_GREEN: verify = in_progress`) and once after it finished red (`verify = failure`). No receipt either time |
 
-Three things the offline tests specifically could not answer. **Two are now observed**, against
-PR #23 of this repository on 2026-09-10:
+Two transport facts came out of it, both worth keeping:
 
-- **`gh pr checks` exit 8 — OBSERVED.** With `plugin` pending and `classify` passed, the real CLI
-  exits **8**. The transport treats 0, 1 and 8 as answers and anything else as a failure, which is
-  what this confirms.
-- **Server-side filtering — OBSERVED, and sharper than assumed.** For the **push** run on `main`,
-  which is the case the confirmation actually queries, `--commit <sha> --event push --branch main
-  --workflow check` returns exactly the one run. For a **pull_request** run it returns nothing, and
-  correctly: the API's `head_sha` there is the ephemeral merge commit Actions built, not the branch
-  head. The two even shared their first twelve hex characters in this instance —
-  `89d2443a7c956fbe…` against `89d2443a7c95059c…` — which is the shape of trap that a short-sha
-  comparison walks into. `gh run view --json headSha` agrees with the API, so the `E_GH_UNFILTERED`
-  belt compares like with like. The lesson for a consumer: confirm a PR's checks through the PR
-  (`gh pr checks`), never by the branch head.
-- **A failing post-merge run observed for real — STILL OPEN.** A live *pending* check was observed
-  on the PR above. A red or pending run on a **push to `main`**, which is what the confirmation
-  aggregates, has not been seen, and neither has `post-merge --apply` against a real merged PR:
-  both need a merge, which is a separate authorisation.
+- **`gh pr checks` exits 8** while a check is pending. The transport treats 0, 1 and 8 as answers.
+- **A `pull_request` run's `head_sha` is the ephemeral merge commit**, not the branch head, so
+  `--commit <branch head>` finds nothing there — correctly. In one instance the two shared their
+  first twelve hex characters (`89d2443a7c956fbe…` against `89d2443a7c95059c…`), which is the shape
+  of trap a short-sha comparison walks into. Confirm a PR's checks through the PR.
+
+What this does **not** claim: that every harness, every merge method or every CI shape behaves the
+same. Squash, rebase and merge queues are still unsupported and still say so.
 
 ## M6 — delivery time is a hypothesis, not a measurement
 
