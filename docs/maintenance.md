@@ -52,16 +52,25 @@ stop the closure, in a disposable repository — never by editing a production P
 failure). Until then the row in [compatibility.md](compatibility.md) says implemented, not
 verified.
 
-Three things the offline tests specifically cannot answer, so they close with this item:
+Three things the offline tests specifically could not answer. **Two are now observed**, against
+PR #23 of this repository on 2026-09-10:
 
-- **`gh pr checks` exit 8.** Pending is reported through an exit code, and this treats that as an
-  answer rather than a transport failure. Only the real CLI can confirm the code and the shape.
-- **Server-side filtering.** `--commit`, `--event` and `--workflow` are the contract the run
-  discovery rests on. The stub honours them deliberately, so a query that never applied them could
-  not look correct here — but a `gh` that ignored one silently would still only show up live,
-  which is why an unfiltered result is refused with `E_GH_UNFILTERED`.
-- **A pending or failing run observed for real.** An offline fixture of a failure is a fixture. At
-  least one live observation of pending or red belongs in the same smoke as the green path.
+- **`gh pr checks` exit 8 — OBSERVED.** With `plugin` pending and `classify` passed, the real CLI
+  exits **8**. The transport treats 0, 1 and 8 as answers and anything else as a failure, which is
+  what this confirms.
+- **Server-side filtering — OBSERVED, and sharper than assumed.** For the **push** run on `main`,
+  which is the case the confirmation actually queries, `--commit <sha> --event push --branch main
+  --workflow check` returns exactly the one run. For a **pull_request** run it returns nothing, and
+  correctly: the API's `head_sha` there is the ephemeral merge commit Actions built, not the branch
+  head. The two even shared their first twelve hex characters in this instance —
+  `89d2443a7c956fbe…` against `89d2443a7c95059c…` — which is the shape of trap that a short-sha
+  comparison walks into. `gh run view --json headSha` agrees with the API, so the `E_GH_UNFILTERED`
+  belt compares like with like. The lesson for a consumer: confirm a PR's checks through the PR
+  (`gh pr checks`), never by the branch head.
+- **A failing post-merge run observed for real — STILL OPEN.** A live *pending* check was observed
+  on the PR above. A red or pending run on a **push to `main`**, which is what the confirmation
+  aggregates, has not been seen, and neither has `post-merge --apply` against a real merged PR:
+  both need a merge, which is a separate authorisation.
 
 ## M6 — delivery time is a hypothesis, not a measurement
 
