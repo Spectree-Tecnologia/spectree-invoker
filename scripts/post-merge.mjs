@@ -51,12 +51,15 @@ const change = store.change(changeId) ?? die(`no such change: ${changeId}`, 1);
 const project = store.project();
 
 const started = Number(process.hrtime.bigint() / 1000000n);
-const metrics = { gh_calls: 0, git_calls: 0, log_bytes: 0 };
+// `git_calls_here` counts the subprocesses THIS file spawns. The digest readers in `lib/digest.mjs`
+// spawn their own and are not counted — naming the field for what it measures is the difference
+// between a metric and a number that looks like one.
+const metrics = { gh_calls: 0, git_calls_here: 0, log_bytes: 0 };
 const steps = [];
 const impediments = [];
 const step = (name, ok, detail) => { steps.push({ name, ok, detail }); if (!ok) impediments.push(`${name}: ${detail}`); };
 const git = (args) => {
-  metrics.git_calls += 1;
+  metrics.git_calls_here += 1;
   return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
 };
 
@@ -152,8 +155,11 @@ if (landed && contract && authority.ok) {
   });
   authorising = candidates.find((a) => {
     if (!a.revision) return false;
-    try { execFileSync('git', ['merge-base', '--is-ancestor', a.revision, landed.revision], { cwd: root, stdio: 'ignore' }); return true; }
-    catch { return false; }
+    try {
+      metrics.git_calls_here += 1;
+      execFileSync('git', ['merge-base', '--is-ancestor', a.revision, landed.revision], { cwd: root, stdio: 'ignore' });
+      return true;
+    } catch { return false; }
   }) ?? null;
 
   step('what landed is what was authorised', candidates.length > 0,
@@ -507,6 +513,6 @@ else {
   for (const s of steps) console.log(`  ok    ${s.name} — ${s.detail}`);
   console.log(`\n${change.state === 'closed' ? 'already closed' : 'closed'} ${changeId}. PR #${prNumber}, merge ${String(mergeOid).slice(0, 8)}, treatment ${summary.treatment}.`);
   console.log(`  receipt: generation ${receipt.generation}, approval ${receipt.approval_id}, ${observedRuns.length} run(s) observed.`);
-  console.log(`  ${metrics.gh_calls} gh call(s), ${metrics.git_calls} git call(s), ${summary.metrics.elapsed_ms}ms, 0 log bytes downloaded.`);
+  console.log(`  ${metrics.gh_calls} gh call(s), ${metrics.git_calls_here} git call(s) from here, ${summary.metrics.elapsed_ms}ms, 0 log bytes downloaded.`);
   console.log('No commit was made to record this: the event is in the trail, not in the content it describes.');
 }

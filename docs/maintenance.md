@@ -71,7 +71,7 @@ Three things the offline tests specifically cannot answer, so they close with th
 The structural claims are asserted: one PR, one merge, no commit after it, and no rerun caused by
 recording that a run was green. Those are properties of the flow, and the tests hold them.
 
-The **time** is not measured. `post-merge.mjs` reports `gh_calls`, `git_calls`, `elapsed_ms` and
+The **time** is not measured. `post-merge.mjs` reports `gh_calls`, `git_calls_here`, `elapsed_ms` and
 `log_bytes` from a monotonic clock, which measures this squad's own work; it does not measure the
 GitHub queue, the runner, or a human deciding. Machine time, queue time and human waiting are
 three different numbers and nothing here should present them as one.

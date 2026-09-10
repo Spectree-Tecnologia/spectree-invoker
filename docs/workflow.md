@@ -344,7 +344,7 @@ identity are three different things. An empty required set is `E_CHECK_SET_EMPTY
 asks for nothing cannot certify anything — and a *required* job that was skipped is a refusal.
 
 On the green path nothing downloads a log; the confirmation reports its own counts
-(`gh_calls`, `git_calls`, `elapsed_ms`, `log_bytes`) so the cost is measured rather than
+(`gh_calls`, `git_calls_here`, `elapsed_ms`, `log_bytes`) so the cost is measured rather than
 asserted.
 
 If the merge commit is not here, that is an impediment: fetch it before confirming something you
