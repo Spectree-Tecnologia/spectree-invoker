@@ -24,9 +24,12 @@ Everything below is **generated** and carries a header saying so:
 |---|---|
 | `CLAUDE.md` | `protocol/` + `adapters/claude-code/` |
 | `agents/*.md` | `protocol/roles/` + `adapters/claude-code/roles/` |
-| `AGENTS.md` | `protocol/` + `adapters/codex/` |
+| `adapters/codex/dist/SQUAD.md` | `protocol/` + `adapters/codex/` |
 | `.agents/skills/spectree-invoker/SKILL.md` | `adapters/codex/skill-body.md` |
-| `.agents/skills/spectree-invoker/agents/*.toml` | `protocol/roles/` + `adapters/codex/roles/` |
+| `adapters/codex/dist/agents/*.toml` | `protocol/roles/` + `adapters/codex/roles/` |
+
+The installer copies the specialists into the consumer's `.codex/agents/`, the runtime and
+SQUAD.md into `.spectree/squad/`, and appends a pointer to its existing AGENTS.md.
 
 `node scripts/build.mjs` writes them; `--check` fails when any is stale; CI runs `--check` on
 every pull request. There is no second hand-maintained copy of the rules anywhere.
@@ -55,6 +58,17 @@ pull request.
 | `state.mjs` | what is the state, and is this transition allowed? |
 | `verify-change.mjs` | did this change stay inside its scope, against its recorded base? |
 | `capabilities.mjs` | what does this harness actually give the squad? |
+| `prepare-closure.mjs` | is consolidation/archival prepared, owned, recoverable and bound to this candidate? |
+| `post-merge.mjs` | did the approved integration actually land with the required CI? |
+| `migrate-closure.mjs` | what explicit migration does a historical closure record require? |
+
+`lib/lifecycle.mjs` owns durable approval authority, immutable preparation identity, operation
+phases/recovery and receipt bindings. `state-machine.mjs` makes pure decisions; the CLIs apply
+them under the lifecycle/change write boundaries. Preparation occurs before integration approval;
+confirmation writes operational records, not a second closure commit.
+
+`bench/` observes performance outside this authority path. Its synthetic approvals and GitHub
+fixtures never leave disposable consumers; timing reports are not evidence satisfying any gate.
 
 ## Four kinds of check, kept apart
 
@@ -62,7 +76,9 @@ pull request.
 2. **Executable rules** — the state machine, the validator, the diff classifier, with tests.
 3. **Observed agent behaviour** — not automated. `tests/fixtures/evaluations.json` records
    situations with their correct answers so a human can score what an agent said.
-4. **Real operation in a harness** — see `compatibility.md`. Pending, and said so.
+4. **Real operation in a harness** — bounded loading/dispatch smokes are recorded in
+   `compatibility.md`; M5 records live GitHub confirmation. Proven context isolation (M4) and
+   a comparable end-to-end performance campaign (M6) remain separate and open.
 
 Collapsing any two of these is how a green starts meaning more than it should.
 

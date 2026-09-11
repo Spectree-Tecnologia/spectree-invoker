@@ -52,7 +52,7 @@ jobs:
           # that exit aborted the step, so the fallback it had just written never ran. The exit
           # code is the report, not a failure of the step.
           node scripts/ci-treatment.mjs --base "$base" --github-output || true
-          node scripts/ci-treatment.mjs --base "$base" || true
+          # The same invocation already prints the human-readable explanation.
           grep -q '^treatment=' "$GITHUB_OUTPUT" || {
             echo "::error::the classifier produced no treatment"
             exit 1
