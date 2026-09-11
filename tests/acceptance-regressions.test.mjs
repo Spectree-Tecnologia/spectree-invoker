@@ -960,6 +960,9 @@ test('21b. where the build cannot be established it says unknown, not a guess', 
     const bare = join(dir, 'squad');
     mkdirSync(join(bare, 'scripts'), { recursive: true });
     cpSync(join(REPO, 'scripts', 'capabilities.mjs'), join(bare, 'scripts', 'capabilities.mjs'));
+    // The subject here is the missing build stamp, not a missing dependency: the report has to
+    // be able to RUN before it can be judged for what it says about its own version.
+    cpSync(join(REPO, 'scripts', 'lib'), join(bare, 'scripts', 'lib'), { recursive: true });
     const facts = Object.fromEntries(
       JSON.parse(execFileSync(process.execPath, [join(bare, 'scripts', 'capabilities.mjs'), '--json'],
         { cwd: dir, encoding: 'utf8' })).facts.map((f) => [f.name, { value: f.value, confidence: f.confidence }]));

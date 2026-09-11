@@ -30,7 +30,26 @@
         "independent_of": {
           "type": "array",
           "items": { "$ref": "spectree/common#/definitions/role" },
-          "description": "Roles whose reasoning this executor did not see. Empty means: assume none."
+          "description": "Roles whose reasoning this executor did not see. DECLARED by the caller; nothing observes it. Empty means: assume none."
+        },
+        "context": {
+          "type": "object",
+          "required": ["harness", "digest", "isolation_signal"],
+          "properties": {
+            "harness": { "type": "string", "minLength": 1 },
+            "harness_verified": { "type": "boolean" },
+            "digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$",
+              "description": "The execution context this ran in, comparable without publishing a session id or a pid. Equal digests mean one context."
+            },
+            "isolation_signal": {
+              "type": "string",
+              "description": "What the harness exposed to distinguish a dispatched executor. \"none\" on every harness measured so far, which is why independent_of stays a declaration."
+            }
+          },
+          "additionalProperties": false,
+          "description": "MEASURED while the command ran. The counterpart to independent_of, which is not."
         }
       },
       "additionalProperties": false

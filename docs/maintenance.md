@@ -103,7 +103,35 @@ harness itself.
 ## M4 — pass 2 cannot be closed honestly on a single-context harness
 
 **Owner:** this repository.
-**Status:** open. It is a limit to state, not a bug to fix, until a harness proves isolation.
+**Status:** open, and now open **by measurement** rather than by omission. It is a limit to state,
+not a bug to fix, until a harness proves isolation.
+
+Measured 2026-09-10 on Claude Code desktop (`AI_AGENT=claude-code_2-1-260_agent`), by real
+dispatches on a disposable consumer:
+
+- **Prompt isolation exists.** A dispatched agent sees no prior conversation, no sibling's report,
+  and no marker held only by the loop that dispatched it. The control arm was run — with the marker
+  placed in the dispatch, the same probe quotes it back — so the negative result is absence, not
+  incapacity. This is what `context_isolation: "prompt_only"` in the Claude Code adapter now says.
+- **No observable signal exists.** A subagent's shell reports the same `CLAUDE_CODE_SESSION_ID`,
+  `CLAUDE_CODE_HOST_SESSION_ID`, `CLAUDE_PID` and `AI_AGENT` as the main loop, and an identical set
+  of environment variable names. `CLAUDE_AGENT_TYPE` is not set. `process.ppid` differs — and
+  differs between two consecutive shells of the same loop, so it discriminates nothing.
+- **Capability isolation does not exist.** The parent session transcript is readable from inside a
+  dispatched agent, and the Quality Engineer's card carries a shell. The independence of pass 2 is
+  protocol, never mechanism.
+
+Two defects found while measuring, both fixed:
+
+- `operating_mode` gave opposite answers about one harness depending on install shape —
+  `single-context` in a consumer (the installer shipped no adapter declarations) and
+  `delegating-with-isolation` in the package (read straight off `context_isolation`). The second
+  silenced the closing NOTE. The installer now ships the declarations, and the mode reaches
+  `delegating-with-isolation` only through `observedIsolationSignal()`, never through a field.
+- `--independent-of` is recorded verbatim as evidence and checked as if observed. It still is —
+  making the gate refuse would block every consumer on every harness, which is the Founder's call
+  and not a fix. What changed is that `state.mjs run` now records the MEASURED execution context
+  beside it, so two records asserting independence from one context say so on their face.
 
 `pass2_complete` requires evidence whose executor records `independent_of: ['full_stack_developer']`,
 because an adversarial pass that saw the builder's reasoning is not the independent pass the
@@ -116,5 +144,7 @@ isolation rather than declare it, and until one exists the honest answer is the 
 say the mode, do not close the gate, and record the deviation.
 
 Criteria for closing this: a harness that exposes an observable signal of context isolation, and a
-check that reads it — not a declaration in an adapter file, which is what the current
-`context_isolation` field already is.
+check that reads it — not a declaration in an adapter file, which is what the `context_isolation`
+field is and remains. The check now exists and has one home: `observedIsolationSignal()` in
+`scripts/lib/harness.mjs`. It returns `null` on every harness measured so far, and the day one
+grows a marker, that function reads it and this item closes.
