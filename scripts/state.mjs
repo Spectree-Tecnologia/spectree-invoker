@@ -35,6 +35,7 @@ import {
   readLifecycle, readReceipt, receiptCovers, pendingOperation,
   approvalCoversPreparation, updateLifecycle, withAuthority, integrationExpectation,
 } from './lib/lifecycle.mjs';
+import { executionContext } from './lib/harness.mjs';
 import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
 
@@ -544,7 +545,16 @@ switch (cmd) {
       change_id: id,
       property,
       check: cmd.join(' ') + (assertsFailure ? `  (expecting "${expectFailing}" to run and fail)` : ''),
-      executor: { role, ...(independent.length ? { independent_of: independent } : {}) },
+      // `independent_of` is what the CALLER typed; `context` is what was measured while the
+      // command ran. They are stored side by side because they are different kinds of claim, and
+      // only one of them was observed. Where two records assert independence and carry the same
+      // digest, they ran in one context and the assertion is the only thing separating them —
+      // which is the state of every harness known today, and is M4.
+      executor: {
+        role,
+        ...(independent.length ? { independent_of: independent } : {}),
+        context: executionContext(),
+      },
       source_kind: 'observed_execution',
       revision: before.content.revision,
       fingerprint: before.content.digest,

@@ -18,6 +18,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { detectHarness, observedIsolationSignal } from './lib/harness.mjs';
 
 const pkgRoot = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'));
 const projectRoot = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
@@ -33,10 +34,9 @@ function tryRun(cmd, args) {
 
 // --- harness -----------------------------------------------------------------
 const env = process.env;
-let harness = 'unknown', how = U;
-if (env.CLAUDE_PLUGIN_ROOT || env.CLAUDECODE) { harness = 'claude-code'; how = V; }
-else if (env.CODEX_HOME || env.CODEX_SANDBOX || env.OPENAI_CODEX) { harness = 'codex'; how = V; }
-else if (env.SPECTREE_HARNESS) { harness = env.SPECTREE_HARNESS; how = D; }
+const detected = detectHarness(env);
+const harness = detected.harness;
+const how = detected.verified ? V : harness === 'unknown' ? U : D;
 add('harness', harness, how, how === V ? 'inferred from an environment variable the harness sets' : 'no harness marker in the environment');
 add('harness.version', env.CLAUDE_CODE_VERSION ?? env.CODEX_VERSION ?? 'unknown', env.CLAUDE_CODE_VERSION || env.CODEX_VERSION ? V : U);
 
@@ -120,14 +120,28 @@ if (existsSync(adaptersDir)) {
 }
 
 // --- the operating mode this adds up to --------------------------------------
+// The mode is decided by what was OBSERVED, and the adapter is consulted only for the one
+// question observation cannot answer from inside a process: whether this harness dispatches at
+// all. Isolation is not that kind of question — it used to be read straight off
+// `context_isolation`, so a field somebody typed unlocked `delegating-with-isolation`, which
+// switched the closing NOTE off and let `pass2_complete` close on an independence nobody saw.
 const active = declared[harness] ?? {};
 const isolation = active.context_isolation ?? 'unknown';
 const subagents = active.subagents ?? 'unknown';
+const signal = observedIsolationSignal();
+add('context_isolation.observed', signal ?? 'no signal on this harness', signal ? V : U,
+  signal ? undefined
+    : 'nothing in this process distinguishes a dispatched executor from the loop that dispatched it. '
+      + 'What the adapter declares is what the harness says about itself, and it is not this line.');
 const mode =
   subagents !== 'declared' ? 'single-context'
-  : isolation === 'declared' ? 'delegating-with-isolation'
+  : signal ? 'delegating-with-isolation'
   : 'delegating-without-proven-isolation';
-add('operating_mode', mode, isolation === 'declared' ? D : U);
+add('operating_mode', mode, signal ? V : U,
+  isolation !== 'unknown' && !signal
+    ? `the adapter declares context_isolation "${isolation}"; a declaration does not reach `
+      + '"delegating-with-isolation", and nothing here observed one'
+    : undefined);
 
 // --- role matrix -------------------------------------------------------------
 // responsibility -> capability -> real restriction -> how it is verified -> residual limit

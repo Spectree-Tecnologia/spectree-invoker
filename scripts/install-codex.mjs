@@ -83,6 +83,15 @@ for (const f of readdirSync(join(pkg, 'scripts', 'lib'))) {
 for (const f of readdirSync(join(pkg, 'schemas'))) {
   planCopy(join(pkg, 'schemas', f), join(squadRoot, 'schemas', f), 'schema');
 }
+// 1a. what each adapter declares about its harness. Without these a consumer install had no
+// declarations to read at all, so `operating_mode` fell to `single-context` on a harness where
+// `harness: claude-code` is VERIFIED and subagents demonstrably exist — the same script answering
+// one thing in the package and the opposite in the project it had just installed into. The
+// declarations travel; only observation decides what is claimed from them.
+for (const id of readdirSync(join(pkg, 'adapters'))) {
+  const f = join(pkg, 'adapters', id, 'adapter.json');
+  if (existsSync(f)) planCopy(f, join(squadRoot, 'adapters', id, 'adapter.json'), 'adapter declaration');
+}
 
 // 1b. which build this is. A consumer carries no plugin.json and no protocol/, so without
 // this file the installed squad cannot say which version of itself it is running — and a boot
