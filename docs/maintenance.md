@@ -71,7 +71,7 @@ same. Squash, rebase and merge queues are still unsupported and still say so.
 The structural claims are asserted: one PR, one merge, no commit after it, and no rerun caused by
 recording that a run was green. Those are properties of the flow, and the tests hold them.
 
-The **time** is not measured. `post-merge.mjs` reports `gh_calls`, `git_calls_here`, `elapsed_ms` and
+The **comparable end-to-end improvement** is not measured. `post-merge.mjs` reports `gh_calls`, `git_calls_here`, `elapsed_ms` and
 `log_bytes` from a monotonic clock, which measures this squad's own work; it does not measure the
 GitHub queue, the runner, or a human deciding. Machine time, queue time and human waiting are
 three different numbers and nothing here should present them as one.
@@ -79,6 +79,13 @@ three different numbers and nothing here should present them as one.
 Criteria for closing: a baseline and a result measured in the same environment on comparable
 scope, with those three separated, and enough observations that the word used is not "p95" for a
 sample of one. "Under five minutes" is not promised and is not a criterion.
+
+Instrumentation added in 1.2.6: `bench/delivery.mjs --mode compare` runs paired reconstructed
+legacy/prepared procedures on the current runtime with raw samples and source identity;
+`bench/observe-run.mjs` reads exact GitHub run attempts and all job pages. A live observation of
+run 34545915474 separated 96s of job occupancy from the 103s job span. It does not establish pure
+queue time or human waiting. Those remain unknown unless measured independently. See
+[performance.md](performance.md) for definitions, provenance and commands. M6 remains open.
 
 ## M2 — the supported TAP subset is narrow, deliberately
 

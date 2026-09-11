@@ -26,7 +26,7 @@ Invoque com `$spectree-invoker`. Os cinco especialistas vão para `.codex/agents
 
 ## O que há aqui
 
-Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CLAUDE.md`, `agents/*.md`, `AGENTS.md` e a skill do Codex são **gerados** e verificados contra ela no CI.
+Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CLAUDE.md`, `agents/*.md`, `adapters/codex/dist/` e a skill do Codex são **gerados** e verificados contra ela no CI. O `AGENTS.md` do consumidor é preservado pelo instalador.
 
 | Caminho | O quê |
 |---|---|
@@ -34,7 +34,8 @@ Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CL
 | `adapters/claude-code/`, `adapters/codex/` | O que é específico de cada harness: tokens, ferramentas, metadados |
 | `schemas/` | Os contratos estruturados: change, dispatch, evidence, deferred, approval |
 | `scripts/` | `build`, `check-plugin`, `state`, `verify-change`, `capabilities` |
-| `tests/` | 100 testes determinísticos + fixtures de avaliação comportamental |
+| `tests/` | Testes determinísticos, ciclos pelos CLIs instalados e fixtures de avaliação comportamental |
+| `bench/` | [Medição de performance](docs/performance.md): benchmark local e observação somente leitura do GitHub; nunca autoridade para gates |
 | `docs/` | [instalação](docs/install.md) · [compatibilidade](docs/compatibility.md) · [arquitetura](docs/architecture.md) · [ciclo de entrega](docs/workflow.md) · [manutenção](docs/maintenance.md) |
 | `CLAUDE.md`, `agents/`, `adapters/codex/dist/` | **Gerados.** Rode `node scripts/build.mjs`; não edite à mão |
 

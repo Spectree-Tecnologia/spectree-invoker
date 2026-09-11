@@ -7,7 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { classifyDiff, classifyPath, KIND } from '../scripts/lib/diff.mjs';
@@ -115,6 +115,25 @@ test('the workflow requires the aggregate, and decides from the policy', () => {
   assert.doesNotMatch(wf, /\[skip ci\]/, 'skipping CI is never the mechanism');
   assert.match(wf, /ci-treatment\.mjs/, 'the classification comes from the policy, not from a label');
   assert.doesNotMatch(wf, /pull_request\.title/, 'never the title');
+});
+
+test('one classifier invocation supplies both workflow outputs and its explanation', () => {
+  const repo = gitRepo({ 'app.js': '1\n' });
+  const scratch = tempDir('spectree-classify-');
+  try {
+    writeFileSync(join(repo.root, 'app.js'), '2\n');
+    commitAll(repo);
+    for (const [base, exit] of [[repo.base, 0], ['0'.repeat(40), 1]]) {
+      const output = join(scratch, `out-${exit}`);
+      const r = spawnSync(process.execPath, [join(REPO, 'scripts/ci-treatment.mjs'), '--base', base, '--github-output'],
+        { cwd: repo.root, encoding: 'utf8', env: { ...process.env, GITHUB_OUTPUT: output } });
+      assert.equal(r.status, exit);
+      assert.match(readFileSync(output, 'utf8'), /treatment=full\nchecks=classify,plugin\n/);
+      assert.match(r.stdout + r.stderr, /full/);
+    }
+    const wf = readFileSync(join(REPO, '.github/workflows/check.yml'), 'utf8');
+    assert.equal((wf.match(/node scripts\/ci-treatment\.mjs/g) ?? []).length, 1);
+  } finally { cleanup(repo.root); cleanup(scratch); }
 });
 
 // --- a merge without equivalence cannot close --------------------------------

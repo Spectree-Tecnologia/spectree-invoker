@@ -390,7 +390,8 @@ switch (cmd) {
           expectation: cc.expectation,
         })
         : undefined,
-      preparation: (a) => approvalCoversPreparation(a, cc.manifest),
+      preparation: (a) => change.closure_mode === 'legacy'
+        ? { ok: true, legacy: true } : approvalCoversPreparation(a, cc.manifest),
       scopeDigests: d.byGate,
       expectedStateRevision: has('expect') ? Number(flag('expect')) : undefined,
     });
@@ -653,7 +654,7 @@ switch (cmd) {
         // decision was taken at. Two separate boundaries left half an approval readable as whole
         // authority, and let a refresh that had already decided overwrite the record being
         // approved a moment later.
-        if (doc.gate === 'integration' && doc.change_id && doc.preparation) {
+        if (doc.gate === 'integration' && doc.change_id) {
           try {
             updateLifecycle(root, doc.change_id, (cur) => ({
               ...cur,
@@ -661,14 +662,16 @@ switch (cmd) {
                 ...cur.approved.filter((r) => r.approval_id !== doc.approval_id),
                 {
                   approval_id: doc.approval_id,
-                  preparation_id: doc.preparation.preparation_id,
-                  generation: doc.preparation.generation,
-                  preparation_digest: doc.preparation.preparation_digest,
+                  ...(doc.preparation ? {
+                    preparation_id: doc.preparation.preparation_id,
+                    generation: doc.preparation.generation,
+                    preparation_digest: doc.preparation.preparation_digest,
+                  } : { closure_mode: 'legacy' }),
                   at: doc.timestamp,
                 },
               ],
             }), {
-              expectedRevision: cc.lifecycle?.revision,
+              expectedRevision: cc.lifecycle?.revision ?? 0,
               after: () => store.putApproval(doc),
             });
           } catch (e) {
@@ -682,8 +685,8 @@ switch (cmd) {
             type: 'integration_approval_recorded',
             at: doc.timestamp,
             approval_id: doc.approval_id,
-            preparation_id: doc.preparation.preparation_id,
-            generation: doc.preparation.generation,
+            preparation_id: doc.preparation?.preparation_id,
+            generation: doc.preparation?.generation,
             schema_version: SCHEMA_VERSION,
           });
         } else {
