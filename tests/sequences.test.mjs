@@ -554,6 +554,26 @@ test('an integration approval with no durable record is not authority', () => {
 
 const BARRIER = join(REPO, 'tests/fixtures/barrier-at-lock.cjs').split('\\').join('/');
 
+test('a barrier timeout fails rather than releasing an unobserved interleaving', () => {
+  const root = tempDir('spectree-barrier-');
+  try {
+    mkdirSync(join(root, '.spectree/closure'), { recursive: true });
+    const r = spawnSync(process.execPath, ['--require', BARRIER, '-e',
+      "const fs = require('node:fs'); fs.openSync('.spectree/closure/c1.lifecycle.lock', 'wx'); fs.writeFileSync('.spectree/released', 'bad');"],
+    { cwd: root, encoding: 'utf8', env: { ...process.env,
+      SPECTREE_BARRIER_LOCK: '/closure/c1.lifecycle.lock',
+      SPECTREE_BARRIER_ARGV: JSON.stringify(['-e', 'process.exit(0)']),
+      SPECTREE_BARRIER_UNTIL: 'reopen/started',
+      SPECTREE_BARRIER_OUT: join(root, '.spectree/barrier.json'),
+      SPECTREE_BARRIER_TIMEOUT_MS: '1000',
+    } });
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /E_TEST_BARRIER_TIMEOUT/);
+    assert.equal(existsSync(join(root, '.spectree/released')), false);
+    assert.equal(existsSync(join(root, '.spectree/closure/c1.lifecycle.lock')), false);
+  } finally { cleanup(root); }
+});
+
 /** A change prepared, approved, and put back at `implemented` so a forward transition is legal. */
 function readyToTransition() {
   const p = project({ counting: true });

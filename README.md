@@ -36,6 +36,7 @@ Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CL
 | `scripts/` | `build`, `check-plugin`, `state`, `verify-change`, `capabilities` |
 | `tests/` | Testes determinísticos, ciclos pelos CLIs instalados e fixtures de avaliação comportamental |
 | `bench/` | [Medição de performance](docs/performance.md): benchmark local e observação somente leitura do GitHub; nunca autoridade para gates |
+| `state.mjs plan` | [Próximo passo operacional](docs/planning.md): recomendação derivada dos gates, sem executar ações ou conceder autorização |
 | `docs/` | [instalação](docs/install.md) · [compatibilidade](docs/compatibility.md) · [arquitetura](docs/architecture.md) · [ciclo de entrega](docs/workflow.md) · [manutenção](docs/maintenance.md) |
 | `CLAUDE.md`, `agents/`, `adapters/codex/dist/` | **Gerados.** Rode `node scripts/build.mjs`; não edite à mão |
 

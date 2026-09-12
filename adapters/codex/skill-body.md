@@ -21,7 +21,9 @@ Two lines from it matter most before you promise anything:
 
 ## 3. Read the state from the filesystem, never from memory
 
-If the project carries `.spectree/changes/`, run `node .spectree/squad/scripts/state.mjs resume` — that command **is** the resume contract: project identity, git situation, the open change and its state, the approvals in force, the evidence still valid **at this revision**, the stale evidence, the actionable deferrals, and the approved next action.
+If the project carries `.spectree/changes/`, run `node .spectree/squad/scripts/state.mjs resume` — that command **is** the resume contract: project identity, git situation, change state, approvals, evidence and a derived `recommendation`. A stored `next_action` is only a note, never an approval.
+
+Use the recommendation to select the next operational step, not to authorize it. For an explicit change use `state.mjs plan <id> --json`; add `--observe-ci --pr <number>` only when you need a fresh read of that PR's required checks. Local planning makes no network call. `wait_ci` means wait for changed status, not dispatch another investigation or rerun. Revalidate before execution; a preparation/confirmation dry-run refusal is a blocker to resolve, not permission to repeat or apply. M4 remains a blocker where QA independence is unproven. See `.spectree/squad/SQUAD.md` for the approval and execution rules.
 
 Without it, establish the state from artifacts: `docs/changes/` excluding `archive/`, `docs/specs/`, `docs/DEFERRED.md`, `docs/ROADMAP.md`, `git status` and the current branch. Anything you did not read is **unknown**, not assumed.
 

@@ -31,7 +31,9 @@ Read the operating mode and the role matrix before you promise anything the pipe
 
 ## 3. Read the state from the filesystem, never from memory
 
-If the project carries `.spectree/`, run `node ${CLAUDE_PLUGIN_ROOT}/scripts/state.mjs resume` and read what it prints — that command **is** the resume contract: project identity, git situation, the open change and its state, the approvals in force, the evidence still valid **at this revision**, the stale evidence, the actionable deferrals, and the approved next action.
+If the project carries `.spectree/`, run `node ${CLAUDE_PLUGIN_ROOT}/scripts/state.mjs resume` and read what it prints — that command **is** the resume contract, including a derived `recommendation`. A stored `next_action` is only a note, never an approval.
+
+Use the recommendation to select the next operational step, not to authorize it. For an explicit change use `state.mjs plan <id> --json`; add `--observe-ci --pr <number>` only when you need a fresh read of that PR's required checks. Local planning makes no network call. `wait_ci` means wait for changed status, not dispatch another investigation or rerun. Revalidate before execution; a preparation/confirmation dry-run refusal is a blocker to resolve, not permission to repeat or apply. M4 remains a blocker where QA independence is unproven.
 
 Without `.spectree/`, establish the state from artifacts:
 
