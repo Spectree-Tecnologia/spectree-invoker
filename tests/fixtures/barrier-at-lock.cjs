@@ -23,17 +23,31 @@ fs.openSync = function openSync(path, ...rest) {
     const env = { ...process.env };
     delete env.NODE_OPTIONS;
     delete env.SPECTREE_BARRIER_LOCK;
+    const diagnostic = `${process.env.SPECTREE_BARRIER_OUT}.child.log`;
+    const log = original.call(fs, diagnostic, 'w');
     const child = spawn(process.execPath, JSON.parse(process.env.SPECTREE_BARRIER_ARGV), {
-      cwd: process.cwd(), env, stdio: 'ignore', windowsHide: true,
+      cwd: process.cwd(), env, stdio: ['ignore', log, log], windowsHide: true,
     });
+    fs.closeSync(log);
     child.unref();
     const [kind, phase] = String(process.env.SPECTREE_BARRIER_UNTIL || 'reopen/started').split('/');
     const control = '.spectree/closure/c1.lifecycle.json';
     let seen = null;
-    for (let i = 0; i < 2000; i++) {
+    let reached = false;
+    // A deadline is only a failure bound, NEVER a release signal. The old ten-second
+    // loop released even at `intent` under a busy full suite, without reaching its phase.
+    const deadline = performance.now() + Number(process.env.SPECTREE_BARRIER_TIMEOUT_MS || 60000);
+    while (performance.now() < deadline) {
       try { seen = JSON.parse(fs.readFileSync(control, 'utf8')); } catch { seen = null; }
-      if (seen && seen.operation && seen.operation.kind === kind && seen.operation.phase === phase) break;
+      if (seen && seen.operation && seen.operation.kind === kind && seen.operation.phase === phase) {
+        reached = true;
+        break;
+      }
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
+    }
+    if (!reached) {
+      child.kill();
+      throw new Error(`E_TEST_BARRIER_TIMEOUT: wanted ${kind}/${phase}; observed ${JSON.stringify(seen?.operation ?? null)}\n${fs.readFileSync(diagnostic, 'utf8')}`);
     }
     if (process.env.SPECTREE_BARRIER_OUT) {
       fs.writeFileSync(process.env.SPECTREE_BARRIER_OUT, JSON.stringify((seen && seen.operation) || null));

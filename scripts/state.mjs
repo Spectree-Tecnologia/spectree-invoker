@@ -4,6 +4,7 @@
 //   node scripts/state.mjs init <project-id> [-- <spec consolidation command> [args...]]
 //   node scripts/state.mjs resume [change-id]        the resume contract, human-readable
 //   node scripts/state.mjs resume --json
+//   node scripts/state.mjs plan [change-id] [--json] [--observe-ci --pr <number>]
 //   node scripts/state.mjs open <change-id> --type <t> --base <rev> --scope <s> --paths a,b
 //                                [--modules a,b] [--closure-mode prepared|legacy] [--deltaless]
 //   node scripts/state.mjs digest <change-id> [--gate scope|integration]
@@ -35,7 +36,9 @@ import {
   readLifecycle, readReceipt, receiptCovers, pendingOperation,
   approvalCoversPreparation, updateLifecycle, withAuthority, integrationExpectation,
 } from './lib/lifecycle.mjs';
-import { executionContext } from './lib/harness.mjs';
+import { executionContext, observedIsolationSignal } from './lib/harness.mjs';
+import { planNext, nextTarget } from './lib/planner.mjs';
+import { observePlanCi } from './lib/planner-ci.mjs';
 import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
 
@@ -74,11 +77,11 @@ function gitSituation() {
  * `contentDigest` throws where it cannot establish the content; that refusal is the answer,
  * because an unavailable comparison is unknown and not "nothing changed".
  */
-function digests(change) {
+function digests(change, { soft = false } = {}) {
   const contract = contractDigest(root, change, { artifactsDir: flag('artifacts') });
   let content;
   try { content = contentDigest(root); }
-  catch (e) { die(`${e.code}: ${e.message}`, 1); }
+  catch (e) { if (soft) throw e; die(`${e.code}: ${e.message}`, 1); }
   const gated = gatedDigest(contract.digest, content.digest);
   return {
     contract, content,
@@ -154,7 +157,74 @@ function closureVerdict(change, d, cc) {
   });
 }
 
-/** The resume contract: everything needed to pick work back up, read from artifacts. */
+/** Shared context: advice and execution ask the same gate, over the same bindings. */
+function transitionContext(change, d, cc, g, to) {
+  return {
+      evidence: store.evidence(change.change_id),
+      // Retired approvals are history, not authority. Passing them here let a reopened
+      // closure walk to `integrated` on the approval its own reopening had retired.
+      approvals: cc.authority.inForce,
+      authority: cc.authority,
+      pendingOperation: cc.pending,
+      revision: g.revision,
+      contentDigest: d.content.digest,
+      contractDigest: d.contract.digest,
+      closure: closureVerdict(change, d, cc),
+      // The merge is OBSERVED by post-merge.mjs, never asserted here — and the receipt is checked
+      // against the COMPLETE expectation, built once from the approved reference. Assembling the
+      // expectation field by field at each call site is how this gate came to ask about the change,
+      // the generation and the preparation while never asking about the repository, the PR, the
+      // head or the candidate digest: a receipt with all four rewritten passed.
+      //
+      // The expectation comes from the manifest and the approval in force, never from the local
+      // checkout — which candidate was observed is a question the approved reference answers.
+      receipt: ['integrated', 'closed'].includes(to)
+        ? receiptCovers(cc.receipt, {
+          ...cc.expectation,
+          legacy: change.closure_mode === 'legacy',
+          expectation: cc.expectation,
+        })
+        : undefined,
+      preparation: (a) => change.closure_mode === 'legacy'
+        ? { ok: true, legacy: true } : approvalCoversPreparation(a, cc.manifest),
+      scopeDigests: d.byGate,
+      expectedStateRevision: has('expect') ? Number(flag('expect')) : undefined,
+  };
+}
+
+function recommendation(changeId, { observeCi = false, pr = null, snapshot = null } = {}) {
+  try {
+    const open = snapshot?.open ?? (store.present ? store.changes().filter((c) => c.state !== 'closed') : []);
+    if (!changeId && open.length !== 1) return { ...planNext(null), choices: open.map((c) => c.change_id) };
+    const change = snapshot?.change ?? store.change(changeId ?? open[0].change_id);
+    if (!change) return { ...planNext(null), code: 'E_CHANGE_MISSING' };
+    const cc = snapshot?.cc ?? closureContext(change.change_id);
+    // Recovery and corrupt authority take precedence even when Git/content cannot be read.
+    if (cc.authority.ok === false || cc.pending) return planNext(change,
+      { authority: cc.authority, pendingOperation: cc.pending }, { controlRevision: cc.lifecycle?.revision ?? 0 });
+    if (cc.manifestError) return { ...planNext(null), action: 'repair_preparation',
+      reason: cc.manifestError.message, code: cc.manifestError.code };
+    if (snapshot?.error) throw snapshot.error;
+    const g = snapshot?.g ?? gitSituation();
+    const d = snapshot?.d ?? digests(change, { soft: true });
+    const context = transitionContext(change, d, cc, g, nextTarget(change));
+    const ci = observeCi ? observePlanCi({ repository: store.project()?.repository, pr,
+      revision: g.revision, branch: g.branch, cwd: root }) : null;
+    return planNext(change, context, { isolationSignal: observedIsolationSignal(), ci,
+      controlRevision: cc.lifecycle?.revision ?? 0 });
+  } catch (e) {
+    return { ...planNext(null), action: 'inspect_context', reason: e.message, code: e.code ?? 'E_CONTEXT_UNAVAILABLE' };
+  }
+}
+
+function printPlan(p) {
+  return [`recommendation ${p.action} [${p.status}] — ${p.role}`, `reason         ${p.reason}`,
+    ...(p.code ? [`gate/code      ${p.code}`] : []),
+    ...(p.property ? [`property       ${p.property}`] : []),
+    'authority      advisory only; grants no permission; revalidate before acting'].join('\n');
+}
+
+/** The resume contract, plus a derived recommendation; stored notes remain separate. */
 function resume(changeId) {
   const g = gitSituation();
   const project = store.project();
@@ -163,8 +233,9 @@ function resume(changeId) {
   const change = changeId ? store.change(changeId) : (open.find((c) => c.state !== 'blocked') ?? open[0] ?? null);
   const live = change ? store.evidence(change.change_id).filter((e) => !e.superseded_by) : [];
   const cc = change ? closureContext(change.change_id) : null;
-  let here = null;
-  try { here = contentDigest(root).digest; } catch { /* no work tree: fall back to the revision */ }
+  let here = null, d = null, planningError = null;
+  try { if (change) { d = digests(change, { soft: true }); here = d.content.digest; } }
+  catch (e) { planningError = e; }
 
   const out = {
     project: project ? { project_id: project.project_id, protocol_version: project.protocol_version } : null,
@@ -225,6 +296,7 @@ function resume(changeId) {
       ? store.deferred().items.filter((i) => i.status === 'open').map((i) => ({ id: i.stable_id, owner: i.owner, impact: i.impact, trigger: i.reevaluation_trigger ?? null }))
       : [],
     next_action: change?.next_action ?? null,
+    recommendation: recommendation(changeId, { snapshot: { open, change, cc, g, d, error: planningError } }),
     other_open_changes: open.filter((c) => c.change_id !== change?.change_id).map((c) => c.change_id),
   };
   return out;
@@ -266,12 +338,28 @@ function printResume(r) {
   L.push(`evidence here  ${r.evidence_valid_here.length ? r.evidence_valid_here.map((e) => `${e.property}=${e.result}`).join('; ') : 'none at this revision'}`);
   if (r.evidence_stale.length) L.push(`evidence stale ${r.evidence_stale.map((e) => `${e.property} (${e.why})`).join('; ')}`);
   L.push(`deferrals open ${r.actionable_deferrals.length ? r.actionable_deferrals.map((d) => `#${d.id} ${d.impact}/${d.owner}`).join('; ') : 'none'}`);
-  L.push(`next action    ${r.next_action?.description ?? 'not recorded — decide it and write it down'}`);
+  L.push(`stored note    ${r.next_action?.description ?? 'none'} (not authority)`);
+  L.push(printPlan(r.recommendation));
   if (r.other_open_changes.length) L.push(`also open      ${r.other_open_changes.join(', ')}`);
   return L.join('\n');
 }
 
 switch (cmd) {
+  case 'plan': {
+    let id = null;
+    for (let i = 1; i < argv.length; i++) {
+      const a = argv[i];
+      if (a === '--json' || a === '--observe-ci') continue;
+      if (a === '--pr' && argv[i + 1] && !argv[i + 1].startsWith('--')) { i++; continue; }
+      if (!a.startsWith('--') && !id) { id = a; continue; }
+      die('usage: state.mjs plan [change-id] [--json] [--observe-ci --pr <number>] (read-only; no --apply)');
+    }
+    if (has('observe-ci') && (!Number.isSafeInteger(Number(flag('pr'))) || Number(flag('pr')) < 1)) die('--observe-ci requires a positive --pr');
+    if (has('pr') && !has('observe-ci')) die('--pr requires explicit --observe-ci');
+    const p = recommendation(id, { observeCi: has('observe-ci'), pr: Number(flag('pr')) });
+    console.log(has('json') ? JSON.stringify(p, null, 2) : printPlan(p));
+    break;
+  }
   case 'init': {
     const id = argv[1] ?? die('usage: state.mjs init <project-id>');
     // The consolidation command is the CONSUMER's, declared once here. Nothing in this squad
@@ -364,37 +452,7 @@ switch (cmd) {
     // ever agree with itself.
     const d = digests(change);
     const cc = closureContext(id);
-    const verdict = canTransition(change, to, {
-      evidence: store.evidence(id),
-      // Retired approvals are history, not authority. Passing them here let a reopened
-      // closure walk to `integrated` on the approval its own reopening had retired.
-      approvals: cc.authority.inForce,
-      authority: cc.authority,
-      pendingOperation: cc.pending,
-      revision: g.revision,
-      contentDigest: d.content.digest,
-      contractDigest: d.contract.digest,
-      closure: closureVerdict(change, d, cc),
-      // The merge is OBSERVED by post-merge.mjs, never asserted here — and the receipt is checked
-      // against the COMPLETE expectation, built once from the approved reference. Assembling the
-      // expectation field by field at each call site is how this gate came to ask about the change,
-      // the generation and the preparation while never asking about the repository, the PR, the
-      // head or the candidate digest: a receipt with all four rewritten passed.
-      //
-      // The expectation comes from the manifest and the approval in force, never from the local
-      // checkout — which candidate was observed is a question the approved reference answers.
-      receipt: ['integrated', 'closed'].includes(to)
-        ? receiptCovers(cc.receipt, {
-          ...cc.expectation,
-          legacy: change.closure_mode === 'legacy',
-          expectation: cc.expectation,
-        })
-        : undefined,
-      preparation: (a) => change.closure_mode === 'legacy'
-        ? { ok: true, legacy: true } : approvalCoversPreparation(a, cc.manifest),
-      scopeDigests: d.byGate,
-      expectedStateRevision: has('expect') ? Number(flag('expect')) : undefined,
-    });
+    const verdict = canTransition(change, to, transitionContext(change, d, cc, g, to));
     if (!verdict.ok) {
       console.error(`REFUSED ${change.state} -> ${to}`);
       console.error(`  ${verdict.code}: ${verdict.message}`);
@@ -762,5 +820,5 @@ switch (cmd) {
   }
 
   default:
-    die(`usage: state.mjs <init|resume|open|digest|can|transition|run|record-evidence|record-approval|defer|trail|validate>`);
+    die(`usage: state.mjs <init|resume|plan|open|digest|can|transition|run|record-evidence|record-approval|defer|trail|validate>`);
 }

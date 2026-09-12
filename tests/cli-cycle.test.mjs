@@ -192,12 +192,16 @@ test('the CLI blocks a change and can bring it back, without hand-editing JSON',
     assert.equal(c.cli('transition', 'c1', 'proposed').code, 0, 'recovery goes back to where the block happened');
     const back = c.cli('resume', 'c1');
     assert.match(back.out, /\[proposed\]/);
-    assert.doesNotMatch(back.out, /blocked/, 'the block is cleared, not left behind as a ghost');
+    assert.doesNotMatch(back.out, /^change\s+c1\s+\[blocked\]|^blocked\s+|recover to proposed/m,
+      'the state block and its recovery instruction are cleared');
 
     const stored = JSON.parse(readFileSync(join(c.root, '.spectree/changes/c1.json'), 'utf8'));
     assert.equal(stored.blocked_from, undefined);
     assert.equal(stored.blocked_reason, undefined);
-    assert.equal(c.cli('resume', 'c1', '--json').code, 0);
+    const resumed = c.cli('resume', 'c1', '--json');
+    assert.equal(resumed.code, 0);
+    assert.equal(JSON.parse(resumed.out).recommendation.action, 'request_approval',
+      'a missing scope approval is a prerequisite, not a resurrected state block');
   } finally { c.drop(); }
 });
 

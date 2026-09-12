@@ -149,6 +149,8 @@ const refuse = (code, message, detail) => ({ ok: false, code, message, ...(detai
  * @param {number}   [ctx.expectedStateRevision]
  */
 export function canTransition(change, to, ctx = {}) {
+  let refusalDetail;
+  const deny = (code, message, detail = refusalDetail) => refuse(code, message, detail);
   const {
     evidence = [], approvals = [], revision, contentDigest, contractDigest, closure,
     scopeDigests = {}, expectedStateRevision,
@@ -159,37 +161,37 @@ export function canTransition(change, to, ctx = {}) {
   // establish it says so, and that is a refusal: an unreadable closure control read as "nothing
   // was ever retired" is how a retired approval came back to authorise a merge.
   if (authority && authority.ok === false) {
-    return refuse(authority.code ?? CODES.LIFECYCLE_UNAVAILABLE, authority.message);
+    return deny(authority.code ?? CODES.LIFECYCLE_UNAVAILABLE, authority.message);
   }
   // A write that was interrupted part way leaves a set nobody has finished applying. Authorising
   // over it means authorising over a state that is half of two different ones.
   if (pendingOperation && to !== 'blocked') {
-    return refuse(CODES.OPERATION_PENDING,
+    return deny(CODES.OPERATION_PENDING,
       `an unfinished ${pendingOperation.kind} operation (${pendingOperation.operation_id}) is open at phase "${pendingOperation.phase}": ${pendingOperation.recovery}`);
   }
 
   if (expectedStateRevision !== undefined && expectedStateRevision !== (change.state_revision ?? 0)) {
-    return refuse(CODES.CONCURRENT_UPDATE,
+    return deny(CODES.CONCURRENT_UPDATE,
       `the change moved underneath this write: expected state_revision ${expectedStateRevision}, found ${change.state_revision ?? 0}`);
   }
 
   if (!ORDER.includes(change.state) && change.state !== 'blocked') {
-    return refuse(CODES.ILLEGAL_TRANSITION, `unknown state "${change.state}"`);
+    return deny(CODES.ILLEGAL_TRANSITION, `unknown state "${change.state}"`);
   }
 
   const targets = legalTargets(change);
   if (!targets.includes(to)) {
     if (change.state === 'blocked' && !change.blocked_from) {
-      return refuse(CODES.BLOCKED_RECOVERY,
+      return deny(CODES.BLOCKED_RECOVERY,
         'this change is blocked and does not record where it was blocked from, so there is nowhere safe to return to. ' +
         'Set blocked_from to the state it was in, and recovery will re-check that state\'s requirements.');
     }
     if (change.state === 'blocked') {
-      return refuse(CODES.BLOCKED_RECOVERY,
+      return deny(CODES.BLOCKED_RECOVERY,
         `recovery from blocked returns to "${change.blocked_from}" and nowhere else; ` +
         `"${to}" would skip every step between them`);
     }
-    return refuse(CODES.ILLEGAL_TRANSITION,
+    return deny(CODES.ILLEGAL_TRANSITION,
       `${change.state} -> ${to} is not a transition; from ${change.state} you may go to ${targets.join(', ') || 'nowhere'}`);
   }
 
@@ -197,15 +199,16 @@ export function canTransition(change, to, ctx = {}) {
   const need = ENTRY_REQUIREMENTS[to] ?? {};
 
   for (const gate of need.approvals ?? []) {
+    refusalDetail = { gate };
     const forGate = approvals.filter((a) => a.gate === gate);
-    if (forGate.length === 0) return refuse(CODES.MISSING_APPROVAL, `no approval on record for gate "${gate}"`);
+    if (forGate.length === 0) return deny(CODES.MISSING_APPROVAL, `no approval on record for gate "${gate}"`);
 
     // An approval must name the change it authorises. An unbound approval is not
     // "for every change", it is one whose scope nobody wrote down.
     const bound = forGate.filter((a) => a.change_id === change.change_id);
     if (bound.length === 0) {
       const others = [...new Set(forGate.map((a) => a.change_id ?? '(no change_id)'))].join(', ');
-      return refuse(CODES.APPROVAL_OUT_OF_SCOPE,
+      return deny(CODES.APPROVAL_OUT_OF_SCOPE,
         `the "${gate}" approval on record does not name this change (it names: ${others})`);
     }
 
@@ -214,12 +217,12 @@ export function canTransition(change, to, ctx = {}) {
     // refusal too — an unchecked digest is a digest that proves nothing.
     const expectedDigest = scopeDigests[gate];
     if (expectedDigest === undefined) {
-      return refuse(CODES.APPROVAL_DIGEST_MISMATCH,
+      return deny(CODES.APPROVAL_DIGEST_MISMATCH,
         `the "${gate}" approval cannot be checked: no digest of the current ${gate} artifact was supplied to compare it against`);
     }
     const sameContent = bound.filter((a) => a.scope_digest === expectedDigest);
     if (sameContent.length === 0) {
-      return refuse(CODES.APPROVAL_DIGEST_MISMATCH,
+      return deny(CODES.APPROVAL_DIGEST_MISMATCH,
         `the "${gate}" approval was granted for different content ` +
         `(approved ${bound[0].scope_digest}, current ${expectedDigest})`);
     }
@@ -234,11 +237,11 @@ export function canTransition(change, to, ctx = {}) {
       ? sameContent.filter((a) => a.expires_with_revision !== true || a.revision === revision)
       : sameContent;
     if (fresh.length === 0) {
-      return refuse(CODES.APPROVAL_STALE,
+      return deny(CODES.APPROVAL_STALE,
         `the "${gate}" approval says it expires with the revision: it was granted at ${bound[0].revision.slice(0, 8)} and the current revision is ${revision.slice(0, 8)}`);
     }
     if (fresh.every((a) => a.granted_by?.kind === undefined)) {
-      return refuse(CODES.MISSING_APPROVAL, `the "${gate}" approval names no granting party`);
+      return deny(CODES.MISSING_APPROVAL, `the "${gate}" approval names no granting party`);
     }
 
     // An integration approval names the PREPARATION it was granted over. Content and contract
@@ -248,18 +251,20 @@ export function canTransition(change, to, ctx = {}) {
       const covers = fresh.map((a) => ({ a, v: preparation(a) }));
       if (!covers.some((c) => c.v.ok)) {
         const first = covers[0]?.v ?? { code: CODES.APPROVAL_PREPARATION, message: 'no integration approval names this preparation' };
-        return refuse(first.code ?? CODES.APPROVAL_PREPARATION, first.message);
+        return deny(first.code ?? CODES.APPROVAL_PREPARATION, first.message);
       }
     }
   }
 
+  refusalDetail = undefined;
   for (const want of need.evidence ?? []) {
+    refusalDetail = { property: want.property };
     const matching = evidence.filter((e) => e.property === want.property && !e.superseded_by);
-    if (matching.length === 0) return refuse(CODES.MISSING_EVIDENCE, `no evidence for "${want.property}"`);
+    if (matching.length === 0) return deny(CODES.MISSING_EVIDENCE, `no evidence for "${want.property}"`);
 
     const observed = want.observed !== false ? matching.filter((e) => e.source_kind === 'observed_execution') : matching;
     if (observed.length === 0) {
-      return refuse(CODES.SELF_REPORT_ONLY,
+      return deny(CODES.SELF_REPORT_ONLY,
         `"${want.property}" is only an agent report; entering "${to}" needs an observed execution`);
     }
 
@@ -272,7 +277,7 @@ export function canTransition(change, to, ctx = {}) {
       fresh = fresh.filter((e) => e.fingerprint === contentDigest);
       if (fresh.length === 0) {
         const unpinned = observed.some((e) => !e.fingerprint);
-        return refuse(CODES.CONTENT_CHANGED,
+        return deny(CODES.CONTENT_CHANGED,
           `"${want.property}" was not measured on the content now on disk` +
           (unpinned
             ? ' — it records no fingerprint at all, so what it ran against cannot be established'
@@ -281,7 +286,7 @@ export function canTransition(change, to, ctx = {}) {
     } else if (want.fresh && revision) {
       fresh = fresh.filter((e) => e.revision === revision);
       if (fresh.length === 0) {
-        return refuse(CODES.STALE_EVIDENCE,
+        return deny(CODES.STALE_EVIDENCE,
           `"${want.property}" was observed at another revision; the content it measured is not the content being transitioned`);
       }
     }
@@ -290,7 +295,7 @@ export function canTransition(change, to, ctx = {}) {
     const right = fresh.filter((e) => e.result === wanted);
     if (right.length === 0) {
       const got = [...new Set(fresh.map((e) => e.result))].join(', ');
-      return refuse(CODES.EVIDENCE_NOT_PASS,
+      return deny(CODES.EVIDENCE_NOT_PASS,
         `"${want.property}" is ${got}, not ${wanted}` +
         (got.includes('INFRA_ERROR')
           ? ' — an infrastructure failure did not exercise the property, so it proves nothing either way'
@@ -305,7 +310,7 @@ export function canTransition(change, to, ctx = {}) {
       bound = right.filter((e) => e.contract_digest === contractDigest);
       if (bound.length === 0) {
         const unbound = right.some((e) => !e.contract_digest);
-        return refuse(CODES.CONTRACT_CHANGED,
+        return deny(CODES.CONTRACT_CHANGED,
           `"${want.property}" was produced against a different contract` +
           (unbound
             ? ' — it records no contract digest, so which Requirements it covered cannot be established'
@@ -317,13 +322,14 @@ export function canTransition(change, to, ctx = {}) {
       const independent = bound.some((e) =>
         want.independentOf.every((r) => (e.executor?.independent_of ?? []).includes(r)));
       if (!independent) {
-        return refuse(CODES.NOT_INDEPENDENT,
+        return deny(CODES.NOT_INDEPENDENT,
           `"${want.property}" was not produced independently of ${want.independentOf.join(', ')}; ` +
           "a review that saw the builder's reasoning is not the independent pass this step assumes");
       }
     }
   }
 
+  refusalDetail = undefined;
   // The closure is prepared on the branch, BEFORE the merge — consolidated specs, archived
   // folder, one manifest — and authorising the integration is where that preparation has to
   // exist. Preparing early is what removes the second PR and the commits that only said the
@@ -334,20 +340,20 @@ export function canTransition(change, to, ctx = {}) {
   // is a claim; the receipt is what a confirmation actually saw.
   if (need.receipt) {
     if (!receipt) {
-      return refuse(CODES.INTEGRATION_NOT_OBSERVED,
+      return deny(CODES.INTEGRATION_NOT_OBSERVED,
         `entering "${to}" requires an integration receipt, and none was supplied; confirm the merge with post-merge.mjs — a transition does not observe anything`);
     }
-    if (!receipt.ok) return refuse(receipt.code ?? CODES.INTEGRATION_NOT_OBSERVED, receipt.message);
+    if (!receipt.ok) return deny(receipt.code ?? CODES.INTEGRATION_NOT_OBSERVED, receipt.message);
   }
 
   if (to === 'integration_approved' && change.closure_mode !== 'legacy') {
     if (!closure) {
-      return refuse(CODES.CLOSURE_NOT_PREPARED,
+      return deny(CODES.CLOSURE_NOT_PREPARED,
         'no closure preparation was checked for this candidate; run `prepare-closure.mjs` on the branch, ' +
         'or declare the change `closure_mode: "legacy"` and close it the old way');
     }
     if (!closure.ok) {
-      return refuse(CODES.CLOSURE_NOT_PREPARED, `${closure.code}: ${closure.message}`);
+      return deny(CODES.CLOSURE_NOT_PREPARED, `${closure.code}: ${closure.message}`);
     }
   }
 
