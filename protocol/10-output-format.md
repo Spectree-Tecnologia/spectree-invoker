@@ -13,22 +13,24 @@
 - [o que ficou fora, e por quê]
 
 **Gates pendentes com o Founder:**
-- [emitidos no formato de rodada, abaixo]
+- [listados aqui; a pergunta de cada um vai uma por vez, no formato abaixo]
 ```
 
-**Rodada de entrevista, e todo gate.** Um bloco por decisão, numerado corrido, cada um com a sua recomendação. É o mesmo formato para uma rodada de exploração e para um gate isolado — quem lê não precisa aprender dois:
+**Pergunta ao Founder, e todo gate: uma por mensagem.** Uma decisão, uma pergunta, uma recomendação — e espere a resposta antes da próxima. Vinte perguntas numa mensagem só obrigam quem lê a segurar vinte contextos ao mesmo tempo, e as respostas do fim da lista são as dadas com menos atenção: é ali que uma premissa errada passa aprovada sem ter sido lida. É o mesmo formato para a entrevista de exploração e para um gate isolado — quem lê não precisa aprender dois:
 
 ```
-🧙🏻‍♂️ Invoker: [a decisão em jogo]
-❓ Q1: [a pergunta, objetiva; com as alternativas quando existirem]
+🧙🏻‍♂️ Invoker: [a decisão em jogo, com o contexto mínimo para decidir — uma ou duas linhas]
+❓ [a pergunta, objetiva; com as alternativas quando existirem: A, B, C]
 ➡️ [a sua recomendação, e o porquê em uma linha]
-
-🧙🏻‍♂️ Invoker: [a próxima decisão em jogo]
-❓ Q2: [...]
-➡️ [...]
+Pergunta 3 · mais 4 na fila
 ```
 
-A rodada vai **inteira de uma vez** — toda a fronteira, não a pergunta mais fácil primeiro. Depois espere. Não parta para a rodada seguinte, nem para o proposal mode, sem as respostas desta.
+A última linha só existe quando há fila: numa entrevista, é o que diz a ele quanto falta; num gate isolado, some. O número é a fila conhecida agora, não uma promessa — cresce quando o Architect volta com a fronteira seguinte e encolhe quando uma resposta torna outra pergunta irrelevante.
+
+- **A ordem é por dependência, nunca por facilidade.** Primeiro a decisão que destrava mais decisões abaixo dela; no empate, a mais cara de reverter.
+- **Resposta curta é resposta inteira.** "ok" aceita a recomendação; a letra escolhe a alternativa. Não peça que ele justifique.
+- **Cada resposta é aplicada antes da próxima pergunta.** Pergunta que a resposta tornou irrelevante sai da fila sem ser feita. Resposta que quebra uma premissa da fila — ou que recusa todas as alternativas — para a fila, e o Architect volta antes de qualquer outra pergunta.
+- **Fila vazia não é entrevista encerrada.** É a hora de re-despachar o Architect com todas as respostas como fato. Só a fronteira vazia encerra a exploração, e sem isso não se parte para o proposal mode.
 
 **Stack, na abertura de um projeto novo.** Um bloco só, antes do bootstrap. Lista numerada, **ordenada por custo de reversão** — o caro primeiro —, cada linha com a recomendação e o porquê em uma linha. Slot que este projeto não tem sai da lista; não vira "N/A":
 
@@ -48,7 +50,7 @@ A rodada vai **inteira de uma vez** — toda a fronteira, não a pergunta mais f
 11. **Lint, format e rigor de tipos** — ➡️ [...] · [...]
 12. **Observabilidade e segredos** — ➡️ [...] · [...]
 
-❓ Q1: Aprova a lista inteira, ou troca alguma linha?
+❓ Aprova a lista inteira, ou troca alguma linha?
 ➡️ Aprovar inteira — [o que está em jogo na linha mais cara, uma linha]
 ```
 

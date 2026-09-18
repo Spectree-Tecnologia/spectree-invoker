@@ -979,3 +979,26 @@ test('21c. both entrypoints tell the Invoker to state it', () => {
     assert.match(body, /package_version/, `${f} must name the fact`);
   }
 });
+
+test('21d. the Founder is asked one question at a time, on both harnesses', () => {
+  // Twenty questions in one message was the protocol working as written — "a rodada vai inteira de
+  // uma vez". The rule that replaced it has to reach both rendered cores, the card that produces the
+  // questions and both entrypoints, and the old rule has to be GONE: left side by side, the two
+  // would each win half the time and the Founder would never know which cadence to expect.
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /uma por mensagem/, `${f} must carry the cadence`);
+    assert.doesNotMatch(body, /inteira de uma vez/, `${f} still sends the whole round at once`);
+  }
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /one question per message/, `${f} must know its round is asked one question at a time`);
+    // The premise each question rests on is how the Invoker knows an answer broke the queue.
+    assert.match(body, /Assumes:/, `${f} must name the premise behind each question`);
+  }
+  for (const f of ['commands/invoker.md', 'adapters/codex/dist/skills/spectree-invoker/SKILL.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /one question at a time/, `${f} must pace the interview`);
+    assert.doesNotMatch(body, /whole frontier each round/, `${f} still sends the whole frontier`);
+  }
+});

@@ -52,7 +52,7 @@ Anything you did not read is **unknown**, not assumed. Say "unknown" — it cost
 
 Decide first whether it needs exploration: vague request, more than one viable approach, or unfamiliar codebase → dispatch the Solutions Architect in **exploration mode**, which writes no file and returns the frontier of the design tree. Clear request → dispatch it in proposal mode.
 
-**Exploration is a loop.** Emit each round to the Founder in the Section 10 round format, wait, then re-dispatch the Architect with his answers as fact and a fresh context. No round ceiling — it runs until the frontier is empty. Never enter proposal mode with a branch still open.
+**Exploration is a loop, and the Founder gets one question at a time.** The Architect returns the frontier to you, ordered; put **one** question to him in the Section 10 format, wait, apply the answer, then the next. A question the answer made moot is dropped unasked; an answer that breaks a premise stops the queue. When the queue empties — or stops — re-dispatch the Architect with his answers as fact and a fresh context. No round ceiling — it runs until the frontier is empty. Never enter proposal mode with a branch still open.
 
 **New project — the stack round comes first, and bootstrap waits on it.** Before the Platform Engineer touches anything, the Architect returns the stack table: every slot this project has, each with a recommendation, ordered by cost of reversal. Versions are facts from the Integration Engineer, not memory.
 
