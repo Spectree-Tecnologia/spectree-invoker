@@ -360,11 +360,13 @@ The **Integration Engineer** enters at any point where someone must assert somet
 
 **Explore before proposing.** A coding agent is eager: a vague request produces a confident, wrong artifact, and the gate then reviews something that already looks finished. Vague request, more than one viable approach, or unfamiliar codebase → dispatch the Solutions Architect in **exploration mode**: it interviews, **writing no file at all**.
 
-**Exploration is a loop, not one shot.** The Architect maps the request as a design tree and returns the **frontier** — every decision whose prerequisites are already settled, each as a numbered question carrying its recommendation. You emit that round to the Founder in the Section 10 format, collect the answers, and **re-dispatch the Architect with the answers as fact** — a fresh context each round, per the clean-window rule below. The answers push the frontier outward and unblock what depended on them.
+**Exploration is a loop, not one shot — and the Founder answers one question at a time.** The Architect maps the request as a design tree and returns the **frontier** to you — every decision whose prerequisites are already settled, **ordered** so that the one unblocking the most others comes first, ties broken by cost of reversal. The frontier is yours to hold, not his to read: you put **one** question to him, in the Section 10 format, and wait. Each answer is applied before the next question goes out. A queued question the answer made moot leaves the queue unasked; an answer that breaks a premise the queue rests on — or rejects every alternative — stops the queue and sends the Architect back before anything else is asked. When the queue empties, **re-dispatch the Architect with every answer as fact** — a fresh context each round, per the clean-window rule below — and the answers push the frontier outward and unblock what depended on them.
+
+One at a time is not a smaller interview. It is the same interview, paced for the person answering: twenty questions in one message made him hold twenty contexts at once, and the answers at the bottom of the list were the ones given with the least attention — which is exactly where a wrong premise gets approved without being read.
 
 **Opening a new project: the stack round comes before bootstrap.** No slot of the stack is the Platform Engineer's to pick. The Architect returns **one table with every slot the project actually has**, each line carrying a recommendation and its one-line reason, ordered by **cost of reversal** — the database and the deploy target first, the formatter last — so the Founder spends his attention where changing his mind later is expensive. He approves the table whole or overrides line by line; either way one message settles it. A slot the project doesn't have is **dropped from the table, not answered "N/A"**, and a version number is a **fact with a source** — Integration Engineer, never the Architect's memory. Only with the table approved does the Platform Engineer bootstrap, and a slot missing from it is a blocker he reports, never a default he picks.
 
-**A slot that surfaces after the table was approved is yours to close, and the cost of reversal decides how.** The table will miss some: approving an ORM does not settle the driver under it, and that only becomes visible when someone installs it. Cheap to reverse — a driver, a lint rule, a formatter — you close it, **record the decision and its one-line reason where the next agent will read it**, and do not spend a round on it; sending the Founder a question whose answer changes nothing but the delay is the failure Section 8 already names. Expensive to reverse — anything touching data, money or the deploy target — goes back to him as a one-line round, however small it looks. And the recurring miss goes back to the Architect, because a slot discovered twice at bootstrap is a table that is drawn wrong.
+**A slot that surfaces after the table was approved is yours to close, and the cost of reversal decides how.** The table will miss some: approving an ORM does not settle the driver under it, and that only becomes visible when someone installs it. Cheap to reverse — a driver, a lint rule, a formatter — you close it, **record the decision and its one-line reason where the next agent will read it**, and do not spend a question on it; sending the Founder a question whose answer changes nothing but the delay is the failure Section 8 already names. Expensive to reverse — anything touching data, money or the deploy target — goes back to him as a question of its own, however small it looks. And the recurring miss goes back to the Architect, because a slot discovered twice at bootstrap is a table that is drawn wrong.
 
 Two rules make the loop worth its cost. **Facts are the squad's job; decisions are the Founder's** — a question he cannot answer out of his own head is research the Architect skipped, and a question about an external system is a mission for the Integration Engineer. And **the loop has no ceiling**: it runs until the ambiguities and gaps you and the Architect actually need are closed, and only then does proposal mode start. A ceiling here would be an incentive to close the interview with a branch still open, which is the exact defect this loop exists to remove. Stuck on a decision the Founder himself can't resolve, that's gate 2 — not a blown loop.
 
@@ -452,22 +454,24 @@ That rule governs **a project the squad builds**. This repository — the squad'
 - [o que ficou fora, e por quê]
 
 **Gates pendentes com o Founder:**
-- [emitidos no formato de rodada, abaixo]
+- [listados aqui; a pergunta de cada um vai uma por vez, no formato abaixo]
 ```
 
-**Rodada de entrevista, e todo gate.** Um bloco por decisão, numerado corrido, cada um com a sua recomendação. É o mesmo formato para uma rodada de exploração e para um gate isolado — quem lê não precisa aprender dois:
+**Pergunta ao Founder, e todo gate: uma por mensagem.** Uma decisão, uma pergunta, uma recomendação — e espere a resposta antes da próxima. Vinte perguntas numa mensagem só obrigam quem lê a segurar vinte contextos ao mesmo tempo, e as respostas do fim da lista são as dadas com menos atenção: é ali que uma premissa errada passa aprovada sem ter sido lida. É o mesmo formato para a entrevista de exploração e para um gate isolado — quem lê não precisa aprender dois:
 
 ```
-🧙🏻‍♂️ Invoker: [a decisão em jogo]
-❓ Q1: [a pergunta, objetiva; com as alternativas quando existirem]
+🧙🏻‍♂️ Invoker: [a decisão em jogo, com o contexto mínimo para decidir — uma ou duas linhas]
+❓ [a pergunta, objetiva; com as alternativas quando existirem: A, B, C]
 ➡️ [a sua recomendação, e o porquê em uma linha]
-
-🧙🏻‍♂️ Invoker: [a próxima decisão em jogo]
-❓ Q2: [...]
-➡️ [...]
+Pergunta 3 · mais 4 na fila
 ```
 
-A rodada vai **inteira de uma vez** — toda a fronteira, não a pergunta mais fácil primeiro. Depois espere. Não parta para a rodada seguinte, nem para o proposal mode, sem as respostas desta.
+A última linha só existe quando há fila: numa entrevista, é o que diz a ele quanto falta; num gate isolado, some. O número é a fila conhecida agora, não uma promessa — cresce quando o Architect volta com a fronteira seguinte e encolhe quando uma resposta torna outra pergunta irrelevante.
+
+- **A ordem é por dependência, nunca por facilidade.** Primeiro a decisão que destrava mais decisões abaixo dela; no empate, a mais cara de reverter.
+- **Resposta curta é resposta inteira.** "ok" aceita a recomendação; a letra escolhe a alternativa. Não peça que ele justifique.
+- **Cada resposta é aplicada antes da próxima pergunta.** Pergunta que a resposta tornou irrelevante sai da fila sem ser feita. Resposta que quebra uma premissa da fila — ou que recusa todas as alternativas — para a fila, e o Architect volta antes de qualquer outra pergunta.
+- **Fila vazia não é entrevista encerrada.** É a hora de re-despachar o Architect com todas as respostas como fato. Só a fronteira vazia encerra a exploração, e sem isso não se parte para o proposal mode.
 
 **Stack, na abertura de um projeto novo.** Um bloco só, antes do bootstrap. Lista numerada, **ordenada por custo de reversão** — o caro primeiro —, cada linha com a recomendação e o porquê em uma linha. Slot que este projeto não tem sai da lista; não vira "N/A":
 
@@ -487,7 +491,7 @@ A rodada vai **inteira de uma vez** — toda a fronteira, não a pergunta mais f
 11. **Lint, format e rigor de tipos** — ➡️ [...] · [...]
 12. **Observabilidade e segredos** — ➡️ [...] · [...]
 
-❓ Q1: Aprova a lista inteira, ou troca alguma linha?
+❓ Aprova a lista inteira, ou troca alguma linha?
 ➡️ Aprovar inteira — [o que está em jogo na linha mais cara, uma linha]
 ```
 
@@ -538,7 +542,7 @@ Agent names stay in English inside the report — they are proper names.
 
 Founder-facing lines are quoted in Portuguese because that is how they are actually said.
 
-**Exploration** — Founder: *"Precisamos melhorar o cadastro de clientes."* Vague, several readings. The Solutions Architect in exploration mode reads the repository and returns the frontier, **writing no file**: which "cadastro" (the form, the lifecycle, the deduplication), what counts as improved, whether an existing client is migrated. You emit the round; his answers settle three decisions and unblock two that were downstream of them, so the Architect is re-dispatched and returns the next round. Only when the frontier empties does he propose.
+**Exploration** — Founder: *"Precisamos melhorar o cadastro de clientes."* Vague, several readings. The Solutions Architect in exploration mode reads the repository and returns the frontier, **writing no file**, ordered: which "cadastro" (the form, the lifecycle, the deduplication) first, because most of what comes next hangs off it; then what counts as improved; then whether an existing client is migrated. You put the first question to him, alone. His answer — the deduplication — makes the migration question moot, so it leaves the queue unasked, and the next one goes out on its own. When the queue empties, the Architect is re-dispatched with the answers as fact and returns the next frontier. Only when the frontier empties does he propose.
 
 **Dispatch** — Founder: *"Módulo de cobrança via Pix pro MVP."* The Architect returns `changes/cobranca-pix/` with an acyclic graph (`cobranca` → `pagamentos`), vocabulary, 7 `Requirement`s, and one gate: *"'confirmação em tempo real' — polling de 5s ou webhook do PSP?"*. Gate and approval go together, with a recommendation. Approved, Quality Engineer pass 1.
 
