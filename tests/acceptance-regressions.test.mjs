@@ -156,7 +156,7 @@ test('5b. specialists are built where Codex looks for custom agents', () => {
   const agents = readdirSync(join(REPO, 'adapters/codex/dist/agents')).sort();
   assert.deepEqual(agents, [
     'full_stack_developer.toml', 'integration_engineer.toml', 'platform_engineer.toml',
-    'quality_engineer.toml', 'solutions_architect.toml',
+    'quality_engineer.toml', 'solutions_architect.toml', 'typesafe_engineer.toml',
   ]);
   assert.equal(existsSync(join(REPO, 'adapters/codex/dist/skills/spectree-invoker/agents')), false,
     'a skill subfolder does not register custom agents; .codex/agents does');
@@ -1001,4 +1001,44 @@ test('21d. the Founder is asked one question at a time, on both harnesses', () =
     assert.match(body, /one question at a time/, `${f} must pace the interview`);
     assert.doesNotMatch(body, /whole frontier each round/, `${f} still sends the whole frontier`);
   }
+});
+
+test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced', () => {
+  // The sixth type passed the boundary test on blast radius — money and a paid credential — and
+  // that is only true while the card keeps the fences that make it so. Each assertion below is one
+  // of them; losing any turns the role back into "a Developer who knows a library", which §4 says
+  // does not exist.
+  const cards = {
+    claude: readFileSync(join(REPO, 'agents/typesafe-engineer.md'), 'utf8'),
+    codex: readFileSync(join(REPO, 'adapters/codex/dist/agents/typesafe_engineer.toml'), 'utf8'),
+  };
+  for (const [harness, body] of Object.entries(cards)) {
+    assert.match(body, /only when the approved stack names TypeSafe/, `${harness}: the role is optional, never a dependency`);
+    assert.match(body, /The core never knows you exist/, `${harness}: TypeSafe stays behind the port`);
+    assert.match(body, /Never call the live model from a test/, `${harness}: the suite stays deterministic and free`);
+    assert.match(body, /read from the environment and nowhere else/, `${harness}: the credential is never written`);
+    assert.match(body, /judgment\.calibrated/, `${harness}: a threshold needs recorded evidence`);
+    assert.match(body, /network is for TypeSafe only/, `${harness}: one vendor, not a second general route`);
+    // Two fences read off the vendor's own docs, not invented here. `jev-latest` moves on release
+    // (docs.typesafe.ai/models): a threshold tuned against an alias goes stale with no change on
+    // our side. And the model does not treat state as hostile (jaggedness page, jev-1.13).
+    assert.match(body, /Pin the version you calibrated/, `${harness}: a calibration names the model it measured`);
+    assert.match(body, /never authorises a destructive or irreversible action on its own/,
+      `${harness}: a judgment over user-controlled text routes; it does not decide`);
+  }
+  // The Claude Code tool grant is the narrow one the card promises: docs by fetch, no search engine.
+  const tools = cards.claude.match(/^tools: (.*)$/m)?.[1] ?? '';
+  assert.match(tools, /\bWebFetch\b/);
+  assert.doesNotMatch(tools, /\bWebSearch\b/, 'a search engine is the Integration Engineer\'s route, not this one');
+
+  // And the doctrine stopped contradicting itself: six types, the reason recorded, and the
+  // Integration Engineer no longer claiming to be the ONLY route out.
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /six types, split by real boundaries/, `${f} must count six`);
+    assert.doesNotMatch(body, /five types/, `${f} still counts five`);
+    assert.match(body, /passed that test on blast radius/, `${f} must record why the sixth exists`);
+  }
+  assert.doesNotMatch(readFileSync(join(REPO, 'agents/integration-engineer.md'), 'utf8'),
+    /squad's only route/, 'the Integration Engineer is no longer the only route to the network');
 });

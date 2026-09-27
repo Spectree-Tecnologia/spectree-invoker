@@ -51,7 +51,7 @@ for (const d of REQUIRED_DIRS) {
 const manifest = readJson('protocol/manifest.json');
 const REQUIRED_ROLES = [
   'solutions-architect', 'full-stack-developer', 'quality-engineer',
-  'platform-engineer', 'integration-engineer',
+  'platform-engineer', 'integration-engineer', 'typesafe-engineer',
 ];
 
 if (manifest) {
@@ -62,7 +62,12 @@ if (manifest) {
     if (!declared.has(r)) fail('protocol/manifest.json', `does not declare the required specialist "${r}"`);
     if (!has(`protocol/roles/${r}.md`)) fail(`protocol/roles/${r}.md`, 'required specialist body missing');
   }
-  if ((manifest.roles ?? []).length !== 5) fail('protocol/manifest.json', `declares ${(manifest.roles ?? []).length} specialists; the squad has exactly 5`);
+  // The count is the required list, not a literal: a type is added by naming it above, never by a
+  // number someone forgot to update. And an extra is named, because "declares 7" says nothing
+  // about which one entered without passing through here.
+  for (const r of declared) {
+    if (!REQUIRED_ROLES.includes(r)) fail('protocol/manifest.json', `declares "${r}", which is not a specialist the squad has`);
+  }
 }
 
 // --- 3. every adapter renders every required role ----------------------------
