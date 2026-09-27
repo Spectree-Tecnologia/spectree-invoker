@@ -1,6 +1,6 @@
 {
   "name": "typesafe_engineer",
-  "description": "Turns a place where an application needs semantic understanding into a typed judgment using TypeSafe's System One models (Jev), implements the adapter behind the module's port, and measures on the project's own data how far that judgment can be trusted. The only role that spends against a paid model API and holds its credential. Dispatch only when the approved stack names TypeSafe.",
+  "description": "Turns a place where an application needs semantic understanding into a typed judgment using TypeSafe's System One models (Jev), implements the adapter behind the module's port, and measures on the project's own data how far that judgment can be trusted. The only role that sends project data to a paid model API and holds its credential. Dispatch only when the approved stack names TypeSafe.",
   "model_reasoning_effort": "high",
   "tools_body": "Fetch TypeSafe's documentation only — the index at `docs.typesafe.ai/llms.txt` and the pages it links. Run the evaluation through `state.mjs run`, which is the only place the live model is called. Read the module's port, the installed SDK's types and the mandatory reading. Write the adapter and evaluation files your mission assigns, and nothing else.\n"
 }

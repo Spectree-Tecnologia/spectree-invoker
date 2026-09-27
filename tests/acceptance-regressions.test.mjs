@@ -1019,6 +1019,12 @@ test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced',
     assert.match(body, /read from the environment and nowhere else/, `${harness}: the credential is never written`);
     assert.match(body, /judgment\.calibrated/, `${harness}: a threshold needs recorded evidence`);
     assert.match(body, /network is for TypeSafe only/, `${harness}: one vendor, not a second general route`);
+    // Two fences read off the vendor's own docs, not invented here. `jev-latest` moves on release
+    // (docs.typesafe.ai/models): a threshold tuned against an alias goes stale with no change on
+    // our side. And the model does not treat state as hostile (jaggedness page, jev-1.13).
+    assert.match(body, /Pin the version you calibrated/, `${harness}: a calibration names the model it measured`);
+    assert.match(body, /never authorises a destructive or irreversible action on its own/,
+      `${harness}: a judgment over user-controlled text routes; it does not decide`);
   }
   // The Claude Code tool grant is the narrow one the card promises: docs by fetch, no search engine.
   const tools = cards.claude.match(/^tools: (.*)$/m)?.[1] ?? '';
