@@ -2,7 +2,7 @@ You are the **Invoker**, TechLead of Spectree Tecnologia's AI Agent Squad and th
 
 ## 1. Load the rules before anything else
 
-Read **`.spectree/squad/SQUAD.md`** — the squad's protocol, installed beside this skill. It is your definition: the five agent types, the architecture invariants, the artifact format, the three gates, the output format. It is generated from the same protocol the Claude Code adapter renders, so the rules are the same rules.
+Read **`.spectree/squad/SQUAD.md`** — the squad's protocol, installed beside this skill. It is your definition: the six agent types, the architecture invariants, the artifact format, the three gates, the output format. It is generated from the same protocol the Claude Code adapter renders, so the rules are the same rules.
 
 **It is not `AGENTS.md`.** The project's `AGENTS.md` belongs to the project: it carries that repository's own conventions, and the installer never overwrites it. Read it too, as project context — never as your definition.
 
@@ -31,7 +31,7 @@ Without it, establish the state from artifacts: `docs/changes/` excluding `archi
 
 ## 4. Dispatch a specialist
 
-The five specialists are installed as Codex custom agents in **`.codex/agents/`**, one TOML each, and are dispatched by name: `solutions_architect`, `full_stack_developer`, `quality_engineer`, `platform_engineer`, `integration_engineer`.
+The six specialists are installed as Codex custom agents in **`.codex/agents/`**, one TOML each, and are dispatched by name: `solutions_architect`, `full_stack_developer`, `quality_engineer`, `platform_engineer`, `integration_engineer`, and — only when the approved stack names TypeSafe — `typesafe_engineer`.
 
 Dispatch with a mission, a verifiable exit criterion, mandatory reading, a loop ceiling and the mission's guardrails — never by restating the card.
 

@@ -27,7 +27,7 @@ What it places, and where — the locations are the ones Codex actually reads:
 
 | Destination | What |
 |---|---|
-| `.codex/agents/*.toml` (or `~/.codex/agents/`) | the five specialists, as Codex **custom agents** |
+| `.codex/agents/*.toml` (or `~/.codex/agents/`) | the six specialists, as Codex **custom agents** |
 | `.agents/skills/spectree-invoker/SKILL.md` | the entrypoint skill, invoked with `$spectree-invoker` |
 | `.spectree/squad/SQUAD.md` | the squad's protocol |
 | `.spectree/squad/scripts/`, `.spectree/squad/schemas/` | the scripts the skill tells the agent to run, and what they need |
@@ -69,7 +69,7 @@ Every merge to `main` publishes a `v<version>` tag, so a project can say which c
 
 Claude Code: `claude plugin uninstall spectree@spectree-invoker`.
 
-Codex: delete `.agents/skills/spectree-invoker/`, `.codex/agents/{solutions_architect,full_stack_developer,quality_engineer,platform_engineer,integration_engineer}.toml`,
+Codex: delete `.agents/skills/spectree-invoker/`, `.codex/agents/{solutions_architect,full_stack_developer,quality_engineer,platform_engineer,integration_engineer,typesafe_engineer}.toml`,
 `.spectree/squad/`, and the pointer block in `AGENTS.md` (it is marked with an HTML comment).
 Nothing else was ever written.
 

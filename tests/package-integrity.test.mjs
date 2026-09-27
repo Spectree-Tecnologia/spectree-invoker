@@ -43,7 +43,7 @@ test('deleting every specialist card fails — it never reports "zero cards, OK"
     const r = check(dir);
     assert.equal(r.code, 1, 'an empty agents/ directory must fail');
     assert.match(r.out, /required specialist card missing/);
-    assert.equal((r.out.match(/required specialist card missing/g) ?? []).length, 5, 'all five are named');
+    assert.equal((r.out.match(/required specialist card missing/g) ?? []).length, 6, 'all six are named');
   } finally { cleanup(dir); }
 });
 
@@ -57,6 +57,21 @@ test('removing one specialist from the manifest fails', () => {
     const r = check(dir);
     assert.equal(r.code, 1);
     assert.match(r.out, /does not declare the required specialist "quality-engineer"/);
+  } finally { cleanup(dir); }
+});
+
+test('a specialist the squad does not have fails, and is named', () => {
+  // The literal "exactly 5" this replaces would have refused a sixth type for the wrong reason —
+  // a stale number — and accepted any swap that kept the count. The list is the contract now.
+  const dir = pkgCopy();
+  try {
+    const f = join(dir, 'protocol', 'manifest.json');
+    const m = JSON.parse(readFileSync(f, 'utf8'));
+    m.roles.push('growth-hacker');
+    writeFileSync(f, JSON.stringify(m, null, 2));
+    const r = check(dir);
+    assert.equal(r.code, 1);
+    assert.match(r.out, /declares "growth-hacker", which is not a specialist the squad has/);
   } finally { cleanup(dir); }
 });
 
@@ -156,7 +171,7 @@ test('the suite leaves the package under test byte-identical', () => {
 
 test('both adapters render every required role from the same protocol body', async () => {
   const { renderAdapter } = await import('../scripts/build.mjs');
-  const roles = ['solutions-architect', 'full-stack-developer', 'quality-engineer', 'platform-engineer', 'integration-engineer'];
+  const roles = ['solutions-architect', 'full-stack-developer', 'quality-engineer', 'platform-engineer', 'integration-engineer', 'typesafe-engineer'];
   const claude = renderAdapter('claude-code');
   const codex = renderAdapter('codex');
   for (const r of roles) {

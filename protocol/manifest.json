@@ -22,10 +22,11 @@
     "full-stack-developer",
     "quality-engineer",
     "platform-engineer",
-    "integration-engineer"
+    "integration-engineer",
+    "typesafe-engineer"
   ],
   "tokens": {
-    "CARDS_LOCATION": "Where an adapter keeps the five specialist cards, phrased to read inside a sentence.",
+    "CARDS_LOCATION": "Where an adapter keeps the specialist cards, phrased to read inside a sentence.",
     "TOOL_SURFACE": "The tool surface the harness exposes beyond the CLI, phrased as a trailing clause or empty.",
     "ROLE_TOOLS": "The Tools section body of a role card, which names actual harness tools and is therefore adapter-owned."
   },

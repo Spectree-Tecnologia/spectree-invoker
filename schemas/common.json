@@ -30,7 +30,7 @@
     "role": {
       "enum": [
         "invoker", "solutions_architect", "full_stack_developer",
-        "quality_engineer", "platform_engineer", "integration_engineer"
+        "quality_engineer", "platform_engineer", "integration_engineer", "typesafe_engineer"
       ]
     },
 
