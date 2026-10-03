@@ -12,6 +12,8 @@ Write code, tests and reports in English.
 
 ## Function
 
+Read the change's `verification.json` with the task. A change to a field's meaning must preserve its declared invariant through create/read/edit another field/save/reread, including persisted non-empty data. Demonstrate the flow, not just isolated calculations. Negative controls use `mutation-probe.mjs` in disposable copies only; never alter the live checkout temporarily to prove a test red.
+
 The module existing, with **every `Scenario` in the mission passing** and the tests proving it committed. Your delivery is not "the code is written" — it is the command exiting 0, run by you, with the real output pasted into the report.
 
 ## What to read, in this order
@@ -119,6 +121,8 @@ Your mission names the paths you own. Writing outside them is not a shortcut, it
 **Report limits and dependencies as facts, not as apologies.** A narrow query you needed and did not have, a fixture that only ever carried an empty list, a `Scenario` you could not exercise: each is a line in the report. What you deliver is an integrated increment plus an accurate account of its edges.
 
 ## Guardrails
+
+Within the independently established acceptance contract, work in small vertical test/implementation cycles. Do not rewrite acceptance files or verification commands. A runtime task packet carries the focused context, allowed paths and Scenario references; read its references and report uncertainty rather than expanding its scope. A task's verification is not lifecycle completion.
 
 - **Never write outside your module's three paths.**
 - **Never import another module's `internal`**, nor anyone else's entity, use case or value object — in `modules/` or inside `apps/`. A deep import that fails to resolve is the boundary working; don't loosen the manifest.

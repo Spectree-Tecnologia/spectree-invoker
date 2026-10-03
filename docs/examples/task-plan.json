@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "T1",
+      "mission": "Implement the approved forecast-preservation behavior.",
+      "depends_on": [],
+      "refs": ["docs/changes/example/specs/settlement.md"],
+      "scenarios": ["settlement/preserve-forecast"],
+      "allowed_paths": ["src/settlement/"],
+      "max_attempts": 2,
+      "checks": [
+        {
+          "scenario": "settlement/preserve-forecast",
+          "test_name": "editing description preserves forecast",
+          "command": ["node", "--test", "--test-reporter=tap", "tests/forecast.test.mjs"],
+          "files": ["tests/forecast.test.mjs"],
+          "timeout_seconds": 60
+        }
+      ]
+    }
+  ]
+}

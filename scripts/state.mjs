@@ -41,6 +41,8 @@ import { planNext, nextTarget } from './lib/planner.mjs';
 import { observePlanCi } from './lib/planner-ci.mjs';
 import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
+import { pendingWork, doctor } from './lib/work.mjs';
+import { requireTasksComplete } from './lib/task-executor.mjs';
 
 // A gate is bound to what it authorises. Scope-class gates authorise the contract; the
 // gates that put code somewhere authorise the contract AND the code that will travel with it.
@@ -165,7 +167,7 @@ function transitionContext(change, d, cc, g, to) {
       // closure walk to `integrated` on the approval its own reopening had retired.
       approvals: cc.authority.inForce,
       authority: cc.authority,
-      pendingOperation: cc.pending,
+      pendingOperation: cc.pending ?? pendingWork(root, change.change_id),
       revision: g.revision,
       contentDigest: d.content.digest,
       contractDigest: d.contract.digest,
@@ -200,8 +202,9 @@ function recommendation(changeId, { observeCi = false, pr = null, snapshot = nul
     if (!change) return { ...planNext(null), code: 'E_CHANGE_MISSING' };
     const cc = snapshot?.cc ?? closureContext(change.change_id);
     // Recovery and corrupt authority take precedence even when Git/content cannot be read.
-    if (cc.authority.ok === false || cc.pending) return planNext(change,
-      { authority: cc.authority, pendingOperation: cc.pending }, { controlRevision: cc.lifecycle?.revision ?? 0 });
+    const pending = cc.pending ?? pendingWork(root, change.change_id);
+    if (cc.authority.ok === false || pending) return planNext(change,
+      { authority: cc.authority, pendingOperation: pending }, { controlRevision: cc.lifecycle?.revision ?? 0 });
     if (cc.manifestError) return { ...planNext(null), action: 'repair_preparation',
       reason: cc.manifestError.message, code: cc.manifestError.code };
     if (snapshot?.error) throw snapshot.error;
@@ -240,6 +243,8 @@ function resume(changeId) {
   const out = {
     project: project ? { project_id: project.project_id, protocol_version: project.protocol_version } : null,
     state_directory: store.present,
+    adoption: doctor(root),
+    work_pending: change ? pendingWork(root, change.change_id) : null,
     git: g,
     change: change
       ? {
@@ -306,6 +311,11 @@ function printResume(r) {
   const L = [];
   L.push(`project        ${r.project?.project_id ?? '(no .spectree — state is unknown, not empty)'}`);
   L.push(`git            ${r.git.available ? `${r.git.branch} @ ${(r.git.revision ?? '').slice(0, 8)}${r.git.dirty ? ' (dirty)' : ''}` : 'not a work tree'}`);
+  if (r.adoption) {
+    L.push(`state mode     ${r.adoption.mode}${r.adoption.adoption_required ? ' — reconcile legacy artifacts before dispatch' : ''}`);
+    if (r.adoption.unregistered_changes.length) L.push(`unregistered   ${r.adoption.unregistered_changes.join(', ')}`);
+  }
+  if (r.work_pending) L.push(`work recovery  ${r.work_pending.operation_ids.join(', ')} — ${r.work_pending.recovery}`);
   if (!r.change) { L.push('change         none open'); }
   else {
     L.push(`change         ${r.change.change_id}  [${r.change.state}]${r.change.deltaless ? '  deltaless' : ''}`);
@@ -462,6 +472,10 @@ switch (cmd) {
       if (verdict.code === 'E_CONTENT_CHANGED') console.error(`  current content:  ${d.content.revision.slice(0, 8)}${d.content.dirty ? ' + uncommitted changes' : ' (clean)'} -> ${d.content.digest}`);
       process.exit(1);
     }
+    if (to === 'implemented') {
+      try { requireTasksComplete(root, id); }
+      catch (e) { die(`${e.code}: ${e.message}`, 1); }
+    }
     if (cmd === 'can') { console.log(`allowed ${change.state} -> ${to}`); break; }
 
     const next = { ...change, state: to, evaluated_revision: g.revision ?? change.evaluated_revision };
@@ -483,8 +497,10 @@ switch (cmd) {
     // Lock order is lifecycle then change, everywhere, so the two cannot cycle.
     let saved;
     try {
-      saved = withAuthority(root, id, { expectedRevision: cc.lifecycle?.revision ?? null, requireIdle: to !== 'blocked' }, () =>
-        store.putChange(next, { event: { type: 'transition', from: change.state, to }, expected: change.state_revision }));
+      saved = withAuthority(root, id, { expectedRevision: cc.lifecycle?.revision ?? null, requireIdle: to !== 'blocked' }, () => {
+        if (to === 'implemented') requireTasksComplete(root, id);
+        return store.putChange(next, { event: { type: 'transition', from: change.state, to }, expected: change.state_revision });
+      });
     } catch (e) {
       console.error(`REFUSED ${change.state} -> ${to}`);
       console.error(`  ${e.code ?? 'E_REFUSED'}: ${e.message}`);
@@ -618,7 +634,8 @@ switch (cmd) {
       revision: before.content.revision,
       fingerprint: before.content.digest,
       contract_digest: before.contract.digest,
-      environment: { os: process.platform, runtime: `node ${process.versions.node}` },
+      environment: { os: process.platform, runtime: `node ${process.versions.node}`,
+        ci: process.env.CI === 'true' || process.env.CI === '1' || process.env.GITHUB_ACTIONS === 'true' },
       timestamp: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
       result,
       ...(typeof r.status === 'number' ? { exit_code: r.status } : {}),

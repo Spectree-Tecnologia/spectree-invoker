@@ -34,6 +34,7 @@ export function renderAdapter(adapterId) {
   const out = [];
   const coreTokens = { ...a.tokens };
 
+
   const core = manifest.core
     .map((f) => render(read(`protocol/${f}`), coreTokens, `protocol/${f}`).replace(/\n+$/, ''))
     .join('\n\n') + '\n';
@@ -43,6 +44,13 @@ export function renderAdapter(adapterId) {
     const meta = json(`adapters/${adapterId}/roles/${role}.json`);
     const tokens = { ...coreTokens, ROLE_TOOLS: (meta.tools_body ?? '').replace(/\n+$/, '') };
     roleBodies[role] = render(read(`protocol/roles/${role}.md`), tokens, `protocol/roles/${role}.md`);
+  }
+
+  for (const phase of ['core', 'implement', 'diagnose', 'review']) {
+    // The native implementation runner must receive the real role contract too.
+    const role = phase === 'implement' ? '\n' + roleBodies['full-stack-developer'] : '';
+    out.push({ path: `adapters/${adapterId}/dist/context/${phase}.md`,
+      content: GENERATED_MD(`protocol/runtime/${phase}.md${role ? ' + protocol/roles/full-stack-developer.md' : ''}`) + read(`protocol/runtime/${phase}.md`) + role });
   }
 
   if (adapterId === 'claude-code') {

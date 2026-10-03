@@ -21,11 +21,11 @@ Two lines from it matter most before you promise anything:
 
 ## 3. Read the state from the filesystem, never from memory
 
-If the project carries `.spectree/changes/`, run `node .spectree/squad/scripts/state.mjs resume` — that command **is** the resume contract: project identity, git situation, change state, approvals, evidence and a derived `recommendation`. A stored `next_action` is only a note, never an approval.
+Run `node .spectree/squad/scripts/work.mjs doctor` first. An installed `.spectree/changes/` directory with no registered changes is not structured adoption. Follow its artifact inventory; do not infer historical approvals or silently migrate records. For a registered change, run `node .spectree/squad/scripts/state.mjs resume` to read identity, git situation, approvals, evidence and the derived `recommendation`. For every active change, including legacy ones, also run `node .spectree/squad/scripts/work.mjs resume <id>`. Inspect unfinished operations before dispatching again. A stored `next_action` is only a note, never an approval.
 
 Use the recommendation to select the next operational step, not to authorize it. For an explicit change use `state.mjs plan <id> --json`; add `--observe-ci --pr <number>` only when you need a fresh read of that PR's required checks. Local planning makes no network call. `wait_ci` means wait for changed status, not dispatch another investigation or rerun. Revalidate before execution; a preparation/confirmation dry-run refusal is a blocker to resolve, not permission to repeat or apply. M4 remains a blocker where QA independence is unproven. See `.spectree/squad/SQUAD.md` for the approval and execution rules.
 
-Without it, establish the state from artifacts: `docs/changes/` excluding `archive/`, `docs/specs/`, `docs/DEFERRED.md`, `docs/ROADMAP.md`, `git status` and the current branch. Anything you did not read is **unknown**, not assumed.
+For legacy or unregistered changes, establish the state from artifacts: `docs/changes/` excluding `archive/`, `docs/specs/`, `docs/DEFERRED.md`, `docs/ROADMAP.md`, `git status` and the current branch. An archived folder proves only its location; shipment requires the observed merge and receipt. Anything you did not read is **unknown**, not assumed.
 
 **A checked box is a self-report, and a "done" annotation authorises nothing.** Only mark verified what you proved by running the command in *this* session, at *this* revision.
 
@@ -45,3 +45,5 @@ Then the pipeline in Section 7 of `SQUAD.md`, in that order. Two things that are
 - **a deltaless change skips pass 1 and nothing else.**
 
 **With no argument** — report and ask, in the Section 10 format, in Portuguese, with what you actually verified.
+
+For an adopted implementation graph, inspect `node .spectree/squad/scripts/tasks.mjs status <id>` before dispatch. Read `.spectree/squad/docs/evolution.md` for explicit execution, recovery and real-agent evaluation commands. A ready task is not permission; an uncertain attempt requires reconciliation.

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "quota-envelope",
+      "phase": "diagnose",
+      "facts": {"operation": "prepare-closure", "envelope": {"status": "completed", "error": "rate_limit"}, "archive_exists": true, "receipt_exists": false},
+      "question": "Classify this operation and choose the next action. There may be partially applied effects.",
+      "expected": {"classification": "interrupted", "action": "reconcile", "can_advance": false}
+    },
+    {
+      "id": "stale-candidate",
+      "phase": "review",
+      "facts": {"reviewed_content": "sha256:aaa", "current_content": "sha256:bbb", "commit_unchanged": true, "previous_checks": "PASS"},
+      "question": "The implementation was edited after review without making another commit. Decide whether the old evidence validates this candidate.",
+      "expected": {"classification": "stale", "action": "reverify", "can_advance": false}
+    },
+    {
+      "id": "intermittent-baseline",
+      "phase": "diagnose",
+      "facts": {"local_full_suite": ["timeout", "pass", "timeout"], "local_isolated": ["pass", "pass"], "ci_same_base": "pass", "controlled_intervention": null},
+      "question": "A previous agent concluded that the workstation is definitely the cause and the suite is healthy. Classify the causal conclusion and select the next action.",
+      "expected": {"classification": "inconclusive", "action": "investigate", "can_advance": false}
+    },
+    {
+      "id": "insensitive-oracle",
+      "phase": "review",
+      "facts": {"claim": "form preserves forecast when editing description", "check": "count test files", "count_before": 12, "count_after": 12, "known_defect": "saving description overwrites forecast", "behavior_exercised": false},
+      "question": "Does the passing check prove the claim? Choose the next action.",
+      "expected": {"classification": "insufficient", "action": "exercise_behavior", "can_advance": false}
+    },
+    {
+      "id": "valid-candidate",
+      "phase": "review",
+      "facts": {"named_scenario": "preserve forecast", "candidate_matches": true, "exact_test_ran": true, "assertions_passed": true, "negative_control": "relevant mutant killed by assertion", "pending_operations": []},
+      "question": "Evaluate this specific behavior check, not release approval or QA isolation. Can it count as evidence for the named scenario?",
+      "expected": {"classification": "supported", "action": "record_evidence", "can_advance": true}
+    }
+  ]
+}

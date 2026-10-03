@@ -1,6 +1,6 @@
 # spectree-invoker
 
-Plugin do Claude Code com o squad de agentes de IA da Spectree Tecnologia, orquestrado pelo **Invoker** — cinco especialistas divididos por raio de destruição, isolamento de contexto e adversarialidade, para monólitos modulares spec-driven.
+Plugin do Claude Code com o squad de agentes de IA da Spectree Tecnologia, orquestrado pelo **Invoker** — seis especialistas divididos por raio de destruição, isolamento de contexto e adversarialidade, para monólitos modulares spec-driven.
 
 ## Instalação
 
@@ -22,7 +22,7 @@ node <pacote>/scripts/install-codex.mjs /caminho/do/projeto            # dry run
 node <pacote>/scripts/install-codex.mjs /caminho/do/projeto --apply
 ```
 
-Invoque com `$spectree-invoker`. Os cinco especialistas vão para `.codex/agents/`, que é onde o Codex procura agentes personalizados — a pasta `agents/` de uma skill não registra nada. O instalador **nunca reescreve o `AGENTS.md` do consumidor**: acrescenta um ponteiro uma vez, abaixo do que já existe. Detalhes em [docs/install.md](docs/install.md).
+Invoque com `$spectree-invoker`. Os seis especialistas vão para `.codex/agents/`, que é onde o Codex procura agentes personalizados — a pasta `agents/` de uma skill não registra nada. O instalador **nunca reescreve o `AGENTS.md` do consumidor**: acrescenta um ponteiro uma vez, abaixo do que já existe. Detalhes em [docs/install.md](docs/install.md).
 
 ## O que há aqui
 
@@ -30,13 +30,15 @@ Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CL
 
 | Caminho | O quê |
 |---|---|
-| `protocol/` | O núcleo neutro de fornecedor: seções e corpos dos cinco papéis. **Edite aqui.** |
+| `protocol/` | O núcleo neutro de fornecedor: seções e corpos dos seis papéis. **Edite aqui.** |
 | `adapters/claude-code/`, `adapters/codex/` | O que é específico de cada harness: tokens, ferramentas, metadados |
 | `schemas/` | Os contratos estruturados: change, dispatch, evidence, deferred, approval |
 | `scripts/` | `build`, `check-plugin`, `state`, `verify-change`, `capabilities` |
 | `tests/` | Testes determinísticos, ciclos pelos CLIs instalados e fixtures de avaliação comportamental |
 | `bench/` | [Medição de performance](docs/performance.md): benchmark local e observação somente leitura do GitHub; nunca autoridade para gates |
 | `state.mjs plan` | [Próximo passo operacional](docs/planning.md): recomendação derivada dos gates, sem executar ações ou conceder autorização |
+| `work.mjs`, `mutation-probe.mjs`, `verification.mjs` | [Retomada e verificação](docs/reliability.md): checkpoints, mutação isolada, round trips, baseline e CI independente |
+| `tasks.mjs`, `reports.mjs`, `evals.mjs` | [Execução e avaliações](docs/evolution.md): tarefas com dependências, contexto por fase, diagnóstico, revisão e avaliações com agentes reais |
 | `docs/` | [instalação](docs/install.md) · [compatibilidade](docs/compatibility.md) · [arquitetura](docs/architecture.md) · [ciclo de entrega](docs/workflow.md) · [manutenção](docs/maintenance.md) |
 | `CLAUDE.md`, `agents/`, `adapters/codex/dist/` | **Gerados.** Rode `node scripts/build.mjs`; não edite à mão |
 

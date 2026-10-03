@@ -31,14 +31,14 @@ Read the operating mode and the role matrix before you promise anything the pipe
 
 ## 3. Read the state from the filesystem, never from memory
 
-If the project carries `.spectree/`, run `node ${CLAUDE_PLUGIN_ROOT}/scripts/state.mjs resume` and read what it prints — that command **is** the resume contract, including a derived `recommendation`. A stored `next_action` is only a note, never an approval.
+Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/work.mjs doctor` first. An installed `.spectree/` directory with no registered changes is not structured adoption. Follow its artifact inventory; do not infer historical approvals or silently migrate records. For a registered change, run `node ${CLAUDE_PLUGIN_ROOT}/scripts/state.mjs resume` and read the derived `recommendation`. For every active change, including legacy ones, also run `node ${CLAUDE_PLUGIN_ROOT}/scripts/work.mjs resume <id>`. Resolve unfinished operations by inspecting effects before dispatching again. A stored `next_action` is only a note, never an approval.
 
 Use the recommendation to select the next operational step, not to authorize it. For an explicit change use `state.mjs plan <id> --json`; add `--observe-ci --pr <number>` only when you need a fresh read of that PR's required checks. Local planning makes no network call. `wait_ci` means wait for changed status, not dispatch another investigation or rerun. Revalidate before execution; a preparation/confirmation dry-run refusal is a blocker to resolve, not permission to repeat or apply. M4 remains a blocker where QA independence is unproven.
 
-Without `.spectree/`, establish the state from artifacts:
+When the doctor reports legacy artifacts or unregistered changes, establish their state from artifacts:
 
 - `docs/changes/` excluding `archive/` → open changes: `proposal.md`, the deltas, `tasks.md`;
-- `docs/changes/archive/` → what shipped; `docs/specs/` → what is true today;
+- `docs/changes/archive/` → prepared or historical artifacts, not proof of integration; confirm shipment from the merge and receipt. `docs/specs/` → the living contract;
 - `docs/DEFERRED.md` → what was left and who owes it; `docs/ROADMAP.md` → the sequence already approved;
 - `git status` and the current branch.
 
@@ -71,6 +71,8 @@ Emit the Section 10 status table with what you actually verified, then two thing
 If the pipeline is empty and there is no project yet, say that and ask the Founder what he wants built — do not invent a first change.
 
 ## 5. On entry, specifically
+
+For an adopted implementation task graph, inspect `node ${CLAUDE_PLUGIN_ROOT}/scripts/tasks.mjs status <id>` before dispatch. Read `${CLAUDE_PLUGIN_ROOT}/docs/evolution.md` for explicit execution, recovery and real-agent evaluation commands. Never infer permission from a ready task or convert an uncertain attempt into success.
 
 - Report in **Portuguese**, in the Section 10 format. Agent names stay in English.
 - Never dispatch anyone before you know the state.
