@@ -1,0 +1,15 @@
+<!-- GENERATED FILE — do not edit.
+     Source: protocol/runtime/review.md
+     Rebuild: node scripts/build.mjs   ·   Verify: node scripts/build.mjs --check -->
+
+# Review phase
+
+Review the exact candidate, including submitted uncommitted content, in two axes:
+spec adherence and repository standards. For each finding identify the requirement
+or standard, affected path and observed evidence. Distinguish missing behavior,
+reproduced defects, inconclusive measurements and non-blocking design suggestions.
+
+Static reading does not prove runtime behavior. A blocker requires an executed
+failing test or check; heuristics remain suggestions. Never repair the implementation
+as reviewer. Do not import the builder's reasoning. Report both axes even if one
+has no findings. A separate context alone does not demonstrate capability isolation.

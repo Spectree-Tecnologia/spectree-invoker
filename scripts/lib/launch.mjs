@@ -12,15 +12,15 @@
 
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join, extname } from 'node:path';
+import { join, extname, resolve } from 'node:path';
 
 const WIN = process.platform === 'win32';
 
 /** Where Windows would actually find this command, following PATH and PATHEXT. */
-export function resolveOnPath(file, { platform = process.platform, env = process.env } = {}) {
+export function resolveOnPath(file, { platform = process.platform, env = process.env, cwd = process.cwd() } = {}) {
   if (platform !== 'win32') return null;
-  if (/[\\/]/.test(file)) return existsSync(file) ? file : null;
-  const dirs = (env.PATH ?? env.Path ?? '').split(';').filter(Boolean);
+  if (/[\\/]/.test(file)) { const path = resolve(cwd, file); return existsSync(path) ? path : null; }
+  const dirs = (env.PATH ?? env.Path ?? '').split(';').filter(Boolean).map((d) => resolve(cwd, d));
   if (extname(file)) {
     for (const d of dirs) if (existsSync(join(d, file))) return join(d, file);
     return null;
@@ -80,7 +80,7 @@ export function launch(cmd, options = {}) {
   const [file, ...args] = cmd;
   if (!WIN) return spawnSync(file, args, { ...options, shell: false });
 
-  const resolved = resolveOnPath(file);
+  const resolved = resolveOnPath(file, { env: options.env ?? process.env, cwd: options.cwd ?? process.cwd() });
   // Not found: spawn it anyway, so the failure is the real one and says the real name.
   if (!resolved) return spawnSync(file, args, { ...options, shell: false });
 

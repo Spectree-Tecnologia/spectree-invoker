@@ -37,6 +37,7 @@ export function parseTap(text) {
   const problems = [];
   let bailout = null;
   let yamlAt = null;
+  let diagnosticFor = null;
 
   const open = (indent, line) => {
     const g = { indent, line, plan: null, planFrom: null, results: [], parentResult: null, awaiting: null };
@@ -69,11 +70,19 @@ export function parseTap(text) {
 
     if (yamlAt !== null) {
       const close = YAML_CLOSE.exec(raw);
-      if (close && close[1].length === yamlAt) yamlAt = null;
+      if (close && close[1].length === yamlAt) { yamlAt = null; diagnosticFor = null; }
+      else if (diagnosticFor && indentOf(raw) === yamlAt) {
+        const field = /^\s*(code|name):\s*['"]?([\w]+)['"]?\s*$/.exec(raw);
+        if (field) diagnosticFor.diagnostic[field[1]] = field[2];
+      }
       continue; // a diagnostic can say anything, including "not ok 1 - something else"
     }
     const yaml = YAML_OPEN.exec(raw);
-    if (yaml) { yamlAt = yaml[1].length; continue; }
+    if (yaml) {
+      yamlAt = yaml[1].length;
+      diagnosticFor = top().results.at(-1) ?? null;
+      continue;
+    }
 
     const bail = BAILOUT.exec(raw);
     if (bail) { bailout = bail[1] || 'no reason given'; continue; }
@@ -117,6 +126,7 @@ export function parseTap(text) {
       number: rest[1] ? Number(rest[1]) : null,
       name: label.replace(/\s*#\s*(TODO|SKIP)\b.*$/i, '').trim(),
       directive,
+      diagnostic: {},
       group: top(),
     };
     top().results.push(entry);
@@ -220,4 +230,27 @@ export function judgeFailingRun(tap, expected, exitCode) {
   if (only.ok) return { result: 'FAIL', reason: `"${expected}" ran and passed; pass 1 delivers a failing test`, matched: null };
   if (exitCode === 0) return fail('the run reported a failure and still exited 0: the two disagree, and neither can be trusted');
   return { result: 'PASS', reason: `"${only.name}" ran and failed`, matched: { ok: only.ok, number: only.number, name: only.name } };
+}
+
+/** Positive control for a mutation: a complete green run containing the exact target test. */
+export function judgePassingRun(tap, expected, exitCode) {
+  if (tap.bailout !== null) return fail('the run bailed out');
+  const bad = validate(tap);
+  if (bad) return fail(bad);
+  const results = tap.groups.flatMap((g) => g.results);
+  const named = results.filter((r) => r.name === expected);
+  if (named.length !== 1 || named[0].directive) return fail('the named test must run exactly once, without skip/todo');
+  if (exitCode !== 0 || results.some((r) => !r.ok || r.directive)) return fail('baseline must finish with every test passing and none skipped');
+  return { result: 'PASS', reason: `"${expected}" passed in a complete green run`, matched: { name: named[0].name, number: named[0].number, ok: true } };
+}
+
+/** A killed mutant needs an assertion failure, not merely a named test that crashed. */
+export function judgeMutationRun(tap, expected, exitCode) {
+  const verdict = judgeFailingRun(tap, expected, exitCode);
+  if (verdict.result !== 'PASS') return verdict;
+  const test = tap.groups.flatMap((g) => g.results).find((r) => r.name === expected);
+  if (test.diagnostic.code !== 'ERR_ASSERTION' && test.diagnostic.name !== 'AssertionError') {
+    return fail('The named test failed without a recognized assertion diagnostic; crashes and unsupported reporters do not prove a killed mutant.');
+  }
+  return verdict;
 }

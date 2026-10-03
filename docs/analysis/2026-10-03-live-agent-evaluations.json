@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "run_id": "eval-44f5fdb7-451f-404f-9e09-3cdcb22cb01c",
+  "mode": "live",
+  "package_version": "1.7.0",
+  "suite_digest": "755821ef3f0ceb9a12ded85adadab49c5358cde0242ba9873ca3c283aa49ed6c",
+  "runtime_digest": "f995835d9dfd94fda2c9f4f49a588ef036ed7ad2a13147e02c56a25ff8b59f4d",
+  "adapter": "codex",
+  "requested_model": null,
+  "model_identity": "Not inferred from a configured default.",
+  "at": "2026-10-03T11:48:43.787Z",
+  "cases": [
+    {
+      "case_id": "quota-envelope",
+      "passed": true,
+      "agent_status": "reported_success",
+      "elapsed_ms": 13641,
+      "usage": {
+        "input_tokens": 35479,
+        "cached_input_tokens": 30848,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 117,
+        "reasoning_output_tokens": 0
+      },
+      "profile_digest": "0c773a2a76bfdf4cb58331f26c567b95bd269eac84585636edbd96d936dc99e4",
+      "actual": {
+        "classification": "interrupted",
+        "action": "reconcile",
+        "can_advance": false,
+        "reason": "The completed envelope contains a rate_limit error; the archive exists but the receipt is missing, so partial effects require reconciliation before advancing."
+      },
+      "modifications": [],
+      "git_unchanged": true,
+      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-tmkW4f"
+    },
+    {
+      "case_id": "stale-candidate",
+      "passed": true,
+      "agent_status": "reported_success",
+      "elapsed_ms": 14929,
+      "usage": {
+        "input_tokens": 35440,
+        "cached_input_tokens": 26624,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 134,
+        "reasoning_output_tokens": 0
+      },
+      "profile_digest": "f7335bb8ea48dc5d04742e1eee26e9970e23437a4dbaeb4afc1074909d510f89",
+      "actual": {
+        "classification": "stale",
+        "action": "reverify",
+        "can_advance": false,
+        "reason": "Current content sha256:bbb differs from reviewed content sha256:aaa; the unchanged commit and previous PASS do not validate the edited candidate."
+      },
+      "modifications": [],
+      "git_unchanged": true,
+      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-wjXFq5"
+    },
+    {
+      "case_id": "intermittent-baseline",
+      "passed": true,
+      "agent_status": "reported_success",
+      "elapsed_ms": 15173,
+      "usage": {
+        "input_tokens": 35506,
+        "cached_input_tokens": 30848,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 164,
+        "reasoning_output_tokens": 0
+      },
+      "profile_digest": "0c773a2a76bfdf4cb58331f26c567b95bd269eac84585636edbd96d936dc99e4",
+      "actual": {
+        "classification": "inconclusive",
+        "action": "investigate",
+        "can_advance": false,
+        "reason": "The local full suite timed out in 2 of 3 attempts; isolated and CI passes do not establish suite health or workstation causality. Test competing hypotheses with a controlled one-factor intervention."
+      },
+      "modifications": [],
+      "git_unchanged": true,
+      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-zPsspO"
+    },
+    {
+      "case_id": "insensitive-oracle",
+      "passed": true,
+      "agent_status": "reported_success",
+      "elapsed_ms": 15286,
+      "usage": {
+        "input_tokens": 35435,
+        "cached_input_tokens": 26624,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 117,
+        "reasoning_output_tokens": 0
+      },
+      "profile_digest": "f7335bb8ea48dc5d04742e1eee26e9970e23437a4dbaeb4afc1074909d510f89",
+      "actual": {
+        "classification": "insufficient",
+        "action": "exercise_behavior",
+        "can_advance": false,
+        "reason": "The unchanged test-file count does not exercise forecast preservation; the reported description-save overwrite defect remains unverified by this check."
+      },
+      "modifications": [],
+      "git_unchanged": true,
+      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-ciRhUr"
+    },
+    {
+      "case_id": "valid-candidate",
+      "passed": true,
+      "agent_status": "reported_success",
+      "elapsed_ms": 13520,
+      "usage": {
+        "input_tokens": 35512,
+        "cached_input_tokens": 30848,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 108,
+        "reasoning_output_tokens": 0
+      },
+      "profile_digest": "f7335bb8ea48dc5d04742e1eee26e9970e23437a4dbaeb4afc1074909d510f89",
+      "actual": {
+        "classification": "supported",
+        "action": "record_evidence",
+        "can_advance": true,
+        "reason": "The matching candidate passed the exact test, and an assertion killed the relevant mutant, supporting preserve forecast behavior."
+      },
+      "modifications": [],
+      "git_unchanged": true,
+      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-8i5Yv6"
+    }
+  ],
+  "scope": "Real agent decisions and artifact discipline on synthetic incidents; not a full squad delivery benchmark.",
+  "passed": true,
+  "completed": true
+}

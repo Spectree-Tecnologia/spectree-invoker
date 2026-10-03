@@ -1,0 +1,1493 @@
+{
+  "observed_at_utc": "2026-10-02T16:03:07.718Z",
+  "from_utc": "2026-09-27T12:17:19.000Z",
+  "through_utc": "2026-10-02T15:33:05.050Z",
+  "source": {
+    "project": "C:/Users/gilso/Documents/spectree-projects/spectree-workspace",
+    "session_id": "813b6a11-e77e-4817-988b-ef804ff1b04b",
+    "session_file": "C:/Users/gilso/.claude/projects/C--Users-gilso-Documents-spectree-projects-spectree-workspace/813b6a11-e77e-4817-988b-ef804ff1b04b.jsonl"
+  },
+  "limits": [
+    "Source project read only; no test/build/migration/deploy executed by this analysis.",
+    "Log usage is not billing. Cached tokens are repeated input; no monetary cost is inferred.",
+    "Agent durations include tools and waits; do not sum them as wall-clock elapsed time.",
+    "Child logs are limited to agent IDs found in this main-session window; not an account-wide census.",
+    "Consumer file state is a live snapshot, separate from the fixed session-event cutoff."
+  ],
+  "git": {
+    "head": "ca3d2332919e5a961b3b76d567966ef53e4e757e",
+    "branch": "feat/settlement-totals",
+    "status": "M .log/platform.log\nR  docs/changes/settlement-totals/proposal.md -> docs/changes/archive/2026-10-02-settlement-totals/proposal.md\nR  docs/changes/settlement-totals/specs/ledger/spec.md -> docs/changes/archive/2026-10-02-settlement-totals/specs/ledger/spec.md\nR  docs/changes/settlement-totals/tasks.md -> docs/changes/archive/2026-10-02-settlement-totals/tasks.md\n M docs/specs/ledger/spec.md\n?? .claude/settings.local.json"
+  },
+  "state_collections": {
+    "changes": 0,
+    "dispatches": 0,
+    "approvals": 0,
+    "evidence": 0,
+    "history": 0
+  },
+  "deferred": {
+    "count": 131,
+    "max_id": 131,
+    "closed": 24,
+    "open": 107,
+    "duplicate_ids": [],
+    "structured_items": 0
+  },
+  "files": [
+    {
+      "file": ".log/platform.log",
+      "bytes": 1857578,
+      "words": 279765,
+      "lines": 3716
+    },
+    {
+      "file": "docs/DEFERRED.md",
+      "bytes": 301849,
+      "words": 47662,
+      "lines": 3850
+    },
+    {
+      "file": "docs/roles/spectree.role.md",
+      "bytes": 78555,
+      "words": 11794,
+      "lines": 1009
+    },
+    {
+      "file": "docs/changes/archive/2026-10-02-settlement-totals/proposal.md",
+      "bytes": 47058,
+      "words": 7144,
+      "lines": 551
+    },
+    {
+      "file": "docs/changes/archive/2026-10-02-settlement-totals/tasks.md",
+      "bytes": 15762,
+      "words": 2369,
+      "lines": 247
+    }
+  ],
+  "main": {
+    "event_count": 1501,
+    "usage": {
+      "unique_message_ids": 196,
+      "models": {
+        "claude-opus-5": 196
+      },
+      "totals": {
+        "input_tokens": 392,
+        "cache_creation_input_tokens": 4564233,
+        "cache_read_input_tokens": 89309816,
+        "output_tokens": 327791
+      },
+      "input_per_request_including_cache": {
+        "n": 196,
+        "min": 172411,
+        "median": 449222,
+        "max": 831266,
+        "sum": 93874441
+      }
+    },
+    "rate_limit_events": [
+      "2026-09-27T13:38:59.578Z",
+      "2026-09-27T13:39:08.922Z",
+      "2026-09-27T21:08:24.825Z",
+      "2026-09-28T02:31:32.692Z",
+      "2026-10-02T04:23:46.771Z",
+      "2026-10-02T15:33:05.050Z"
+    ],
+    "human_explicit_limit_reports": [
+      {
+        "timestamp": "2026-09-27T20:24:05.523Z",
+        "uuid": "15ca2ce6-78a6-4d83-983f-14f43da35c0e"
+      },
+      {
+        "timestamp": "2026-09-28T01:01:23.682Z",
+        "uuid": "29c80863-b14a-4c4f-adbb-5f2224c5dc8b"
+      },
+      {
+        "timestamp": "2026-09-29T23:42:46.844Z",
+        "uuid": "9b946b3e-6a99-49ae-92fd-f1ceec0d6086"
+      }
+    ],
+    "dispatch_count": 31,
+    "dispatch_prompt_words": {
+      "n": 31,
+      "min": 753,
+      "median": 1190,
+      "max": 1481,
+      "sum": 36324
+    },
+    "background_dispatch_count": 5,
+    "agent_calls": [
+      {
+        "timestamp": "2026-09-27T12:26:28.466Z",
+        "id": "toolu_01JUSPekfLa863vr7nBT1hZX",
+        "role": "spectree:platform-engineer",
+        "description": "Cut branch and record baseline",
+        "background": false,
+        "prompt_words": 991,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-27T12:58:11.235Z",
+        "id": "toolu_014FVSMFV8SVMQpG14RUWgat",
+        "role": "spectree:quality-engineer",
+        "description": "Pass 1 failing tests for change 25",
+        "background": false,
+        "prompt_words": 1146,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-27T20:26:29.249Z",
+        "id": "toolu_01RrsSXEAHKpYdEPXkeFoZDo",
+        "role": "spectree:full-stack-developer",
+        "description": "T3 ledger core and backend adapter",
+        "background": true,
+        "prompt_words": 1037,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-27T20:26:55.509Z",
+        "id": "toolu_01XtmmeuFA2Rr8aH2VLdvriE",
+        "role": "spectree:full-stack-developer",
+        "description": "T4 ledger frontend",
+        "background": true,
+        "prompt_words": 977,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-27T20:59:38.683Z",
+        "id": "toolu_011KEN7ejX5zGSQKZGcS2zi4",
+        "role": "spectree:platform-engineer",
+        "description": "Write migration 0011 and commit",
+        "background": false,
+        "prompt_words": 1066,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-28T01:12:28.499Z",
+        "id": "toolu_015TjVF7xdkfTRZ2yPFdR1v6",
+        "role": "spectree:platform-engineer",
+        "description": "Prepare closure on the branch",
+        "background": false,
+        "prompt_words": 1214,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-28T01:34:31.342Z",
+        "id": "toolu_01JkHFAtvXHsVHRSjz2opWcw",
+        "role": "spectree:quality-engineer",
+        "description": "Pass 2 attack on change 25",
+        "background": false,
+        "prompt_words": 1327,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-29T23:46:49.756Z",
+        "id": "toolu_0128vQkPV6ys7mg1GR9oXSB9",
+        "role": "spectree:platform-engineer",
+        "description": "Commit pass 2 and push once",
+        "background": false,
+        "prompt_words": 1190,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-30T00:20:41.138Z",
+        "id": "toolu_012ixseCPaawqC74W8r3mfvn",
+        "role": "spectree:integration-engineer",
+        "description": "Establish fast-uri advisory facts",
+        "background": false,
+        "prompt_words": 1003,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-30T00:57:18.663Z",
+        "id": "toolu_01V77oQ3xJ3oZWhPQTrNBmZw",
+        "role": "spectree:solutions-architect",
+        "description": "Write change 26 proposal",
+        "background": false,
+        "prompt_words": 1481,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-30T01:08:03.558Z",
+        "id": "toolu_01NYDgvpFvSxF5GvpS2uKHEJ",
+        "role": "spectree:platform-engineer",
+        "description": "Branch, baseline and refresh fast-uri",
+        "background": false,
+        "prompt_words": 1279,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-30T01:30:07.006Z",
+        "id": "toolu_019MuuguxfhGzGQDr86sD1de",
+        "role": "spectree:quality-engineer",
+        "description": "Pass 2 on change 26",
+        "background": false,
+        "prompt_words": 1207,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-30T01:54:17.093Z",
+        "id": "toolu_01CJeamhmReD6nd77kFwXEzt",
+        "role": "spectree:platform-engineer",
+        "description": "Prepare closure and push change 26",
+        "background": false,
+        "prompt_words": 1162,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-09-30T23:56:51.993Z",
+        "id": "toolu_01TnHVWsjRHvhRHoDSEdscqe",
+        "role": "spectree:platform-engineer",
+        "description": "Merge PR 57 and confirm post-merge",
+        "background": false,
+        "prompt_words": 1003,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-01T01:03:14.727Z",
+        "id": "toolu_01JLXGr8fHU9MDqF9Dsic5w5",
+        "role": "spectree:solutions-architect",
+        "description": "Write change 27 proposal",
+        "background": false,
+        "prompt_words": 1192,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-01T01:11:08.815Z",
+        "id": "toolu_01EdGmnxsCvjtSVkx433rVkm",
+        "role": "spectree:platform-engineer",
+        "description": "Change 27 branch, lockfile and closure",
+        "background": false,
+        "prompt_words": 1385,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-01T01:40:10.012Z",
+        "id": "toolu_012gYotJuk2AzAMtQhEo58eT",
+        "role": "spectree:quality-engineer",
+        "description": "Pass 2 on change 27",
+        "background": false,
+        "prompt_words": 1136,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-01T10:10:11.264Z",
+        "id": "toolu_01RxW8oJS3j7rm6FsmgV81yk",
+        "role": "spectree:integration-engineer",
+        "description": "Establish fastify exploitability",
+        "background": true,
+        "prompt_words": 992,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-01T10:10:50.740Z",
+        "id": "toolu_0185s7XoRui1PJFbArANGQXw",
+        "role": "spectree:solutions-architect",
+        "description": "Write change 28 proposal",
+        "background": false,
+        "prompt_words": 1333,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-01T10:21:20.331Z",
+        "id": "toolu_016j2E4Jh15YAwHmv299RZQA",
+        "role": "spectree:platform-engineer",
+        "description": "Change 28 fastify bump",
+        "background": true,
+        "prompt_words": 1386,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-01T11:15:32.812Z",
+        "id": "toolu_01MGVqTX3xqCeV7tTyKq975A",
+        "role": "spectree:platform-engineer",
+        "description": "Combine changes 27 and 28",
+        "background": false,
+        "prompt_words": 1127,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-01T11:39:00.776Z",
+        "id": "toolu_01514yCBekv2mihgJwnPtRfT",
+        "role": "spectree:quality-engineer",
+        "description": "Pass 2 on the combined candidate",
+        "background": false,
+        "prompt_words": 1319,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-02T01:03:08.409Z",
+        "id": "toolu_01SbQW1s3XCvUjVYM7Cu6hq4",
+        "role": "spectree:platform-engineer",
+        "description": "Bring main into change 25",
+        "background": true,
+        "prompt_words": 1141,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-02T01:28:42.247Z",
+        "id": "toolu_01RBqD8sZ68DoowAiV4jyeHw",
+        "role": "spectree:solutions-architect",
+        "description": "Write the roadmap sequencing",
+        "background": false,
+        "prompt_words": 942,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-02T02:44:55.094Z",
+        "id": "toolu_0148QCQzAHRGUXd3pb7uuDUB",
+        "role": "spectree:platform-engineer",
+        "description": "Gate 3 migration 0011",
+        "background": false,
+        "prompt_words": 1204,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-02T12:57:56.918Z",
+        "id": "toolu_01P1RheH3ysr3oGcyqJ9iW1d",
+        "role": "spectree:platform-engineer",
+        "description": "Write the deferred ledger and push",
+        "background": false,
+        "prompt_words": 1438,
+        "protocol_package": "1.4.0"
+      },
+      {
+        "timestamp": "2026-10-02T14:21:31.391Z",
+        "id": "toolu_01E6BbNmRhMPqjGHztqvhFhb",
+        "role": "spectree:solutions-architect",
+        "description": "Change 29 proposal settlement totals",
+        "background": false,
+        "prompt_words": 1244,
+        "protocol_package": "1.5.0"
+      },
+      {
+        "timestamp": "2026-10-02T14:41:13.084Z",
+        "id": "toolu_01VqxN8nfogisMNdwiuYX3EN",
+        "role": "spectree:platform-engineer",
+        "description": "Branch and baseline for change 29",
+        "background": false,
+        "prompt_words": 753,
+        "protocol_package": "1.5.0"
+      },
+      {
+        "timestamp": "2026-10-02T15:02:52.954Z",
+        "id": "toolu_01RLWRzbGfkoKDgnBbJo5KdH",
+        "role": "spectree:quality-engineer",
+        "description": "Pass 1 for change 29",
+        "background": false,
+        "prompt_words": 1235,
+        "protocol_package": "1.5.0"
+      },
+      {
+        "timestamp": "2026-10-02T15:15:48.800Z",
+        "id": "toolu_01EPHdFN9jX5dedF1dRjYYaV",
+        "role": "spectree:full-stack-developer",
+        "description": "Build the settlement totals",
+        "background": false,
+        "prompt_words": 1148,
+        "protocol_package": "1.5.0"
+      },
+      {
+        "timestamp": "2026-10-02T15:26:49.643Z",
+        "id": "toolu_01BoQQtQbSE79pbQUD553RXN",
+        "role": "spectree:platform-engineer",
+        "description": "Prepare closure for change 29",
+        "background": false,
+        "prompt_words": 1266,
+        "protocol_package": "1.5.0"
+      }
+    ],
+    "dispatch_results": [
+      {
+        "timestamp": "2026-09-27T12:29:22.800Z",
+        "agent_id": "ad4c4cbf0f8e59fe4",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 173130
+      },
+      {
+        "timestamp": "2026-09-27T13:32:59.338Z",
+        "agent_id": "ad18ad889cb23f172",
+        "status": "completed",
+        "role": "spectree:quality-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 2086051
+      },
+      {
+        "timestamp": "2026-09-27T20:26:57.017Z",
+        "agent_id": "a1c2ed043a5e3cb95",
+        "status": "async_launched",
+        "role": null,
+        "model": "claude-opus-5",
+        "harness_duration_ms": null
+      },
+      {
+        "timestamp": "2026-09-27T20:26:57.017Z",
+        "agent_id": "ad925467fc277cf10",
+        "status": "async_launched",
+        "role": null,
+        "model": "claude-opus-5",
+        "harness_duration_ms": null
+      },
+      {
+        "timestamp": "2026-09-27T21:08:24.230Z",
+        "agent_id": "a644a36a8d7a975de",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 522571
+      },
+      {
+        "timestamp": "2026-09-28T01:30:28.355Z",
+        "agent_id": "a28ecfe9c94c7767b",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1078952
+      },
+      {
+        "timestamp": "2026-09-28T02:16:49.778Z",
+        "agent_id": "a9d1b7210cbba7741",
+        "status": "completed",
+        "role": "spectree:quality-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 2537405
+      },
+      {
+        "timestamp": "2026-09-29T23:58:10.653Z",
+        "agent_id": "ac72f24bd76c7b088",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 679794
+      },
+      {
+        "timestamp": "2026-09-30T00:27:44.955Z",
+        "agent_id": "a145023bd5af2d5c1",
+        "status": "completed",
+        "role": "spectree:integration-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 422883
+      },
+      {
+        "timestamp": "2026-09-30T01:06:30.435Z",
+        "agent_id": "a577650e8dcee4117",
+        "status": "completed",
+        "role": "spectree:solutions-architect",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 548117
+      },
+      {
+        "timestamp": "2026-09-30T01:26:59.310Z",
+        "agent_id": "af054189614d38ebf",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1134656
+      },
+      {
+        "timestamp": "2026-09-30T01:46:30.045Z",
+        "agent_id": "a7b2d6dee6caf3fdc",
+        "status": "completed",
+        "role": "spectree:quality-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 981810
+      },
+      {
+        "timestamp": "2026-09-30T02:11:43.079Z",
+        "agent_id": "a7d48cfeecf7b081b",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1045044
+      },
+      {
+        "timestamp": "2026-10-01T00:08:33.490Z",
+        "agent_id": "abb312d106dc98dd4",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 700070
+      },
+      {
+        "timestamp": "2026-10-01T01:09:50.032Z",
+        "agent_id": "ab986c335d443e487",
+        "status": "completed",
+        "role": "spectree:solutions-architect",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 394753
+      },
+      {
+        "timestamp": "2026-10-01T01:38:49.293Z",
+        "agent_id": "a00addfce1399f08a",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1659685
+      },
+      {
+        "timestamp": "2026-10-01T02:04:33.729Z",
+        "agent_id": "ab54080cac831b1a7",
+        "status": "completed",
+        "role": "spectree:quality-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1462748
+      },
+      {
+        "timestamp": "2026-10-01T10:10:51.309Z",
+        "agent_id": "a6cc77a31e7e412f9",
+        "status": "async_launched",
+        "role": null,
+        "model": "claude-opus-5",
+        "harness_duration_ms": null
+      },
+      {
+        "timestamp": "2026-10-01T10:19:54.054Z",
+        "agent_id": "a14a7d34c42f52c95",
+        "status": "completed",
+        "role": "spectree:solutions-architect",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 542789
+      },
+      {
+        "timestamp": "2026-10-01T10:21:21.076Z",
+        "agent_id": "a600f1b0df29beb88",
+        "status": "async_launched",
+        "role": null,
+        "model": "claude-opus-5",
+        "harness_duration_ms": null
+      },
+      {
+        "timestamp": "2026-10-01T11:32:58.972Z",
+        "agent_id": "a2421a6bebe8696f1",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1044411
+      },
+      {
+        "timestamp": "2026-10-01T12:05:00.970Z",
+        "agent_id": "ae8b6471fd1c343ae",
+        "status": "completed",
+        "role": "spectree:quality-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1559651
+      },
+      {
+        "timestamp": "2026-10-02T01:03:08.960Z",
+        "agent_id": "ae50c102a4fee750b",
+        "status": "async_launched",
+        "role": null,
+        "model": "claude-opus-5",
+        "harness_duration_ms": null
+      },
+      {
+        "timestamp": "2026-10-02T01:35:27.108Z",
+        "agent_id": "a7a26e4575a177b1b",
+        "status": "completed",
+        "role": "spectree:solutions-architect",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 403719
+      },
+      {
+        "timestamp": "2026-10-02T02:53:28.217Z",
+        "agent_id": "aad5b48ac4e3ff96b",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 510986
+      },
+      {
+        "timestamp": "2026-10-02T13:18:24.651Z",
+        "agent_id": "adb2217fc77240e42",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1225323
+      },
+      {
+        "timestamp": "2026-10-02T14:39:22.142Z",
+        "agent_id": "ac2321a4be1eae4f1",
+        "status": "completed",
+        "role": "spectree:solutions-architect",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1070095
+      },
+      {
+        "timestamp": "2026-10-02T15:01:17.529Z",
+        "agent_id": "aa10ca362f58e3088",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 1203852
+      },
+      {
+        "timestamp": "2026-10-02T15:14:44.386Z",
+        "agent_id": "ab7c5cfee439f3844",
+        "status": "completed",
+        "role": "spectree:quality-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 710936
+      },
+      {
+        "timestamp": "2026-10-02T15:25:33.163Z",
+        "agent_id": "a3881ba2d5e292b29",
+        "status": "completed",
+        "role": "spectree:full-stack-developer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 583848
+      },
+      {
+        "timestamp": "2026-10-02T15:33:04.089Z",
+        "agent_id": "a3c463fac6b933a35",
+        "status": "completed",
+        "role": "spectree:platform-engineer",
+        "model": "claude-opus-5",
+        "harness_duration_ms": 370781
+      }
+    ]
+  },
+  "children": [
+    {
+      "agent_id": "ad4c4cbf0f8e59fe4",
+      "event_count": 263,
+      "first": "2026-09-27T12:26:29.663Z",
+      "last": "2026-09-27T12:56:12.608Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 50,
+        "models": {
+          "claude-opus-5": 50
+        },
+        "totals": {
+          "input_tokens": 100,
+          "cache_creation_input_tokens": 190062,
+          "cache_read_input_tokens": 4148315,
+          "output_tokens": 1006
+        },
+        "input_per_request_including_cache": {
+          "n": 50,
+          "min": 19944,
+          "median": 88182.5,
+          "max": 119409,
+          "sum": 4338477
+        }
+      }
+    },
+    {
+      "agent_id": "ad18ad889cb23f172",
+      "event_count": 621,
+      "first": "2026-09-27T12:58:13.285Z",
+      "last": "2026-09-27T20:57:30.781Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 137,
+        "models": {
+          "claude-opus-5": 137
+        },
+        "totals": {
+          "input_tokens": 274,
+          "cache_creation_input_tokens": 636118,
+          "cache_read_input_tokens": 28785920,
+          "output_tokens": 1736
+        },
+        "input_per_request_including_cache": {
+          "n": 137,
+          "min": 22683,
+          "median": 230954,
+          "max": 335374,
+          "sum": 29422312
+        }
+      }
+    },
+    {
+      "agent_id": "a1c2ed043a5e3cb95",
+      "event_count": 385,
+      "first": "2026-09-27T20:26:56.977Z",
+      "last": "2026-09-27T20:46:55.760Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 82,
+        "models": {
+          "claude-opus-5": 82
+        },
+        "totals": {
+          "input_tokens": 164,
+          "cache_creation_input_tokens": 273234,
+          "cache_read_input_tokens": 15056651,
+          "output_tokens": 972
+        },
+        "input_per_request_including_cache": {
+          "n": 82,
+          "min": 20617,
+          "median": 208960,
+          "max": 273236,
+          "sum": 15330049
+        }
+      }
+    },
+    {
+      "agent_id": "ad925467fc277cf10",
+      "event_count": 466,
+      "first": "2026-09-27T20:26:56.991Z",
+      "last": "2026-09-28T02:27:16.094Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 116,
+        "models": {
+          "claude-opus-5": 116
+        },
+        "totals": {
+          "input_tokens": 232,
+          "cache_creation_input_tokens": 462820,
+          "cache_read_input_tokens": 18324289,
+          "output_tokens": 2072
+        },
+        "input_per_request_including_cache": {
+          "n": 116,
+          "min": 20299,
+          "median": 168599,
+          "max": 247156,
+          "sum": 18787341
+        }
+      }
+    },
+    {
+      "agent_id": "a644a36a8d7a975de",
+      "event_count": 307,
+      "first": "2026-09-27T20:59:39.930Z",
+      "last": "2026-09-28T01:11:04.892Z",
+      "rate_limit_events": [
+        "2026-09-27T21:08:22.493Z"
+      ],
+      "usage": {
+        "unique_message_ids": 62,
+        "models": {
+          "claude-opus-5": 62
+        },
+        "totals": {
+          "input_tokens": 124,
+          "cache_creation_input_tokens": 266089,
+          "cache_read_input_tokens": 6467200,
+          "output_tokens": 1002
+        },
+        "input_per_request_including_cache": {
+          "n": 62,
+          "min": 21261,
+          "median": 109445.5,
+          "max": 153195,
+          "sum": 6733413
+        }
+      }
+    },
+    {
+      "agent_id": "a28ecfe9c94c7767b",
+      "event_count": 405,
+      "first": "2026-09-28T01:12:29.402Z",
+      "last": "2026-09-28T01:30:28.331Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 83,
+        "models": {
+          "claude-opus-5": 83
+        },
+        "totals": {
+          "input_tokens": 166,
+          "cache_creation_input_tokens": 151212,
+          "cache_read_input_tokens": 8993946,
+          "output_tokens": 1968
+        },
+        "input_per_request_including_cache": {
+          "n": 83,
+          "min": 20558,
+          "median": 112687,
+          "max": 164576,
+          "sum": 9145324
+        }
+      }
+    },
+    {
+      "agent_id": "a9d1b7210cbba7741",
+      "event_count": 692,
+      "first": "2026-09-28T01:34:32.371Z",
+      "last": "2026-09-28T02:31:31.987Z",
+      "rate_limit_events": [
+        "2026-09-28T02:31:31.987Z"
+      ],
+      "usage": {
+        "unique_message_ids": 153,
+        "models": {
+          "claude-opus-5": 153
+        },
+        "totals": {
+          "input_tokens": 306,
+          "cache_creation_input_tokens": 742341,
+          "cache_read_input_tokens": 30996722,
+          "output_tokens": 4946
+        },
+        "input_per_request_including_cache": {
+          "n": 153,
+          "min": 23095,
+          "median": 224478,
+          "max": 317601,
+          "sum": 31739369
+        }
+      }
+    },
+    {
+      "agent_id": "ac72f24bd76c7b088",
+      "event_count": 221,
+      "first": "2026-09-29T23:46:50.858Z",
+      "last": "2026-09-30T00:18:46.754Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 47,
+        "models": {
+          "claude-opus-5": 47
+        },
+        "totals": {
+          "input_tokens": 94,
+          "cache_creation_input_tokens": 225964,
+          "cache_read_input_tokens": 4061761,
+          "output_tokens": 1453
+        },
+        "input_per_request_including_cache": {
+          "n": 47,
+          "min": 20820,
+          "median": 95794,
+          "max": 130174,
+          "sum": 4287819
+        }
+      }
+    },
+    {
+      "agent_id": "a145023bd5af2d5c1",
+      "event_count": 137,
+      "first": "2026-09-30T00:20:42.071Z",
+      "last": "2026-09-30T00:27:44.928Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 16,
+        "models": {
+          "claude-opus-5": 16
+        },
+        "totals": {
+          "input_tokens": 32,
+          "cache_creation_input_tokens": 81145,
+          "cache_read_input_tokens": 813656,
+          "output_tokens": 6914
+        },
+        "input_per_request_including_cache": {
+          "n": 16,
+          "min": 11496,
+          "median": 58603,
+          "max": 81147,
+          "sum": 894833
+        }
+      }
+    },
+    {
+      "agent_id": "a577650e8dcee4117",
+      "event_count": 232,
+      "first": "2026-09-30T00:57:22.313Z",
+      "last": "2026-09-30T01:52:52.867Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 51,
+        "models": {
+          "claude-opus-5": 51
+        },
+        "totals": {
+          "input_tokens": 102,
+          "cache_creation_input_tokens": 311779,
+          "cache_read_input_tokens": 6442074,
+          "output_tokens": 38218
+        },
+        "input_per_request_including_cache": {
+          "n": 51,
+          "min": 18285,
+          "median": 139736,
+          "max": 172047,
+          "sum": 6753955
+        }
+      }
+    },
+    {
+      "agent_id": "af054189614d38ebf",
+      "event_count": 246,
+      "first": "2026-09-30T01:08:04.644Z",
+      "last": "2026-09-30T01:26:59.261Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 54,
+        "models": {
+          "claude-opus-5": 54
+        },
+        "totals": {
+          "input_tokens": 108,
+          "cache_creation_input_tokens": 153926,
+          "cache_read_input_tokens": 5779196,
+          "output_tokens": 630
+        },
+        "input_per_request_including_cache": {
+          "n": 54,
+          "min": 20756,
+          "median": 111273,
+          "max": 153928,
+          "sum": 5933230
+        }
+      }
+    },
+    {
+      "agent_id": "a7b2d6dee6caf3fdc",
+      "event_count": 197,
+      "first": "2026-09-30T01:30:08.236Z",
+      "last": "2026-09-30T01:46:29.997Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 43,
+        "models": {
+          "claude-opus-5": 43
+        },
+        "totals": {
+          "input_tokens": 86,
+          "cache_creation_input_tokens": 157101,
+          "cache_read_input_tokens": 4450224,
+          "output_tokens": 625
+        },
+        "input_per_request_including_cache": {
+          "n": 43,
+          "min": 23441,
+          "median": 107744,
+          "max": 157103,
+          "sum": 4607411
+        }
+      }
+    },
+    {
+      "agent_id": "a7d48cfeecf7b081b",
+      "event_count": 243,
+      "first": "2026-09-30T01:54:18.030Z",
+      "last": "2026-09-30T02:11:43.045Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 61,
+        "models": {
+          "claude-opus-5": 61
+        },
+        "totals": {
+          "input_tokens": 122,
+          "cache_creation_input_tokens": 135261,
+          "cache_read_input_tokens": 5408961,
+          "output_tokens": 589
+        },
+        "input_per_request_including_cache": {
+          "n": 61,
+          "min": 20493,
+          "median": 95159,
+          "max": 135263,
+          "sum": 5544344
+        }
+      }
+    },
+    {
+      "agent_id": "abb312d106dc98dd4",
+      "event_count": 223,
+      "first": "2026-09-30T23:56:53.432Z",
+      "last": "2026-10-01T00:08:33.426Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 41,
+        "models": {
+          "claude-opus-5": 41
+        },
+        "totals": {
+          "input_tokens": 82,
+          "cache_creation_input_tokens": 112545,
+          "cache_read_input_tokens": 3016530,
+          "output_tokens": 707
+        },
+        "input_per_request_including_cache": {
+          "n": 41,
+          "min": 20078,
+          "median": 72342,
+          "max": 112547,
+          "sum": 3129157
+        }
+      }
+    },
+    {
+      "agent_id": "ab986c335d443e487",
+      "event_count": 102,
+      "first": "2026-10-01T01:03:15.258Z",
+      "last": "2026-10-01T01:09:49.979Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 18,
+        "models": {
+          "claude-opus-5": 18
+        },
+        "totals": {
+          "input_tokens": 36,
+          "cache_creation_input_tokens": 138585,
+          "cache_read_input_tokens": 1564180,
+          "output_tokens": 23656
+        },
+        "input_per_request_including_cache": {
+          "n": 18,
+          "min": 17653,
+          "median": 112122.5,
+          "max": 138587,
+          "sum": 1702801
+        }
+      }
+    },
+    {
+      "agent_id": "a00addfce1399f08a",
+      "event_count": 403,
+      "first": "2026-10-01T01:11:09.601Z",
+      "last": "2026-10-01T02:12:55.387Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 100,
+        "models": {
+          "claude-opus-5": 100
+        },
+        "totals": {
+          "input_tokens": 200,
+          "cache_creation_input_tokens": 452682,
+          "cache_read_input_tokens": 14772533,
+          "output_tokens": 972
+        },
+        "input_per_request_including_cache": {
+          "n": 100,
+          "min": 21168,
+          "median": 150097,
+          "max": 241587,
+          "sum": 15225415
+        }
+      }
+    },
+    {
+      "agent_id": "ab54080cac831b1a7",
+      "event_count": 347,
+      "first": "2026-10-01T01:40:10.986Z",
+      "last": "2026-10-01T02:04:33.704Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 81,
+        "models": {
+          "claude-opus-5": 81
+        },
+        "totals": {
+          "input_tokens": 162,
+          "cache_creation_input_tokens": 193388,
+          "cache_read_input_tokens": 9364893,
+          "output_tokens": 910
+        },
+        "input_per_request_including_cache": {
+          "n": 81,
+          "min": 23183,
+          "median": 117068,
+          "max": 193390,
+          "sum": 9558443
+        }
+      }
+    },
+    {
+      "agent_id": "a6cc77a31e7e412f9",
+      "event_count": 120,
+      "first": "2026-10-01T10:10:51.262Z",
+      "last": "2026-10-01T10:16:20.501Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 16,
+        "models": {
+          "claude-opus-5": 16
+        },
+        "totals": {
+          "input_tokens": 32,
+          "cache_creation_input_tokens": 90440,
+          "cache_read_input_tokens": 890045,
+          "output_tokens": 7646
+        },
+        "input_per_request_including_cache": {
+          "n": 16,
+          "min": 11402,
+          "median": 64876.5,
+          "max": 90442,
+          "sum": 980517
+        }
+      }
+    },
+    {
+      "agent_id": "a14a7d34c42f52c95",
+      "event_count": 133,
+      "first": "2026-10-01T10:10:51.271Z",
+      "last": "2026-10-01T10:19:54.034Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 26,
+        "models": {
+          "claude-opus-5": 26
+        },
+        "totals": {
+          "input_tokens": 52,
+          "cache_creation_input_tokens": 139621,
+          "cache_read_input_tokens": 2323024,
+          "output_tokens": 34512
+        },
+        "input_per_request_including_cache": {
+          "n": 26,
+          "min": 17906,
+          "median": 105406,
+          "max": 139623,
+          "sum": 2462697
+        }
+      }
+    },
+    {
+      "agent_id": "a600f1b0df29beb88",
+      "event_count": 320,
+      "first": "2026-10-01T10:21:21.059Z",
+      "last": "2026-10-01T10:42:08.026Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 77,
+        "models": {
+          "claude-opus-5": 77
+        },
+        "totals": {
+          "input_tokens": 154,
+          "cache_creation_input_tokens": 197845,
+          "cache_read_input_tokens": 9864836,
+          "output_tokens": 1151
+        },
+        "input_per_request_including_cache": {
+          "n": 77,
+          "min": 21392,
+          "median": 129810,
+          "max": 197847,
+          "sum": 10062835
+        }
+      }
+    },
+    {
+      "agent_id": "a2421a6bebe8696f1",
+      "event_count": 651,
+      "first": "2026-10-01T11:15:34.560Z",
+      "last": "2026-10-02T01:01:03.713Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 142,
+        "models": {
+          "claude-opus-5": 142
+        },
+        "totals": {
+          "input_tokens": 284,
+          "cache_creation_input_tokens": 583647,
+          "cache_read_input_tokens": 20019923,
+          "output_tokens": 2655
+        },
+        "input_per_request_including_cache": {
+          "n": 142,
+          "min": 20705,
+          "median": 147935,
+          "max": 239982,
+          "sum": 20603854
+        }
+      }
+    },
+    {
+      "agent_id": "ae8b6471fd1c343ae",
+      "event_count": 363,
+      "first": "2026-10-01T11:39:01.316Z",
+      "last": "2026-10-01T12:05:00.927Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 92,
+        "models": {
+          "claude-opus-5": 92
+        },
+        "totals": {
+          "input_tokens": 184,
+          "cache_creation_input_tokens": 196829,
+          "cache_read_input_tokens": 11567759,
+          "output_tokens": 904
+        },
+        "input_per_request_including_cache": {
+          "n": 92,
+          "min": 23724,
+          "median": 128739,
+          "max": 196831,
+          "sum": 11764772
+        }
+      }
+    },
+    {
+      "agent_id": "ae50c102a4fee750b",
+      "event_count": 418,
+      "first": "2026-10-02T01:03:08.895Z",
+      "last": "2026-10-02T01:48:17.976Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 88,
+        "models": {
+          "claude-opus-5": 88
+        },
+        "totals": {
+          "input_tokens": 176,
+          "cache_creation_input_tokens": 362156,
+          "cache_read_input_tokens": 10321810,
+          "output_tokens": 409
+        },
+        "input_per_request_including_cache": {
+          "n": 88,
+          "min": 20762,
+          "median": 122076,
+          "max": 197960,
+          "sum": 10684142
+        }
+      }
+    },
+    {
+      "agent_id": "a7a26e4575a177b1b",
+      "event_count": 198,
+      "first": "2026-10-02T01:28:43.383Z",
+      "last": "2026-10-02T01:39:05.402Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 40,
+        "models": {
+          "claude-opus-5": 40
+        },
+        "totals": {
+          "input_tokens": 80,
+          "cache_creation_input_tokens": 144347,
+          "cache_read_input_tokens": 4535184,
+          "output_tokens": 30686
+        },
+        "input_per_request_including_cache": {
+          "n": 40,
+          "min": 17044,
+          "median": 120823.5,
+          "max": 144349,
+          "sum": 4679611
+        }
+      }
+    },
+    {
+      "agent_id": "aad5b48ac4e3ff96b",
+      "event_count": 359,
+      "first": "2026-10-02T02:44:57.227Z",
+      "last": "2026-10-02T04:23:45.499Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 65,
+        "models": {
+          "claude-opus-5": 65
+        },
+        "totals": {
+          "input_tokens": 130,
+          "cache_creation_input_tokens": 240780,
+          "cache_read_input_tokens": 6215891,
+          "output_tokens": 323
+        },
+        "input_per_request_including_cache": {
+          "n": 65,
+          "min": 20536,
+          "median": 101708,
+          "max": 146709,
+          "sum": 6456801
+        }
+      }
+    },
+    {
+      "agent_id": "adb2217fc77240e42",
+      "event_count": 269,
+      "first": "2026-10-02T12:57:59.317Z",
+      "last": "2026-10-02T13:18:24.561Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 62,
+        "models": {
+          "claude-opus-5": 62
+        },
+        "totals": {
+          "input_tokens": 124,
+          "cache_creation_input_tokens": 161063,
+          "cache_read_input_tokens": 7021101,
+          "output_tokens": 673
+        },
+        "input_per_request_including_cache": {
+          "n": 62,
+          "min": 21139,
+          "median": 126533.5,
+          "max": 161065,
+          "sum": 7182288
+        }
+      }
+    },
+    {
+      "agent_id": "ac2321a4be1eae4f1",
+      "event_count": 258,
+      "first": "2026-10-02T14:21:32.045Z",
+      "last": "2026-10-02T14:39:22.092Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 55,
+        "models": {
+          "claude-opus-5": 55
+        },
+        "totals": {
+          "input_tokens": 110,
+          "cache_creation_input_tokens": 240563,
+          "cache_read_input_tokens": 8976508,
+          "output_tokens": 75937
+        },
+        "input_per_request_including_cache": {
+          "n": 55,
+          "min": 17671,
+          "median": 180685,
+          "max": 240565,
+          "sum": 9217181
+        }
+      }
+    },
+    {
+      "agent_id": "aa10ca362f58e3088",
+      "event_count": 262,
+      "first": "2026-10-02T14:41:13.670Z",
+      "last": "2026-10-02T15:01:17.484Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 57,
+        "models": {
+          "claude-opus-5": 57
+        },
+        "totals": {
+          "input_tokens": 114,
+          "cache_creation_input_tokens": 142624,
+          "cache_read_input_tokens": 5842564,
+          "output_tokens": 499
+        },
+        "input_per_request_including_cache": {
+          "n": 57,
+          "min": 19912,
+          "median": 105235,
+          "max": 142626,
+          "sum": 5985302
+        }
+      }
+    },
+    {
+      "agent_id": "ab7c5cfee439f3844",
+      "event_count": 235,
+      "first": "2026-10-02T15:02:53.445Z",
+      "last": "2026-10-02T15:14:44.362Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 49,
+        "models": {
+          "claude-opus-5": 49
+        },
+        "totals": {
+          "input_tokens": 98,
+          "cache_creation_input_tokens": 139656,
+          "cache_read_input_tokens": 5119934,
+          "output_tokens": 10846
+        },
+        "input_per_request_including_cache": {
+          "n": 49,
+          "min": 23364,
+          "median": 118258,
+          "max": 139658,
+          "sum": 5259688
+        }
+      }
+    },
+    {
+      "agent_id": "a3881ba2d5e292b29",
+      "event_count": 277,
+      "first": "2026-10-02T15:15:49.315Z",
+      "last": "2026-10-02T15:25:33.149Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 60,
+        "models": {
+          "claude-opus-5": 60
+        },
+        "totals": {
+          "input_tokens": 120,
+          "cache_creation_input_tokens": 132845,
+          "cache_read_input_tokens": 5960176,
+          "output_tokens": 13420
+        },
+        "input_per_request_including_cache": {
+          "n": 60,
+          "min": 20665,
+          "median": 107042,
+          "max": 132847,
+          "sum": 6093141
+        }
+      }
+    },
+    {
+      "agent_id": "a3c463fac6b933a35",
+      "event_count": 181,
+      "first": "2026-10-02T15:26:50.194Z",
+      "last": "2026-10-02T15:33:00.952Z",
+      "rate_limit_events": [
+        "2026-10-02T15:33:00.952Z"
+      ],
+      "usage": {
+        "unique_message_ids": 43,
+        "models": {
+          "claude-opus-5": 43
+        },
+        "totals": {
+          "input_tokens": 86,
+          "cache_creation_input_tokens": 103620,
+          "cache_read_input_tokens": 3052294,
+          "output_tokens": 360
+        },
+        "input_per_request_including_cache": {
+          "n": 43,
+          "min": 21107,
+          "median": 74191,
+          "max": 103622,
+          "sum": 3156000
+        }
+      }
+    },
+    {
+      "agent_id": "af0afc3d6435af7a8",
+      "event_count": 91,
+      "first": "2026-09-27T13:35:18.640Z",
+      "last": "2026-09-27T13:39:07.914Z",
+      "rate_limit_events": [],
+      "usage": {
+        "unique_message_ids": 22,
+        "models": {
+          "claude-opus-5": 22
+        },
+        "totals": {
+          "input_tokens": 44,
+          "cache_creation_input_tokens": 317462,
+          "cache_read_input_tokens": 6434406,
+          "output_tokens": 5782
+        },
+        "input_per_request_including_cache": {
+          "n": 22,
+          "min": 297060,
+          "median": 306874.5,
+          "max": 317464,
+          "sum": 6751912
+        }
+      }
+    }
+  ]
+}

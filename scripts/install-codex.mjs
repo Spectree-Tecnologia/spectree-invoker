@@ -74,7 +74,7 @@ planCopy(join(dist, 'SQUAD.md'), join(squadRoot, 'SQUAD.md'), 'squad protocol');
 // The closure migration travels WITH the scripts and is never RUN by the installer: updating
 // code and rewriting a project's records are different acts with different blast radii, and an
 // installer that quietly did the second one would rewrite state nobody asked it to touch.
-for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs', 'prepare-closure.mjs', 'post-merge.mjs', 'ci-treatment.mjs', 'migrate-closure.mjs']) {
+for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs', 'prepare-closure.mjs', 'post-merge.mjs', 'ci-treatment.mjs', 'migrate-closure.mjs', 'work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'tasks.mjs', 'reports.mjs', 'evals.mjs']) {
   planCopy(join(pkg, 'scripts', f), join(squadRoot, 'scripts', f), 'script the skill calls');
 }
 for (const f of readdirSync(join(pkg, 'scripts', 'lib'))) {
@@ -83,6 +83,11 @@ for (const f of readdirSync(join(pkg, 'scripts', 'lib'))) {
 for (const f of readdirSync(join(pkg, 'schemas'))) {
   planCopy(join(pkg, 'schemas', f), join(squadRoot, 'schemas', f), 'schema');
 }
+for (const f of ['reliability.md', 'evolution.md', 'examples/verification.json', 'examples/consumer-ci.yml', 'examples/task-plan.json', 'examples/codex-runner.json']) {
+  planCopy(join(pkg, 'docs', f), join(squadRoot, 'docs', f), 'reliability guide or example; never applied to the consumer');
+}
+planCopy(join(pkg, 'package.json'), join(squadRoot, 'package.json'), 'runtime package identity');
+planCopy(join(pkg, 'evals/cases.json'), join(squadRoot, 'evals/cases.json'), 'synthetic agent evaluation cases');
 // 1a. what each adapter declares about its harness. Without these a consumer install had no
 // declarations to read at all, so `operating_mode` fell to `single-context` on a harness where
 // `harness: claude-code` is VERIFIED and subagents demonstrably exist — the same script answering
@@ -91,6 +96,9 @@ for (const f of readdirSync(join(pkg, 'schemas'))) {
 for (const id of readdirSync(join(pkg, 'adapters'))) {
   const f = join(pkg, 'adapters', id, 'adapter.json');
   if (existsSync(f)) planCopy(f, join(squadRoot, 'adapters', id, 'adapter.json'), 'adapter declaration');
+  for (const phase of ['core', 'implement', 'diagnose', 'review']) {
+    planCopy(join(pkg, 'adapters', id, 'dist/context', `${phase}.md`), join(squadRoot, 'adapters', id, 'dist/context', `${phase}.md`), 'generated phase context');
+  }
 }
 
 // 1b. which build this is. A consumer carries no plugin.json and no protocol/, so without

@@ -59,11 +59,14 @@ docs/changes/<slug>/
   proposal.md              <- why, what changes, impact, graph, irreversible decisions
   specs/<module>/spec.md   <- the delta ONLY
   tasks.md                 <- dispatch, per agent
+  verification.json        <- behavioral checks, counterexamples, round trips and CI graph
 ```
 
 You **never** write in `docs/specs/`. That is the current truth and it only changes through a closed delta merge, performed by the Platform Engineer.
 
 ## Granularity
+
+Validate `verification.json` with `verification.mjs plan <file>`. Every behavioral check names Scenario references, the defect it discriminates and the expected failure. Mark inventory checks honestly. When a field's meaning changes, declare a create/read/edit another field/save/reread invariant and the behavior check that exercises it. State the baseline environment in `tasks.md`. Keep plans proportional: a small change needs a focused plan, not a restatement of all project rules.
 
 **A spec domain is a module, always 1:1.** Never per layer (`auth-backend`), per component (`auth-user-menu`), per use case (`authenticate-user-usecase`) or per setup task (`monorepo-bootstrap`). Fragmented that way, the spec stops answering "what is true about this module today" without reading eight files.
 

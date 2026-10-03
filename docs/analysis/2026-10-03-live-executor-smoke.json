@@ -1,0 +1,69 @@
+{
+  "mode": "live-synthetic-runtime",
+  "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-executor-smoke-EsaMKt",
+  "limitation": "Lifecycle preconditions are seeded fixtures. This run observes real dispatch, implementation and acceptance verification, not the full squad pipeline.",
+  "ok": true,
+  "attempt": {
+    "id": "task-a98010b8-a257-4e9b-80c0-cff08220fe68",
+    "task_id": "increment",
+    "status": "succeeded",
+    "input": {
+      "revision": "3b7399ff09baf13f7e03e571931cecf91a2c76e9",
+      "content_digest": "sha256:008f937238b494c6cce9018e2f32843a3003aaefa2717429314b745ee87b4440",
+      "branch": "fixture-implementation"
+    },
+    "packet_ref": ".spectree/tasks/smoke/task-a98010b8-a257-4e9b-80c0-cff08220fe68-packet.json",
+    "adapter": "codex",
+    "result_ref": ".spectree/tasks/smoke/task-a98010b8-a257-4e9b-80c0-cff08220fe68-result.json"
+  },
+  "verification": {
+    "ok": true,
+    "checks": [
+      {
+        "task_id": "increment",
+        "scenario": "increment",
+        "test_name": "increment preserves integer arithmetic",
+        "command": [
+          "C:\\Program Files\\nodejs\\node.exe",
+          "--test",
+          "--test-reporter=tap",
+          "tests/math.cjs"
+        ],
+        "result": "PASS",
+        "reason": "\"increment preserves integer arithmetic\" passed in a complete green run",
+        "matched": {
+          "name": "increment preserves integer arithmetic",
+          "number": 1,
+          "ok": true
+        },
+        "elapsed_ms": 151
+      }
+    ]
+  },
+  "scope_ok": true,
+  "authority_ok": true,
+  "status": {
+    "version": 1,
+    "change_id": "smoke",
+    "authorizes_execution": false,
+    "current": {
+      "revision": "3b7399ff09baf13f7e03e571931cecf91a2c76e9",
+      "content_digest": "sha256:96b143f9261a67f7179139d23e51a6d46cdf48504d9920ebd04b37ed089e5663",
+      "branch": "fixture-implementation"
+    },
+    "tasks": [
+      {
+        "id": "increment",
+        "status": "verified",
+        "attempts": 1,
+        "depends_on": []
+      }
+    ],
+    "ready": [],
+    "complete": true,
+    "pending": [],
+    "work_pending": null
+  },
+  "lifecycle_state": "pass1_complete",
+  "implementation": "module.exports = n => n + 1;\n"
+}

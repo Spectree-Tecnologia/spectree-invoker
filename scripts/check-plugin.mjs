@@ -152,7 +152,19 @@ if (marketplace) {
 }
 
 // --- 7. schemas parse and carry an $id ---------------------------------------
+for (const f of ['work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'lib/work.mjs', 'lib/mutation.mjs', 'lib/verification.mjs']) {
+  if (!has(`scripts/${f}`)) fail(`scripts/${f}`, 'required reliability command or library missing');
+}
+
 const REQUIRED_SCHEMAS = ['common.json', 'change.schema.json', 'dispatch.schema.json', 'evidence.schema.json', 'deferred.schema.json', 'approval.schema.json', 'preparation.schema.json', 'receipt.schema.json'];
+for (const f of ['tasks.mjs', 'reports.mjs', 'evals.mjs', 'lib/context.mjs', 'lib/agent-runner.mjs', 'lib/task-executor.mjs', 'lib/engineering-reports.mjs', 'lib/agent-evals.mjs']) {
+  if (!has(`scripts/${f}`)) fail(`scripts/${f}`, 'required evolution command or library missing');
+}
+for (const id of ['codex', 'claude-code']) for (const phase of ['core', 'implement', 'diagnose', 'review']) {
+  if (!has(`protocol/runtime/${phase}.md`)) fail(`protocol/runtime/${phase}.md`, 'required phase source missing');
+  if (!has(`adapters/${id}/dist/context/${phase}.md`)) fail(`adapters/${id}/dist/context/${phase}.md`, 'required generated context missing');
+}
+if (!has('evals/cases.json')) fail('evals/cases.json', 'required live evaluation cases missing');
 for (const s of REQUIRED_SCHEMAS) {
   const doc = readJson(`schemas/${s}`);
   if (doc && !doc.$id) fail(`schemas/${s}`, 'missing $id');

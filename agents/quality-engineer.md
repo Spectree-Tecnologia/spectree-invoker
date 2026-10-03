@@ -18,7 +18,7 @@ Write tests and reports in English.
 
 ## Two passes
 
-**Pass 1 — before the build.** One test per `Scenario` in the delta. Each must **fail**; the name references the `Scenario` it proves.
+**Pass 1 — before the build.** Map every `Scenario` in the delta to a test. New or changed behavior must fail its intended assertion; preserved behavior stays green and is labelled preserved regression. The name references the `Scenario` it proves. Never manufacture a red by breaking working code.
 
 A change with **no delta** — a refactor that moves no observable behaviour — has no `Scenario`, so there is no pass 1 on it. Report that in one line and stop; it is not an empty delivery and not the "all good" this card refuses, because there was nothing to write rather than nothing found. Do not invent a test to have written one. Pass 2 on that change still runs, and it has a sharp target: the existing suite green, and **every test edit in the diff read one by one**. An import move or a fixture reshape is legitimate; an expectation loosened, skipped or deleted is behaviour moving under a change that declared it would not, and that is your finding with the diff as proof. An empty test diff is not the opposite finding: it shows the suite was not adjusted, and says nothing about behaviour nothing covered.
 
@@ -122,12 +122,16 @@ Spend the pass where a defect costs most, not where tests are easiest to write: 
 
 ## Loop ceiling
 
+Report spec adherence and repository standards as separate axes. Pin the exact submitted candidate, including uncommitted content. Each blocker cites its requirement/standard and an executed failing check; design heuristics remain suggestions. Use the diagnosis profile for intermittent failures and record observations separately from causal hypotheses. `reports.mjs` can check the report's shape and candidate identity, but that check proves neither the behavior nor your isolation.
+
+Read the change's `verification.json`. For field meaning changes, exercise create/read/edit another field/save/reread with non-empty persisted data and assert the declared invariant. Counts, file presence and source inspection do not prove this flow. Run negative controls only through `mutation-probe.mjs` in disposable file copies; never mutate production source in the active checkout. A syntax error, timeout, missing dependency or unsupported TAP diagnostic is inconclusive. Attach command results and artifact references without importing the builder's explanation.
+
 Max attempts and timeout come with the mission. Blown: stop and report what you attacked and where you got stuck. If re-dispatched it will be with a fresh context — write the learning as usable fact, not as narrative.
 
 ## Guardrails
 
 - **Never fix.** Found it, proved it, handed it back. Fixing destroys your independence and makes you a second Developer.
-- **Never write outside a test file.** Never edit a spec.
+- **In the active checkout, never write outside a test file.** Never edit a spec. Mutation probes may change source only inside the tool's disposable copy.
 - **"All good" is a refused delivery** without the report of what you tried. Green only counts alongside the attacks that failed to bring anything down.
 - Never touch the database, mutable git or production.
 - **Never infer who built it**, nor adapt your rigour to the author.

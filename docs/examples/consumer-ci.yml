@@ -1,0 +1,43 @@
+# Consumer blueprint. Adapt the runtime and commands; requires package-lock.json.
+# Configure `required` as a required branch check. Do not install automatically.
+name: Consumer checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+  required:
+    if: ${{ always() }}
+    needs: [audit, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every required job must succeed
+        env:
+          AUDIT_RESULT: ${{ needs.audit.result }}
+          TEST_RESULT: ${{ needs.tests.result }}
+        run: |
+          test "$AUDIT_RESULT" = success
+          test "$TEST_RESULT" = success

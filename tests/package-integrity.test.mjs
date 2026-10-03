@@ -11,7 +11,7 @@ import { tempDir, cleanup, REPO } from './helpers.mjs';
 function pkgCopy() {
   const dir = join(tempDir('spectree-pkg-'), 'pkg');
   mkdirSync(dir, { recursive: true });
-  for (const d of ['protocol', 'adapters', 'schemas', 'scripts', 'agents', 'commands', 'tests', '.claude-plugin']) {
+  for (const d of ['protocol', 'adapters', 'schemas', 'scripts', 'agents', 'commands', 'tests', 'evals', '.claude-plugin']) {
     if (existsSync(join(REPO, d))) cpSync(join(REPO, d), join(dir, d), { recursive: true });
   }
   for (const f of ['CLAUDE.md', 'package.json']) {
@@ -33,6 +33,18 @@ test('the real package passes its own integrity check', () => {
   const r = check(REPO);
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /Structural integrity only/, 'the green says what it does not cover');
+});
+
+test('reliability entrypoints and their libraries are required package content', () => {
+  for (const file of ['scripts/work.mjs', 'scripts/lib/mutation.mjs']) {
+    const dir = pkgCopy();
+    try {
+      rmSync(join(dir, file));
+      const result = check(dir);
+      assert.equal(result.code, 1);
+      assert.match(result.out, /required reliability command or library missing/);
+    } finally { cleanup(dir); }
+  }
 });
 
 test('deleting every specialist card fails — it never reports "zero cards, OK"', () => {
