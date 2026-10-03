@@ -1,4 +1,8 @@
-# Execução e avaliações — ciclo 1.7
+# Execução e avaliações
+
+A base abaixo foi introduzida na 1.7. A [adoção operacional 1.8](operational-adoption.md)
+acrescenta Claude Code nativo, supervisão de processos, adoção assistida, reparo
+explícito e avaliação do fluxo. Os comandos existentes continuam disponíveis.
 
 O Invoker agora pode executar uma tarefa de implementação por vez, chamar um agente
 e verificar os Scenarios com testes nomeados. O plano não concede autorização nem
@@ -39,7 +43,8 @@ Use `"context_adapter":"claude-code"` quando esse bridge transportar missões Cl
 o padrão é `codex`. Isso seleciona as instruções geradas, não declara isolamento.
 Recebe o packet JSON no stdin e retorna um envelope JSON no stdout, por exemplo
 `{"status":"completed"}`. O bridge implementa permissões e transporte reais;
-o envelope não prova sucesso. Não existe adapter Claude CLI nativo neste ciclo.
+o envelope não prova sucesso. Para Claude, prefira agora o adapter nativo
+`{"kind":"claude-code","timeout_seconds":300}` descrito no guia da 1.8.
 
 O executor mantém um lock por checkout e o lock de autoridade da mudança, registra
 tentativa/dispatch/checkpoint e só depois chama o agente. Executa os testes da
@@ -58,7 +63,8 @@ neste primeiro ciclo não há migração automática de um plano já iniciado.
 
 Após falha, timeout ou interrupção, `status` não libera a próxima tarefa. Inspecione
 arquivos, processos, registros e efeitos externos antes de repetir qualquer coisa.
-O timeout limita a espera do launcher; não garante terminar todos os descendentes.
+Os lançamentos da 1.8 supervisionam processos locais e persistem recibos de
+encerramento; consulte a cobertura e os limites por plataforma no guia da 1.8.
 Prepare um JSON de inspeção:
 
 ```json
@@ -71,7 +77,8 @@ Prepare um JSON de inspeção:
 ```
 
 Execute `tasks.mjs recover <change> <attempt> --inspection <json>`. O booleano é uma
-declaração explícita do operador, não prova automática da árvore de processos. Um
+declaração explícita do operador. Na 1.8, lançamentos supervisionados também exigem
+verificação do encerramento; o booleano não substitui essa observação. Um
 lock abandonado só é removido quando o PID proprietário está comprovadamente morto
 na mesma máquina. A reconciliação não declara sucesso nem zera tentativas. Operações
 de `verify` interrompidas usam `work.mjs reconcile`; um executor morto pode deixar

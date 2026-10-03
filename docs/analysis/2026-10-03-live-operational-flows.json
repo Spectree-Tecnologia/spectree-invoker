@@ -1,0 +1,436 @@
+{
+  "date": "2026-10-03",
+  "version": "1.8.0",
+  "base_commit": "b75ebd250927373888992165f1570abecfa45cb4",
+  "interpretation": "Single synthetic development runs, not a model comparison or proof of production performance. Raw logs retained in local temporary fixtures. Runtime digests identify the development snapshot.",
+  "runs": [
+    {
+      "run_id": "flow-14852259-e24d-4177-adbf-4c7df613cec9",
+      "package_version": "1.8.0",
+      "runtime_digest": "35eb175dad4f1ce740a3eafb36961e608558735e614dccd6d248d4da8fb419bc",
+      "adapter": "codex",
+      "requested_model": null,
+      "mode": "live",
+      "completed": true,
+      "passed": false,
+      "error": {
+        "code": "E_FLOW",
+        "message": "Scenario A failed."
+      },
+      "scope": "Draft, fixture scope policy, observed branch/baseline/red tests, interrupted attempt, dependencies, injected regression and bounded repair. Stops before independent QA/CI/integration.",
+      "lifecycle_state": null,
+      "qa_gate": null,
+      "steps": [
+        {
+          "name": "adopt-as-draft",
+          "elapsed_ms": 984,
+          "ok": null
+        },
+        {
+          "name": "proposed",
+          "elapsed_ms": 1553,
+          "ok": null
+        },
+        {
+          "name": "current-fixture-policy",
+          "elapsed_ms": 282,
+          "ok": null
+        },
+        {
+          "name": "scope-approved",
+          "elapsed_ms": 1540,
+          "ok": null
+        },
+        {
+          "name": "observed-isolation",
+          "elapsed_ms": 2217,
+          "ok": null
+        },
+        {
+          "name": "observed-baseline",
+          "elapsed_ms": 2180,
+          "ok": null
+        },
+        {
+          "name": "observed-red-tests",
+          "elapsed_ms": 2465,
+          "ok": null
+        },
+        {
+          "name": "task-frontier",
+          "elapsed_ms": 3444,
+          "ok": null
+        },
+        {
+          "name": "forced-deadline",
+          "elapsed_ms": 17541,
+          "ok": false
+        },
+        {
+          "name": "reconcile-interruption",
+          "elapsed_ms": 954,
+          "ok": null
+        },
+        {
+          "name": "implement-A",
+          "elapsed_ms": 65043,
+          "ok": false
+        }
+      ],
+      "agents": [
+        {
+          "step": "forced-deadline",
+          "status": "interrupted",
+          "elapsed_ms": 8764,
+          "process_error": "ETIMEDOUT",
+          "quiescent": true,
+          "models_reported": [],
+          "usage": null,
+          "model_usage": null,
+          "observed_usage_limit": false,
+          "raw_evidence_sha256": "abd0e2ff08430295701deca587f9d37c3f1594dc958066c1e2e9e1bc777afc91"
+        },
+        {
+          "step": "implement-A",
+          "status": "interrupted",
+          "elapsed_ms": 55200,
+          "process_error": null,
+          "quiescent": true,
+          "models_reported": [],
+          "usage": null,
+          "model_usage": null,
+          "observed_usage_limit": true,
+          "raw_evidence_sha256": "b8d8801d2d6e89d13e5ea934b3f7698a5782849d367fba433aedeeb64ce55391"
+        }
+      ],
+      "raw_report_sha256": "41838886eeb0ad24110059f689a430b9e9016c7281c62fb144b95c61b5d68627"
+    },
+    {
+      "run_id": "flow-f10a4f61-ef6d-4643-bcbf-0c32bb5ff7e0",
+      "package_version": "1.8.0",
+      "runtime_digest": "1a2e9da234e5488e2068fe95a98a66b47c23776f39a52f5cba596eaaea825823",
+      "adapter": "claude-code",
+      "requested_model": null,
+      "mode": "live",
+      "completed": true,
+      "passed": true,
+      "error": null,
+      "scope": "Draft, fixture scope policy, observed branch/baseline/red tests, interrupted attempt, dependencies, injected regression and bounded repair. Stops before independent QA/CI/integration.",
+      "lifecycle_state": "implemented",
+      "qa_gate": {
+        "blocked": true,
+        "reason": "REFUSED implemented -> pass2_complete\n  E_MISSING_EVIDENCE: no evidence for \"pass2.attack\""
+      },
+      "steps": [
+        {
+          "name": "adopt-as-draft",
+          "elapsed_ms": 820,
+          "ok": null
+        },
+        {
+          "name": "proposed",
+          "elapsed_ms": 3198,
+          "ok": null
+        },
+        {
+          "name": "current-fixture-policy",
+          "elapsed_ms": 655,
+          "ok": null
+        },
+        {
+          "name": "scope-approved",
+          "elapsed_ms": 3987,
+          "ok": null
+        },
+        {
+          "name": "observed-isolation",
+          "elapsed_ms": 5654,
+          "ok": null
+        },
+        {
+          "name": "observed-baseline",
+          "elapsed_ms": 5532,
+          "ok": null
+        },
+        {
+          "name": "observed-red-tests",
+          "elapsed_ms": 5338,
+          "ok": null
+        },
+        {
+          "name": "task-frontier",
+          "elapsed_ms": 9828,
+          "ok": null
+        },
+        {
+          "name": "forced-deadline",
+          "elapsed_ms": 25792,
+          "ok": false
+        },
+        {
+          "name": "reconcile-interruption",
+          "elapsed_ms": 1777,
+          "ok": null
+        },
+        {
+          "name": "implement-A",
+          "elapsed_ms": 62954,
+          "ok": true
+        },
+        {
+          "name": "implement-B-preserve-A",
+          "elapsed_ms": 47228,
+          "ok": true
+        },
+        {
+          "name": "detect-regression",
+          "elapsed_ms": 13543,
+          "ok": false
+        },
+        {
+          "name": "reconcile-regression",
+          "elapsed_ms": 896,
+          "ok": null
+        },
+        {
+          "name": "bounded-agent-repair",
+          "elapsed_ms": 32253,
+          "ok": true
+        },
+        {
+          "name": "implemented",
+          "elapsed_ms": 3818,
+          "ok": null
+        }
+      ],
+      "agents": [
+        {
+          "step": "forced-deadline",
+          "status": "interrupted",
+          "elapsed_ms": 3851,
+          "process_error": "ETIMEDOUT",
+          "quiescent": true,
+          "models_reported": [],
+          "usage": null,
+          "model_usage": null,
+          "observed_usage_limit": false,
+          "raw_evidence_sha256": "f8cb79cd6fefb38dc55e28c03efd5bddf1b9329e8749f2997ee1b5af8ce1045c"
+        },
+        {
+          "step": "implement-A",
+          "status": "reported_success",
+          "elapsed_ms": 44231,
+          "process_error": null,
+          "quiescent": true,
+          "models_reported": [
+            "claude-sonnet-5"
+          ],
+          "usage": {
+            "input_tokens": 12,
+            "cache_creation_input_tokens": 12320,
+            "cache_read_input_tokens": 92338,
+            "output_tokens": 1182,
+            "output_tokens_details": {
+              "thinking_tokens": 283
+            },
+            "server_tool_use": {
+              "web_search_requests": 0,
+              "web_fetch_requests": 0
+            },
+            "service_tier": "standard",
+            "cache_creation": {
+              "ephemeral_1h_input_tokens": 12320,
+              "ephemeral_5m_input_tokens": 0
+            },
+            "inference_geo": "not_available",
+            "iterations": [
+              {
+                "input_tokens": 2,
+                "output_tokens": 353,
+                "cache_read_input_tokens": 17532,
+                "cache_creation_input_tokens": 2002,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 2002
+                },
+                "type": "message"
+              }
+            ],
+            "speed": "standard"
+          },
+          "model_usage": {
+            "claude-haiku-4-5-20251001": {
+              "inputTokens": 6282,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.006372,
+              "contextWindow": 200000,
+              "maxOutputTokens": 32000,
+              "canonicalModel": "claude-haiku-4-5",
+              "provider": "firstParty"
+            },
+            "claude-sonnet-5": {
+              "inputTokens": 12,
+              "outputTokens": 1182,
+              "cacheReadInputTokens": 92338,
+              "cacheCreationInputTokens": 12320,
+              "webSearchRequests": 0,
+              "costUSD": 0.0795916,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 64000,
+              "canonicalModel": "claude-sonnet-5",
+              "provider": "firstParty"
+            }
+          },
+          "observed_usage_limit": false,
+          "raw_evidence_sha256": "4d8a5163281f4295fbaa02385f34d874fac45ac4e9e69e8fa70fcc66ad5092a7"
+        },
+        {
+          "step": "implement-B-preserve-A",
+          "status": "reported_success",
+          "elapsed_ms": 27198,
+          "process_error": null,
+          "quiescent": true,
+          "models_reported": [
+            "claude-sonnet-5"
+          ],
+          "usage": {
+            "input_tokens": 10,
+            "cache_creation_input_tokens": 10339,
+            "cache_read_input_tokens": 74899,
+            "output_tokens": 1083,
+            "output_tokens_details": {
+              "thinking_tokens": 217
+            },
+            "server_tool_use": {
+              "web_search_requests": 0,
+              "web_fetch_requests": 0
+            },
+            "service_tier": "standard",
+            "cache_creation": {
+              "ephemeral_1h_input_tokens": 10339,
+              "ephemeral_5m_input_tokens": 0
+            },
+            "inference_geo": "not_available",
+            "iterations": [
+              {
+                "input_tokens": 2,
+                "output_tokens": 360,
+                "cache_read_input_tokens": 17360,
+                "cache_creation_input_tokens": 193,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 193
+                },
+                "type": "message"
+              }
+            ],
+            "speed": "standard"
+          },
+          "model_usage": {
+            "claude-haiku-4-5-20251001": {
+              "inputTokens": 6277,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.006366999999999999,
+              "contextWindow": 200000,
+              "maxOutputTokens": 32000,
+              "canonicalModel": "claude-haiku-4-5",
+              "provider": "firstParty"
+            },
+            "claude-sonnet-5": {
+              "inputTokens": 10,
+              "outputTokens": 1083,
+              "cacheReadInputTokens": 74899,
+              "cacheCreationInputTokens": 10339,
+              "webSearchRequests": 0,
+              "costUSD": 0.06718579999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 64000,
+              "canonicalModel": "claude-sonnet-5",
+              "provider": "firstParty"
+            }
+          },
+          "observed_usage_limit": false,
+          "raw_evidence_sha256": "e5434ef98a566f335bd064e943cae17332a9a864e2ecf79670440459ac7142bf"
+        },
+        {
+          "step": "bounded-agent-repair",
+          "status": "reported_success",
+          "elapsed_ms": 17950,
+          "process_error": null,
+          "quiescent": true,
+          "models_reported": [
+            "claude-sonnet-5"
+          ],
+          "usage": {
+            "input_tokens": 6,
+            "cache_creation_input_tokens": 8739,
+            "cache_read_input_tokens": 42318,
+            "output_tokens": 615,
+            "output_tokens_details": {
+              "thinking_tokens": 30
+            },
+            "server_tool_use": {
+              "web_search_requests": 0,
+              "web_fetch_requests": 0
+            },
+            "service_tier": "standard",
+            "cache_creation": {
+              "ephemeral_1h_input_tokens": 8739,
+              "ephemeral_5m_input_tokens": 0
+            },
+            "inference_geo": "not_available",
+            "iterations": [
+              {
+                "input_tokens": 2,
+                "output_tokens": 84,
+                "cache_read_input_tokens": 17089,
+                "cache_creation_input_tokens": 367,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 367
+                },
+                "type": "message"
+              }
+            ],
+            "speed": "standard"
+          },
+          "model_usage": {
+            "claude-haiku-4-5-20251001": {
+              "inputTokens": 6451,
+              "outputTokens": 16,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.006531,
+              "contextWindow": 200000,
+              "maxOutputTokens": 32000,
+              "canonicalModel": "claude-haiku-4-5",
+              "provider": "firstParty"
+            },
+            "claude-sonnet-5": {
+              "inputTokens": 6,
+              "outputTokens": 615,
+              "cacheReadInputTokens": 42318,
+              "cacheCreationInputTokens": 8739,
+              "webSearchRequests": 0,
+              "costUSD": 0.0495816,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 64000,
+              "canonicalModel": "claude-sonnet-5",
+              "provider": "firstParty"
+            }
+          },
+          "observed_usage_limit": false,
+          "raw_evidence_sha256": "300745d5f37ef6c0349c8abb97763651a5812923db8889fc46d66c4162c54dc9"
+        }
+      ],
+      "raw_report_sha256": "6af7fbf80638373185155ed563b6c4ec5103a8056eeb9d7f2d397d71a5779612"
+    }
+  ]
+}

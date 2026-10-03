@@ -14,6 +14,9 @@ Write only within the mission's allowed paths. Do not edit specs, acceptance tes
 verification commands, approvals or `.spectree` records to make a check pass.
 Do not commit, push, merge, reset, deploy, migrate or access production. Stop if the
 branch is the default branch. Do not delegate this bounded mission further.
+Do not create detached sessions, background services, scheduled work or remote jobs.
+All child commands must finish before the mission returns. Process supervision is
+a local execution boundary, not authority to perform external side effects.
 
 Report observed facts separately from hypotheses. A tool saying completed can
 contain quota exhaustion or an interrupted turn. Such outcomes are not success.

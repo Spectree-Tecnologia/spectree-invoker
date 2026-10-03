@@ -157,7 +157,7 @@ for (const f of ['work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'lib/work
 }
 
 const REQUIRED_SCHEMAS = ['common.json', 'change.schema.json', 'dispatch.schema.json', 'evidence.schema.json', 'deferred.schema.json', 'approval.schema.json', 'preparation.schema.json', 'receipt.schema.json'];
-for (const f of ['tasks.mjs', 'reports.mjs', 'evals.mjs', 'lib/context.mjs', 'lib/agent-runner.mjs', 'lib/task-executor.mjs', 'lib/engineering-reports.mjs', 'lib/agent-evals.mjs']) {
+for (const f of ['tasks.mjs', 'reports.mjs', 'evals.mjs', 'adopt.mjs', 'lib/adoption.mjs', 'lib/flow-evals.mjs', 'lib/process-supervisor.mjs', 'lib/process-worker.mjs', 'lib/process-job.ps1', 'lib/process-job.cs', 'lib/context.mjs', 'lib/agent-runner.mjs', 'lib/task-executor.mjs', 'lib/engineering-reports.mjs', 'lib/agent-evals.mjs']) {
   if (!has(`scripts/${f}`)) fail(`scripts/${f}`, 'required evolution command or library missing');
 }
 for (const id of ['codex', 'claude-code']) for (const phase of ['core', 'implement', 'diagnose', 'review']) {
