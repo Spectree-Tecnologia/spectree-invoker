@@ -28,6 +28,8 @@ Invoque com `$spectree-invoker`. Os seis especialistas vão para `.codex/agents/
 
 O **[Spectree Console](docs/console.md)** oferece uma interface local para observar o squad: `npm run console -- --project /caminho/do/projeto`. Pipeline, especialistas, tarefas, evidências e histórico, em modo somente leitura. Para explorar com dados sintéticos: `npm run console -- --demo`.
 
+O **[Runtime Conectado 1.10](docs/runtime-connected.md)** acrescenta registros automáticos de execução, consulta ao planner, vínculos entre cenários e checks, métricas reportadas pelos adapters e um launcher instalado independente da branch.
+
 Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CLAUDE.md`, `agents/*.md`, `adapters/codex/dist/` e a skill do Codex são **gerados** e verificados contra ela no CI. O `AGENTS.md` do consumidor é preservado pelo instalador.
 
 | Caminho | O quê |

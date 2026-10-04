@@ -5,10 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { readProject, roles, pipeline } from './console-reader.mjs';
 import { demoProject } from './console-demo.mjs';
+import { observeRuntime } from './console-observation.mjs';
 
 const assets = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/app.mjs', ['app.mjs', 'text/javascript; charset=utf-8']],
+  ['/runtime.mjs', ['runtime.mjs', 'text/javascript; charset=utf-8']],
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
 ]);
 const assetRoot = fileURLToPath(new URL('../../console/', import.meta.url));
@@ -27,7 +29,8 @@ export async function startConsole({ roots = [], demo = false, port = 0 } = {}) 
   const files = new Map([...assets].map(([url, [name, type]]) => [url, { type, body: readFileSync(resolve(assetRoot, name)) }]));
   let origin;
   let cache, cachedAt = 0;
-  const server = createServer((req, res) => {
+  let inspecting = false;
+  const server = createServer(async (req, res) => {
     const send = (code, body, type = 'application/json; charset=utf-8') => {
       res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'no-referrer', 'Cross-Origin-Resource-Policy': 'same-origin',
@@ -38,11 +41,25 @@ export async function startConsole({ roots = [], demo = false, port = 0 } = {}) 
         (req.headers['sec-fetch-site'] && !['same-origin', 'none'].includes(req.headers['sec-fetch-site']))) return send(403, '{"error":"E_ORIGIN"}');
     if (req.method !== 'GET') return send(405, '{"error":"E_READ_ONLY"}');
     if (files.has(req.url)) { const { body, type } = files.get(req.url); return send(200, body, type); }
-    if (req.url !== '/api/snapshot') return send(404, '{"error":"E_NOT_FOUND"}');
+    let url;
+    try { url = new URL(req.url, origin); } catch { return send(400, '{"error":"E_URL"}'); }
+    if (req.url !== '/api/snapshot' && url.pathname !== '/api/observation') return send(404, '{"error":"E_NOT_FOUND"}');
     const credential = req.headers.authorization ?? '';
     const expected = `Bearer ${token}`;
     if (Buffer.byteLength(credential) !== Buffer.byteLength(expected) || !timingSafeEqual(Buffer.from(credential), Buffer.from(expected))) return send(401, '{"error":"E_SESSION"}');
     try {
+      if (url.pathname === '/api/observation') {
+        if (demo) return send(409, '{"error":"E_DEMO_ONLY"}');
+        const project = projects.find(p => p.id === url.searchParams.get('project'));
+        const change = url.searchParams.get('change');
+        if ([...url.searchParams.keys()].some(k => !['project', 'change'].includes(k)) || !project || !/^[a-z0-9][a-z0-9._-]{0,127}$/.test(change ?? '')) return send(400, '{"error":"E_SELECTION"}');
+        const current = readProject(project.root, project.id);
+        if (current.health !== 'readable' || !current.changes.some(c => c.change_id === change)) return send(409, '{"error":"E_SOURCE_INCOMPLETE"}');
+        if (inspecting) return send(429, '{"error":"E_OBSERVATION_BUSY"}');
+        inspecting = true;
+        try { return send(200, JSON.stringify(await observeRuntime(project.root, change))); }
+        finally { inspecting = false; }
+      }
       if (!cache || Date.now() - cachedAt >= 2000) {
         cache = JSON.stringify({ version: 1, mode: demo ? 'demo' : 'live', roles, pipeline,
           projects: demo ? [demoProject()] : projects.map(p => readProject(p.root, p.id)) });

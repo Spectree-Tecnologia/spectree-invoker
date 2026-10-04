@@ -55,4 +55,4 @@ Then the pipeline in Section 7 of `SQUAD.md`, in that order. Two things that are
 
 **With no argument** — report and ask, in the Section 10 format, in Portuguese, with what you actually verified.
 
-For an adopted implementation graph, inspect `node .spectree/squad/scripts/tasks.mjs status <id>` before dispatch. Read `.spectree/squad/docs/evolution.md` for explicit execution, recovery and real-agent evaluation commands. A ready task is not permission; an uncertain attempt requires reconciliation.
+For an adopted implementation graph, inspect `node .spectree/squad/scripts/tasks.mjs status <id>` before dispatch and execute through `tasks.mjs run/repair`, preserving its attempt budget and automatic run observations. Read `.spectree/squad/docs/evolution.md` for explicit execution, recovery and real-agent evaluation commands. A ready task or a Console observation is not permission; an uncertain attempt requires reconciliation.

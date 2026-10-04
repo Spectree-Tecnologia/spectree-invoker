@@ -3,6 +3,7 @@ import { openSync, readSync, closeSync, fstatSync, readdirSync, statSync, lstatS
 import { basename } from 'node:path';
 import { inside } from './work.mjs';
 import { validate } from './validate.mjs';
+import { validRunEvent } from './run-events.mjs';
 import { ORDER, ENTRY_REQUIREMENTS } from './state-machine.mjs';
 
 export const roles = [
@@ -79,7 +80,7 @@ export function readProject(root, id) {
   const evidence = records('evidence', 'evidence').sort((a, b) => String(b.timestamp ?? '').localeCompare(String(a.timestamp ?? '')));
   const dispatches = records('dispatches', 'dispatch');
   const approvals = records('approvals', 'approval');
-  const events = [], tasks = [];
+  const events = [], tasks = [], runs = [];
   for (const change of changes) {
     const changeId = change.change_id;
     // Schema IDs also permit characters unsuitable for filenames. inside() remains the boundary.
@@ -102,10 +103,13 @@ export function readProject(root, id) {
       if (doc.plan?.tasks?.length > 50) issue(taskSource, 'E_RECORD_LIMIT');
       if (doc.version !== 1 || doc.change_id !== changeId || !Array.isArray(doc.plan?.tasks) || !Array.isArray(doc.attempts) || !doc.results || typeof doc.results !== 'object') issue(taskSource, 'E_TASK_STORE');
       else for (const task of doc.plan.tasks.slice(0, 50)) {
-        if (!task || typeof task.id !== 'string' || typeof task.mission !== 'string' || !Array.isArray(task.depends_on)) { issue(taskSource, 'E_TASK_STORE'); continue; }
+        if (!task || typeof task.id !== 'string' || typeof task.mission !== 'string' ||
+            !Array.isArray(task.depends_on) || !['depends_on', 'scenarios', 'refs'].every(k => task[k] === undefined || (Array.isArray(task[k]) && task[k].every(v => typeof v === 'string'))) ||
+            (task.checks !== undefined && (!Array.isArray(task.checks) || !task.checks.every(c => c && typeof c.scenario === 'string')))) { issue(taskSource, 'E_TASK_STORE'); continue; }
         const attempts = doc.attempts.filter(a => a?.task_id === task.id);
-        tasks.push({ ...pick(task, ['id', 'mission', 'depends_on', 'max_attempts', 'scenarios']), change_id: changeId,
-          attempts: attempts.map(a => pick(a, ['id', 'status', 'task_id'])), result: doc.results[task.id] ? pick(doc.results[task.id], ['valid', 'evidence_ref', 'revision', 'content_digest']) : null,
+        tasks.push({ ...pick(task, ['id', 'mission', 'depends_on', 'max_attempts', 'scenarios', 'refs']), change_id: changeId,
+          checks: Array.isArray(task.checks) ? task.checks.map(c => pick(c, ['scenario', 'test_name', 'files'])) : [],
+          attempts: attempts.map(a => pick(a, ['id', 'status', 'task_id', 'started_at', 'finished_at', 'result_ref'])), result: doc.results[task.id] ? pick(doc.results[task.id], ['valid', 'evidence_ref', 'revision', 'content_digest']) : null,
           freshness: 'not_revalidated', source: taskSource });
       }
     }
@@ -118,13 +122,34 @@ export function readProject(root, id) {
         events.push({ ...pick(doc, ['at', 'phase', 'task', 'next', 'status', 'note']), type: `work.${name}`, operation_id: op.name, change_id: changeId, source });
       }
     }
+    for (const op of list(`.spectree/runs/${changeId}`)) {
+      const entries = list(`.spectree/runs/${changeId}/${op.name}`);
+      const journal = []; let valid = true;
+      for (const [i, entry] of entries.entries()) {
+        const source = `.spectree/runs/${changeId}/${op.name}/${entry.name}`;
+        const event = json(source);
+        if (entry.name !== `${String(i + 1).padStart(6, '0')}.json` || !validRunEvent(event, changeId, op.name, i + 1)) {
+          issue(source, 'E_RUN_CORRUPT'); valid = false; break;
+        }
+        const projected = { ...pick(event, ['sequence', 'type', 'at', 'task_id', 'phase', 'role', 'status', 'adapter', 'requested_model', 'scenarios', 'specification_refs', 'scenario', 'test_name', 'result', 'reason', 'files', 'elapsed_ms', 'metrics', 'evidence_ref', 'scope_ok', 'authority_ok', 'code', 'process_ref']), change_id: changeId, operation_id: op.name, source };
+        journal.push(projected);
+      }
+      if (journal[0]?.type !== 'run.started') { issue(`.spectree/runs/${changeId}/${op.name}`, 'E_RUN_CORRUPT'); valid = false; }
+      const terminal = journal.filter(e => ['run.finished', 'run.uncertain', 'run.reconciled'].includes(e.type)).at(-1);
+      runs.push({ operation_id: op.name, change_id: changeId, task_id: journal[0]?.task_id ?? null,
+        phase: journal[0]?.phase ?? null, started_at: journal[0]?.at ?? null,
+        status: !valid ? 'unknown' : terminal?.type === 'run.reconciled' ? 'reconciled' : terminal?.type === 'run.uncertain' ? 'unknown' : terminal?.status ?? 'unresolved',
+        metrics: valid ? journal.find(e => e.type === 'agent.finished')?.metrics ?? null : null,
+        checks: valid ? journal.filter(e => e.type === 'check.finished') : [], events: journal, source: `.spectree/runs/${changeId}/${op.name}` });
+      events.push(...journal);
+    }
   }
   const legacy = list('docs/changes').filter(e => e.name !== 'archive' && e.isDirectory()).map(e => e.name);
   const archives = list('docs/changes/archive').filter(e => e.isDirectory()).length;
   if (events.length > 500) issue('.spectree/history', 'E_RECORD_LIMIT');
   return { id, name: project?.project_id ?? basename(root), mode: 'live', initialized: !!project,
     health: issues.length ? 'partial' : project ? 'readable' : 'uninitialized', observed_at: new Date().toISOString(),
-    changes, evidence, dispatches, approvals, tasks, events: events.sort((a, b) => String(b.at ?? '').localeCompare(String(a.at ?? ''))).slice(0, 500),
+    changes, evidence, dispatches, approvals, tasks, runs, events: events.sort((a, b) => String(b.at ?? '').localeCompare(String(a.at ?? ''))).slice(0, 500),
     issues: issues.slice(0, 50), legacy: { proposals: legacy, archives },
     authorizes_execution: false, freshness: 'not_revalidated' };
 }

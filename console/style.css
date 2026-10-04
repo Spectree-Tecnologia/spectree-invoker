@@ -90,6 +90,20 @@
   .footer svg { width: 17px; height: 17px; }
 }
 @layer components {
+  button:disabled { cursor: default; opacity: .5; }
+  .runtime-panel { margin-bottom: 20px; }
+  .runtime-observation { padding: 5px 23px 22px; }
+  .runtime-observation p { margin: 8px 0; font-size: 11px; }
+  .runtime-observation small { margin-top: 10px; }
+  .runtime-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .runtime-metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); border-block: 1px solid var(--line); }
+  .runtime-metrics > div { padding: 20px; border-right: 1px solid var(--line); }
+  .runtime-metrics strong { display: block; font-size: 15px; margin: 10px 0; overflow-wrap: anywhere; }
+  .trace-task { padding: 18px 23px; border-top: 1px solid var(--line); }
+  .trace-task > div { display: flex; gap: 15px; align-items: center; margin-bottom: 10px; }
+  .trace-scenario { display: flex; width: 100%; gap: 15px; justify-content: space-between; color: #bbc8d8; padding: 12px 0; font-size: 10px; }
+  .trace-scenario:hover { color: white; }
+  @media(max-width: 560px) { .runtime-metrics { grid-template-columns: 1fr; } .runtime-metrics > div { border-bottom: 1px solid var(--line); } .trace-scenario { flex-direction: column; gap: 6px; } .runtime-panel .panel-heading { flex-wrap: wrap; } }
   .panel { background: linear-gradient(120deg, #111216, #0c0d10); border: 1px solid var(--line); border-radius: 5px; min-width: 0; overflow: hidden; }
   .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 21px 23px; }
   .panel-heading h2 { margin-top: 5px; }

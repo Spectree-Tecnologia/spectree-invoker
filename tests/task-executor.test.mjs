@@ -27,7 +27,7 @@ function fixture() {
     writeFiles(r.root, { '.spectree/bridge.cjs': `const fs=require('node:fs');const p=JSON.parse(fs.readFileSync(0,'utf8'));${body}` });
     return { kind: 'bridge', command: [process.execPath, '.spectree/bridge.cjs'], timeout_seconds: 10 };
   };
-  const good = () => bridge("const v=require('../src/value.cjs');v[p.task.id.toLowerCase()]=p.task.id==='A'?1:2;fs.writeFileSync('src/value.cjs','module.exports = '+JSON.stringify(v));console.log(JSON.stringify({status:'completed'}));");
+  const good = () => bridge("const e=JSON.parse(fs.readFileSync('.spectree/runs/c1/'+p.dispatch_id+'/000001.json'));if(e.type!=='run.started')throw Error('missing start');const v=require('../src/value.cjs');v[p.task.id.toLowerCase()]=p.task.id==='A'?1:2;fs.writeFileSync('src/value.cjs','module.exports = '+JSON.stringify(v));console.log(JSON.stringify({status:'completed'}));");
   return { ...r, s, plan, bridge, good };
 }
 test('dependency frontier executes and reverifies real named tests without advancing lifecycle', () => {

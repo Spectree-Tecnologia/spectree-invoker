@@ -47,6 +47,31 @@ export function supervisedLaunch(command, options = {}) {
 }
 
 // Operator testimony cannot override an active or unobservable managed process boundary.
+export function observeProcesses(root, relative) {
+  const observed_at = new Date().toISOString();
+  try {
+    const dir = inside(root, relative);
+    const names = readdirSync(dir);
+    if (names.length > 100) return { state: 'unknown', observed_at, code: 'E_PROCESS_LIMIT' };
+    const dirs = names.includes('request.json') ? [relative] : names.map(n => `${relative}/${n}`);
+    if (!dirs.length) return { state: 'unknown', observed_at, code: 'E_PROCESS_UNKNOWN' };
+    const entries = dirs.map(rel => {
+      const req = read(inside(root, `${rel}/request.json`));
+      const receipt = read(inside(root, `${rel}/receipt.json`));
+      if (req.host !== hostname() || req.platform !== process.platform || receipt.id !== req.id || !/^[a-f0-9-]{36}$/.test(req.id)) return { ref: rel, state: 'unknown' };
+      if (receipt.state === 'stopped') return { ref: rel, state: 'stopped', basis: 'supervisor_receipt' };
+      if (process.platform === 'win32' && receipt.state === 'running') {
+        const probe = spawnSync(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(lib, 'process-job.ps1'), inside(root, `${rel}/request.json`), '-Inspect'],
+          { encoding: 'utf8', windowsHide: true, timeout: 5000, maxBuffer: 16384 });
+        const value = probe.stdout?.trim();
+        if (probe.status === 0 && ['active', 'stopped'].includes(value)) return { ref: rel, state: value, basis: 'windows_job_query' };
+      }
+      return { ref: rel, state: 'unknown', basis: 'live_boundary_not_proven' };
+    });
+    return { state: entries.some(e => e.state === 'active') ? 'active' : entries.every(e => e.state === 'stopped') ? 'stopped' : 'unknown', observed_at, entries };
+  } catch { return { state: 'unknown', observed_at, code: 'E_PROCESS_UNKNOWN' }; }
+}
+
 export function inspectProcesses(root, relative) {
   const dir = inside(root, relative);
   if (!existsSync(dir)) refuse('E_PROCESS_UNKNOWN', 'Missing process receipts; inspect the interrupted launch.');

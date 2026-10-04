@@ -1,4 +1,4 @@
-# Spectree Console · ciclo 1.9
+# Spectree Console · ciclos 1.9–1.10
 
 Interface local de observabilidade do squad, com a identidade monocromática da Spectree.
 
@@ -12,13 +12,15 @@ npm run console -- --demo
 
 Abra o endereço impresso no terminal. O fragmento contém uma credencial temporária da sessão; não compartilhe esse endereço. Ctrl+C encerra o servidor. Nenhuma instalação é necessária além do Node >=20.11 já exigido pelo Invoker.
 
-## Contrato do primeiro incremento
+Para instalar um launcher independente da pasta do terminal e da branch, veja [Runtime Conectado](runtime-connected.md).
 
-- **Somente leitura:** nenhum processo, Git, agente, check, instalação, aprovação ou transição é executado pelo Console. Projetos são autorizados na inicialização, nunca por um caminho enviado pelo navegador.
+## Contrato
+
+- **Somente leitura:** nenhum agente, check, instalação, aprovação ou transição é executado pelo Console. A consulta explícita ao runtime usa subprocessos de leitura do pacote, Git local e inspeção de processos supervisionados. Projetos são autorizados na inicialização, nunca por um caminho enviado pelo navegador. Filtros Git executáveis e fsmonitor impedem essa consulta.
 - **Observações persistidas:** pipeline, missões, tarefas, evidências, aprovações e histórico vêm de `.spectree`. Estado registrado não comprova atividade em tempo real. Resultados PASS não certificam o candidato atual. O Console não substitui `state.mjs plan` ou os gates do runtime.
 - **Ausência explícita:** sem mudanças estruturadas, o painel mostra essa condição. Pastas em `docs/changes/archive` são apenas inventário, nunca prova de integração ou fechamento.
 - **Atualização:** nova leitura a cada cinco segundos enquanto a janela está visível; atualização manual e pausa disponíveis. Falhas de leitura são visíveis, inclusive arquivos corrompidos, versão desconhecida e limites. Dados anteriores ficam identificados como desatualizados quando a conexão cai.
-- **Tarefas:** resultados e tentativas são relatos persistidos, sem revalidar hashes do candidato, oráculos ou processos. O estado `started` exige inspeção; não é apresentado como agente em execução. Independência de QA e modelos não são inferidos.
+- **Tarefas:** resultados e tentativas são relatos persistidos. “Consultar runtime” revalida o candidato e os oráculos, sem executar testes; também inspeciona fronteiras de processos disponíveis. A consulta tem horário explícito e não acompanha edições posteriores automaticamente. O estado `started` exige inspeção; não é apresentado como agente em execução. Independência de QA e modelos não são inferidos.
 - **Demonstração:** dados sintéticos somente com `--demo`, com identificação permanente. Não se misturam com dados reais.
 
 ## Fronteira local

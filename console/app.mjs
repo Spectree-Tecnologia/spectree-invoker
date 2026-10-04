@@ -1,7 +1,8 @@
+import { runtimePanel } from './runtime.mjs';
 const $ = selector => document.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const names = { draft: 'Rascunho', proposed: 'Proposta', scope_approved: 'Escopo', isolated: 'Isolamento', baselined: 'Baseline', pass1_complete: 'Pass 1', implemented: 'Implementação', pass2_complete: 'Pass 2', ci_green: 'CI', integration_approved: 'Aprovação', integrated: 'Integração', closed: 'Fechamento', blocked: 'Bloqueada' };
-const eventNames = { transition: 'Transição registrada', 'work.started': 'Operação iniciada', 'work.finished': 'Operação finalizada', 'work.reconciled': 'Efeitos reconciliados', adopted_as_draft: 'Mudança adotada', opened: 'Mudança aberta' };
+const eventNames = { transition: 'Transição registrada', 'work.started': 'Operação iniciada', 'work.finished': 'Operação finalizada', 'work.reconciled': 'Efeitos reconciliados', adopted_as_draft: 'Mudança adotada', opened: 'Mudança aberta', 'run.started': 'Execução iniciada', 'agent.finished': 'Agente retornou', 'check.finished': 'Check observado', 'run.finished': 'Execução finalizada', 'run.uncertain': 'Efeitos incertos', 'run.reconciled': 'Execução reconciliada' };
 const labels = { succeeded: 'Sucesso relatado', reported_success: 'Sucesso relatado', started: 'Início registrado', interrupted: 'Interrompida', failed: 'Falha registrada', unknown: 'Resultado desconhecido', reconciled: 'Reconciliada' };
 const icons = {
   overview: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -17,6 +18,9 @@ let token = new URLSearchParams(location.hash.slice(1)).get('session');
 history.replaceState(null, '', location.pathname);
 let data, projectId, changeId, view = 'overview', query = '', resultFilter = 'all', paused = false, motion = !matchMedia('(prefers-reduced-motion: reduce)').matches;
 let offline = false, busy = false, records = [], lastFocus;
+const observations = new Map();
+let inspecting = false;
+const observationKey = () => `${projectId}/${changeId}`;
 const project = () => data?.projects.find(p => p.id === projectId) ?? data?.projects[0];
 const change = () => project()?.changes.find(c => c.change_id === changeId);
 const scoped = key => changeId ? (project()?.[key] ?? []).filter(x => x.change_id === changeId) : [];
@@ -78,8 +82,8 @@ function detailPanel() {
 function mainView() {
   if (view === 'changes') return `<section class="panel"><div class="panel-heading"><h2>Mudanças do projeto</h2><span class="count">${project().changes.length}</span></div>${project().changes.length ? project().changes.filter(c => `${c.change_id} ${c.scope}`.toLowerCase().includes(query.toLowerCase())).map(c => `<button class="change-row" data-change="${esc(c.change_id)}"><span class="change-icon">⌘</span><span><strong>${esc(c.scope)}</strong><small>${esc(c.change_id)} · ${esc(c.adapter)}</small></span>${badge(names[c.state] ?? c.state, c.state === 'blocked' ? 'warn' : '')}<span>→</span></button>`).join('') : empty('Nenhuma mudança estruturada', 'O Console não converte artefatos legados em estados de execução.')}</section>`;
   if (view === 'evidence') return `<section class="panel"><div class="panel-heading"><div><span class="eyebrow">RESULTADOS PERSISTIDOS</span><h2>Biblioteca de evidências</h2></div><label class="filter">Resultado <select id="result-filter"><option value="all">Todos</option>${['PASS', 'FAIL', 'EXPECTED_REJECTION', 'INFRA_ERROR', 'NOT_RUN', 'INCONCLUSIVE'].map(v => `<option ${resultFilter === v ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>${evidenceRows()}<div class="panel-foot">PASS é o resultado registrado naquele candidato; não certifica o conteúdo atual.</div></section><section class="panel approvals"><div class="panel-heading"><h2>Aprovações registradas</h2>${badge('Autoridade não reavaliada')}</div>${scoped('approvals').length ? scoped('approvals').map(a => `<button class="change-row" ${inspect(a, a.gate)}><strong>${esc(a.gate)}</strong><span>${esc(a.approval_id)}</span><span>↗</span></button>`).join('') : empty('Sem aprovações vinculadas', 'Autorizações de outras mudanças não são atribuídas a esta seleção.')}</section>`;
-  if (view === 'activity') return timeline();
-  return `<div class="workspace-grid"><div class="primary">${squad()}${pipelineView()}${taskList()}<section class="panel"><div class="panel-heading"><div><span class="eyebrow">04 / VERIFICABILIDADE</span><h2>Evidências recentes</h2></div><button class="text-button" data-view="evidence">Ver todas ↗</button></div>${evidenceRows(4)}</section>${timeline(5)}</div>${detailPanel()}</div>`;
+  if (view === 'activity') return runtimePanel({ project: project(), changeId, observation: observations.get(observationKey()), inspecting, inspect }) + timeline();
+  return `<div class="workspace-grid"><div class="primary">${squad()}${pipelineView()}${taskList()}<section class="panel"><div class="panel-heading"><div><span class="eyebrow">04 / VERIFICABILIDADE</span><h2>Evidências recentes</h2></div><button class="text-button" data-view="evidence">Ver todas ↗</button></div>${evidenceRows(4)}</section>${runtimePanel({ project: project(), changeId, observation: observations.get(observationKey()), inspecting, inspect })}${timeline(5)}</div>${detailPanel()}</div>`;
 }
 function render() {
   if (!data) return;
@@ -93,7 +97,7 @@ function render() {
   const titles = { overview: ['Centro de operações', 'Inteligência, em operação.'], changes: ['Registro de mudanças', 'Especificar. Construir. Verificar.'], evidence: ['Evidências do squad', 'Cada resultado, rastreável.'], activity: ['Histórico operacional', 'O trabalho deixa uma trilha.'] };
   const focusId = document.activeElement?.id;
   document.body.classList.toggle('no-motion', !motion);
-  $('#app').innerHTML = `<header class="topbar"><a class="brand" href="#" aria-label="Spectree Console — início" data-home>${logo}<span>spectree<span class="brand-slash"> / </span><span class="brand-console">console</span></span></a><div class="topbar-context"><span class="dim">WORKSPACE</span><span>/</span><span>${esc(p.name)}</span></div><div class="session"><span class="tiny-dot ${offline ? 'warn' : ''}"></span><span>${data.mode === 'demo' ? 'DEMONSTRAÇÃO' : 'SESSÃO LOCAL'}</span><span class="version">v1.9</span></div></header>
+  $('#app').innerHTML = `<header class="topbar"><a class="brand" href="#" aria-label="Spectree Console — início" data-home>${logo}<span>spectree<span class="brand-slash"> / </span><span class="brand-console">console</span></span></a><div class="topbar-context"><span class="dim">WORKSPACE</span><span>/</span><span>${esc(p.name)}</span></div><div class="session"><span class="tiny-dot ${offline ? 'warn' : ''}"></span><span>${data.mode === 'demo' ? 'DEMONSTRAÇÃO' : 'SESSÃO LOCAL'}</span><span class="version">v1.10</span></div></header>
   <div class="app-layout"><aside class="sidebar"><div><label class="eyebrow" for="project-select">SEU WORKSPACE</label><select id="project-select">${data.projects.map(x => `<option value="${esc(x.id)}" ${x.id === p.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div><div class="nav-label eyebrow">OBSERVABILIDADE</div><nav aria-label="Navegação principal">${[['overview', 'Visão geral'], ['changes', 'Mudanças'], ['evidence', 'Evidências'], ['activity', 'Atividade']].map(([v, name]) => `<button data-view="${v}" ${view === v ? 'aria-current="page"' : ''}>${icon(v)}<span>${name}</span>${v === 'changes' ? `<span class="nav-count">${p.changes.length}</span>` : v === 'overview' ? '<span class="nav-spark">✦</span>' : ''}</button>`).join('')}</nav><div class="sidebar-note"><span class="tiny-dot"></span><span>OBSERVAÇÃO LOCAL</span><p>Especificações guiam.<br>Evidências sustentam.</p></div><div class="sidebar-bottom"><span class="mono-mark">S</span><div>spectree engineering<small>spec-driven by design</small></div><span>↗</span></div></aside>
   <main id="main" tabindex="-1"><div class="breadcrumb">SPECTREE INVOKER <span>/</span> ${esc(titles[view][0].toUpperCase())}</div><div class="page-heading"><div><span class="eyebrow">${data.mode === 'demo' ? 'LABORATÓRIO / DADOS SINTÉTICOS' : 'SPEC-DRIVEN ENGINEERING'}</span><h1>${titles[view][1]}</h1><p>Visibilidade sobre o squad. Precisão em cada decisão.</p></div><div class="refresh-controls"><span class="sync-label">${offline ? 'Conexão perdida' : paused ? 'Leitura pausada' : 'Leitura às ' + date(p.observed_at)}</span><button id="pause" class="icon-button" aria-label="${paused ? 'Retomar' : 'Pausar'} atualização">${paused ? '▷' : 'Ⅱ'}</button><button id="refresh" class="icon-button" aria-label="Atualizar dados">${icon('refresh')}</button></div></div>
   ${data.mode === 'demo' ? '<div class="notice demo-notice"><span>◇</span><strong>Ambiente de demonstração</strong><span>Todos os dados abaixo são sintéticos. Nenhum agente está sendo executado.</span></div>' : ''}
@@ -156,7 +160,19 @@ document.addEventListener('click', event => {
   else if (target.id === 'refresh') { target.blur(); refresh(); }
   else if (target.id === 'pause') { paused = !paused; render(); }
   else if (target.id === 'motion') { motion = !motion; render(); }
+  else if (target.id === 'observe-runtime') inspectRuntime();
 });
+async function inspectRuntime() {
+  if (inspecting || !changeId) return;
+  const key = observationKey(); inspecting = true; render();
+  try {
+    const response = await fetch(`/api/observation?project=${encodeURIComponent(projectId)}&change=${encodeURIComponent(changeId)}`, {
+      headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(35000), cache: 'no-store' });
+    const result = await response.json();
+    observations.set(key, response.ok ? result : { status: 'unavailable', code: result.error, observed_at: new Date().toISOString() });
+  } catch { observations.set(key, { status: 'unavailable', code: 'E_CONNECTION', observed_at: new Date().toISOString() }); }
+  finally { inspecting = false; render(); }
+}
 $('#inspector').addEventListener('close', () => lastFocus?.isConnected && lastFocus.focus());
 document.addEventListener('change', event => {
   if (event.target.id === 'project-select') { projectId = event.target.value; changeId = project().changes[0]?.change_id; query = ''; render(); }
