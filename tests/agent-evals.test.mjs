@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { tempDir, cleanup, writeFiles, gitRepo, REPO } from './helpers.mjs';
 import { scoreDecision, runEvaluations } from '../scripts/lib/agent-evals.mjs';
+import { runFlowEvaluation } from '../scripts/lib/flow-evals.mjs';
 
 test('evaluation scorer requires the observed decision and preserves negative and positive controls', () => {
   const expected = { classification: 'interrupted', action: 'reconcile', can_advance: false };
@@ -40,5 +41,26 @@ test('installed evolution entrypoints, generated profiles, runtime libraries and
     assert.equal(context.status, 0, context.stderr); assert.equal(context.stdout.trim(), '2');
     assert.match(run('tasks.mjs').stderr, /usage:/);
     assert.match(run('reports.mjs').stderr, /usage:/);
+    assert.match(run('adopt.mjs').stderr, /usage:/);
+    assert.deepEqual(JSON.parse(run('evals.mjs', '--suite', 'flow').stdout).cases, ['operational-flow']);
+    assert.match(readFileSync(join(pkg, 'scripts/lib/process-job.cs'), 'utf8'), /AssignProcessToJobObject/);
+    assert.equal(JSON.parse(readFileSync(join(pkg, 'docs/examples/claude-runner.json'))).kind, 'claude-code');
   } finally { cleanup(r.root); }
+});
+
+test('flow evaluation exercises real gates, dependencies, interruption and regression repair without pretending QA independence', () => {
+  const scratch = tempDir(); let fixture;
+  try {
+    const bridge = join(scratch, 'flow-bridge.cjs');
+    writeFiles(scratch, { 'flow-bridge.cjs': `const fs=require('fs');const p=JSON.parse(fs.readFileSync(0,'utf8'));
+      if(!fs.existsSync('.spectree/first-launch')) { fs.writeFileSync('.spectree/first-launch','fixture');setTimeout(()=>{},10000); }
+      else {const v=require(process.cwd()+'/src/value.cjs');v[p.task.id.toLowerCase()]=p.task.id==='A'?1:2;fs.writeFileSync('src/value.cjs','module.exports='+JSON.stringify(v));console.log(JSON.stringify({status:'completed'}));}` });
+    const config = { kind: 'bridge', command: [process.execPath, bridge], timeout_seconds: 15 };
+    assert.throws(() => runFlowEvaluation({ config, output: scratch }), { code: 'E_EVAL_MODE' });
+    const result = runFlowEvaluation({ config, output: scratch, mode: 'transport-test' }); fixture = result.fixture;
+    assert.equal(result.passed, true, JSON.stringify(result.error ?? result.steps.at(-1)));
+    assert.equal(result.lifecycle_state, 'implemented'); assert.equal(result.qa_gate.blocked, true);
+    assert.equal(result.steps.find((s) => s.name === 'detect-regression').result.ok, false);
+    assert.equal(result.steps.find((s) => s.name === 'bounded-agent-repair').result.verification.checks.length, 2);
+  } finally { if (fixture) cleanup(fixture); cleanup(scratch); }
 });

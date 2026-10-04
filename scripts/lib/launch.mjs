@@ -76,13 +76,13 @@ export function quoteForCmd(s) {
  * Run a command as given. Returns whatever spawnSync returns, so the caller keeps deciding
  * what a status or an error means.
  */
-export function launch(cmd, options = {}) {
+export function launchSpec(cmd, options = {}) {
   const [file, ...args] = cmd;
-  if (!WIN) return spawnSync(file, args, { ...options, shell: false });
+  if (!WIN) return { file, args, options: { ...options, shell: false } };
 
   const resolved = resolveOnPath(file, { env: options.env ?? process.env, cwd: options.cwd ?? process.cwd() });
   // Not found: spawn it anyway, so the failure is the real one and says the real name.
-  if (!resolved) return spawnSync(file, args, { ...options, shell: false });
+  if (!resolved) return { file, args, options: { ...options, shell: false } };
 
   if (/\.(cmd|bat)$/i.test(resolved)) {
     for (const a of args) {
@@ -96,8 +96,12 @@ export function launch(cmd, options = {}) {
       }
     }
     const line = [resolved, ...args].map(quoteForCmd).join(' ');
-    return spawnSync(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', `"${line}"`],
-      { ...options, shell: false, windowsVerbatimArguments: true });
+    return { file: process.env.ComSpec ?? 'cmd.exe', args: ['/d', '/s', '/c', `"${line}"`],
+      options: { ...options, shell: false, windowsVerbatimArguments: true } };
   }
-  return spawnSync(resolved, args, { ...options, shell: false });
+  return { file: resolved, args, options: { ...options, shell: false } };
+}
+export function launch(cmd, options = {}) {
+  const spec = launchSpec(cmd, options);
+  return spawnSync(spec.file, spec.args, spec.options);
 }

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "project_id": "replace-with-project-id",
+  "change_id": "replace-with-next-change-id",
+  "scope": "Replace with the reviewed scope of the next change.",
+  "allowed_paths": ["src/"],
+  "refs": ["docs/changes/replace-with-next-change-id/proposal.md"],
+  "adapter": "claude-code",
+  "closure_mode": "prepared"
+}

@@ -10,7 +10,8 @@ try {
   else if (command === 'status' && change && !arg) result = taskStatus(root, change);
   else if (command === 'verify' && arg === '--apply' && !rest.length) result = verifyTasks(root, change);
   else if (command === 'run' && arg && rest[0] === '--adapter' && rest[1] && rest[2] === '--apply' && rest.length === 3) result = runTask(root, change, arg, read(rest[1]));
+  else if (command === 'repair' && arg && rest[0] === '--adapter' && rest[1] && rest[2] === '--inspection' && rest[3] && rest[4] === '--apply' && rest.length === 5) result = runTask(root, change, arg, read(rest[1]), read(rest[3]));
   else if (command === 'recover' && arg && rest.length === 2 && rest[0] === '--inspection') result = recoverTask(root, change, arg, read(rest[1]));
-  else throw Error('usage: tasks.mjs init <change> <plan.json> | status <change> | run <change> <task> --adapter <config.json> --apply | verify <change> --apply | recover <change> <attempt> --inspection <json>');
+  else throw Error('usage: tasks.mjs init <change> <plan.json> | status <change> | run <change> <task> --adapter <config.json> --apply | repair <change> <task> --adapter <config.json> --inspection <json> --apply | verify <change> --apply | recover <change> <attempt> --inspection <json>');
   console.log(JSON.stringify(result, null, 2)); if (result.ok === false) process.exitCode = 1;
 } catch (e) { console.error(`${e.code ?? 'E_TASK'}: ${e.message}`); process.exitCode = 1; }

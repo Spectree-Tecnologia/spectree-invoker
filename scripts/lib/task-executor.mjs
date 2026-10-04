@@ -10,8 +10,9 @@ import { contractDigest } from './digest.mjs';
 import { canDispatch } from './state-machine.mjs';
 import { inside, identifier, bounded, refuse, references, snapshot, startWork, finishWork, reconcileWork, pendingWork, workRecords } from './work.mjs';
 import { hash, contextPacket, packageRoot } from './context.mjs';
-import { runAgent } from './agent-runner.mjs';
+import { runAgent, agentCommand } from './agent-runner.mjs';
 import { launch } from './launch.mjs';
+import { supervisedLaunch, inspectProcesses } from './process-supervisor.mjs';
 import { parseTap, judgePassingRun } from './tap.mjs';
 
 const file = (root, id) => inside(root, `.spectree/tasks/${identifier(id)}.json`);
@@ -116,6 +117,13 @@ export function initTasks(root, id, plan) {
     guard(root, doc); save(root, doc); return taskStatus(root, id);
   });
 }
+function processBlock(root, id) {
+  for (const op of workRecords(root, id)) {
+    const rel = `.spectree/processes/${op.operation_id}`;
+    if (existsSync(inside(root, rel))) try { inspectProcesses(root, rel); } catch(e) { return { operation_id: op.operation_id, code: e.code }; }
+  }
+  return null;
+}
 export function taskStatus(root, id) {
   const doc = load(root, id); guard(root, doc);
   const current = snapshot(root); const pending = doc.attempts.filter((a) => !['succeeded', 'reconciled'].includes(a.status));
@@ -130,15 +138,16 @@ export function taskStatus(root, id) {
       : result ? 'stale' : pending.some((a) => a.task_id === t.id) ? 'reconcile' : count >= t.max_attempts ? 'exhausted' : 'pending';
     return { id: t.id, status, attempts: count, depends_on: t.depends_on };
   });
-  const blocked = pending.length > 0 || !!pendingWork(root, id) || tasks.some((t) => t.status === 'stale');
+  const processes = processBlock(root, id);
+  const blocked = pending.length > 0 || !!pendingWork(root, id) || !!processes || tasks.some((t) => t.status === 'stale');
   const ready = blocked ? [] : tasks.filter((t) => t.status === 'pending' && t.depends_on.every((d) => tasks.find((x) => x.id === d).status === 'verified')).map((t) => t.id);
-  return { version: 1, change_id: id, authorizes_execution: false, current, tasks, ready, complete: tasks.every((t) => t.status === 'verified'),
-    pending: pending.map((a) => a.id), work_pending: pendingWork(root, id) };
+  return { version: 1, change_id: id, authorizes_execution: false, current, tasks, ready, complete: !processes && !pending.length && !pendingWork(root, id) && tasks.every((t) => t.status === 'verified'),
+    pending: pending.map((a) => a.id), work_pending: pendingWork(root, id), process_block: processes };
 }
 export function requireTasksComplete(root, id) {
   if (!existsSync(file(root, id))) return; // Explicit adoption, never inferred for legacy projects.
   const status = taskStatus(root, id);
-  if (!status.complete || status.pending.length || pendingWork(root, id)) refuse('E_TASK_INCOMPLETE', 'All registered tasks require current verified evidence before implemented.');
+  if (!status.complete || status.pending.length || status.process_block || pendingWork(root, id)) refuse('E_TASK_INCOMPLETE', 'All registered tasks require current verified evidence before implemented.');
 }
 function inventory(root) {
   const names = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8', stdio: 'pipe' }).split('\0').filter(Boolean);
@@ -157,16 +166,17 @@ function authorityStamp(root) {
   for (const name of ['changes', 'approvals', 'evidence', 'closure', 'dispatches', 'project.json']) walk(`.spectree/${name}`);
   return hash(result);
 }
-function checks(root, tasks) {
+function checks(root, tasks, processRef) {
   const before = snapshot(root); const output = [];
   const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
-  for (const task of tasks) for (const check of task.checks) {
+  allChecks: for (const task of tasks) for (const check of task.checks) {
     const began = performance.now();
-    const run = launch(check.command, { cwd: root, env, encoding: 'utf8', timeout: check.timeout_seconds * 1000, maxBuffer: 8 * 1024 * 1024, windowsHide: true });
+    const run = supervisedLaunch(check.command, { cwd: root, env, process_ref: `${processRef}/check-${randomUUID()}`, encoding: 'utf8', timeout: check.timeout_seconds * 1000, maxBuffer: 8 * 1024 * 1024, windowsHide: true });
     const verdict = run.error || run.signal ? { result: 'INCONCLUSIVE', reason: run.error?.code ?? run.signal }
       : judgePassingRun(parseTap(run.stdout), check.test_name, run.status);
     output.push({ task_id: task.id, scenario: check.scenario, test_name: check.test_name, command: check.command,
-      ...verdict, stdout: run.stdout, stderr: run.stderr, elapsed_ms: Math.round(performance.now() - began) });
+      ...verdict, process: run.process, stdout: run.stdout, stderr: run.stderr, elapsed_ms: Math.round(performance.now() - began) });
+    if (!run.process.quiescent) break allChecks;
   }
   const after = snapshot(root);
   return { ok: output.every((r) => r.result === 'PASS') && before.content_digest === after.content_digest && before.revision === after.revision && before.branch === after.branch,
@@ -176,32 +186,42 @@ function record(root, id, name, doc) {
   const path = inside(root, `.spectree/tasks/${id}/${name}.json`); mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(doc, null, 2) + '\n', { flag: 'wx' }); return `.spectree/tasks/${id}/${name}.json`;
 }
-export function runTask(root, id, taskId, config) {
+export function runTask(root, id, taskId, config, repair = null) {
+  agentCommand(root, config); // Refuse invalid transport before consuming an attempt.
   return exclusive(root, id, () => {
     const doc = load(root, id); guard(root, doc);
-    if (!taskStatus(root, id).ready.includes(taskId)) refuse('E_TASK_NOT_READY', 'Task has unmet dependencies, stale evidence, pending work or exhausted attempts.');
+    const frontier = taskStatus(root, id);
+    if (repair) {
+      bounded(repair.cause, 'observed repair cause'); bounded(repair.new_hypothesis, 'repair hypothesis');
+      if (!repair.refs?.length) refuse('E_TASK_RECOVERY', 'Repair needs inspected evidence.'); references(root, repair.refs);
+      const selected = doc.plan.tasks.find((t) => t.id === taskId);
+      if (!selected || !doc.attempts.some((a) => a.task_id === taskId) || frontier.pending.length || frontier.work_pending || frontier.process_block ||
+          !frontier.tasks.some((t) => t.status === 'stale') || selected.depends_on.some((d) => !doc.results[d])) refuse('E_TASK_NOT_READY', 'Repair requires a previously attempted task, reconciled work and stale evidence; it cannot bypass missing dependencies.');
+    } else if (!frontier.ready.includes(taskId)) refuse('E_TASK_NOT_READY', 'Task has unmet dependencies, stale evidence, pending work or exhausted attempts.');
     const gate = implementationGate(root, id); const task = doc.plan.tasks.find((t) => t.id === taskId);
     const previous = doc.attempts.filter((a) => a.task_id === taskId); const operation = `task-${randomUUID()}`;
     const dispatch = { schema_version: '1.0.0', dispatch_id: operation, change_id: id, role: 'full_stack_developer',
       mission: task.mission, exit_criteria: task.checks.map((c) => c.test_name), allowed_paths: task.allowed_paths,
       required_reading: task.refs, attempt: previous.length + 1, max_attempts: task.max_attempts,
       budget_key: `task:${id}:${taskId}`, input_revision: gate.preconditions.revision,
-      ...(previous.length ? { previous_attempt: previous.at(-1).recovery } : {}) };
+      ...(previous.length ? { previous_attempt: repair ? { cause: repair.cause, new_hypothesis: repair.new_hypothesis } : previous.at(-1).recovery } : {}) };
     const budget = canDispatch(dispatch, new Store(root).dispatches(id));
     if (!budget.ok) refuse(budget.code, budget.message);
     const packet = contextPacket(root, task, { change_id: id, preconditions: gate.preconditions, dispatch_id: operation },
-      { adapter: config.context_adapter ?? 'codex' });
+      { adapter: config.context_adapter ?? (config.kind === 'claude-code' ? 'claude-code' : 'codex') });
+    if (repair) packet.repair = { cause: repair.cause, new_hypothesis: repair.new_hypothesis, refs: references(root, repair.refs) };
     const packetRef = record(root, id, `${operation}-packet`, packet);
     const before = inventory(root); const initial = snapshot(root);
-    const attempt = { id: operation, task_id: taskId, status: 'started', input: initial, packet_ref: packetRef, adapter: config.kind };
+    const attempt = { id: operation, task_id: taskId, status: 'started', input: initial, packet_ref: packetRef, adapter: config.kind,
+      process_ref: `.spectree/processes/${operation}` };
     doc.attempts.push(attempt); save(root, doc);
     startWork(root, id, operation, { phase: 'implement', task: taskId, next: 'Inspect the agent outcome, then execute acceptance checks.', refs: [packetRef] });
     new Store(root).putDispatch(dispatch);
     const authority = authorityStamp(root);
     try {
-      const agent = runAgent(root, packet, config);
+      const agent = runAgent(root, packet, { ...config, process_ref: `${attempt.process_ref}/agent` });
       let verification = null;
-      if (agent.status === 'reported_success') verification = checks(root, doc.plan.tasks.filter((t) => doc.results[t.id] || t.id === taskId));
+      if (agent.status === 'reported_success') verification = checks(root, doc.plan.tasks.filter((t) => doc.results[t.id] || t.id === taskId), attempt.process_ref);
       guard(root, doc);
       const after = inventory(root); const current = snapshot(root);
       const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter((p) => before[p] !== after[p]);
@@ -228,13 +248,13 @@ export function runTask(root, id, taskId, config) {
 export function verifyTasks(root, id) {
   return exclusive(root, id, () => {
     const doc = load(root, id); guard(root, doc); implementationGate(root, id);
-    if (doc.attempts.some((a) => !['succeeded', 'reconciled'].includes(a.status))) refuse('E_TASK_PENDING', 'Reconcile unfinished work first.');
+    if (doc.attempts.some((a) => !['succeeded', 'reconciled'].includes(a.status)) || processBlock(root, id) || pendingWork(root, id)) refuse('E_TASK_PENDING', 'Reconcile unfinished work and inspect managed processes first.');
     const selected = doc.plan.tasks.filter((t) => doc.results[t.id]);
     if (!selected.length) refuse('E_TASK_CHECK', 'No completed task to reverify.');
     const op = `verify-${randomUUID()}`;
     startWork(root, id, op, { phase: 'verify', task: 'completed tasks', next: 'Verify the candidate has not changed.' });
     const authority = authorityStamp(root);
-    const result = checks(root, selected); guard(root, doc);
+    const result = checks(root, selected, `.spectree/processes/${op}`); guard(root, doc);
     result.ok = result.ok && authorityStamp(root) === authority;
     const ref = record(root, id, op, result);
     finishWork(root, id, op, { result: { status: result.ok ? 'completed' : 'failed' }, next: result.ok ? 'Re-read frontier.' : 'Diagnose and reconcile verification.', refs: [ref] });
@@ -259,6 +279,7 @@ export function recoverTask(root, id, operation, { cause, new_hypothesis, refs, 
   return exclusive(root, id, () => {
     const doc = load(root, id); const attempt = doc.attempts.find((a) => a.id === operation);
     if (!attempt || ['succeeded', 'reconciled'].includes(attempt.status)) refuse('E_TASK_RECOVERY', 'No unresolved task attempt with this ID.');
+    if (attempt.process_ref) attempt.process_inspection = inspectProcesses(root, attempt.process_ref);
     const work = workRecords(root, id).find((r) => r.operation_id === operation);
     if (work && !work.reconciled) reconcileWork(root, id, operation, { note: cause, next: new_hypothesis, refs });
     attempt.status = 'reconciled'; attempt.recovery = { cause, new_hypothesis };

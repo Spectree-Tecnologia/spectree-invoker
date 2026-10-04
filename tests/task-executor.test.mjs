@@ -34,6 +34,8 @@ test('dependency frontier executes and reverifies real named tests without advan
   const r = fixture();
   try {
     assert.deepEqual(initTasks(r.root, 'c1', r.plan).ready, ['A']);
+    assert.throws(() => runTask(r.root, 'c1', 'A', { kind: 'invalid' }), { code: 'E_AGENT_CONFIG' });
+    assert.equal(taskStatus(r.root, 'c1').tasks[0].attempts, 0);
     const can = () => spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), 'can', 'c1', 'implemented'],
       { cwd: r.root, env: { ...process.env, SPECTREE_PROJECT_ROOT: r.root }, encoding: 'utf8' });
     assert.match(can().stderr, /E_TASK_INCOMPLETE/);
@@ -42,7 +44,7 @@ test('dependency frontier executes and reverifies real named tests without advan
     assert.equal(first.ok, true, readFileSync(join(r.root, first.attempt.result_ref), 'utf8'));
     assert.deepEqual(taskStatus(r.root, 'c1').ready, ['B']);
     const result = runTask(r.root, 'c1', 'B', r.good());
-    assert.equal(result.ok, true); assert.equal(result.verification.checks.length, 2);
+    assert.equal(result.ok, true, readFileSync(join(r.root, result.attempt.result_ref), 'utf8')); assert.equal(result.verification.checks.length, 2);
     assert.equal(result.status.complete, true); assert.equal(r.s.change('c1').state, 'pass1_complete');
     assert.equal(can().status, 0);
     assert.equal(r.s.dispatches('c1').length, 2); assert.equal(pendingWork(r.root, 'c1'), null);
@@ -77,7 +79,7 @@ test('whole candidate evidence becomes stale after external edits and can be rev
     writeFileSync(join(r.root, 'src/value.cjs'), 'module.exports={a:1,b:0}; // changed\n');
     assert.equal(taskStatus(r.root, 'c1').tasks[0].status, 'stale');
     assert.throws(() => runTask(r.root, 'c1', 'B', r.good()), { code: 'E_TASK_NOT_READY' });
-    assert.equal(verifyTasks(r.root, 'c1').ok, true);
+    const verified = verifyTasks(r.root, 'c1'); assert.equal(verified.ok, true, readFileSync(join(r.root, verified.evidence_ref), 'utf8'));
     assert.deepEqual(taskStatus(r.root, 'c1').ready, ['B']);
   } finally { cleanup(r.root); }
 });
@@ -87,6 +89,13 @@ test('later task cannot regress a previously completed scenario', () => {
     initTasks(r.root, 'c1', r.plan); runTask(r.root, 'c1', 'A', r.good());
     const out = runTask(r.root, 'c1', 'B', r.bridge("fs.writeFileSync('src/value.cjs','module.exports={a:0,b:2}');console.log(JSON.stringify({status:'completed'}));"));
     assert.equal(out.ok, false); assert.notEqual(out.verification.checks[0].result, 'PASS'); assert.equal(out.status.complete, false);
+    const inspection = { cause: 'B regressed A, reproduced by immutable test.', new_hypothesis: 'Restore A and preserve B.', refs: ['src/value.cjs', out.attempt.result_ref], processes_stopped: true };
+    assert.throws(() => runTask(r.root, 'c1', 'B', r.good(), inspection), { code: 'E_TASK_NOT_READY' });
+    recoverTask(r.root, 'c1', out.attempt.id, inspection);
+    const repaired = runTask(r.root, 'c1', 'B', r.bridge("fs.writeFileSync('src/value.cjs','module.exports={a:1,b:2}');console.log(JSON.stringify({status:'completed'}));"), inspection);
+    assert.equal(repaired.ok, true); assert.equal(repaired.verification.checks.length, 2);
+    writeFileSync(join(r.root, 'src/value.cjs'), 'module.exports={a:0,b:2}');
+    assert.throws(() => runTask(r.root, 'c1', 'B', r.good(), inspection), { code: 'E_ATTEMPTS_EXCEEDED' });
   } finally { cleanup(r.root); }
 });
 test('failed reverification stays invalid until reconciled and rerun; missing evidence cannot authorize completion', () => {
@@ -167,13 +176,15 @@ test('process death after an actual write leaves a recoverable attempt, never an
   const r = fixture();
   try {
     initTasks(r.root, 'c1', r.plan);
-    const config = r.bridge("fs.writeFileSync('src/value.cjs','module.exports={a:1,b:0}');process.kill(process.ppid,'SIGKILL');");
+    const config = r.bridge("fs.writeFileSync('src/value.cjs','module.exports={a:1,b:0}');process.kill(JSON.parse(fs.readFileSync('.spectree/tasks/executor.lock','utf8')).pid,'SIGKILL');");
     writeFiles(r.root, { '.spectree/config.json': JSON.stringify(config) });
     const child = spawn(process.execPath, [join(REPO, 'scripts/tasks.mjs'), 'run', 'c1', 'A', '--adapter', '.spectree/config.json', '--apply'],
       { cwd: r.root, env: { ...process.env, SPECTREE_PROJECT_ROOT: r.root }, stdio: 'ignore' });
     await new Promise((resolve, reject) => { child.on('error', reject); child.on('close', resolve); });
     const status = taskStatus(r.root, 'c1'); assert.equal(status.pending.length, 1); assert.deepEqual(status.ready, []);
     assert.match(readFileSync(join(r.root, 'src/value.cjs'), 'utf8'), /a:1/);
+    // The independent supervisor observes owner death and drains the boundary.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     recoverTask(r.root, 'c1', status.pending[0], { cause: 'Executor died after write; inspected source and stopped child.', new_hypothesis: 'Verify the existing implementation.', refs: ['src/value.cjs'], processes_stopped: true });
     assert.equal(runTask(r.root, 'c1', 'A', r.good()).ok, true);
   } finally { cleanup(r.root); }

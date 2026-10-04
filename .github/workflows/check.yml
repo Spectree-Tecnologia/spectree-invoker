@@ -75,7 +75,7 @@ jobs:
         run: node scripts/check-plugin.mjs
 
       - name: deterministic suite and behavioural fixtures
-        run: node --test tests/*.test.mjs
+        run: npm test
 
       # The only steps a lighter treatment actually skips. They are named in
       # `lib/ci-policy.mjs` as FULL_ONLY_STEPS, so the table and the workflow cannot drift.
