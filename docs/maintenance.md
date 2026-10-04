@@ -110,8 +110,34 @@ harness itself.
 ## M4 — pass 2 cannot be closed honestly on a single-context harness
 
 **Owner:** this repository.
-**Status:** open, and now open **by measurement** rather than by omission. It is a limit to state,
-not a bug to fix, until a harness proves isolation.
+**Status:** **closed for Claude Code** on 2026-10-04 — context isolation observed by dispatch probe
+and recorded in the adapter. **Open for Codex**, which has never been probed.
+
+What closed it was not a new signal: it was looking in the right place. This item stayed open on the
+assumption that isolation had to be visible from *inside* a process, and from inside it is not (the
+measurement below still stands). But context isolation is a property of the dispatch, and the
+dispatcher can observe it: hold a marker the dispatch does not carry and ask the subagent for it,
+then send one that does. On 2026-10-04 the real `spectree:quality-engineer`, dispatched as a named
+subagent, answered `NOT_VISIBLE` for the marker, for any earlier conversation, for any other agent's
+output and for the Founder's request; with the marker in the dispatch it quoted it back exactly. The
+same result as the 2026-09-10 probe below, and as a Quality Engineer canary probe run from a separate
+session; and the vendor documents it — a subagent *"doesn't see your conversation history"*
+(code.claude.com/docs/en/sub-agents.md). The same page names the exception that matters: a **fork**
+*"inherits the entire conversation"*, so the Quality Engineer is never dispatched as one.
+
+The record lives in `adapters/claude-code/adapter.json` (`context_isolation: "observed"` plus a
+`context_isolation_probe` naming both arms), `observedIsolationSignal()` reads it for a verified
+harness identity only, and the word alone — `declared`, `prompt_only`, or `observed` with no
+complete probe — still unlocks nothing. With it, `capabilities` reports
+`delegating-with-isolation` (DECLARED: a recorded observation this script cannot re-run, because it
+cannot dispatch), and `state.mjs plan` no longer raises `E_ISOLATION_UNPROVEN` on Claude Code.
+
+**What isolation of context does not cover, and what still holds it:** the Quality Engineer shares
+the user, the filesystem, the git history — commit messages carry the builder's reasoning — and the
+session transcript on disk; its prompt is written by the Invoker, who saw the build; and it is the
+same model, so blind spots can coincide. The first is covered by its card's refusal to go looking,
+the second by an auditable prompt, the third by nothing isolation can provide. None of them is a
+reason to report the context as shared: it is not.
 
 Measured 2026-09-10 on Claude Code desktop (`AI_AGENT=claude-code_2-1-260_agent`), by real
 dispatches on a disposable consumer:
@@ -119,8 +145,10 @@ dispatches on a disposable consumer:
 - **Prompt isolation exists.** A dispatched agent sees no prior conversation, no sibling's report,
   and no marker held only by the loop that dispatched it. The control arm was run — with the marker
   placed in the dispatch, the same probe quotes it back — so the negative result is absence, not
-  incapacity. This is what `context_isolation: "prompt_only"` in the Claude Code adapter now says.
-- **No observable signal exists.** A subagent's shell reports the same `CLAUDE_CODE_SESSION_ID`,
+  incapacity. ~~This is what `context_isolation: "prompt_only"` in the Claude Code adapter now says.~~
+  It was recorded as `prompt_only` and read as *unproven* — the observation was right and its
+  reading was wrong; since 2026-10-04 the adapter records it as `observed`, with the probe.
+- **No in-process signal exists.** A subagent's shell reports the same `CLAUDE_CODE_SESSION_ID`,
   `CLAUDE_CODE_HOST_SESSION_ID`, `CLAUDE_PID` and `AI_AGENT` as the main loop, and an identical set
   of environment variable names. `CLAUDE_AGENT_TYPE` is not set. `process.ppid` differs — and
   differs between two consecutive shells of the same loop, so it discriminates nothing.
@@ -150,8 +178,9 @@ something nobody observed, and the gate should not be closed on it.
 isolation rather than declare it, and until one exists the honest answer is the one the tool gives:
 say the mode, do not close the gate, and record the deviation.
 
-Criteria for closing this: a harness that exposes an observable signal of context isolation, and a
-check that reads it — not a declaration in an adapter file, which is what the `context_isolation`
-field is and remains. The check now exists and has one home: `observedIsolationSignal()` in
-`scripts/lib/harness.mjs`. It returns `null` on every harness measured so far, and the day one
-grows a marker, that function reads it and this item closes.
+Criteria for closing this, as written: a harness that exposes an observable signal of context
+isolation, and a check that reads it — not a declaration in an adapter file. Met for Claude Code on
+2026-10-04: the signal is the dispatch probe's two arms, and the check is `isolationProbe()`, which
+refuses any adapter whose record lacks either arm. For Codex the same procedure applies, and until
+someone runs it there, Codex stays `delegating-without-proven-isolation` and the gate stays blocked.
+Re-run the probe when a harness version changes what a subagent receives.
