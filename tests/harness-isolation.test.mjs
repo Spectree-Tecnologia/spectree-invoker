@@ -12,7 +12,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, tempDir, cleanup, REPO } from './helpers.mjs';
-import { detectHarness, observedIsolationSignal, executionContext } from '../scripts/lib/harness.mjs';
+import { detectHarness, isolationProbe, observedIsolationSignal, executionContext } from '../scripts/lib/harness.mjs';
 
 const capabilities = (env) => {
   const r = spawnSync(process.execPath, [join(REPO, 'scripts', 'capabilities.mjs'), '--json'],
@@ -48,31 +48,63 @@ test('executionContext yields one digest per context, and a different one per co
   assert.notEqual(executionContext(a).digest, executionContext(b).digest);
 
   assert.equal(executionContext(a).harness, 'claude-code');
-  assert.equal(executionContext(a).isolation_signal, 'none');
+  // The process digest is shared; the context isolation it does not measure is named beside it.
+  assert.match(executionContext(a).isolation_signal, /^dispatch-probe \d{4}-\d{2}-\d{2}$/);
+  assert.equal(executionContext({ CODEX_HOME: '/x' }).isolation_signal, 'none');
 });
 
-// --- no harness proves isolation, and the mode may not say otherwise ------------------------------
+// --- isolation comes from a recorded dispatch probe, never from a word ---------------------------
 
-test('no harness measured so far exposes an isolation signal', () => {
-  // Stated outright rather than implied, so that the day this returns a marker the change is
-  // deliberate and every claim downstream of it is revisited in the same commit.
-  assert.equal(observedIsolationSignal(), null);
+const adapterWith = (caps, probe) => ({ capabilities: caps, ...(probe ? { context_isolation_probe: probe } : {}) });
+const PROBE = {
+  observed_at: '2026-10-04', dispatch: 'named subagent, not a fork',
+  negative_arm: 'marker held only by the loop: NOT_VISIBLE', control_arm: 'marker in the dispatch: quoted back',
+  source: 'https://code.claude.com/docs/en/sub-agents.md',
+};
+
+test('a recorded probe with both arms is an observation; a word without one is not', () => {
+  assert.deepEqual(isolationProbe(adapterWith({ context_isolation: 'observed' }, PROBE)), PROBE);
+  // The bare words that once unlocked the mode, and the new word with no record behind it.
+  for (const word of ['declared', 'prompt_only', 'observed']) {
+    assert.equal(isolationProbe(adapterWith({ context_isolation: word })), null, `"${word}" alone`);
+  }
+  // A probe missing its control arm is a negative result nobody showed could be positive.
+  const { control_arm, ...noControl } = PROBE;
+  assert.equal(isolationProbe(adapterWith({ context_isolation: 'observed' }, noControl)), null);
+  const { negative_arm, ...noNegative } = PROBE;
+  assert.equal(isolationProbe(adapterWith({ context_isolation: 'observed' }, noNegative)), null);
+  // And a probe only counts under the word that claims it.
+  assert.equal(isolationProbe(adapterWith({ context_isolation: 'declared' }, PROBE)), null);
 });
 
-test('a declared context_isolation does not reach "delegating-with-isolation"', () => {
-  const declared = JSON.parse(readFileSync(join(REPO, 'adapters/claude-code/adapter.json'), 'utf8'));
-  assert.equal(declared.capabilities.subagents, 'declared',
-    'this test is only meaningful while the adapter claims subagents');
+test('only a verified harness identity selects a probe', () => {
+  assert.ok(observedIsolationSignal({ CLAUDECODE: '1' }), 'Claude Code carries a recorded probe');
+  assert.equal(observedIsolationSignal({ CODEX_HOME: '/x' }), null, 'Codex was never probed');
+  // The squad's own variable is a claim: it must not borrow another harness's observation.
+  assert.equal(observedIsolationSignal({ SPECTREE_HARNESS: 'claude-code' }), null);
+  assert.equal(observedIsolationSignal({}), null);
+});
 
-  const report = capabilities({ ...process.env, CLAUDECODE: '1' });
-  const mode = factOf(report, 'operating_mode');
-  assert.notEqual(mode.value, 'delegating-with-isolation');
-  assert.equal(mode.value, 'delegating-without-proven-isolation');
-  assert.equal(mode.confidence, 'UNKNOWN');
-  // The declaration is still reported — it is a fact about the adapter. It is just not the fact
-  // the mode is computed from.
-  assert.equal(factOf(report, 'adapter.claude-code.context_isolation').value, 'prompt_only');
-  assert.equal(factOf(report, 'context_isolation.observed').confidence, 'UNKNOWN');
+test('the Claude Code probe is the one actually run, and says what it does not cover', () => {
+  const adapter = JSON.parse(readFileSync(join(REPO, 'adapters/claude-code/adapter.json'), 'utf8'));
+  const probe = isolationProbe(adapter);
+  assert.ok(probe, 'the shipped adapter must carry a complete probe');
+  assert.match(probe.dispatch, /not a fork/, 'a fork inherits the conversation and is never isolated');
+  assert.match(probe.does_not_cover ?? '', /filesystem/, 'isolation of context is never reported as a sandbox');
+});
+
+test('Claude Code reaches "delegating-with-isolation" through the probe; Codex does not', () => {
+  const claude = capabilities({ ...process.env, CLAUDECODE: '1' });
+  assert.equal(factOf(claude, 'operating_mode').value, 'delegating-with-isolation');
+  // A recorded observation, not something this script measured: DECLARED, never VERIFIED.
+  assert.equal(factOf(claude, 'operating_mode').confidence, 'DECLARED');
+  assert.match(factOf(claude, 'context_isolation.observed').value, /^yes — dispatch probe, \d{4}-\d{2}-\d{2}$/);
+
+  const env = { ...process.env, CODEX_HOME: '/x' };
+  delete env.CLAUDECODE; delete env.CLAUDE_PLUGIN_ROOT;
+  const codex = capabilities(env);
+  assert.equal(factOf(codex, 'operating_mode').value, 'delegating-without-proven-isolation');
+  assert.equal(factOf(codex, 'operating_mode').confidence, 'UNKNOWN');
 });
 
 // --- and a consumer gets the same answer as the package -------------------------------------------
@@ -95,7 +127,7 @@ test('an installed consumer reports the same operating mode as the package', () 
     // One harness, one machine, one answer. It used to be `single-context` here and
     // `delegating-with-isolation` there, and a reader had no way to tell which was the lie.
     assert.equal(consumerMode, packageMode);
-    assert.equal(consumerMode, 'delegating-without-proven-isolation');
+    assert.equal(consumerMode, 'delegating-with-isolation', 'the probe travels with the adapter into the install');
   } finally { cleanup(repo.root); }
 });
 
@@ -105,8 +137,9 @@ test('state.mjs run records the measured context beside the declared independenc
   const repo = gitRepo({ 'seed.txt': 'seed\n', '.gitignore': '.spectree/\n' });
   const scratch = tempDir('spectree-ctx-');
   try {
+    // The harness is pinned, so the expectation below does not depend on who runs the suite.
     const cli = (...args) => spawnSync(process.execPath, [join(REPO, 'scripts', 'state.mjs'), ...args],
-      { cwd: repo.root, encoding: 'utf8' });
+      { cwd: repo.root, encoding: 'utf8', env: { ...process.env, CLAUDECODE: '1' } });
 
     assert.equal(cli('init', 'p').status, 0);
     assert.equal(cli('open', 'c1', '--scope', 's', '--paths', 'seed.txt', '--deltaless').status, 0);
@@ -122,7 +155,7 @@ test('state.mjs run records the measured context beside the declared independenc
     // And beside it, what was actually measured.
     assert.equal(typeof doc.executor.context.harness, 'string');
     assert.match(doc.executor.context.digest, /^[0-9a-f]{16}$/);
-    assert.equal(doc.executor.context.isolation_signal, 'none');
+    assert.match(doc.executor.context.isolation_signal, /^dispatch-probe \d{4}-\d{2}-\d{2}$/);
 
     // The record has to survive its own schema — an evidence document the validator rejects is
     // not a record, and `validate` is what the resume contract leans on.
