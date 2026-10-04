@@ -45,7 +45,7 @@
             },
             "isolation_signal": {
               "type": "string",
-              "description": "What the harness exposed to distinguish a dispatched executor. \"none\" on every harness measured so far, which is why independent_of stays a declaration."
+              "description": "The recorded dispatch probe the executor's context isolation rests on (\"dispatch-probe <date>\"), or \"none\" where no probe was recorded for the harness — and there independent_of is only a declaration."
             }
           },
           "additionalProperties": false,

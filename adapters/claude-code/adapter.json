@@ -4,11 +4,22 @@
   "entrypoint": "/spectree:invoker",
   "capabilities": {
     "subagents": "declared",
-    "context_isolation": "prompt_only",
+    "context_isolation": "observed",
     "shell": "declared",
     "git": "declared",
     "network_per_role": "declared",
     "browser": "declared"
+  },
+  "context_isolation_probe": {
+    "observed_at": "2026-10-04",
+    "harness": "Claude Code desktop, Opus 5.5",
+    "agent": "spectree:quality-engineer",
+    "dispatch": "named subagent, not a fork — a fork inherits the whole conversation and is never isolated",
+    "negative_arm": "marker held only by the dispatching loop: NOT_VISIBLE; no prior conversation, no other agent's output, no Founder request",
+    "control_arm": "marker placed in the dispatch: quoted back exactly — the probe can see a marker when one is there",
+    "earlier_observations": "2026-09-10 general-purpose dispatch with both arms (M4); a Quality Engineer canary probe from a separate session",
+    "source": "https://code.claude.com/docs/en/sub-agents.md",
+    "does_not_cover": "the filesystem, the git history and the session transcript on disk are shared; the dispatch prompt is written by the Invoker; it is the same model as the builder"
   },
   "tokens": {
     "CARDS_LOCATION": "the plugin's `agents/`",

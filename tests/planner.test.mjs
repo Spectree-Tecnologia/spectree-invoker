@@ -40,6 +40,16 @@ test('M4 is not laundered by a claimed independent_of flag or a passing runtime 
   assert.equal(plan.status, 'blocked');
   assert.equal(plan.authorizes_execution, false);
 });
+test('a recorded dispatch probe lifts the M4 block; the planner still authorises nothing', () => {
+  const c = change({ state: 'implemented' });
+  const context = ctx({ evidence: [{ ...proof('pass2.attack'), contract_digest: 'contract-a' }] });
+  const probe = { observed_at: '2026-10-04', dispatch: 'named subagent, not a fork',
+    negative_arm: 'NOT_VISIBLE', control_arm: 'quoted back', source: 'vendor docs' };
+  const plan = planNext(c, context, { isolationSignal: probe });
+  assert.notEqual(plan.action, 'resolve_qa_independence');
+  assert.notEqual(plan.code, 'E_ISOLATION_UNPROVEN');
+  assert.equal(plan.authorizes_execution, false, 'observed isolation is a fact for the gate, never an approval');
+});
 test('CI observation changes the recommendation, never the stored evidence or gate', () => {
   const c = change({ state: 'pass2_complete' });
   for (const [status, action] of [['pending', 'wait_ci'], ['failed', 'investigate_ci'], ['unknown', 'inspect_ci'], ['green', 'produce_evidence']]) {

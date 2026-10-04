@@ -120,27 +120,29 @@ if (existsSync(adaptersDir)) {
 }
 
 // --- the operating mode this adds up to --------------------------------------
-// The mode is decided by what was OBSERVED, and the adapter is consulted only for the one
-// question observation cannot answer from inside a process: whether this harness dispatches at
-// all. Isolation is not that kind of question — it used to be read straight off
-// `context_isolation`, so a field somebody typed unlocked `delegating-with-isolation`, which
-// switched the closing NOTE off and let `pass2_complete` close on an independence nobody saw.
+// Isolation is reached only through a recorded dispatch probe — never through a bare string in the
+// adapter, which is how a field somebody typed once switched the closing NOTE off. Context
+// isolation is observable only by dispatching, and this script cannot dispatch: so the probe is
+// reported as a recorded observation (DECLARED), with its date, and this script never re-runs it.
 const active = declared[harness] ?? {};
 const isolation = active.context_isolation ?? 'unknown';
 const subagents = active.subagents ?? 'unknown';
 const signal = observedIsolationSignal();
-add('context_isolation.observed', signal ?? 'no signal on this harness', signal ? V : U,
-  signal ? undefined
-    : 'nothing in this process distinguishes a dispatched executor from the loop that dispatched it. '
-      + 'What the adapter declares is what the harness says about itself, and it is not this line.');
+add('context_isolation.observed',
+  signal ? `yes — dispatch probe, ${signal.observed_at}` : 'no observation recorded for this harness',
+  signal ? D : U,
+  signal
+    ? `${signal.agent ?? 'a specialist'} dispatched as a ${signal.dispatch}. Negative arm: ${signal.negative_arm}. `
+      + `Control arm: ${signal.control_arm}. Recorded in the adapter; re-run it when the harness version changes.`
+    : 'nobody has dispatched a probe on this harness and recorded it. What the adapter declares is not an observation.');
 const mode =
   subagents !== 'declared' ? 'single-context'
   : signal ? 'delegating-with-isolation'
   : 'delegating-without-proven-isolation';
-add('operating_mode', mode, signal ? V : U,
+add('operating_mode', mode, signal ? D : U,
   isolation !== 'unknown' && !signal
-    ? `the adapter declares context_isolation "${isolation}"; a declaration does not reach `
-      + '"delegating-with-isolation", and nothing here observed one'
+    ? `the adapter declares context_isolation "${isolation}" with no recorded probe; a declaration does not reach `
+      + '"delegating-with-isolation"'
     : undefined);
 
 // --- role matrix -------------------------------------------------------------
@@ -216,4 +218,12 @@ if (mode !== 'delegating-with-isolation') {
   console.log(`\n  NOTE  operating mode is "${mode}". A Quality Engineer dispatched without proven context isolation`);
   console.log('        is not the independent adversary the pipeline assumes. Say so in the report, and do not');
   console.log('        close a gate whose precondition is that independence.');
+} else {
+  // The isolation is real and it is of CONTEXT. What it does not cover stays in the report, so
+  // "isolated" is never read as "sandboxed".
+  console.log(`\n  NOTE  context isolation observed (${signal.observed_at}): a dispatched specialist does not receive this`);
+  console.log('        conversation. It is not a sandbox — it shares the user, the filesystem, the git history and the');
+  console.log('        session transcript on disk; its prompt is written by the Invoker; it is the same model as the');
+  console.log('        builder. Dispatch it as a named agent, never a fork, and keep the builder\'s reasoning out of');
+  console.log('        the prompt — the prompt stays in the session record and can be audited.');
 }
