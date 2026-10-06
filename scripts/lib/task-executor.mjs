@@ -14,6 +14,7 @@ import { runAgent, agentCommand } from './agent-runner.mjs';
 import { launch } from './launch.mjs';
 import { supervisedLaunch, inspectProcesses } from './process-supervisor.mjs';
 import { parseTap, judgePassingRun } from './tap.mjs';
+import { appendRunEvent, runEvents, agentMetrics } from './run-events.mjs';
 
 const file = (root, id) => inside(root, `.spectree/tasks/${identifier(id)}.json`);
 const json = (path) => JSON.parse(readFileSync(path, 'utf8'));
@@ -166,7 +167,7 @@ function authorityStamp(root) {
   for (const name of ['changes', 'approvals', 'evidence', 'closure', 'dispatches', 'project.json']) walk(`.spectree/${name}`);
   return hash(result);
 }
-function checks(root, tasks, processRef) {
+function checks(root, tasks, processRef, observation) {
   const before = snapshot(root); const output = [];
   const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
   allChecks: for (const task of tasks) for (const check of task.checks) {
@@ -176,6 +177,10 @@ function checks(root, tasks, processRef) {
       : judgePassingRun(parseTap(run.stdout), check.test_name, run.status);
     output.push({ task_id: task.id, scenario: check.scenario, test_name: check.test_name, command: check.command,
       ...verdict, process: run.process, stdout: run.stdout, stderr: run.stderr, elapsed_ms: Math.round(performance.now() - began) });
+    if (observation) appendRunEvent(root, observation.change, observation.operation, 'check.finished', {
+      task_id: task.id, scenario: check.scenario, test_name: check.test_name, files: check.files,
+      result: verdict.result, reason: verdict.reason ?? null, elapsed_ms: output.at(-1).elapsed_ms,
+      process_ref: run.process.ref, quiescent: run.process.quiescent });
     if (!run.process.quiescent) break allChecks;
   }
   const after = snapshot(root);
@@ -212,16 +217,22 @@ export function runTask(root, id, taskId, config, repair = null) {
     if (repair) packet.repair = { cause: repair.cause, new_hypothesis: repair.new_hypothesis, refs: references(root, repair.refs) };
     const packetRef = record(root, id, `${operation}-packet`, packet);
     const before = inventory(root); const initial = snapshot(root);
+    const began = performance.now();
     const attempt = { id: operation, task_id: taskId, status: 'started', input: initial, packet_ref: packetRef, adapter: config.kind,
-      process_ref: `.spectree/processes/${operation}` };
+      started_at: new Date().toISOString(), process_ref: `.spectree/processes/${operation}` };
     doc.attempts.push(attempt); save(root, doc);
     startWork(root, id, operation, { phase: 'implement', task: taskId, next: 'Inspect the agent outcome, then execute acceptance checks.', refs: [packetRef] });
     new Store(root).putDispatch(dispatch);
+    appendRunEvent(root, id, operation, 'run.started', { task_id: taskId, role: dispatch.role, adapter: config.kind,
+      requested_model: config.model ?? null, phase: repair ? 'repair' : 'implement', attempt: dispatch.attempt,
+      scenarios: task.scenarios, specification_refs: task.refs, process_ref: attempt.process_ref, candidate: initial });
     const authority = authorityStamp(root);
     try {
       const agent = runAgent(root, packet, { ...config, process_ref: `${attempt.process_ref}/agent` });
+      appendRunEvent(root, id, operation, 'agent.finished', { task_id: taskId, status: agent.status,
+        metrics: agentMetrics(agent, config), process_ref: agent.process.ref, quiescent: agent.process.quiescent });
       let verification = null;
-      if (agent.status === 'reported_success') verification = checks(root, doc.plan.tasks.filter((t) => doc.results[t.id] || t.id === taskId), attempt.process_ref);
+      if (agent.status === 'reported_success') verification = checks(root, doc.plan.tasks.filter((t) => doc.results[t.id] || t.id === taskId), attempt.process_ref, { change: id, operation });
       guard(root, doc);
       const after = inventory(root); const current = snapshot(root);
       const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter((p) => before[p] !== after[p]);
@@ -231,6 +242,10 @@ export function runTask(root, id, taskId, config, repair = null) {
       const resultRef = record(root, id, `${operation}-result`, { agent, verification, changed, scope_ok: scopeOk, authority_ok: authorityOk });
       attempt.status = ok ? 'succeeded' : ['interrupted', 'unknown'].includes(agent.status) ? agent.status : 'failed';
       attempt.result_ref = resultRef;
+      attempt.finished_at = new Date().toISOString();
+      appendRunEvent(root, id, operation, 'run.finished', { task_id: taskId, status: attempt.status,
+        elapsed_ms: Math.round(performance.now() - began), evidence_ref: resultRef,
+        scope_ok: scopeOk, authority_ok: authorityOk, candidate: current });
       finishWork(root, id, operation, { result: { status: ok ? 'completed' : attempt.status === 'interrupted' ? 'interrupted' : 'failed' },
         next: ok ? 'Re-read the task frontier; lifecycle transitions remain separate.' : 'Inspect all effects and reconcile before retry.', refs: [resultRef] });
       if (ok) for (const t of doc.plan.tasks.filter((t) => doc.results[t.id] || t.id === taskId)) doc.results[t.id] = {
@@ -241,7 +256,9 @@ export function runTask(root, id, taskId, config, repair = null) {
         scope_ok: scopeOk, authority_ok: authorityOk, status: taskStatus(root, id) };
     } catch (e) {
       // A crashed/failed postcondition is uncertain work, not permission to replay.
-      attempt.status = 'unknown'; attempt.error = e.code ?? e.message; save(root, doc); throw e;
+      attempt.status = 'unknown'; attempt.error = e.code ?? e.message; save(root, doc);
+      try { appendRunEvent(root, id, operation, 'run.uncertain', { task_id: taskId, code: e.code ?? 'E_POSTCONDITION' }); } catch { /* persisted attempt remains uncertain even when the journal is unavailable */ }
+      throw e;
     }
   });
 }
@@ -253,10 +270,13 @@ export function verifyTasks(root, id) {
     if (!selected.length) refuse('E_TASK_CHECK', 'No completed task to reverify.');
     const op = `verify-${randomUUID()}`;
     startWork(root, id, op, { phase: 'verify', task: 'completed tasks', next: 'Verify the candidate has not changed.' });
+    appendRunEvent(root, id, op, 'run.started', { phase: 'verify', role: 'quality_engineer',
+      task_ids: selected.map(t => t.id), process_ref: `.spectree/processes/${op}`, candidate: snapshot(root) });
     const authority = authorityStamp(root);
-    const result = checks(root, selected, `.spectree/processes/${op}`); guard(root, doc);
+    const result = checks(root, selected, `.spectree/processes/${op}`, { change: id, operation: op }); guard(root, doc);
     result.ok = result.ok && authorityStamp(root) === authority;
     const ref = record(root, id, op, result);
+    appendRunEvent(root, id, op, 'run.finished', { status: result.ok ? 'succeeded' : 'failed', evidence_ref: ref, candidate: result.candidate });
     finishWork(root, id, op, { result: { status: result.ok ? 'completed' : 'failed' }, next: result.ok ? 'Re-read frontier.' : 'Diagnose and reconcile verification.', refs: [ref] });
     if (result.ok) for (const t of selected) doc.results[t.id] = { revision: result.candidate.revision, content_digest: result.candidate.content_digest, evidence_ref: ref,
       evidence_sha256: references(root, [ref])[0].sha256, scenarios: t.scenarios };
@@ -284,6 +304,9 @@ export function recoverTask(root, id, operation, { cause, new_hypothesis, refs, 
     if (work && !work.reconciled) reconcileWork(root, id, operation, { note: cause, next: new_hypothesis, refs });
     attempt.status = 'reconciled'; attempt.recovery = { cause, new_hypothesis };
     attempt.recovery_refs = references(root, refs); save(root, doc);
+    if (runEvents(root, id, operation).length) appendRunEvent(root, id, operation, 'run.reconciled', {
+      task_id: attempt.task_id, cause, new_hypothesis, refs: attempt.recovery_refs,
+      process_inspection: attempt.process_inspection ?? null });
     return { recovered: operation, authorizes_execution: false };
   });
 }

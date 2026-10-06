@@ -72,7 +72,7 @@ If the pipeline is empty and there is no project yet, say that and ask the Found
 
 ## 5. On entry, specifically
 
-For an adopted implementation task graph, inspect `node ${CLAUDE_PLUGIN_ROOT}/scripts/tasks.mjs status <id>` before dispatch. Read `${CLAUDE_PLUGIN_ROOT}/docs/evolution.md` for explicit execution, recovery and real-agent evaluation commands. Never infer permission from a ready task or convert an uncertain attempt into success.
+For an adopted implementation task graph, inspect `node ${CLAUDE_PLUGIN_ROOT}/scripts/tasks.mjs status <id>` before dispatch and execute through `tasks.mjs run/repair`, preserving its attempt budget and automatic run observations. Read `${CLAUDE_PLUGIN_ROOT}/docs/evolution.md` for explicit execution, recovery and real-agent evaluation commands. Never infer permission from a ready task, a Console observation, or convert an uncertain attempt into success.
 
 - Report in **Portuguese**, in the Section 10 format. Agent names stay in English.
 - Never dispatch anyone before you know the state.

@@ -78,6 +78,7 @@ for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs', 'prepare-
   planCopy(join(pkg, 'scripts', f), join(squadRoot, 'scripts', f), 'script the skill calls');
 }
 for (const f of readdirSync(join(pkg, 'scripts', 'lib'))) {
+  if (f.startsWith('console-')) continue; // Optional local UI stays in the Invoker checkout.
   planCopy(join(pkg, 'scripts', 'lib', f), join(squadRoot, 'scripts', 'lib', f), 'library');
 }
 for (const f of readdirSync(join(pkg, 'schemas'))) {

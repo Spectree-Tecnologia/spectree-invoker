@@ -6,6 +6,8 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { tempDir, cleanup, writeFiles, gitRepo, REPO } from './helpers.mjs';
 import { scoreDecision, runEvaluations } from '../scripts/lib/agent-evals.mjs';
 import { runFlowEvaluation } from '../scripts/lib/flow-evals.mjs';
+import { readProject } from '../scripts/lib/console-reader.mjs';
+import { observeRuntime } from '../scripts/lib/console-observation.mjs';
 
 test('evaluation scorer requires the observed decision and preserves negative and positive controls', () => {
   const expected = { classification: 'interrupted', action: 'reconcile', can_advance: false };
@@ -48,7 +50,7 @@ test('installed evolution entrypoints, generated profiles, runtime libraries and
   } finally { cleanup(r.root); }
 });
 
-test('flow evaluation exercises real gates, dependencies, interruption and regression repair without pretending QA independence', () => {
+test('flow evaluation exercises real gates, dependencies, interruption and regression repair without pretending QA independence', async () => {
   const scratch = tempDir(); let fixture;
   try {
     const bridge = join(scratch, 'flow-bridge.cjs');
@@ -62,5 +64,20 @@ test('flow evaluation exercises real gates, dependencies, interruption and regre
     assert.equal(result.lifecycle_state, 'implemented'); assert.equal(result.qa_gate.blocked, true);
     assert.equal(result.steps.find((s) => s.name === 'detect-regression').result.ok, false);
     assert.equal(result.steps.find((s) => s.name === 'bounded-agent-repair').result.verification.checks.length, 2);
+    const projection = readProject(fixture, 'fixture');
+    assert.equal(projection.health, 'readable', JSON.stringify(projection.issues));
+    assert.equal(projection.runs.length, 5);
+    assert.ok(projection.runs.some(r => r.status === 'reconciled'));
+    assert.ok(projection.runs.some(r => r.checks.some(c => c.result !== 'PASS')));
+    assert.ok(projection.runs.filter(r => r.metrics).every(r => r.metrics.cost_usd === null && r.metrics.input_tokens === null));
+    const observation = await observeRuntime(fixture, 'flow');
+    assert.equal(observation.status, 'observed', JSON.stringify(observation));
+    assert.equal(observation.authorizes_execution, false);
+    assert.equal(observation.tasks.complete, true);
+    assert.ok(observation.processes.every(p => p.state === 'stopped'));
+    writeFiles(fixture, { 'src/value.cjs': 'module.exports={a:1,b:99};' });
+    const stale = await observeRuntime(fixture, 'flow');
+    assert.equal(stale.status, 'observed', JSON.stringify(stale));
+    assert.ok(stale.tasks.tasks.some(t => t.status === 'stale'));
   } finally { if (fixture) cleanup(fixture); cleanup(scratch); }
 });
