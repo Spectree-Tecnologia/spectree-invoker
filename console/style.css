@@ -96,6 +96,11 @@
   .runtime-observation p { margin: 8px 0; font-size: 11px; }
   .runtime-observation small { margin-top: 10px; }
   .runtime-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .adoption-diagnostic { border-block: 1px solid var(--line); margin-bottom: 20px; }
+  .diagnostic-issue { padding: 18px 23px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  .diagnostic-issue strong { margin-left: 10px; font-size: 11px; }
+  .diagnostic-issue p { font-size: 11px; line-height: 1.7; margin: 12px 0 8px; }
+  .diagnostic-issue code { display: block; margin-top: 12px; font-size: 10px; line-height: 1.8; color: #c7d4e6; white-space: pre-wrap; }
   .runtime-metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); border-block: 1px solid var(--line); }
   .runtime-metrics > div { padding: 20px; border-right: 1px solid var(--line); }
   .runtime-metrics strong { display: block; font-size: 15px; margin: 10px 0; overflow-wrap: anywhere; }

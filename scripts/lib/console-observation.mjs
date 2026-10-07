@@ -5,10 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { inside, identifier, refuse } from './work.mjs';
 import { taskStatus } from './task-executor.mjs';
 import { observeProcesses } from './process-supervisor.mjs';
+import { diagnoseProject } from './project-diagnostics.mjs';
 
 const self = fileURLToPath(import.meta.url);
 const stateCli = fileURLToPath(new URL('../state.mjs', import.meta.url));
-function preflight(root) {
+function preflight(root, candidate = true) {
   let budget = 12000;
   const metadata = [];
   function walk(relative, depth = 0) {
@@ -21,6 +22,7 @@ function preflight(root) {
     else metadata.push(relative);
   }
   walk('.spectree'); walk('docs/changes');
+  if (!candidate) return;
   // Git status can invoke fsmonitor and hashing can invoke clean/process filters.
   // Refuse executable configuration rather than running project-specific helpers from a read UI.
   let config;
@@ -45,9 +47,9 @@ function preflight(root) {
 }
 
 export async function observeRuntime(root, change) {
-  identifier(change);
+  if (change) identifier(change);
   return new Promise(resolve => {
-    execFile(process.execPath, [self, root, change], { cwd: root, encoding: 'utf8', timeout: 30000, maxBuffer: 2 * 1024 * 1024, windowsHide: true,
+    execFile(process.execPath, [self, root, change ?? ''], { cwd: root, encoding: 'utf8', timeout: 30000, maxBuffer: 2 * 1024 * 1024, windowsHide: true,
       env: { ...process.env, GIT_OPTIONAL_LOCKS: '0', SPECTREE_PROJECT_ROOT: root } }, (error, stdout) => {
       try { if (!error) return resolve(JSON.parse(stdout)); } catch { /* explicit unavailable result below */ }
       resolve({ status: 'unavailable', code: error?.killed ? 'E_OBSERVATION_TIMEOUT' : 'E_OBSERVATION', authorizes_execution: false, observed_at: new Date().toISOString() });
@@ -56,29 +58,36 @@ export async function observeRuntime(root, change) {
 }
 if (process.argv[1] === self) {
   const [root, change] = process.argv.slice(2);
-  let result;
+  let result, diagnostic;
   try {
-    identifier(change); preflight(root);
-    const plan = JSON.parse(execFileSync(process.execPath, [stateCli, 'plan', change, '--json'], {
-      cwd: root, encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024, windowsHide: true,
-      env: { ...process.env, SPECTREE_PROJECT_ROOT: root, GIT_OPTIONAL_LOCKS: '0' } }));
-    let tasks = null, task_error = null;
-    if (existsSync(inside(root, `.spectree/tasks/${change}.json`))) {
-      try { tasks = taskStatus(root, change); } catch (e) { task_error = { code: e.code ?? 'E_TASK', message: e.message }; }
+    if (change) identifier(change);
+    preflight(root, false);
+    diagnostic = diagnoseProject(root, change || undefined);
+    if (!change) {
+      result = { status: 'observed', diagnostic, authorizes_execution: false, observed_at: new Date().toISOString() };
+    } else {
+      preflight(root);
+      const plan = JSON.parse(execFileSync(process.execPath, [stateCli, 'plan', change, '--json'], {
+        cwd: root, encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024, windowsHide: true,
+        env: { ...process.env, SPECTREE_PROJECT_ROOT: root, GIT_OPTIONAL_LOCKS: '0' } }));
+      let tasks = null, task_error = null;
+      if (existsSync(inside(root, `.spectree/tasks/${change}.json`))) {
+        try { tasks = taskStatus(root, change); } catch (e) { task_error = { code: e.code ?? 'E_TASK', message: e.message }; }
+      }
+      const processes = [];
+      const runDir = inside(root, `.spectree/runs/${change}`);
+      const operations = existsSync(runDir) ? readdirSync(runDir).map(operation => {
+        identifier(operation);
+        const first = inside(root, `.spectree/runs/${change}/${operation}/000001.json`);
+        const event = JSON.parse(readFileSync(first, 'utf8'));
+        if (event.operation_id !== operation || event.change_id !== change || event.type !== 'run.started') refuse('E_RUN_CORRUPT', 'Run identity mismatch.');
+        return { operation, at: event.at };
+      }).sort((a, b) => String(b.at).localeCompare(String(a.at))) : [];
+      for (const { operation } of operations.slice(0, 20)) {
+        if (existsSync(inside(root, `.spectree/processes/${operation}`))) processes.push({ operation_id: operation, ...observeProcesses(root, `.spectree/processes/${operation}`) });
+      }
+      result = { status: 'observed', diagnostic, plan, tasks, task_error, processes, process_limit: 20, processes_truncated: operations.length > 20, authorizes_execution: false, observed_at: new Date().toISOString() };
     }
-    const processes = [];
-    const runDir = inside(root, `.spectree/runs/${change}`);
-    const operations = existsSync(runDir) ? readdirSync(runDir).map(operation => {
-      identifier(operation);
-      const first = inside(root, `.spectree/runs/${change}/${operation}/000001.json`);
-      const event = JSON.parse(readFileSync(first, 'utf8'));
-      if (event.operation_id !== operation || event.change_id !== change || event.type !== 'run.started') refuse('E_RUN_CORRUPT', 'Run identity mismatch.');
-      return { operation, at: event.at };
-    }).sort((a, b) => String(b.at).localeCompare(String(a.at))) : [];
-    for (const { operation } of operations.slice(0, 20)) {
-      if (existsSync(inside(root, `.spectree/processes/${operation}`))) processes.push({ operation_id: operation, ...observeProcesses(root, `.spectree/processes/${operation}`) });
-    }
-    result = { status: 'observed', plan, tasks, task_error, processes, process_limit: 20, processes_truncated: operations.length > 20, authorizes_execution: false, observed_at: new Date().toISOString() };
-  } catch (e) { result = { status: 'unavailable', code: e.code ?? 'E_OBSERVATION', message: e.message, authorizes_execution: false, observed_at: new Date().toISOString() }; }
+  } catch (e) { result = { status: 'unavailable', diagnostic, code: e.code ?? 'E_OBSERVATION', message: e.message, authorizes_execution: false, observed_at: new Date().toISOString() }; }
   console.log(JSON.stringify(result));
 }

@@ -46,6 +46,13 @@ Dispatch with a mission, a verifiable exit criterion, mandatory reading, a loop 
 
 ## 5. Then act
 
+Inspect the diagnostic returned by `work.mjs doctor` and, for a discrepant change, run
+`node .spectree/squad/scripts/reconcile.mjs diagnose <id>`. Follow
+`.spectree/squad/docs/guided-reconciliation.md`: inspect the actual closure mechanism,
+record the human decision, review the plan and apply only with authorization to write that
+consumer. Preserve read-only consumers. Never edit closure_mode in state JSON or infer closure
+from an archived folder. The inspector version does not identify another session's loaded plugin.
+
 **With an argument** — it is the Founder's request. Decide whether it needs exploration; run the interview one question at a time — the Architect returns the frontier to you, and the Founder gets one question per message, each answer applied before the next; take the proposal and its delta to gate 1 before any build starts.
 
 Then the pipeline in Section 7 of `SQUAD.md`, in that order. Two things that are the same on every change:

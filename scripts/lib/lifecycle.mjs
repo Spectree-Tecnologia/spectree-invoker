@@ -415,7 +415,9 @@ export function pendingOperation(lifecycle) {
   return {
     ...op,
     uncertain: op.phase === PHASE.STARTED,
-    recovery: RECOVERY[op.phase] ?? 'resolve it explicitly',
+    recovery: op.kind === 'reconcile_closure'
+      ? `resume persisted correction with reconcile.mjs resume ${lifecycle.change_id} ${op.operation_id} --apply; do not rerun external commands`
+      : RECOVERY[op.phase] ?? 'resolve it explicitly',
   };
 }
 

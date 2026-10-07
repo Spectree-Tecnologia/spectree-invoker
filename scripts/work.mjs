@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
 import { doctor, startWork, finishWork, reconcileWork, workPacket } from './lib/work.mjs';
+import { diagnoseProject } from './lib/project-diagnostics.mjs';
 
 const [command, change, operation, ...rest] = process.argv.slice(2);
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
@@ -12,7 +13,7 @@ try {
   }
   if (options.refs) options.refs = options.refs.split(',');
   let value;
-  if (command === 'doctor' && !change) value = doctor(root);
+  if (command === 'doctor' && !change) value = { ...doctor(root), diagnostic: diagnoseProject(root) };
   else if (command === 'resume' && change && !operation) value = workPacket(root, change);
   else if (command === 'start' && change && operation) value = startWork(root, change, operation, options);
   else if (command === 'finish' && change && operation && options.result) {

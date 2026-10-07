@@ -142,7 +142,7 @@ test('state.mjs run records the measured context beside the declared independenc
       { cwd: repo.root, encoding: 'utf8', env: { ...process.env, CLAUDECODE: '1' } });
 
     assert.equal(cli('init', 'p').status, 0);
-    assert.equal(cli('open', 'c1', '--scope', 's', '--paths', 'seed.txt', '--deltaless').status, 0);
+    assert.equal(cli('open', 'c1', '--scope', 's', '--paths', 'seed.txt', '--deltaless', '--closure-mode', 'legacy').status, 0);
     const run = cli('run', 'c1', 'pass2.attack', '--role', 'quality_engineer',
       '--independent-of', 'full_stack_developer', '--', process.execPath, '-e', '0');
     assert.equal(run.status, 0, run.stderr);

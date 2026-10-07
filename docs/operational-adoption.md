@@ -40,8 +40,11 @@ IDs existentes e sobreposição de arquivos. Configuração existente é preserv
 Ela registra somente um draft novo; arquivos arquivados permanecem artefatos,
 sem aprovações ou recibos históricos. Baseline, aprovação e testes usam os gates normais.
 
-Em uma instalação nova, declare depois os comandos de consolidação e a identidade
-do CI conforme o consumidor; a adoção lista essas pendências sem inferi-los.
+Desde 1.11, declare `closure.consolidate` antes de selecionar `prepared`, ou escolha
+`legacy` explicitamente após inspecionar o contrato do consumidor. O exemplo prepared
+exige essa configuração prévia. Declare também a identidade do CI antes da integração.
+O campo opcional `deltaless` aceita um booleano explícito; `true` dispensa apenas pass 1,
+preservando os demais gates. Veja [diagnóstico e reconciliação](guided-reconciliation.md).
 Não rode a aplicação em paralelo com outras alterações de estado. A proveniência
 `adoptions/<id>.json` é gravada antes do estado; `-completed.json` marca a conclusão.
 Se houver falha parcial, inspecione os arquivos criados. Reexecutar nunca sobrescreve

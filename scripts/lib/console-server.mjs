@@ -14,6 +14,7 @@ const assets = new Map([
   ['/style.css', ['style.css', 'text/css; charset=utf-8']],
 ]);
 const assetRoot = fileURLToPath(new URL('../../console/', import.meta.url));
+const runtimeVersion = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
 
 export async function startConsole({ roots = [], demo = false, port = 0 } = {}) {
   if (demo && roots.length) throw new Error('Use --demo ou --project, separadamente.');
@@ -52,16 +53,16 @@ export async function startConsole({ roots = [], demo = false, port = 0 } = {}) 
         if (demo) return send(409, '{"error":"E_DEMO_ONLY"}');
         const project = projects.find(p => p.id === url.searchParams.get('project'));
         const change = url.searchParams.get('change');
-        if ([...url.searchParams.keys()].some(k => !['project', 'change'].includes(k)) || !project || !/^[a-z0-9][a-z0-9._-]{0,127}$/.test(change ?? '')) return send(400, '{"error":"E_SELECTION"}');
+        if ([...url.searchParams.keys()].some(k => !['project', 'change'].includes(k)) || !project || (change !== null && !/^[a-z0-9][a-z0-9._-]{0,127}$/.test(change))) return send(400, '{"error":"E_SELECTION"}');
         const current = readProject(project.root, project.id);
-        if (current.health !== 'readable' || !current.changes.some(c => c.change_id === change)) return send(409, '{"error":"E_SOURCE_INCOMPLETE"}');
+        if (change && (current.health !== 'readable' || !current.changes.some(c => c.change_id === change))) return send(409, '{"error":"E_SOURCE_INCOMPLETE"}');
         if (inspecting) return send(429, '{"error":"E_OBSERVATION_BUSY"}');
         inspecting = true;
         try { return send(200, JSON.stringify(await observeRuntime(project.root, change))); }
         finally { inspecting = false; }
       }
       if (!cache || Date.now() - cachedAt >= 2000) {
-        cache = JSON.stringify({ version: 1, mode: demo ? 'demo' : 'live', roles, pipeline,
+        cache = JSON.stringify({ version: 1, runtime_version: runtimeVersion, mode: demo ? 'demo' : 'live', roles, pipeline,
           projects: demo ? [demoProject()] : projects.map(p => readProject(p.root, p.id)) });
         cachedAt = Date.now();
       }

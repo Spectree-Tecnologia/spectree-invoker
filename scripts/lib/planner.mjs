@@ -19,6 +19,9 @@ export function planNext(change, ctx = {}, { isolationSignal = null, ci = null, 
   if (ctx.pendingOperation) return answer('recover_operation', 'platform_engineer', 'blocked', ctx.pendingOperation.recovery,
     { code: 'E_OPERATION_PENDING', operation: ctx.pendingOperation, requires_human_decision: Boolean(ctx.pendingOperation.uncertain) });
   if (change.state === 'closed') return answer('none', 'invoker', 'complete', 'This change is closed; no new work is inferred.');
+  if (ctx.closureStrategyProblem) return answer('diagnose_closure_strategy', 'platform_engineer', 'blocked',
+    'Prepared closure is recorded without a consolidation mechanism. Inspect the project before proposing an explicit configuration correction.',
+    { code: 'E_CLOSURE_MECHANISM', command: ['reconcile.mjs', 'diagnose', change.change_id], command_mode: 'read-only' });
   if (change.state === 'blocked') return answer('resolve_blocker', 'invoker', 'blocked', change.blocked_reason ?? 'Resolve the recorded blocker before recovery.',
     { recovery_target: change.blocked_from ?? null });
   const to = nextTarget(change);

@@ -72,6 +72,13 @@ If the pipeline is empty and there is no project yet, say that and ask the Found
 
 ## 5. On entry, specifically
 
+Inspect the diagnostic returned by `work.mjs doctor` and, for a discrepant change, run
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/reconcile.mjs diagnose <id>`. Follow
+`${CLAUDE_PLUGIN_ROOT}/docs/guided-reconciliation.md`: inspect the actual closure mechanism,
+record the human decision, review the plan and apply only with authorization to write that
+consumer. Preserve read-only consumers. Never edit closure_mode in state JSON or infer closure
+from an archived folder. The inspector version does not identify another session's loaded plugin.
+
 For an adopted implementation task graph, inspect `node ${CLAUDE_PLUGIN_ROOT}/scripts/tasks.mjs status <id>` before dispatch and execute through `tasks.mjs run/repair`, preserving its attempt budget and automatic run observations. Read `${CLAUDE_PLUGIN_ROOT}/docs/evolution.md` for explicit execution, recovery and real-agent evaluation commands. Never infer permission from a ready task, a Console observation, or convert an uncertain attempt into success.
 
 - Report in **Portuguese**, in the Section 10 format. Agent names stay in English.

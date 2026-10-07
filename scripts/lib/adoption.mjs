@@ -5,6 +5,7 @@ import { Store } from './store.mjs';
 import { assertValid } from './validate.mjs';
 import { doctor, inside, identifier, bounded, references, snapshot, refuse } from './work.mjs';
 import { hash } from './context.mjs';
+import { diagnoseProject, selectClosureMode } from './project-diagnostics.mjs';
 
 function observed(root) {
   const files = [];
@@ -31,22 +32,27 @@ export function planAdoption(root, request) {
     if (/^\.spectree(?:\/|$)/i.test(p)) refuse('E_ADOPTION_REQUEST', 'Operational authority is not an implementation path.');
   }
   if (!['codex', 'claude-code'].includes(request.adapter) || !['prepared', 'legacy'].includes(request.closure_mode)) refuse('E_ADOPTION_REQUEST', 'Declare adapter and closure_mode explicitly.');
+  if (request.deltaless !== undefined && typeof request.deltaless !== 'boolean') refuse('E_ADOPTION_REQUEST', 'deltaless must be an explicit boolean.');
   const report = doctor(root); const store = new Store(root);
+  const diagnostic = diagnoseProject(root);
   if (report.project && (report.project.project_id !== request.project_id || report.project.schema_version !== '1.0.0')) refuse('E_ADOPTION_IDENTITY', 'Existing project identity/schema cannot be overwritten.');
   if (store.change(request.change_id)) refuse('E_ADOPTION_EXISTS', 'Change already registered; use its existing lifecycle.');
   const reading = references(root, request.refs ?? []);
   if (!reading.length) refuse('E_ADOPTION_REQUEST', 'Reference the reviewed legacy artifacts or new proposal.');
   const binding = observed(root);
   const project = report.project ?? { schema_version: '1.0.0', project_id: request.project_id, protocol_version: '1.0.0' };
+  selectClosureMode(project, request.closure_mode);
   const change = { schema_version: '1.0.0', protocol_version: '1.0.0', project_id: request.project_id, change_id: request.change_id,
     adapter: request.adapter, change_type: request.change_type ?? 'feature', base_revision: binding.candidate.revision,
-    scope: request.scope, allowed_paths: request.allowed_paths, state: 'draft', closure_mode: request.closure_mode };
+    scope: request.scope, allowed_paths: request.allowed_paths, state: 'draft', closure_mode: request.closure_mode,
+    ...(request.deltaless !== undefined ? { deltaless: request.deltaless } : {}) };
   assertValid('spectree/change', change);
-  const plan = { version: 1, request, binding, reading, inventory: report, project, create_project: !report.project, change,
+  const plan = { version: 1, request, binding, reading, inventory: report, diagnostic, project, create_project: !report.project, change,
     effects: ['Register a new draft and adoption provenance.', 'Preserve existing project configuration and legacy artifacts.'],
     outstanding: ['Review the proposal and approve the current scope through the normal lifecycle.',
-      'Observe branch isolation, baseline and pass 1; historical artifacts are not evidence for these gates.',
-      ...(project.closure ? [] : ['Declare the consumer consolidation mechanism before prepared closure.']),
+      request.deltaless ? 'Observe branch isolation and baseline; deltaless skips only pass 1, never QA, CI or integration gates.'
+        : 'Observe branch isolation, baseline and pass 1; historical artifacts are not evidence for these gates.',
+      ...(request.closure_mode === 'legacy' ? ['Legacy closure was explicitly selected; observe consolidation, archive and integration through its existing gates.'] : []),
       ...(project.ci ? [] : ['Declare the consumer CI identity before integration.'])],
     authorizes_execution: false, historical_approvals_created: 0 };
   return { ...plan, plan_digest: hash(plan) };
