@@ -14,6 +14,10 @@ Abra o endereço impresso no terminal. O fragmento contém uma credencial tempor
 
 Para instalar um launcher independente da pasta do terminal e da branch, veja [Runtime Conectado](runtime-connected.md).
 
+O ciclo 1.11 adiciona **Prontidão operacional** à consulta de runtime: versões observadas,
+consolidação declarada, divergências de artefatos/estado e próximos passos. Projetos sem
+mudanças também podem ser consultados. Veja [Adoção e Reconciliação](guided-reconciliation.md).
+
 ## Contrato
 
 - **Somente leitura:** nenhum agente, check, instalação, aprovação ou transição é executado pelo Console. A consulta explícita ao runtime usa subprocessos de leitura do pacote, Git local e inspeção de processos supervisionados. Projetos são autorizados na inicialização, nunca por um caminho enviado pelo navegador. Filtros Git executáveis e fsmonitor impedem essa consulta.

@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, tempDir, cleanup, REPO, now, stubGh, greenRun } from './helpers.mjs';
 
-test('installed legacy cycle retains durable authority and closes only with observed integration', () => {
+test('installed adoption, interrupted mode reconciliation and legacy closure retain durable authority', () => {
   const repo = gitRepo({ 'app.mjs': 'export const x = 1;\n', '.gitignore': '.spectree/\n' });
   const scratch = tempDir('spectree-legacy-');
   try {
@@ -28,7 +28,11 @@ test('installed legacy cycle retains durable authority and closes only with obse
     };
     ok(state('init', 'legacy-test', '--repository', 'fixture/repo',
       '--ci-workflow', 'check', '--ci-jobs', 'classify,plugin', '--ci-event', 'push', '--ci-branch', 'main'));
-    ok(state('open', 'c1', '--scope', 'fixture', '--paths', 'app.mjs', '--deltaless', '--closure-mode', 'legacy'));
+    const adoptionRequest = join(scratch, 'adoption-request.json'), adoptionPlan = join(scratch, 'adoption-plan.json');
+    writeFileSync(adoptionRequest, JSON.stringify({ version: 1, project_id: 'legacy-test', change_id: 'c1', scope: 'fixture',
+      allowed_paths: ['app.mjs'], refs: ['app.mjs'], adapter: 'codex', closure_mode: 'legacy', deltaless: true }));
+    writeFileSync(adoptionPlan, ok(cli('adopt.mjs', 'plan', adoptionRequest)));
+    ok(cli('adopt.mjs', 'apply', adoptionPlan, '--apply'));
     record('scope', 'scope');
     ok(state('transition', 'c1', 'proposed')); ok(state('transition', 'c1', 'scope_approved'));
     repo.git(['checkout', '-qb', 'candidate']);
@@ -37,6 +41,29 @@ test('installed legacy cycle retains durable authority and closes only with obse
       if (property) ok(state('run', 'c1', property, '--role', 'quality_engineer',
         '--independent-of', 'full_stack_developer', '--', process.execPath, '-e', 'process.exit(0)'));
       ok(state('transition', 'c1', target));
+      if (target === 'implemented') {
+        // Reproduce a record written by an older runtime, without weakening the new open/adopt contract.
+        const file = join(repo.root, '.spectree/changes/c1.json');
+        const old = JSON.parse(readFileSync(file));
+        writeFileSync(file, JSON.stringify({ ...old, closure_mode: 'prepared' }));
+        ok(state('transition', 'c1', 'blocked', '--reason', 'Incorrect closure mode in older runtime'));
+        const diagnosis = JSON.parse(ok(cli('reconcile.mjs', 'diagnose', 'c1')));
+        assert.ok(diagnosis.changes[0].issues.some(i => i.code === 'E_CLOSURE_MECHANISM'));
+        const requestFile = join(scratch, 'correction-request.json'), planFile = join(scratch, 'correction-plan.json');
+        writeFileSync(requestFile, JSON.stringify({ version: 1, change_id: 'c1', closure_mode: 'legacy',
+          actor: { kind: 'human_in_session', identity: 'synthetic operator' }, reason: 'Reviewed project has no prepared consolidation mechanism',
+          refs: ['.spectree/project.json'] }));
+        const plan = JSON.parse(ok(cli('reconcile.mjs', 'plan', requestFile, '--output', planFile)));
+        const op = `reconcile-${plan.plan_digest}`;
+        const obstruction = join(repo.root, '.spectree/reconciliations/c1', op, 'receipt.json');
+        mkdirSync(obstruction, { recursive: true });
+        assert.notEqual(cli('reconcile.mjs', 'apply', planFile, '--apply').status, 0);
+        assert.notEqual(state('transition', 'c1', 'implemented').status, 0);
+        rmdirSync(obstruction);
+        ok(cli('reconcile.mjs', 'resume', 'c1', op, '--apply'));
+        assert.equal(JSON.parse(readFileSync(file)).state, 'blocked');
+        ok(state('transition', 'c1', 'implemented'));
+      }
     }
     const changeFile = join(repo.root, '.spectree/changes/c1.json');
     const before = readFileSync(changeFile);

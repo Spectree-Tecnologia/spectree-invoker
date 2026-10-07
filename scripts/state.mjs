@@ -43,6 +43,7 @@ import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
 import { pendingWork, doctor } from './lib/work.mjs';
 import { requireTasksComplete } from './lib/task-executor.mjs';
+import { diagnoseProject, selectClosureMode, closureStrategy } from './lib/project-diagnostics.mjs';
 
 // A gate is bound to what it authorises. Scope-class gates authorise the contract; the
 // gates that put code somewhere authorise the contract AND the code that will travel with it.
@@ -211,6 +212,7 @@ function recommendation(changeId, { observeCi = false, pr = null, snapshot = nul
     const g = snapshot?.g ?? gitSituation();
     const d = snapshot?.d ?? digests(change, { soft: true });
     const context = transitionContext(change, d, cc, g, nextTarget(change));
+    context.closureStrategyProblem = change.closure_mode !== 'legacy' && !closureStrategy(store.project()).prepared_supported;
     const ci = observeCi ? observePlanCi({ repository: store.project()?.repository, pr,
       revision: g.revision, branch: g.branch, cwd: root }) : null;
     return planNext(change, context, { isolationSignal: observedIsolationSignal(), ci,
@@ -244,6 +246,7 @@ function resume(changeId) {
     project: project ? { project_id: project.project_id, protocol_version: project.protocol_version } : null,
     state_directory: store.present,
     adoption: doctor(root),
+    diagnostic: diagnoseProject(root, change?.change_id),
     work_pending: change ? pendingWork(root, change.change_id) : null,
     git: g,
     change: change
@@ -429,7 +432,7 @@ switch (cmd) {
       // The modules the proposal names. The set here and the set of delta files on disk must be
       // the same set, and nothing can check that if nobody wrote down what was named.
       ...(flag('modules') ? { modules_named: flag('modules').split(',').map((m) => m.trim()).filter(Boolean) } : {}),
-      ...(flag('closure-mode') ? { closure_mode: flag('closure-mode') } : {}),
+      closure_mode: selectClosureMode(store.project(), flag('closure-mode')),
       ...(has('deltaless') ? { deltaless: true } : {}),
     };
     const saved = store.putChange(change, { event: { type: 'opened', state: 'draft' } });

@@ -9,12 +9,13 @@ import { supervisedLaunch, inspectProcesses } from '../scripts/lib/process-super
 import { claudeEvents, agentCommand } from '../scripts/lib/agent-runner.mjs';
 
 const request = { version: 1, project_id: 'legacy', change_id: 'next', scope: 'Implement the next reviewed feature',
-  allowed_paths: ['src/'], refs: ['docs/changes/old/proposal.md'], adapter: 'claude-code', closure_mode: 'prepared' };
+  allowed_paths: ['src/'], refs: ['docs/changes/old/proposal.md'], adapter: 'claude-code', closure_mode: 'legacy' };
 function fixture() { return gitRepo({ '.gitignore': '.spectree/\n', 'src/a.txt': 'original', 'docs/changes/old/proposal.md': '# Old artifact',
   'docs/changes/archive/past/proposal.md': '# Historical archive' }); }
 test('adoption planning is read only and application creates only a draft, never approvals or historical closure', () => {
   const r = fixture();
   try {
+    assert.throws(() => planAdoption(r.root, { ...request, deltaless: 'true' }), { code: 'E_ADOPTION_REQUEST' });
     const plan = planAdoption(r.root, request); assert.equal(existsSync(join(r.root, '.spectree')), false);
     assert.equal(plan.inventory.archived_artifact_directories, 1); assert.equal(plan.historical_approvals_created, 0);
     assert.equal(applyAdoption(r.root, plan).state, 'draft');

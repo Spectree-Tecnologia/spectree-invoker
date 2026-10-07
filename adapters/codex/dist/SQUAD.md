@@ -249,6 +249,23 @@ A project that offers no mechanism for consolidating its living spec closes the 
 declared as such on the change. Nobody hand-edits `docs/specs/` to fill the gap: a spec written
 by the same agent that approves it proves nothing.
 
+**Diagnose adoption before choosing closure.** `reconcile.mjs diagnose [change]` inventories the
+inspector runtime, local installation, declared consolidation command and artifact/state
+discrepancies without executing project scripts. An installed version does not prove what a
+different session loaded; a script name does not establish closure semantics. New `open` and
+adoption requests refuse `prepared` unless `closure.consolidate` is declared. Without it,
+inspect the project's actual mechanism and choose `legacy` explicitly with the operator.
+
+**Correct a mistaken mode through the reviewed reconciliation CLI, never by editing state JSON.**
+`reconcile.mjs plan` binds the inspected references, candidate and operational records to the
+human session decision; `apply <plan> --apply` changes only the closure mode and retires old
+integration approval authority while preserving its documents. It is limited to changes through
+`implemented`, including a block from those stages, with no preparation or receipt. It creates
+no evidence or approval, does not unblock or advance state, and never treats an archive as proof
+of integration. An interrupted persistence uses `reconcile.mjs resume <change> <operation>
+--apply` against the same candidate. A changed candidate requires inspection, not blind replay.
+See `docs/guided-reconciliation.md` for the request and recovery contract.
+
 **A preparation has an identity, and an integration approval names it.** The snapshot carries a
 `preparation_id`, a `generation` and a `preparation_digest` over its whole artifact inventory —
 because content and contract are the only things an approval used to name, and the artifact

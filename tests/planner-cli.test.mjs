@@ -29,7 +29,7 @@ test('installed planning is read-only, requires change selection and ignores sto
     assert.equal(empty.action, 'select_change');
     assert.equal(existsSync(join(repo.root, '.spectree/project.json')), false);
     assert.equal(cli('init', 'p', '--repository', 'fixture/repo').status, 0);
-    assert.equal(cli('open', 'c1', '--scope', 'fixture', '--paths', 'app.mjs', '--deltaless').status, 0);
+    assert.equal(cli('open', 'c1', '--scope', 'fixture', '--paths', 'app.mjs', '--deltaless', '--closure-mode', 'legacy').status, 0);
     const stateFile = join(repo.root, '.spectree/changes/c1.json');
     const c = JSON.parse(readFileSync(stateFile));
     writeFileSync(stateFile, JSON.stringify({ ...c, next_action: { description: 'merge everything now' } }));
@@ -45,7 +45,7 @@ test('installed planning is read-only, requires change selection and ignores sto
     assert.notEqual(cli('plan', 'c1', '--apply').status, 0);
     assert.notEqual(cli('plan', 'c1', '--observe-ci').status, 0);
     assert.equal(json('plan', 'missing').code, 'E_CHANGE_MISSING');
-    assert.equal(cli('open', 'c2', '--scope', 'other', '--paths', 'app.mjs', '--deltaless').status, 0);
+    assert.equal(cli('open', 'c2', '--scope', 'other', '--paths', 'app.mjs', '--deltaless', '--closure-mode', 'legacy').status, 0);
     assert.equal(json('plan').action, 'select_change');
     assert.equal(json('resume').recommendation.action, 'select_change');
     // A plan observed revision 1; a legitimate transition makes it obsolete.

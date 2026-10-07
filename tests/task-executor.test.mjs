@@ -18,7 +18,7 @@ function fixture() {
     'tests/b.cjs': "const {test}=require('node:test');const assert=require('node:assert/strict');test('B',()=>assert.equal(require('../src/value.cjs').b,2));\n" });
   r.git(['checkout', '-qb', 'feature']);
   const s = new Store(r.root); s.init({ project_id: 'proj', protocol_version: '1.0.0' });
-  const c = s.putChange(change({ base_revision: r.base, state: 'pass1_complete', allowed_paths: ['src/'] }));
+  const c = s.putChange(change({ base_revision: r.base, state: 'pass1_complete', closure_mode: 'legacy', allowed_paths: ['src/'] }));
   s.putApproval(approval({ change_id: 'c1', gate: 'scope', revision: r.base, scope_digest: contractDigest(r.root, c).digest }));
   const plan = { version: 1, tasks: ['A', 'B'].map((id, i) => ({ id, mission: `Implement scenario ${id}`, depends_on: i ? ['A'] : [],
     refs: ['spec.md'], scenarios: [id], allowed_paths: ['src/value.cjs'], max_attempts: 2,

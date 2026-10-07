@@ -130,7 +130,7 @@ test('a gate is bound to the contract, and progress notes are not the contract',
   const c = consumer();
   try {
     assert.equal(c.cli('init', 'proj').code, 0);
-    assert.equal(c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account').code, 0);
+    assert.equal(c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy').code, 0);
     contractOnDisk(c);
 
     // The CLI computes the digest from the artifact on disk. Nothing here reads an approval.
@@ -172,7 +172,7 @@ test('the CLI blocks a change and can bring it back, without hand-editing JSON',
   const c = consumer();
   try {
     c.cli('init', 'proj');
-    c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account');
+    c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy');
     c.cli('transition', 'c1', 'proposed');
 
     const noReason = c.cli('transition', 'c1', 'blocked');
@@ -500,7 +500,11 @@ test('a consumer with no consolidation mechanism is told, not improvised for', (
     // Initialised WITHOUT --consolidate: there is no mechanism this squad may use, and editing
     // docs/specs/ by hand is not the fallback.
     c.cli('init', 'proj');
-    c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account,docs');
+    const refusedOpen = c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account,docs');
+    assert.equal(refusedOpen.code, 1);
+    assert.match(refusedOpen.err, /E_CLOSURE_SELECTION/);
+    assert.equal(existsSync(join(c.root, '.spectree/changes/c1.json')), false);
+    assert.equal(c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account,docs', '--closure-mode', 'legacy').code, 0);
     contractOnDisk(c);
     c.git(['add', '-A']); c.git(['commit', '-qm', 'the proposal']);
 
@@ -696,7 +700,7 @@ test('the runner executes the launcher this platform actually has', (t) => {
   const c = consumer();
   try {
     c.cli('init', 'proj');
-    c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account');
+    c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy');
     // On Windows `npm` is `npm.cmd`, which Node refuses to spawn without a shell. Reading that
     // as INFRA_ERROR is true and useless: the command works in the operator's own terminal.
     writeFileSync(join(c.root, 'package.json'),
