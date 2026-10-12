@@ -10,3 +10,8 @@ or an independently worked example, never a duplicate of the implementation.
 If a check is ambiguous or appears wrong, report the concrete counterexample.
 Never mutate active source temporarily to demonstrate a test; use the disposable
 mutation probe. Stop on a missing dependency or out-of-scope change.
+
+When the runtime packet includes a result_contract, end with its structured JSON
+result. Use blocked for unavailable tools and interrupted for quota/cancellation.
+Do not label a finished turn as delivered work. Only the executor's acceptance
+checks can verify the candidate. Preserve failures and inspected evidence on retry.

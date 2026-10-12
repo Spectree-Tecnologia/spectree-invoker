@@ -7,9 +7,9 @@ import { gitRepo, cleanup, writeFiles, change, approval, REPO } from './helpers.
 import { Store } from '../scripts/lib/store.mjs';
 import { contractDigest } from '../scripts/lib/digest.mjs';
 import { snapshot, pendingWork, reconcileWork } from '../scripts/lib/work.mjs';
-import { initTasks, taskStatus, runTask, recoverTask, verifyTasks, validatePlan } from '../scripts/lib/task-executor.mjs';
-import { codexEvents } from '../scripts/lib/agent-runner.mjs';
-import { phaseContext, contextPacket } from '../scripts/lib/context.mjs';
+import { initTasks, taskStatus, runTask, recoverTask, verifyTasks, validatePlan, planTaskBudget, applyTaskBudget } from '../scripts/lib/task-executor.mjs';
+import { codexEvents, preflightAgent, runAgent } from '../scripts/lib/agent-runner.mjs';
+import { phaseContext, contextPacket, hash } from '../scripts/lib/context.mjs';
 import { engineeringReport } from '../scripts/lib/engineering-reports.mjs';
 
 function fixture() {
@@ -46,6 +46,9 @@ test('dependency frontier executes and reverifies real named tests without advan
     const result = runTask(r.root, 'c1', 'B', r.good());
     assert.equal(result.ok, true, readFileSync(join(r.root, result.attempt.result_ref), 'utf8')); assert.equal(result.verification.checks.length, 2);
     assert.equal(result.status.complete, true); assert.equal(r.s.change('c1').state, 'pass1_complete');
+    const planned = spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), 'plan', 'c1', '--json'],
+      { cwd: r.root, env: { ...process.env, SPECTREE_PROJECT_ROOT: r.root }, encoding: 'utf8' });
+    assert.equal(JSON.parse(planned.stdout).action, 'record_transition');
     assert.equal(can().status, 0);
     assert.equal(r.s.dispatches('c1').length, 2); assert.equal(pendingWork(r.root, 'c1'), null);
     assert.throws(() => initTasks(r.root, 'c1', r.plan), { code: 'E_TASK_EXISTS' });
@@ -191,7 +194,7 @@ test('process death after an actual write leaves a recoverable attempt, never an
 });
 test('Codex JSONL parsing requires a completed turn and respects errors and malformed output', () => {
   const success = { status: 0 };
-  assert.equal(codexEvents('{"type":"turn.completed","usage":{"input_tokens":10}}', success).status, 'reported_success');
+  assert.equal(codexEvents('{"type":"turn.completed","usage":{"input_tokens":10}}', success).status, 'turn_completed');
   assert.equal(codexEvents('{"type":"thread.started"}', success).status, 'unknown');
   assert.equal(codexEvents('not json', success).status, 'unknown');
   assert.equal(codexEvents('{"type":"turn.failed","error":{"message":"quota exceeded"}}', success).status, 'interrupted');
@@ -227,5 +230,121 @@ test('diagnosis cannot conceal intermittent failures with invalid counts or unsu
     assert.equal(engineeringReport(r.root, 'diagnosis', doc).ok, true);
     assert.throws(() => engineeringReport(r.root, 'diagnosis', { ...doc, conclusion: 'cause_supported' }));
     doc.observations[0].failures = 4; assert.throws(() => engineeringReport(r.root, 'diagnosis', doc));
+  } finally { cleanup(r.root); }
+});
+
+test('reviewed budget revision is bounded, candidate-bound, audited, and preserves old attempts and immutable plan', () => {
+  const r = fixture();
+  try {
+    r.plan.tasks[0].max_attempts = 1; initTasks(r.root, 'c1', r.plan);
+    const failed = runTask(r.root, 'c1', 'A', r.bridge("console.log(JSON.stringify({status:'completed'}));"));
+    assert.equal(failed.verification.checks[0].result, 'FAIL');
+    const inspect = { cause: 'No implementation.', new_hypothesis: 'Write the missing behavior.', refs: [failed.attempt.result_ref], new_max_attempts: 2 };
+    assert.throws(() => planTaskBudget(r.root, 'c1', 'A', inspect), { code: 'E_TASK_PENDING' });
+    recoverTask(r.root, 'c1', failed.attempt.id, { ...inspect, processes_stopped: true });
+    const path = join(r.root, '.spectree/tasks/c1.json');
+    const original = JSON.parse(readFileSync(path));
+    const advise = () => JSON.parse(spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), 'plan', 'c1', '--json'],
+      { cwd: r.root, env: { ...process.env, SPECTREE_PROJECT_ROOT: r.root }, encoding: 'utf8' }).stdout);
+    assert.equal(advise().action, 'review_task_budget');
+    r.s.putChange({ ...r.s.change('c1'), state: 'blocked', blocked_from: 'pass1_complete', blocked_reason: 'Budget exhausted after inspected failure.' });
+    assert.throws(() => planTaskBudget(r.root, 'c1', 'A', { ...inspect, new_max_attempts: 5 }), { code: 'E_TASK_BUDGET' });
+    assert.throws(() => planTaskBudget(r.root, 'c1', 'B', inspect), { code: 'E_TASK_BUDGET' });
+    writeFiles(r.root, { '.spectree/operator-decision.txt': 'Synthetic operator authorizes one additional attempt for A.' });
+    const plan = planTaskBudget(r.root, 'c1', 'A', inspect);
+    const decision = { decision: 'approve', plan_digest: hash(plan), kind: 'human_in_session', identity: 'fixture operator', reason: 'Reviewed missing behavior.', refs: ['.spectree/operator-decision.txt'] };
+    assert.throws(() => applyTaskBudget(r.root, 'c1', plan, { ...decision, plan_digest: 'wrong' }), { code: 'E_TASK_BUDGET_DECISION' });
+    assert.throws(() => applyTaskBudget(r.root, 'c1', plan, { ...decision, kind: 'agent' }), { code: 'E_TASK_BUDGET_DECISION' });
+    const receiptPath = join(r.root, failed.attempt.process_ref, 'agent/receipt.json');
+    const receipt = readFileSync(receiptPath, 'utf8');
+    writeFileSync(receiptPath, '{}');
+    assert.throws(() => applyTaskBudget(r.root, 'c1', plan, decision), { code: 'E_TASK_PENDING' });
+    writeFileSync(receiptPath, receipt);
+    const oldChange = r.s.change('c1');
+    const changePath = join(r.root, '.spectree/changes/c1.json');
+    const changeBytes = readFileSync(changePath);
+    r.s.putChange(oldChange);
+    assert.throws(() => applyTaskBudget(r.root, 'c1', plan, decision), { code: 'E_TASK_BUDGET_STALE' });
+    writeFileSync(changePath, changeBytes); // Restore this synthetic mutation byte for byte.
+    const evidencePath = join(r.root, failed.attempt.result_ref);
+    const evidence = readFileSync(evidencePath, 'utf8');
+    writeFileSync(evidencePath, '{}');
+    assert.throws(() => applyTaskBudget(r.root, 'c1', plan, decision), { code: 'E_TASK_BUDGET_STALE' });
+    writeFileSync(evidencePath, evidence);
+    writeFileSync(join(r.root, 'src/value.cjs'), 'module.exports={a:99,b:0};');
+    assert.throws(() => applyTaskBudget(r.root, 'c1', plan, decision), { code: 'E_TASK_BUDGET_STALE' });
+    writeFileSync(join(r.root, 'src/value.cjs'), 'module.exports = { a: 0, b: 0 };\n');
+    writeFiles(r.root, { '.spectree/budget-plan.json': '\uFEFF' + JSON.stringify({ plan, plan_digest: hash(plan) }),
+      '.spectree/budget-decision.json': JSON.stringify(decision) });
+    const applied = spawnSync(process.execPath, [join(REPO, 'scripts/tasks.mjs'), 'budget-apply', 'c1', '.spectree/budget-plan.json', '--decision', '.spectree/budget-decision.json', '--apply'],
+      { cwd: r.root, env: { ...process.env, SPECTREE_PROJECT_ROOT: r.root }, encoding: 'utf8' });
+    assert.equal(applied.status, 0, applied.stderr);
+    const result = JSON.parse(applied.stdout);
+    assert.deepEqual(result.status.ready, ['A']); assert.equal(result.authorizes_execution, false);
+    const after = JSON.parse(readFileSync(path));
+    assert.deepEqual(after.plan, original.plan); assert.deepEqual(after.attempts, original.attempts); assert.deepEqual(after.results, original.results);
+    assert.equal(after.budget_revisions[0].decision.identity, 'fixture operator');
+    assert.throws(() => applyTaskBudget(r.root, 'c1', plan, decision));
+    assert.equal(r.s.change('c1').state, 'blocked'); assert.equal(advise().action, 'resolve_blocker');
+    assert.throws(() => runTask(r.root, 'c1', 'A', r.good()), { code: 'E_TASK_GATE' });
+    const unblocked = { ...r.s.change('c1'), state: 'pass1_complete' };
+    delete unblocked.blocked_from; delete unblocked.blocked_reason;
+    r.s.putChange(unblocked); // Explicit fixture lifecycle recovery, never performed by budget application.
+    assert.equal(advise().action, 'implement_change');
+    const retried = runTask(r.root, 'c1', 'A', r.bridge("if(p.retry?.new_hypothesis!=='Write the missing behavior.')throw Error('Missing inspected hypothesis');fs.writeFileSync('src/value.cjs','module.exports={a:1,b:0}');console.log(JSON.stringify({status:'completed'}));"));
+    assert.equal(retried.ok, true);
+    const retryPacket = JSON.parse(readFileSync(join(r.root, retried.attempt.packet_ref)));
+    assert.equal(retryPacket.retry.previous_operation, failed.attempt.id);
+    assert.equal(retryPacket.retry.budget_revision, after.budget_revisions[0].digest);
+    assert.deepEqual(r.s.dispatches('c1').map(d => d.attempt).sort(), [1, 2]);
+    assert.equal(taskStatus(r.root, 'c1').tasks[0].original_max_attempts, 1);
+    assert.equal(r.s.change('c1').state, 'pass1_complete');
+    const corrupted = JSON.parse(readFileSync(path));
+    corrupted.budget_revisions[0].plan.new_max_attempts = 10;
+    writeFileSync(path, JSON.stringify(corrupted));
+    assert.throws(() => taskStatus(r.root, 'c1'), { code: 'E_TASK_STORE' });
+  } finally { cleanup(r.root); }
+});
+
+test('preflight refuses unavailable launcher before writing an attempt, and never claims nested tools or quota', () => {
+  const r = fixture();
+  try {
+    initTasks(r.root, 'c1', r.plan);
+    assert.throws(() => runTask(r.root, 'c1', 'A', { kind: 'codex', executable: join(r.root, 'missing-agent') }), { code: 'E_AGENT_PREREQUISITE' });
+    assert.throws(() => runTask(r.root, 'c1', 'A', { kind: 'bridge', command: [process.execPath, 'missing-bridge.mjs'] }), { code: 'E_AGENT_PREREQUISITE' });
+    assert.equal(taskStatus(r.root, 'c1').tasks[0].attempts, 0);
+    assert.equal(r.s.dispatches('c1').length, 0);
+    const check = preflightAgent(r.root, r.good());
+    assert.equal(check.ok, true); assert.equal(check.nested_tools, 'unverified'); assert.equal(check.quota, 'unverified');
+  } finally { cleanup(r.root); }
+});
+
+test('Codex terminal events distinguish transport completion, blocked mission, unavailable tools and delivery claims', () => {
+  const parse = (message, extra = []) => codexEvents([...extra, { type: 'item.completed', item: { type: 'agent_message', text: message } }, { type: 'turn.completed' }].map(JSON.stringify).join('\n'), { status: 0 });
+  assert.equal(parse('I could not complete the task').status, 'turn_completed');
+  const blocked = parse(JSON.stringify({ spectree_result: 1, status: 'blocked', reason: 'Missing tool.' }));
+  assert.equal(blocked.status, 'failed'); assert.equal(blocked.classification, 'blocked');
+  assert.equal(parse(JSON.stringify({ spectree_result: 1, status: 'completed', reason: 'Implemented.' })).status, 'reported_success');
+  assert.equal(parse(JSON.stringify({ spectree_result: 1, status: 'completed', reason: 'Implemented quota handling and resolved tool_unavailable.' })).status, 'reported_success');
+  assert.equal(parse('blocked', [{ type: 'item.completed', item: { error: 'helper_unknown_error' } }]).classification, 'tool_unavailable');
+  assert.equal(parse('Done', [{ type: 'item.completed', item: { type: 'command_execution', exit_code: 0, aggregated_output: 'Source mentions quota and helper_unknown_error.' } }]).status, 'turn_completed');
+  assert.equal(codexEvents('{"type":"turn.completed"}\n{"type":"turn.completed"}', { status: 0 }).status, 'unknown');
+  assert.equal(codexEvents('null', { status: 0 }).classification, 'protocol_error');
+  const partial = codexEvents('{"type":', { status: null, error: { code: 'ETIMEDOUT' } });
+  assert.equal(partial.status, 'interrupted'); assert.equal(partial.classification, 'timeout');
+});
+
+test('bridge timeout wins over exit one and terminal observation persists before acceptance', () => {
+  const r = fixture();
+  try {
+    const config = r.bridge("console.log(JSON.stringify({status:'failed',error:'timeout'}));process.exitCode=1;");
+    const result = runAgent(r.root, {}, config);
+    assert.equal(result.status, 'interrupted'); assert.equal(result.classification, 'timeout');
+    const durable = JSON.parse(readFileSync(join(r.root, result.process.ref, 'agent-result.json')));
+    assert.equal(durable.status, 'interrupted'); assert.equal(durable.exit_code, 1);
+    const quota = runAgent(r.root, {}, r.bridge("console.log(JSON.stringify({status:'failed',error:'quota_exceeded'}));process.exitCode=1;"));
+    assert.equal(quota.status, 'interrupted'); assert.equal(quota.classification, 'quota');
+    const delivered = runAgent(r.root, {}, r.bridge("console.log(JSON.stringify({status:'completed',summary:'Implemented quota handling.'}));"));
+    assert.equal(delivered.status, 'reported_success'); assert.equal(delivered.classification, 'delivery_reported');
   } finally { cleanup(r.root); }
 });

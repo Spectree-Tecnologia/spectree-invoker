@@ -61,7 +61,7 @@ export function runEvaluations({ config, output, caseId = 'all', mode = 'live' }
     try { actual = JSON.parse(readFileSync(inside(root, 'decision.json'), 'utf8')); } catch { /* missing or malformed output fails */ }
     const after = inventory(root); const modifications = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter((p) => p !== 'decision.json' && before[p] !== after[p]);
     const gitUnchanged = git('rev-parse', 'HEAD').toString().trim() === revision && git('branch', '--show-current').toString().trim() === 'eval';
-    const score = agent.status === 'reported_success' && scoreDecision(c.expected, actual) && modifications.length === 0 && gitUnchanged;
+    const score = ['reported_success', 'turn_completed'].includes(agent.status) && scoreDecision(c.expected, actual) && modifications.length === 0 && gitUnchanged;
     const result = { case_id: c.id, passed: Boolean(score), agent_status: agent.status, elapsed_ms: agent.elapsed_ms,
       usage: agent.usage ?? null, profile_digest: profile.digest, actual, modifications, git_unchanged: gitUnchanged, fixture: root };
     writeFileSync(join(runDir, `${c.id}.json`), JSON.stringify({ ...result, expected: c.expected, agent }, null, 2));

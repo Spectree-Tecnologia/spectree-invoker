@@ -3,6 +3,8 @@
 A base abaixo foi introduzida na 1.7. A [adoção operacional 1.8](operational-adoption.md)
 acrescenta Claude Code nativo, supervisão de processos, adoção assistida, reparo
 explícito e avaliação do fluxo. Os comandos existentes continuam disponíveis.
+Veja também [execução resiliente 1.12](resilient-execution.md) para revisão auditada
+de orçamento, preflight, classificação de resultados e bridge persistente.
 
 O Invoker agora pode executar uma tarefa de implementação por vez, chamar um agente
 e verificar os Scenarios com testes nomeados. O plano não concede autorização nem
@@ -32,7 +34,8 @@ use a raiz do plugin. O diretório de trabalho é sempre o consumidor; também p
 ser declarado por `SPECTREE_PROJECT_ROOT`.
 
 O adapter nativo chama `codex exec --json --ephemeral --sandbox workspace-write`,
-envia o packet por stdin e exige um evento de conclusão de turno sem erro. Usa o
+envia o packet por stdin e observa a conclusão de turno sem confundi-la com entrega.
+Os testes de aceitação verificam o resultado. Usa o
 modelo configurado no CLI, ou `model` explícito no JSON; não inventa qual modelo o
 default resolveu. Exige login existente e uma versão do CLI com essas opções.
 Referência: [modo não interativo oficial](https://developers.openai.com/codex/noninteractive).

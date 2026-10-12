@@ -10,7 +10,7 @@ import { contractDigest } from './digest.mjs';
 import { canDispatch } from './state-machine.mjs';
 import { inside, identifier, bounded, refuse, references, snapshot, startWork, finishWork, reconcileWork, pendingWork, workRecords } from './work.mjs';
 import { hash, contextPacket, packageRoot } from './context.mjs';
-import { runAgent, agentCommand } from './agent-runner.mjs';
+import { runAgent, preflightAgent } from './agent-runner.mjs';
 import { launch } from './launch.mjs';
 import { supervisedLaunch, inspectProcesses } from './process-supervisor.mjs';
 import { parseTap, judgePassingRun } from './tap.mjs';
@@ -32,6 +32,66 @@ function exclusive(root, id, fn) {
   try { return withAuthority(root, id, {}, fn); } finally { unlinkSync(lock); }
 }
 function save(root, doc) { atomic(file(root, doc.change_id), doc); }
+function effectiveBudget(doc, taskId) {
+  return (doc.budget_revisions ?? []).filter(r => r.plan.task_id === taskId).at(-1)?.plan.new_max_attempts
+    ?? doc.plan.tasks.find(t => t.id === taskId).max_attempts;
+}
+function validateBudgetHistory(doc) {
+  const revisions = doc.budget_revisions ?? [];
+  if (!Array.isArray(revisions)) refuse('E_TASK_STORE', 'Invalid budget history.');
+  const limits = Object.fromEntries(doc.plan.tasks.map(t => [t.id, t.max_attempts]));
+  let previous = null;
+  for (const entry of revisions) {
+    const { digest, ...body } = entry;
+    const p = entry.plan;
+    if (hash(body) !== digest || entry.previous !== previous || !p || p.change_id !== doc.change_id ||
+        !Object.hasOwn(limits, p.task_id) || limits[p.task_id] !== p.previous_max_attempts ||
+        !Number.isInteger(p.new_max_attempts) || p.new_max_attempts <= limits[p.task_id] ||
+        p.new_max_attempts > Math.min(10, limits[p.task_id] + 3) || entry.decision?.decision !== 'approve' ||
+        entry.decision.plan_digest !== hash(p)) refuse('E_TASK_STORE', 'Invalid budget revision chain.');
+    limits[p.task_id] = p.new_max_attempts; previous = digest;
+  }
+}
+
+/** Read-only proposal. It neither unblocks the lifecycle nor starts a retry. */
+export function planTaskBudget(root, id, taskId, inspection) {
+  identifier(id); identifier(taskId);
+  const doc = load(root, id); const change = guard(root, doc);
+  const state = taskStatus(root, id);
+  if (state.pending.length || state.work_pending || state.process_block) refuse('E_TASK_PENDING', 'Reconcile attempts and stopped processes before reviewing a budget.');
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task || !['exhausted', 'stale'].includes(task.status) || task.attempts < task.max_attempts) refuse('E_TASK_BUDGET', 'Only a spent budget can be revised.');
+  const stage = change.state === 'blocked' ? change.blocked_from : change.state;
+  if (stage !== 'pass1_complete' && !(stage === 'baselined' && change.deltaless)) refuse('E_TASK_GATE', 'Budget review belongs to implementation, including an explicitly blocked implementation.');
+  bounded(inspection.cause, 'observed cause'); bounded(inspection.new_hypothesis, 'new hypothesis');
+  if (!inspection.refs?.length) refuse('E_TASK_BUDGET', 'Inspected evidence is required.');
+  const refs = references(root, inspection.refs);
+  const limit = inspection.new_max_attempts;
+  if (!Number.isInteger(limit) || limit <= task.max_attempts || limit > Math.min(10, task.max_attempts + 3)) refuse('E_TASK_BUDGET', 'Add 1..3 attempts, up to 10 total.');
+  return { version: 1, kind: 'task_budget_revision', change_id: id, task_id: taskId,
+    authorizes_execution: false, previous_max_attempts: task.max_attempts, new_max_attempts: limit,
+    cause: inspection.cause, new_hypothesis: inspection.new_hypothesis, refs,
+    binding: { candidate: snapshot(root), task_store: hash(doc), authority: authorityStamp(root),
+      work: hash(workRecords(root, id)), state: change.state, state_revision: change.state_revision ?? 0 } };
+}
+export function applyTaskBudget(root, id, plan, decision) {
+  return exclusive(root, id, () => {
+    if (!plan || plan.version !== 1 || plan.kind !== 'task_budget_revision' || plan.change_id !== id) refuse('E_TASK_BUDGET', 'Invalid revision plan.');
+    const current = planTaskBudget(root, id, plan.task_id, { ...plan, refs: plan.refs.map(r => r.path) });
+    if (hash(current) !== hash(plan)) refuse('E_TASK_BUDGET_STALE', 'The candidate, evidence, authority or task history changed. Inspect a new plan.');
+    if (decision?.decision !== 'approve' || decision.plan_digest !== hash(plan) || decision.kind !== 'human_in_session') refuse('E_TASK_BUDGET_DECISION', 'Provide the explicit human decision bound to this exact plan digest.');
+    bounded(decision.identity, 'operator identity'); bounded(decision.reason, 'decision reason');
+    if (!decision.refs?.length) refuse('E_TASK_BUDGET_DECISION', 'Record a reference to the operator decision.');
+    const decisionRefs = references(root, decision.refs);
+    const doc = load(root, id);
+    const entry = { plan, decision: { ...decision, refs: decisionRefs }, at: new Date().toISOString(),
+      previous: doc.budget_revisions?.at(-1)?.digest ?? null };
+    entry.digest = hash(entry);
+    doc.budget_revisions = [...(doc.budget_revisions ?? []), entry];
+    save(root, doc); // Limit and audit commit together, preserving every attempt/result.
+    return { applied: true, revision_digest: entry.digest, authorizes_execution: false, status: taskStatus(root, id) };
+  });
+}
 function load(root, id) {
   let doc;
   try { doc = json(file(root, id)); } catch (e) { refuse('E_TASK_STORE', `Cannot read task plan: ${e.message}`); }
@@ -39,6 +99,7 @@ function load(root, id) {
       !doc.results || typeof doc.results !== 'object') refuse('E_TASK_STORE', 'Task store identity or plan digest is invalid.');
   validatePlan(root, doc.plan);
   if (doc.attempts.some((a) => !doc.plan.tasks.some((t) => t.id === a.task_id) || !['started', 'succeeded', 'failed', 'interrupted', 'unknown', 'reconciled'].includes(a.status))) refuse('E_TASK_STORE', 'Invalid attempt.');
+  validateBudgetHistory(doc);
   return doc;
 }
 const covers = (prefix, path) => path === prefix || (prefix.endsWith('/') && path.startsWith(prefix));
@@ -99,7 +160,9 @@ function implementationGate(root, id) {
     cwd: root, env: { ...process.env, SPECTREE_PROJECT_ROOT: root }, encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024 });
   let plan;
   try { plan = JSON.parse(result.stdout); } catch { refuse('E_TASK_GATE', 'Cannot read lifecycle recommendation.'); }
-  if (result.status !== 0 || plan.action !== 'implement_change' || plan.status !== 'ready' || !plan.gate?.ok) refuse('E_TASK_GATE', `${plan.code ?? plan.action}: ${plan.reason}`);
+  // Task eligibility is checked by run/repair/verify themselves. Advisory frontier
+  // actions must not deadlock verification, including repair of missing evidence.
+  if (result.status !== 0 || plan.target_state !== 'implemented' || !plan.gate?.ok) refuse('E_TASK_GATE', `${plan.code ?? plan.action}: ${plan.reason}`);
   const current = snapshot(root);
   if (!current.branch || /^(main|master)$/.test(current.branch)) refuse('E_TASK_BRANCH', 'A dedicated implementation branch is required.');
   let remoteDefault = '';
@@ -135,9 +198,10 @@ export function taskStatus(root, id) {
       try { actual = references(root, [result.evidence_ref])[0].sha256; } catch { /* missing evidence is not success */ }
       if (!actual || actual !== result.evidence_sha256) refuse('E_TASK_EVIDENCE', `Evidence for ${t.id} is missing or changed; reverify explicitly.`);
     }
+    const limit = effectiveBudget(doc, t.id);
     const status = result?.valid !== false && result?.content_digest === current.content_digest && result?.revision === current.revision ? 'verified'
-      : result ? 'stale' : pending.some((a) => a.task_id === t.id) ? 'reconcile' : count >= t.max_attempts ? 'exhausted' : 'pending';
-    return { id: t.id, status, attempts: count, depends_on: t.depends_on };
+      : result ? 'stale' : pending.some((a) => a.task_id === t.id) ? 'reconcile' : count >= limit ? 'exhausted' : 'pending';
+    return { id: t.id, status, attempts: count, max_attempts: limit, original_max_attempts: t.max_attempts, depends_on: t.depends_on };
   });
   const processes = processBlock(root, id);
   const blocked = pending.length > 0 || !!pendingWork(root, id) || !!processes || tasks.some((t) => t.status === 'stale');
@@ -160,11 +224,12 @@ function authorityStamp(root) {
   const result = [];
   function walk(rel) {
     const path = inside(root, rel); if (!existsSync(path)) return;
+    if (rel.endsWith('.lock')) return;
     const stat = lstatSync(path);
     if (stat.isDirectory()) readdirSync(path).sort().forEach((f) => walk(`${rel}/${f}`));
     else result.push([rel, hash(readFileSync(path))]);
   }
-  for (const name of ['changes', 'approvals', 'evidence', 'closure', 'dispatches', 'project.json']) walk(`.spectree/${name}`);
+  for (const name of ['changes', 'approvals', 'evidence', 'closure', 'dispatches', 'tasks', 'project.json']) walk(`.spectree/${name}`);
   return hash(result);
 }
 function checks(root, tasks, processRef, observation) {
@@ -192,7 +257,7 @@ function record(root, id, name, doc) {
   writeFileSync(path, JSON.stringify(doc, null, 2) + '\n', { flag: 'wx' }); return `.spectree/tasks/${id}/${name}.json`;
 }
 export function runTask(root, id, taskId, config, repair = null) {
-  agentCommand(root, config); // Refuse invalid transport before consuming an attempt.
+  const preflight = preflightAgent(root, config); // Observable local prerequisites, before consuming an attempt.
   return exclusive(root, id, () => {
     const doc = load(root, id); guard(root, doc);
     const frontier = taskStatus(root, id);
@@ -205,20 +270,31 @@ export function runTask(root, id, taskId, config, repair = null) {
     } else if (!frontier.ready.includes(taskId)) refuse('E_TASK_NOT_READY', 'Task has unmet dependencies, stale evidence, pending work or exhausted attempts.');
     const gate = implementationGate(root, id); const task = doc.plan.tasks.find((t) => t.id === taskId);
     const previous = doc.attempts.filter((a) => a.task_id === taskId); const operation = `task-${randomUUID()}`;
+    if (previous.length >= effectiveBudget(doc, taskId)) refuse('E_ATTEMPTS_EXCEEDED', 'Every recorded attempt consumes budget, including interrupted dispatch persistence.');
+    const budgetRevision = doc.budget_revisions?.filter(r => r.plan.task_id === taskId).at(-1);
+    const revision = budgetRevision?.plan;
+    const revisedRetry = revision && previous.length === revision.previous_max_attempts;
     const dispatch = { schema_version: '1.0.0', dispatch_id: operation, change_id: id, role: 'full_stack_developer',
       mission: task.mission, exit_criteria: task.checks.map((c) => c.test_name), allowed_paths: task.allowed_paths,
-      required_reading: task.refs, attempt: previous.length + 1, max_attempts: task.max_attempts,
+      required_reading: task.refs, attempt: previous.length + 1, max_attempts: effectiveBudget(doc, taskId),
       budget_key: `task:${id}:${taskId}`, input_revision: gate.preconditions.revision,
-      ...(previous.length ? { previous_attempt: repair ? { cause: repair.cause, new_hypothesis: repair.new_hypothesis } : previous.at(-1).recovery } : {}) };
+      ...(previous.length ? { previous_attempt: repair ? { cause: repair.cause, new_hypothesis: repair.new_hypothesis }
+        : revisedRetry
+          ? { cause: revision.cause, new_hypothesis: revision.new_hypothesis } : previous.at(-1).recovery } : {}) };
     const budget = canDispatch(dispatch, new Store(root).dispatches(id));
     if (!budget.ok) refuse(budget.code, budget.message);
     const packet = contextPacket(root, task, { change_id: id, preconditions: gate.preconditions, dispatch_id: operation },
       { adapter: config.context_adapter ?? (config.kind === 'claude-code' ? 'claude-code' : 'codex') });
+    if (previous.length) packet.retry = { previous_operation: previous.at(-1).id,
+      attempt: dispatch.attempt, max_attempts: dispatch.max_attempts, ...dispatch.previous_attempt,
+      inspected_refs: repair ? references(root, repair.refs) : revisedRetry ? revision.refs : previous.at(-1).recovery_refs ?? [],
+      budget_revision: budgetRevision?.digest ?? null,
+      warning: 'These hashes describe inspected observations, not verification of the current candidate. Inspect drift before acting.' };
     if (repair) packet.repair = { cause: repair.cause, new_hypothesis: repair.new_hypothesis, refs: references(root, repair.refs) };
     const packetRef = record(root, id, `${operation}-packet`, packet);
     const before = inventory(root); const initial = snapshot(root);
     const began = performance.now();
-    const attempt = { id: operation, task_id: taskId, status: 'started', input: initial, packet_ref: packetRef, adapter: config.kind,
+    const attempt = { id: operation, task_id: taskId, status: 'started', input: initial, packet_ref: packetRef, adapter: config.kind, preflight,
       started_at: new Date().toISOString(), process_ref: `.spectree/processes/${operation}` };
     doc.attempts.push(attempt); save(root, doc);
     startWork(root, id, operation, { phase: 'implement', task: taskId, next: 'Inspect the agent outcome, then execute acceptance checks.', refs: [packetRef] });
@@ -229,21 +305,27 @@ export function runTask(root, id, taskId, config, repair = null) {
     const authority = authorityStamp(root);
     try {
       const agent = runAgent(root, packet, { ...config, process_ref: `${attempt.process_ref}/agent` });
-      appendRunEvent(root, id, operation, 'agent.finished', { task_id: taskId, status: agent.status,
+      appendRunEvent(root, id, operation, 'agent.finished', { task_id: taskId, status: agent.status, classification: agent.classification,
         metrics: agentMetrics(agent, config), process_ref: agent.process.ref, quiescent: agent.process.quiescent });
       let verification = null;
-      if (agent.status === 'reported_success') verification = checks(root, doc.plan.tasks.filter((t) => doc.results[t.id] || t.id === taskId), attempt.process_ref, { change: id, operation });
+      // A native terminal event is transport completion, not an agent's claim of
+      // delivery. In both cases only the immutable acceptance oracle can verify it.
+      const checkable = ['reported_success', 'turn_completed'].includes(agent.status);
+      if (checkable) verification = checks(root, doc.plan.tasks.filter((t) => doc.results[t.id] || t.id === taskId), attempt.process_ref, { change: id, operation });
       guard(root, doc);
       const after = inventory(root); const current = snapshot(root);
       const changed = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter((p) => before[p] !== after[p]);
       const scopeOk = changed.every((p) => task.allowed_paths.some((a) => covers(a, p)));
       const authorityOk = authorityStamp(root) === authority && current.revision === initial.revision && current.branch === initial.branch;
-      const ok = agent.status === 'reported_success' && verification?.ok && scopeOk && authorityOk;
+      const ok = checkable && verification?.ok && scopeOk && authorityOk;
       const resultRef = record(root, id, `${operation}-result`, { agent, verification, changed, scope_ok: scopeOk, authority_ok: authorityOk });
       attempt.status = ok ? 'succeeded' : ['interrupted', 'unknown'].includes(agent.status) ? agent.status : 'failed';
+      attempt.classification = ok ? 'acceptance_verified' : !scopeOk ? 'scope_violation' : !authorityOk ? 'authority_changed'
+        : verification ? verification.checks.some(c => ['INFRA_ERROR', 'INCONCLUSIVE'].includes(c.result)) ? 'acceptance_infrastructure' : 'acceptance_failed'
+          : agent.classification;
       attempt.result_ref = resultRef;
       attempt.finished_at = new Date().toISOString();
-      appendRunEvent(root, id, operation, 'run.finished', { task_id: taskId, status: attempt.status,
+      appendRunEvent(root, id, operation, 'run.finished', { task_id: taskId, status: attempt.status, classification: attempt.classification,
         elapsed_ms: Math.round(performance.now() - began), evidence_ref: resultRef,
         scope_ok: scopeOk, authority_ok: authorityOk, candidate: current });
       finishWork(root, id, operation, { result: { status: ok ? 'completed' : attempt.status === 'interrupted' ? 'interrupted' : 'failed' },

@@ -45,6 +45,7 @@ Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CL
 | `state.mjs plan` | [Próximo passo operacional](docs/planning.md): recomendação derivada dos gates, sem executar ações ou conceder autorização |
 | `work.mjs`, `mutation-probe.mjs`, `verification.mjs` | [Retomada e verificação](docs/reliability.md): checkpoints, mutação isolada, round trips, baseline e CI independente |
 | `tasks.mjs`, `reports.mjs`, `evals.mjs` | [Execução e avaliações](docs/evolution.md): tarefas com dependências, contexto por fase, diagnóstico, revisão e avaliações com agentes reais |
+| `tasks.mjs budget-plan/budget-apply/preflight`, `bridge.mjs` | [Execução resiliente 1.12](docs/resilient-execution.md): revisão auditada de orçamento, fronteira coerente, classificação de falhas e entrega persistente |
 | `adopt.mjs`, `tasks.mjs repair`, `evals.mjs --suite flow` | [Adoção operacional 1.8](docs/operational-adoption.md): Claude nativo, plano de adoção, supervisão de processos e avaliação do fluxo com reparo de regressão |
 | `docs/` | [instalação](docs/install.md) · [compatibilidade](docs/compatibility.md) · [arquitetura](docs/architecture.md) · [ciclo de entrega](docs/workflow.md) · [manutenção](docs/maintenance.md) |
 | `CLAUDE.md`, `agents/`, `adapters/codex/dist/` | **Gerados.** Rode `node scripts/build.mjs`; não edite à mão |
