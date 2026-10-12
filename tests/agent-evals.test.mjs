@@ -42,6 +42,8 @@ test('installed evolution entrypoints, generated profiles, runtime libraries and
     const context = spawnSync(process.execPath, ['--input-type=module', '-e', "import {phaseContext} from './.spectree/squad/scripts/lib/context.mjs';console.log(phaseContext('review').sources.length)"], { cwd: r.root, encoding: 'utf8' });
     assert.equal(context.status, 0, context.stderr); assert.equal(context.stdout.trim(), '2');
     assert.match(run('tasks.mjs').stderr, /usage:/);
+    assert.match(run('bridge.mjs').stderr, /usage:/);
+    assert.ok(readFileSync(join(pkg, 'docs/resilient-execution.md'), 'utf8').includes('budget-plan'));
     assert.match(run('reports.mjs').stderr, /usage:/);
     assert.match(run('adopt.mjs').stderr, /usage:/);
     assert.deepEqual(JSON.parse(run('evals.mjs', '--suite', 'flow').stdout).cases, ['operational-flow']);

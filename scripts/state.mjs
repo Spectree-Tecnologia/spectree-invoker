@@ -42,7 +42,7 @@ import { observePlanCi } from './lib/planner-ci.mjs';
 import { parseTap, judgeFailingRun } from './lib/tap.mjs';
 import { validate } from './lib/validate.mjs';
 import { pendingWork, doctor } from './lib/work.mjs';
-import { requireTasksComplete } from './lib/task-executor.mjs';
+import { requireTasksComplete, taskStatus } from './lib/task-executor.mjs';
 import { diagnoseProject, selectClosureMode, closureStrategy } from './lib/project-diagnostics.mjs';
 
 // A gate is bound to what it authorises. Scope-class gates authorise the contract; the
@@ -212,6 +212,10 @@ function recommendation(changeId, { observeCi = false, pr = null, snapshot = nul
     const g = snapshot?.g ?? gitSituation();
     const d = snapshot?.d ?? digests(change, { soft: true });
     const context = transitionContext(change, d, cc, g, nextTarget(change));
+    if (nextTarget(change) === 'implemented' && existsSync(join(root, '.spectree/tasks', `${change.change_id}.json`))) {
+      try { context.taskFrontier = taskStatus(root, change.change_id); }
+      catch (e) { context.taskFrontier = { error: { code: e.code ?? 'E_TASK_STORE', message: e.message } }; }
+    }
     context.closureStrategyProblem = change.closure_mode !== 'legacy' && !closureStrategy(store.project()).prepared_supported;
     const ci = observeCi ? observePlanCi({ repository: store.project()?.repository, pr,
       revision: g.revision, branch: g.branch, cwd: root }) : null;

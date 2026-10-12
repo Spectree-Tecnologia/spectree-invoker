@@ -73,7 +73,20 @@ export function planNext(change, ctx = {}, { isolationSignal = null, ci = null, 
     { command: ['post-merge.mjs', change.change_id], command_mode: 'dry-run; supply the approved PR identity', ci });
   // States with no executable evidence gate still require real work, not an automatic checkbox.
   if (to === 'proposed') return answer('review_proposal', 'solutions_architect', 'ready', 'Review the proposal and delta before recording proposed.');
-  if (to === 'implemented') return answer('implement_change', 'full_stack_developer', 'ready', 'Implement the approved scope; this gate does not prove that implementation is finished.');
+  if (to === 'implemented') {
+    const tasks = ctx.taskFrontier;
+    if (tasks) {
+      const extra = { tasks };
+      if (tasks.error) return answer('inspect_tasks', 'invoker', 'blocked', tasks.error.message, { ...extra, code: tasks.error.code });
+      if (tasks.pending.length || tasks.work_pending || tasks.process_block) return answer('recover_tasks', 'invoker', 'blocked', 'Inspect and reconcile attempts and managed processes.', extra);
+      if (tasks.tasks.some(t => t.status === 'stale')) return answer('reverify_tasks', 'quality_engineer', 'blocked', 'Verify the changed candidate; inspect a failed check before bounded repair.', extra);
+      if (tasks.complete) return answer('record_transition', 'invoker', 'ready', 'Registered tasks have current verified evidence. Revalidate before recording implemented.',
+        { ...extra, command: ['state.mjs', 'transition', change.change_id, to, '--expect', String(change.state_revision ?? 0)] });
+      if (!tasks.ready.length) return answer('review_task_budget', 'invoker', 'blocked', 'No task is runnable. Inspect exhausted budgets and dependencies; a reviewed budget revision never executes work.', extra);
+      return answer('implement_change', 'full_stack_developer', 'ready', 'Execute only a task in the current dependency frontier.', extra);
+    }
+    return answer('implement_change', 'full_stack_developer', 'ready', 'Implement the approved scope; this gate does not prove that implementation is finished.');
+  }
   return answer('record_transition', 'invoker', 'ready', 'The local gate allows this transition. Verify task authorization and revalidate immediately before writing.',
     { command: ['state.mjs', 'transition', change.change_id, to, '--expect', String(change.state_revision ?? 0)] });
 }

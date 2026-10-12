@@ -240,6 +240,13 @@ export function judgePassingRun(tap, expected, exitCode) {
   const results = tap.groups.flatMap((g) => g.results);
   const named = results.filter((r) => r.name === expected);
   if (named.length !== 1 || named[0].directive) return fail('the named test must run exactly once, without skip/todo');
+  const parents = new Set(tap.groups.map(g => g.parentResult));
+  const failures = results.filter(r => !r.ok && !parents.has(r));
+  if (Number.isInteger(exitCode) && exitCode !== 0 && !results.some(r => r.directive) && failures.length &&
+      failures.every(r => r.diagnostic.code === 'ERR_ASSERTION' || r.diagnostic.name === 'AssertionError')) {
+    return { result: 'FAIL', reason: `Complete run contains assertion failures: ${failures.map(r => r.name).join(', ')}`,
+      matched: { name: expected, number: named[0].number, ok: named[0].ok } };
+  }
   if (exitCode !== 0 || results.some((r) => !r.ok || r.directive)) return fail('baseline must finish with every test passing and none skipped');
   return { result: 'PASS', reason: `"${expected}" passed in a complete green run`, matched: { name: named[0].name, number: named[0].number, ok: true } };
 }

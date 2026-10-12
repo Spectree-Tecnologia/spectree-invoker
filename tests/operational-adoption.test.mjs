@@ -46,6 +46,10 @@ test('Claude requires one successful terminal result and never treats quota, per
   assert.equal(parse([{ type: 'system' }]).status, 'unknown'); assert.equal(parse([ok, ok]).status, 'unknown');
   assert.equal(parse([ok, 'malformed']).status, 'unknown'); assert.equal(parse([ok], { status: 1 }).status, 'failed');
   assert.equal(parse([{ ...ok, result: 'usage limit reached' }]).status, 'interrupted');
+  assert.equal(parse([{ ...ok, result: JSON.stringify({ spectree_result: 1, status: 'completed', reason: 'Added quota support.' }) }]).status, 'reported_success');
+  assert.equal(parse([{ ...ok, result: JSON.stringify({ spectree_result: 1, status: 'completed', reason: 'Resolved tool_unavailable.' }) }]).classification, 'delivery_reported');
+  assert.equal(parse([{ ...ok, result: 'helper_unknown_error' }]).status, 'failed');
+  assert.equal(parse([{ type: 'error', message: 'quota exceeded' }, ok]).status, 'interrupted');
   assert.equal(parse([{ ...ok, permission_denials: [{ tool_name: 'Write' }] }]).status, 'failed');
   assert.equal(parse([{ ...ok, is_error: true }]).status, 'failed');
   const cmd = agentCommand('/tmp', { kind: 'claude-code' }); assert.ok(cmd.includes('--safe-mode')); assert.ok(cmd.includes('dontAsk'));

@@ -10,6 +10,24 @@ const ctx = (extra = {}) => ({ revision, contentDigest: 'content-a', contractDig
 const proof = (property, extra = {}) => evidence({ property, revision, fingerprint: 'content-a',
   executor: { role: 'quality_engineer', independent_of: ['full_stack_developer'] }, ...extra });
 
+test('planner mirrors the task frontier while preserving the lifecycle gate', () => {
+  const base = { pending: [], work_pending: null, process_block: null, tasks: [], ready: [], complete: false };
+  for (const [patch, expected] of [
+    [{ ready: ['A'] }, 'implement_change'],
+    [{ tasks: [{ status: 'exhausted' }] }, 'review_task_budget'],
+    [{ tasks: [{ status: 'stale' }] }, 'reverify_tasks'],
+    [{ pending: ['attempt'] }, 'recover_tasks'],
+    [{ process_block: { code: 'E_PROCESS_ACTIVE' } }, 'recover_tasks'],
+    [{ complete: true }, 'record_transition'],
+    [{ error: { code: 'E_TASK_EVIDENCE', message: 'Missing evidence.' } }, 'inspect_tasks'],
+  ]) {
+    const plan = planNext(change({ state: 'pass1_complete' }), ctx({ taskFrontier: { ...base, ...patch } }));
+    assert.equal(plan.action, expected); assert.equal(plan.gate.ok, true); assert.equal(plan.authorizes_execution, false);
+  }
+  const denied = planNext(change({ state: 'pass1_complete' }), ctx({ approvals: [], taskFrontier: { ...base, ready: ['A'] } }));
+  assert.equal(denied.action, 'request_approval');
+});
+
 test('planner repeats the gate refusal with structured approval identity, not parsed prose', () => {
   const c = change({ state: 'proposed' }), context = ctx({ approvals: [] });
   const p = planNext(c, context);
