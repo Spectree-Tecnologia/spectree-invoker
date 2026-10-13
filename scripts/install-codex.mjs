@@ -74,7 +74,7 @@ planCopy(join(dist, 'SQUAD.md'), join(squadRoot, 'SQUAD.md'), 'squad protocol');
 // The closure migration travels WITH the scripts and is never RUN by the installer: updating
 // code and rewriting a project's records are different acts with different blast radii, and an
 // installer that quietly did the second one would rewrite state nobody asked it to touch.
-for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs', 'prepare-closure.mjs', 'post-merge.mjs', 'ci-treatment.mjs', 'migrate-closure.mjs', 'work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'tasks.mjs', 'bridge.mjs', 'reports.mjs', 'evals.mjs', 'adopt.mjs', 'reconcile.mjs']) {
+for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs', 'prepare-closure.mjs', 'post-merge.mjs', 'ci-treatment.mjs', 'migrate-closure.mjs', 'work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'tasks.mjs', 'bridge.mjs', 'reports.mjs', 'evals.mjs', 'adopt.mjs', 'reconcile.mjs', 'delivery.mjs']) {
   planCopy(join(pkg, 'scripts', f), join(squadRoot, 'scripts', f), 'script the skill calls');
 }
 for (const f of readdirSync(join(pkg, 'scripts', 'lib'))) {
@@ -84,7 +84,7 @@ for (const f of readdirSync(join(pkg, 'scripts', 'lib'))) {
 for (const f of readdirSync(join(pkg, 'schemas'))) {
   planCopy(join(pkg, 'schemas', f), join(squadRoot, 'schemas', f), 'schema');
 }
-for (const f of ['reliability.md', 'evolution.md', 'operational-adoption.md', 'resilient-execution.md', 'guided-reconciliation.md', 'examples/verification.json', 'examples/consumer-ci.yml', 'examples/task-plan.json', 'examples/codex-runner.json', 'examples/claude-runner.json', 'examples/adoption-request.json']) {
+for (const f of ['reliability.md', 'evolution.md', 'operational-adoption.md', 'resilient-execution.md', 'guided-reconciliation.md', 'delivery-reliability.md', 'examples/delivery-verification.json', 'examples/reporter-probe.mjs', 'examples/verification.json', 'examples/consumer-ci.yml', 'examples/task-plan.json', 'examples/codex-runner.json', 'examples/claude-runner.json', 'examples/adoption-request.json']) {
   planCopy(join(pkg, 'docs', f), join(squadRoot, 'docs', f), 'reliability guide or example; never applied to the consumer');
 }
 planCopy(join(pkg, 'package.json'), join(squadRoot, 'package.json'), 'runtime package identity');

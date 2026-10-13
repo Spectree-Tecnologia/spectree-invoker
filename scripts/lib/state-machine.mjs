@@ -198,6 +198,9 @@ export function canTransition(change, to, ctx = {}) {
   // Entering `blocked` needs nothing: a block is an admission, not an achievement.
   const need = ENTRY_REQUIREMENTS[to] ?? {};
 
+  if (to !== 'blocked' && ctx.delivery?.ok === false)
+    return deny(ctx.delivery.code, ctx.delivery.message);
+
   for (const gate of need.approvals ?? []) {
     refusalDetail = { gate };
     const forGate = approvals.filter((a) => a.gate === gate);

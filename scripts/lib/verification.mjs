@@ -1,5 +1,6 @@
 // Validate the design of checks. A valid plan is NOT evidence that its commands ran.
 import { aggregate } from './ci-policy.mjs';
+import { deliveryContract } from './delivery-contract.mjs';
 
 const argv = (x) => Array.isArray(x) && x.length > 0 && x.every((v) => typeof v === 'string' && v.trim());
 const nonempty = (x) => typeof x === 'string' && x.trim().length > 0;
@@ -56,6 +57,7 @@ export function verificationPlan(plan) {
       }
     }
   }
+  if (plan.delivery !== undefined) errors.push(...deliveryContract(plan).errors);
   return { ok: errors.length === 0, advisory: true, authorizes_execution: false,
     meaning: 'Plan consistency only; commands and negative controls still require execution.', errors };
 }

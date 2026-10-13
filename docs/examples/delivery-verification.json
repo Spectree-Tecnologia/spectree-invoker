@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "change": "registry-foundation",
+  "changes_field_meaning": false,
+  "checks": [{
+    "id": "registry-name",
+    "kind": "behavior",
+    "claim": "An empty name is refused",
+    "command": ["node", "--test", "--test-reporter=tap", "test/registry.test.mjs"],
+    "scenario_refs": ["registry / Name is required / Empty name"],
+    "counterexample": "Remove the name validation",
+    "expected_failure": "The empty-name assertion fails"
+  }],
+  "delivery": {
+    "version": 1,
+    "suites": [{
+      "id": "application",
+      "command": ["node", "--test", "--test-reporter=tap", "test/*.test.mjs"],
+      "format": "tap",
+      "full_suite": true,
+      "timeout_seconds": 300,
+      "expected_tests": ["Empty name", "Decimal precision"],
+      "scenarios": [{"ref": "registry / Name is required / Empty name", "test": "Empty name"}],
+      "probe": {
+        "command": ["node", "--test", "--test-reporter=tap", "tools/reporter-probe.mjs"],
+        "test": "reporter probe"
+      }
+    }]
+  }
+}

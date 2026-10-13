@@ -54,3 +54,8 @@ Then the pipeline in Section 7 of `SQUAD.md`, in that order. Two things that are
 **With no argument** — report and ask, in the Section 10 format, in Portuguese, with what you actually verified.
 
 For an adopted implementation graph, inspect `node .spectree/squad/scripts/tasks.mjs status <id>` before dispatch and execute through `tasks.mjs run/repair`, preserving its attempt budget and automatic run observations. Read `.spectree/squad/docs/evolution.md` for explicit execution, recovery and real-agent evaluation commands. A ready task or a Console observation is not permission; an uncertain attempt requires reconciliation.
+
+For the delivery reliability profile, read `.spectree/squad/docs/delivery-reliability.md`.
+Use `delivery.mjs preflight <id>` before dispatch and the observed full-suite command
+`delivery.mjs run <id> --apply` on the completed candidate. Preserve read-only consumers;
+installing a newer package does not authorize enabling its policy in another project.

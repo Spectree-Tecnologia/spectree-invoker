@@ -29,6 +29,8 @@ import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { canTransition, ASSERTS_FAILURE } from './lib/state-machine.mjs';
+import { deliveryGate } from './lib/delivery.mjs';
+import { DELIVERY_STATES } from './lib/delivery-ledger.mjs';
 import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
 import { launch } from './lib/launch.mjs';
 import { manifestPath, preparationCovers, approvalsInForce, readManifest } from './lib/closure-prep.mjs';
@@ -163,6 +165,7 @@ function closureVerdict(change, d, cc) {
 /** Shared context: advice and execution ask the same gate, over the same bindings. */
 function transitionContext(change, d, cc, g, to) {
   return {
+      delivery: DELIVERY_STATES.includes(to) ? deliveryGate(root, change.change_id, to) : undefined,
       evidence: store.evidence(change.change_id),
       // Retired approvals are history, not authority. Passing them here let a reopened
       // closure walk to `integrated` on the approval its own reopening had retired.
@@ -395,6 +398,7 @@ switch (cmd) {
     const ciJobs = (flag('ci-jobs') ?? '').split(',').map((x) => x.trim()).filter(Boolean);
     const doc = store.init({
       project_id: id, protocol_version: '1.0.0',
+      ...(has('delivery') ? { delivery: { version: 1 } } : {}),
       created_at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
       ...(flag('repository') ? { repository: flag('repository') } : {}),
       ...(consolidate ? { closure: { consolidate } } : {}),
@@ -505,6 +509,10 @@ switch (cmd) {
     let saved;
     try {
       saved = withAuthority(root, id, { expectedRevision: cc.lifecycle?.revision ?? null, requireIdle: to !== 'blocked' }, () => {
+        if (DELIVERY_STATES.includes(to)) {
+          const gate = deliveryGate(root, id, to);
+          if (!gate.ok) throw Object.assign(new Error(gate.message), { code: gate.code });
+        }
         if (to === 'implemented') requireTasksComplete(root, id);
         return store.putChange(next, { event: { type: 'transition', from: change.state, to }, expected: change.state_revision });
       });

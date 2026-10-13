@@ -30,6 +30,8 @@ export function planNext(change, ctx = {}, { isolationSignal = null, ci = null, 
   base.target_state = to;
   base.gate = gate;
   const need = ENTRY_REQUIREMENTS[to];
+  if (ctx.delivery?.ok === false) return answer('inspect_delivery', 'platform_engineer', 'blocked', ctx.delivery.message,
+    { code: ctx.delivery.code, command: ['delivery.mjs', 'preflight', change.change_id], command_mode: 'read-only' });
   // Administrative scope approval is checked by the gate BEFORE any preparation advice.
   // Preparation belongs before QA, and before asking for integration approval over that record.
   const prepareFirst = change.closure_mode !== 'legacy' && !ctx.closure?.ok &&

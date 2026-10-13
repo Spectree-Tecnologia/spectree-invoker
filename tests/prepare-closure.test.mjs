@@ -55,6 +55,23 @@ function fixture({ allowed = ['src', 'docs'], baseFiles = {} } = {}) {
   };
 }
 
+test('closure carries schema-named deferrals and refuses a corrupt ledger before consolidation', () => {
+  const f = fixture();
+  try {
+    f.store.putDeferred({ owner: 'platform_engineer', status: 'open', impact: 'defect',
+      title: 'Follow-up', current_decision: 'next change', opened_by_change: 'c1' });
+    const prepared = f.prep('--apply');
+    assert.equal(prepared.code, 0, prepared.err);
+    assert.deepEqual(f.manifest().deferred.map(i => i.stable_id), [1]);
+  } finally { f.drop(); }
+  const bad = fixture();
+  try {
+    writeFileSync(join(bad.root, '.spectree/deferred.json'), '{');
+    assert.equal(bad.prep('--apply').code, 1);
+    assert.equal(bad.ran(), false);
+  } finally { bad.drop(); }
+});
+
 
 /**
  * The same change, but at `ci_green` with every approval and every piece of evidence in order,
