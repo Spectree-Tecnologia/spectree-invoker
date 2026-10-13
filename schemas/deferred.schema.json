@@ -12,7 +12,7 @@
       "description": "Never reused, never renumbered. The log, the proposals and the archive cite it."
     },
     "title": { "type": "string", "minLength": 1 },
-    "owner": { "enum": ["architect", "platform_engineer", "own_change", "first_deploy", "founder"] },
+    "owner": { "enum": ["architect", "platform_engineer", "quality_engineer", "full_stack_developer", "integration_engineer", "typesafe_engineer", "own_change", "first_deploy", "founder"] },
     "status": { "enum": ["open", "closed", "superseded"] },
     "impact": { "enum": ["cosmetic", "behaviour", "ceiling", "defect", "security"] },
 
@@ -27,6 +27,15 @@
     "evidence_refs": { "type": "array", "items": { "$ref": "spectree/common#/definitions/ref" } },
     "closure_evidence": { "$ref": "spectree/common#/definitions/ref" },
     "closed_by_change": { "$ref": "spectree/common#/definitions/id" },
+    "due": {
+      "type": "object",
+      "required": ["change_id", "state"],
+      "properties": {
+        "change_id": { "$ref": "spectree/common#/definitions/id" },
+        "state": { "enum": ["implemented", "pass2_complete", "ci_green", "integration_approved", "integrated", "closed"] }
+      },
+      "additionalProperties": false
+    },
     "superseded_by": { "type": "integer", "minimum": 1 },
     "opened_by_change": { "$ref": "spectree/common#/definitions/id" }
   },

@@ -26,6 +26,8 @@ Invoque com `$spectree-invoker`. Os seis especialistas vão para `.codex/agents/
 
 ## O que há aqui
 
+A **[Confiabilidade de Entrega 1.13](docs/delivery-reliability.md)** verifica a suíte completa contra cenários e inventário de testes, integra pendências aos marcos de entrega e registra controles reais do reporter. O fechamento descobre planos ativos e arquivados; as métricas distinguem observações de execução de custo e espera desconhecidos. A política é habilitada explicitamente no consumidor.
+
 A **[Adoção e Reconciliação Operacional 1.11](docs/guided-reconciliation.md)** identifica divergências de instalação, configuração e estado, exige um mecanismo declarado para fechamento prepared e permite corrigir um modo de fechamento equivocado com plano auditável e retomada após interrupção. A Console apresenta o diagnóstico somente para leitura.
 
 O **[Spectree Console](docs/console.md)** oferece uma interface local para observar o squad: `npm run console -- --project /caminho/do/projeto`. Pipeline, especialistas, tarefas, evidências e histórico, em modo somente leitura. Para explorar com dados sintéticos: `npm run console -- --demo`.

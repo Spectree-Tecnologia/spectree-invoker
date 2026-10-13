@@ -23,6 +23,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { contractDigestAt, contentDigestAt, gatedDigest } from './lib/digest.mjs';
+import { deliveryGate } from './lib/delivery.mjs';
 import { readDiff, classifyDiff } from './lib/diff.mjs';
 import { treatmentFor, aggregate, resolveCi } from './lib/ci-policy.mjs';
 import { preparationCovers, approvalsInForce, readManifest, compareArtifacts } from './lib/closure-prep.mjs';
@@ -348,6 +349,7 @@ if (candidateReceipt && !impediments.length) {
     }
     // `closure.merged` is written by this confirmation, so the rehearsal is told it will exist.
     const ctx = contextFor(candidateReceipt, { checkPointer: false });
+    ctx.delivery = deliveryGate(root, changeId, to);
     if (to === 'closed' && !ctx.evidence.some((e) => e.property === 'closure.merged' && !e.superseded_by)) {
       ctx.evidence = [...ctx.evidence, {
         property: 'closure.merged', result: 'PASS', source_kind: 'observed_execution',
@@ -497,7 +499,7 @@ for (;;) {
   const at = ORDER.indexOf(current.state);
   if (at >= target) break;
   const to = ORDER[at + 1];
-  const verdict = canTransition(current, to, contextFor(receipt));
+  const verdict = canTransition(current, to, { ...contextFor(receipt), delivery: deliveryGate(root, changeId, to) });
   if (!verdict.ok) {
     // Reaching here means something changed underneath a rehearsal that had held. It is a real
     // failure, not a refusal that was knowable earlier, and it says so.

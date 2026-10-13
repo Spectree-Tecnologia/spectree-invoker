@@ -157,7 +157,7 @@ for (const f of ['work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'lib/work
 }
 
 const REQUIRED_SCHEMAS = ['common.json', 'change.schema.json', 'dispatch.schema.json', 'evidence.schema.json', 'deferred.schema.json', 'approval.schema.json', 'preparation.schema.json', 'receipt.schema.json'];
-for (const f of ['scripts/bridge.mjs', 'scripts/lib/bridge-mailbox.mjs', 'docs/resilient-execution.md']) {
+for (const f of ['scripts/bridge.mjs', 'scripts/lib/bridge-mailbox.mjs', 'docs/resilient-execution.md', 'scripts/delivery.mjs', 'scripts/lib/delivery.mjs', 'scripts/lib/delivery-contract.mjs', 'scripts/lib/delivery-ledger.mjs', 'docs/delivery-reliability.md']) {
   if (!has(f)) fail(f, 'required resilient execution artifact missing');
 }
 for (const f of ['tasks.mjs', 'reports.mjs', 'evals.mjs', 'adopt.mjs', 'lib/adoption.mjs', 'lib/flow-evals.mjs', 'lib/process-supervisor.mjs', 'lib/process-worker.mjs', 'lib/process-job.ps1', 'lib/process-job.cs', 'lib/context.mjs', 'lib/agent-runner.mjs', 'lib/task-executor.mjs', 'lib/engineering-reports.mjs', 'lib/agent-evals.mjs']) {

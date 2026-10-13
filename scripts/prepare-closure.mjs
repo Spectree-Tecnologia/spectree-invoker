@@ -21,6 +21,7 @@ import { existsSync, mkdirSync, renameSync, writeFileSync, readFileSync, readdir
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
+import { closureDeliveryPreflight } from './lib/delivery.mjs';
 import { contractDigest, contentDigest } from './lib/digest.mjs';
 import { readDiff, classifyDiff, outsideAllowedPaths } from './lib/diff.mjs';
 import { checkProposalDeltaContract } from './lib/closure.mjs';
@@ -82,6 +83,14 @@ if (!changeId || changeId.startsWith('--')) die(USAGE);
 const store = new Store(root);
 const change = store.change(changeId) ?? die(`no such change: ${changeId}`, 1);
 const project = store.project();
+
+if (!abandon) try {
+  const check = closureDeliveryPreflight(root, changeId);
+  if (!check.ok) throw Object.assign(new Error(check.message), { code: check.code });
+} catch (e) {
+  console.error(`${e.code ?? 'E_DELIVERY_PREFLIGHT'}: ${e.message}`);
+  process.exit(1);
+}
 
 const blocking = [];
 const commands = [];
@@ -925,9 +934,9 @@ catch (e) {
 const deferred = (() => {
   try {
     return store.deferred().items
-      .filter((i) => i.status === 'open' && i.opened_by === changeId)
+      .filter((i) => i.status === 'open' && i.opened_by_change === changeId)
       .map((i) => ({ stable_id: i.stable_id, owner: i.owner, impact: i.impact }));
-  } catch { return []; }
+  } catch (e) { throw Object.assign(new Error(`Deferred ledger could not be read: ${e.message}`), { code: 'E_DELIVERY_LEDGER' }); }
 })();
 
 const manifest = buildManifest({

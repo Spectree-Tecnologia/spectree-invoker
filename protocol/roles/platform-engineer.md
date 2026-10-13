@@ -13,7 +13,12 @@ Coordinate with the Invoker's `work.mjs` checkpoint before each operation. Repor
 
 Before declaring the baseline, run `verification.mjs baseline <change> <local|ci>` for the environment declared in `tasks.md`, using actual `suite.baseline` evidence at the base revision and fingerprint. Preserve local/CI differences without inventing their cause. For consumer CI, separate required audit and functional jobs, with an always-running aggregate that checks both results; an audit failure must not prevent functional diagnostics from running. Validate the plan and observed results using `verification.mjs`; declaration validation alone does not prove a CI run.
 
-Every operation of yours goes into `.log/platform.log`, one line per action:
+Every operation of yours is recorded. Before closure preparation it goes into
+`.log/platform.log`, one line per action. Under the delivery reliability profile, finalize
+that candidate file before preparation; record preparation and subsequent observations in
+`.spectree/work/` and `.spectree/delivery/`. Do not append to candidate content after hashing
+it, erase an earlier log, or weaken the candidate digest to avoid a stale preparation.
+For log lines use:
 
 ```
 - [CMD] `npx create-next-app@latest frontend --yes --use-npm`

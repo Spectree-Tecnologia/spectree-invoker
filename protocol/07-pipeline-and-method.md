@@ -1,5 +1,17 @@
 ## 7. Pipeline and method
 
+**Delivery reliability profile.** For a new structured consumer, explicitly enable
+`delivery.version: 1` (`state.mjs init <project> --delivery`) and follow
+`docs/delivery-reliability.md` from the squad package. Existing projects adopt it only
+with write authority and a reviewed complete test inventory. The verification plan maps
+every delta Scenario to an exact test name and includes auxiliary regression tests.
+Run `delivery.mjs preflight <change>` before implementation dispatch, then
+`delivery.mjs run <change> --apply` on the finished candidate. One complete observed suite
+can support multiple Scenarios; repeat neither database setup nor the suite per Requirement.
+The reporter must pass a positive and fail an assertion in a negative control first.
+This evidence supplements independent QA, counterexamples and remote CI; it replaces none.
+Missing, skipped, duplicated or stale results and due deferred obligations refuse advancement.
+
 ```
 [new project] Solutions Architect — opening interview, stack round included (no artifact)
    -> [gate 1: stack table + first change] -> Platform Engineer bootstraps ON the approved stack
