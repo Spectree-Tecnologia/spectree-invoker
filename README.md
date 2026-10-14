@@ -60,4 +60,6 @@ Os artefatos que o squad produz nos projetos — specs, código, commits, cards 
 
 ## Como o plugin evolui
 
+O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução. O próximo ciclo é o **Spectree Presence 1.14**: uma interface de conversa por voz com o Invoker e os especialistas. A [primeira entrega](docs/changes/presence-fundacao/proposal.md) estabelece a fundação visual e o contrato de estados; a integração com o harness e a voz permanecem planejadas.
+
 Um **projeto canário** roda a metodologia de verdade, sem ninguém segurando a mão. O que o canário faz de diferente do que está escrito é achado; achado vira PR aqui, nunca correção lá. Seis dos artefatos e regras deste repositório nasceram assim — o squad inventou a guarda antes de a metodologia tê-la, e a metodologia a adotou.
