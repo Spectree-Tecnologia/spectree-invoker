@@ -116,3 +116,13 @@ preservada em `presence-p1-lifecycle.jpg` nos artefatos da conversa.
 cancelamentos ou skips, em aproximadamente **286,8 s**. Drift dos artefatos gerados
 e integridade do plugin também passaram. Esse resultado não elimina a ocorrência
 intermitente histórica registrada acima nem as limitações do ensaio de navegador.
+
+## Preparação do merge autorizado
+
+Após o GO do Founder, a branch incorporou `origin/main` em `ff3ad2e`, preservando
+a licença MIT, o guia de contribuição e os templates adicionados em paralelo.
+O pacote, o lockfile e o manifesto do plugin foram alinhados em **1.14.0** para
+publicar a fundação demonstrativa P1 sem reutilizar a tag 1.13.0. P2/P3 permanecem
+planejadas. As checagens locais de drift e integridade passaram novamente.
+O resultado do CI do candidato integrado e da publicação deve ser consultado no PR
+e no workflow do commit de merge; os 416 testes acima são a evidência local prévia.

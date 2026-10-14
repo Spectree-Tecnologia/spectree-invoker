@@ -6,9 +6,10 @@ esta sequência não representa funcionalidades já disponíveis nem compromisso
 
 ## Base entregue
 
-A versão atual do pacote é **1.13.0 — Confiabilidade de Entrega**. O runtime mantém
-os gates, a execução resiliente e as evidências. A [Console](console.md) oferece
-observabilidade local somente para leitura.
+Esta entrega prepara o pacote **1.14.0 — Fundação Presence**, com a demonstração
+visual P1. O runtime mantém os gates, a execução resiliente e as evidências da
+1.13.0. A [Console](console.md) oferece observabilidade local somente para leitura.
+Integração real com harness e conversa por voz permanecem nas etapas P2/P3.
 
 ## Ciclo 1.14 — Spectree Presence
 
@@ -24,7 +25,7 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 | Ordem | Entrega | Estado | Por que vem nesta posição / evidência para avançar |
 |---|---|---|---|
-| P1 | Fundação visual e contrato de estados | Implementada na branch; validação local registrada; sem merge | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). Integração com harness continua em P2. |
+| P1 | Fundação visual e contrato de estados | Implementada; merge autorizado; entrega 1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). Integração com harness continua em P2. |
 | P2 | Sessão local e integração Codex | Planejada | Provar primeiro o caminho de texto e eventos com autenticação oficial do usuário. Exigir envio, resposta, cancelamento e erros observáveis em canário; validar o transporte suportado antes de escolhê-lo. |
 | P3 | Conversa por voz com o Invoker | Planejada | Conectar microfone, turnos, transcrição e reprodução à sessão já comprovada. Comparar provedores de áudio por latência, qualidade em português, interrupção e custo; medir o áudio real, com autorização de microfone e orçamento definido para APIs pagas. |
 | P4 | Comunicação entre Invoker e especialista | Planejada | Começar com Invoker e Architect: delegação real, identidade do falante e retorno público audível. Expandir aos demais papéis após validar atribuição, fila de fala e legibilidade. |
