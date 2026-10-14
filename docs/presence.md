@@ -34,8 +34,13 @@ Transcrição e estados simulados podem ser explorados por teclado.
 - `presence/audio.mjs` controla reprodução, fila, pausa e descarte. Um
   `AnalyserNode` mede o PCM que alimenta a saída de áudio; silêncio e pausa
   produzem energia zero. Não há animação de fala fabricada por osciladores.
-- `presence/renderer.mjs` recebe somente a projeção visual e o envelope de áudio.
-  Renderiza o personagem aprovado, olhar relativo ao cursor e atenção ao falante.
+- `presence/renderer.mjs` carrega o Three.js local; `presence/renderer-core.mjs`
+  recebe a projeção visual e o envelope de áudio, renderiza o personagem e assume
+  a propriedade dos recursos. O núcleo permite ensaios com objetos reais do
+  Three.js e um driver substituto, sem exigir GPU nos testes determinísticos.
+- `presence/lifecycle.mjs` encerra a montagem ao sair da página e a reconstrói no
+  retorno por cache. Cada montagem usa novos elementos de áudio e canvas, sem
+  reaproveitar vínculos de mídia ou recursos gráficos da sessão encerrada.
 - `presence/app.mjs` conecta a demonstração à interface. Só o evento de reprodução
   efetiva marca um participante como falando. A entrada do Architect é simulada
   explicitamente; nenhuma delegação real é alegada.
@@ -43,7 +48,7 @@ Transcrição e estados simulados podem ser explorados por teclado.
 ## Recursos e limites
 
 Three.js **0.180.0** fica fixado no pacote e no lockfile. São servidos apenas
-dois módulos do pacote, quatro módulos locais, HTML/CSS e três áudios por uma
+dois módulos do pacote, seis módulos locais, HTML/CSS e três áudios por uma
 lista explícita de rotas. Não há CDN, bundler, telemetria ou serviço externo na
 execução. `npm ci` é necessário para instalar a dependência antes de iniciar.
 O CI instala pelo lockfile antes dos testes.
@@ -62,6 +67,9 @@ Movimento reduzido remove rotação, piscadas, seguimento do cursor e transiçõ
 de posição; a luz ainda indica áudio com intensidade reduzida. **Pausar movimento**
 usa o mesmo caminho de renderização estática. Texto e transcrição permanecem
 acessíveis sem WebGL; a perda de contexto encerra a cena e mostra o fallback.
+Dispositivos sem suporte aos buffers de cor usados pela cena também recebem
+o fallback, em vez de uma superfície preta. A tela descarta métricas antigas e
+oculta o canvas indisponível; a reprodução e a transcrição continuam funcionando.
 
 ## Orçamento e verificação
 
@@ -77,7 +85,7 @@ Não são evidências de execução do squad. A janela exclui intervalos ≥250 
 (suspensão); pausas prolongadas devem ser avaliadas separadamente, sem usar o
 p95 para afirmar ausência de travamentos.
 
-Validação automatizada: `node --test tests/presence.test.mjs`, seguida de
+Validação automatizada: `node --test tests/presence*.test.mjs`, seguida de
 `npm run check`. Repetir no navegador: três turnos, pausa/retomada, reinício,
 troca de identidade, transcrição por teclado, cena fora da tela e viewport
 estreito. Resultados e limitações ficam no [registro de verificação](changes/presence-fundacao/verification.md).

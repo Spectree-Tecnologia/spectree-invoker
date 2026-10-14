@@ -1,8 +1,15 @@
 import { AGENTS, createSession, applyEvent } from './state.mjs';
 import { createAudioPlayer } from './audio.mjs';
+import { freshSurface, startPageLifecycle } from './lifecycle.mjs';
 
 function mount() {
   const root = document.querySelector('#presence'), $ = selector => root.querySelector(selector);
+  const surface = freshSurface(root);
+  for (const key of Object.keys(root.dataset)) delete root.dataset[key];
+  $('[data-title]').textContent = 'Invoker.';
+  $('[data-caption]').textContent = 'Uma presença para a nossa conversa.';
+  $('#transcript').hidden = true;
+  $('[data-transcript]').setAttribute('aria-expanded', 'false');
   const events = new AbortController(), options = { signal: events.signal };
   $('.fallback').hidden = true;
   $('[data-motion]').disabled = false;
@@ -32,7 +39,7 @@ function mount() {
     if (!state.participants.includes('architect')) send('delegate', 'invoker', { targetId: 'architect' });
     selected = 'architect';
   }
-  const player = createAudioPlayer($('audio'), { onEvent(event) {
+  const player = createAudioPlayer(surface.audio, { onEvent(event) {
     if (disposed) return;
     const { type, track } = event;
     if (type === 'loading') {
@@ -94,12 +101,15 @@ function mount() {
   observer.observe($('.world'));
   const unavailable = () => {
     if (disposed) return;
+    scene?.dispose(); scene = undefined;
+    surface.canvas.hidden = true;
+    delete root.dataset.metrics;
     $('.fallback').hidden = false; root.dataset.engine = 'fallback';
     $('[data-motion]').disabled = true;
   };
   import('./renderer.mjs').then(({ createPresenceRenderer }) => {
     if (disposed) return;
-    scene = createPresenceRenderer({ canvas: $('canvas'), world: $('.world'), onUnavailable: unavailable,
+    scene = createPresenceRenderer({ canvas: surface.canvas, world: $('.world'), onUnavailable: unavailable,
       read() { const sample = player.sample(); root.dataset.rms = sample.rms.toFixed(4);
         return { ...sample, status: state.status, focus: state.focus, speaker: state.speaker, specialist: selected === 'invoker' ? null : selected, visible, motion }; } });
     root.dataset.engine = 'three-webgl2'; scene.invalidate();
@@ -116,6 +126,4 @@ function mount() {
     if (disposed) return; disposed = true; events.abort(); observer.disconnect(); clearInterval(metrics); player.dispose(); scene?.dispose();
   } };
 }
-let app = mount();
-window.addEventListener('pagehide', () => app.dispose());
-window.addEventListener('pageshow', event => { if (event.persisted) app = mount(); });
+startPageLifecycle(window, mount);

@@ -16,7 +16,7 @@ não certifica voz em produção, integração com harness nem comportamento de 
 
 ## Testes automatizados
 
-Os **14 testes de Presence** passaram, incluindo controles negativos:
+Na implementação inicial, os **14 testes de Presence** passaram, incluindo controles negativos:
 identidade/origem incorreta, evento antigo, lacuna de sequência, falante não
 admitido, troca indevida de falante, cancelamento durante `AudioContext.resume`,
 pausa entre turnos, reset com especialista enfileirado, promessa de reprodução
@@ -67,11 +67,14 @@ indefinidas de potência/smoothstep e disputa de profundidade dos véus.
 
 ## Limites da validação
 
-- Preferência de movimento reduzido do sistema e perda/indisponibilidade real
-  de WebGL têm tratamento implementado, mas não foram induzidas no navegador
-  desta sessão. A pausa por botão exercitou o mesmo caminho estático do renderer.
-- Cleanup de áudio foi exercitado por teste determinístico; a liberação total de
-  GPU e o retorno por cache de navegação ainda precisam de inspeção específica.
+- Preferência de movimento reduzido, perda de contexto, ausência de WebGL e
+  reconstrução por cache agora têm testes determinísticos descritos abaixo.
+  Não foram induzidas falhas físicas de GPU nem alterada a preferência do sistema.
+- Cleanup de áudio e de recursos Three.js foi exercitado por testes. A liberação
+  física de memória da GPU e o comportamento real do cache do navegador permanecem
+  fora dessa evidência: o navegador bloqueou a navegação de saída do ensaio de
+  histórico (`ERR_BLOCKED_BY_CLIENT`); não foi usado um caminho alternativo para
+  contornar esse bloqueio.
 - Faltam ensaios em outros navegadores e hardware. A integração foi comparada
   visualmente ao estudo aprovado, com capturas desktop e mobile preservadas
   nos artefatos da conversa (`presence-p1-desktop.jpg` e `presence-p1-mobile.jpg`).
@@ -81,3 +84,35 @@ indefinidas de potência/smoothstep e disputa de profundidade dos véus.
 
 P1 está implementada e disponível para revisão local. Este registro não recomenda
 merge automático nem declara cumpridas as inspeções ainda pendentes acima.
+
+## Complemento — retomada e recursos
+
+Na continuação da P1, em 2026-10-14, foram corrigidos:
+
+- Reutilização dos elementos de áudio/canvas após descarte, no retorno por cache.
+  A reconstrução agora cria elementos novos e restaura textos e controles iniciais.
+- Fallback com canvas e métricas da cena antiga ainda presentes. A falha encerra
+  recursos, oculta o canvas e remove os contadores obsoletos.
+- Inicialização em hardware sem `EXT_color_buffer_float`: recusa controlada antes
+  de construir a cena, mantendo áudio e transcrição.
+- Duas expressões restantes de shader com potência de base potencialmente negativa:
+  os quadrados agora usam multiplicação, preservando a forma visual.
+
+Foram acrescentados **6 testes**, totalizando **20 testes específicos passando**.
+Eles usam geometrias, materiais, texturas e render targets reais do Three.js, com
+substituição do driver de GPU, agenda de quadros e eventos do navegador. Verificam
+quadro estático sob movimento reduzido, alteração da preferência, suspensão fora
+da tela, descarte único de recursos compartilhados, falhas de inicialização,
+reconstrução idempotente da sessão e troca dos elementos ligados ao áudio.
+Isso comprova a chamada de descarte e o fim do agendamento; não mede o driver físico.
+
+Recarregamento no navegador confirmou a reprodução do Invoker e ausência de erros
+ou avisos no console após a extração do núcleo. A demonstração terminou com energia
+zero e nenhum falante ativo. Os recursos permaneceram em 8 geometrias, 5 texturas
+e 7 programas, com p95 de 16,8 ms na janela de 600 intervalos. A captura final foi
+preservada em `presence-p1-lifecycle.jpg` nos artefatos da conversa.
+
+`npm run check` desta continuação passou: **416/416 testes**, zero falhas,
+cancelamentos ou skips, em aproximadamente **286,8 s**. Drift dos artefatos gerados
+e integridade do plugin também passaram. Esse resultado não elimina a ocorrência
+intermitente histórica registrada acima nem as limitações do ensaio de navegador.

@@ -50,6 +50,9 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-14:** complementada a P1 com reconstrução da sessão ao restaurar a
+  página, fallback gráfico e testes de movimento reduzido e descarte de recursos.
+  Evidências e limites constam no registro de verificação; integração real permanece em P2.
 - **2026-10-14:** iniciada e implementada a fundação P1 após GO do Founder. O comando
   `npm run presence` abre uma superfície de demonstração isolada dos consumidores;
   a versão do pacote permanece 1.13.0 até a preparação de uma release.

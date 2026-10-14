@@ -139,7 +139,7 @@ test('Presence serves only local allowlisted assets, blocks mutation/origins and
   assert.match(page.headers['content-security-policy'], /media-src 'self'/);
   assert.doesNotMatch(page.headers['content-security-policy'], /unsafe-inline|unsafe-eval|https:/);
   assert.equal(page.headers['permissions-policy'], 'microphone=(), camera=()');
-  for (const route of ['/presence/app.mjs', '/presence/renderer.mjs', '/presence/vendor/three.module.js', '/presence/vendor/three.core.js', '/presence/audio/architect.mp3']) {
+  for (const route of ['/presence/app.mjs', '/presence/renderer.mjs', '/presence/renderer-core.mjs', '/presence/lifecycle.mjs', '/presence/vendor/three.module.js', '/presence/vendor/three.core.js', '/presence/audio/architect.mp3']) {
     assert.equal((await get(instance.origin, route)).status, 200);
   }
   for (const route of ['/api/snapshot', '/api/observation?project=project-1', '/presence/../package.json', '/presence/vendor/../../package.json', '/presence/.env', '/presence/?project=C:/private']) {

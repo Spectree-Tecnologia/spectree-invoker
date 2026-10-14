@@ -5,7 +5,7 @@ da integração. É uma referência histórica, não um entrypoint distribuído 
 carregado pelo Presence. O marcador de áudio não contém as gravações incorporadas
 ao HTML original. Referências ao ambiente da conversa e ao CDN pertencem ao estudo.
 
-A implementação está em `presence/renderer.mjs`, com shaders e geometria derivados
+A implementação está em `presence/renderer-core.mjs`, com shaders e geometria derivados
 deste arquivo, separação de estados/áudio, carregamento local e descarte explícito.
 O teste visual da integração identificou artefatos no contorno dos véus. O port
 elimina operações indefinidas nos shaders (`pow` com base negativa e `smoothstep`
