@@ -2,7 +2,8 @@
 
 Primeira entrega do [ciclo 1.14](../../ROADMAP.md), na branch
 `codex/presence-fundacao`, aberta após autorização do Founder em 2026-10-13.
-Estado: proposta e direção visual registradas; implementação ainda pendente.
+Estado em 2026-10-14: implementação local realizada após GO do Founder; evidências
+e limites de aceite em [verification.md](verification.md). Sem merge ou release.
 
 ## Problema e resultado esperado
 

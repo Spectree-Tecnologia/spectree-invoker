@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spectree Presence</title><link rel="icon" href="data:,"><link rel="stylesheet" href="./style.css"></head>
+<body>
+<main id="presence">
+  <header><a class="brand" href="./" aria-label="Spectree Presence">spectree<span>PRESENCE</span></a><span class="demo">DEMONSTRAÇÃO · SEM AGENTES CONECTADOS</span></header>
+  <section class="world" aria-label="Conversa demonstrativa">
+    <canvas aria-label="Invoker branco com olhos luminosos; os especialistas têm cores próprias" role="img"></canvas>
+    <div class="state" role="status" data-state>Disponível · Invoker</div>
+    <div class="fallback" hidden><div class="static-character" aria-hidden="true"><i></i><i></i></div><p>A cena 3D está indisponível.<br>A voz e a transcrição continuam disponíveis.</p></div>
+    <div class="copy"><p class="eyebrow">UMA IDENTIDADE. MUITAS PERSPECTIVAS.</p><h1 data-title>Invoker.</h1><p data-caption>Uma presença para a nossa conversa.</p></div>
+  </section>
+  <section class="interaction" aria-label="Controles da demonstração">
+    <div class="controls">
+      <button class="primary" data-play aria-pressed="false">Ouvir Invoker</button>
+      <button data-stop>Reiniciar</button>
+      <button data-motion aria-pressed="true">Pausar movimento</button>
+      <button data-transcript aria-expanded="false" aria-controls="transcript">Transcrição</button>
+    </div>
+    <p class="note" data-note>Vozes gravadas · microfone desligado · nenhum comando executado</p>
+  </section>
+  <section class="identities" aria-label="Prévia visual dos personagens">
+    <p class="eyebrow">EXPLORAR IDENTIDADES</p>
+    <div class="palette">
+      <button data-agent="invoker" aria-pressed="true"><i aria-hidden="true"></i>Invoker<span>Branco</span></button>
+      <button data-agent="architect" aria-pressed="false"><i aria-hidden="true"></i>Architect<span>Azul</span></button>
+      <button data-agent="developer" aria-pressed="false"><i aria-hidden="true"></i>Developer<span>Vermelho</span></button>
+      <button data-agent="quality" aria-pressed="false"><i aria-hidden="true"></i>Quality<span>Amarelo</span></button>
+    </div>
+    <p data-participants>Invoker · disponível</p>
+  </section>
+  <section id="transcript" class="transcript" aria-label="Transcrição da demonstração" hidden>
+    <h2>Uma conversa, três turnos.</h2>
+    <p><strong>Invoker</strong>Olá, Gilson. Eu sou o Invoker. Para planejar sua próxima ideia, vou chamar o Architect.</p>
+    <p><strong>Architect</strong>Sou o Architect. Vamos transformar essa ideia em uma estrutura clara.</p>
+    <p><strong>Invoker</strong>E juntos, vamos dar forma ao que você imagina.</p>
+  </section>
+  <details class="scenarios"><summary>Explorar estados simulados</summary>
+    <p>Estes estados são uma prévia visual. Não ativam microfone nem agentes.</p>
+    <div class="controls"><button data-scenario="listen">Escutando</button><button data-scenario="think">Processando</button><button data-scenario="delegate">Delegando</button><button data-scenario="cancel">Interrompido</button><button data-scenario="error">Erro</button></div>
+  </details>
+  <footer>SPECTREE / PRESENCE <span>FUNDAÇÃO VISUAL · P1</span></footer>
+  <audio preload="none" hidden></audio>
+</main>
+<script type="module" src="./app.mjs"></script>
+</body></html>

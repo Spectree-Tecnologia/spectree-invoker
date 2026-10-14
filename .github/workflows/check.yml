@@ -63,8 +63,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Node is preinstalled on the runner and nothing here has a dependency,
-      # so there is nothing to set up and nothing to install.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: local Presence renderer dependency
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       # Generated files must match protocol/. A hand edit to CLAUDE.md, a card,
       # AGENTS.md or a Codex specialist fails here — that is the point.

@@ -40,7 +40,8 @@ O estudo aprovado e sua fonte estão nos artefatos locais da conversa:
 `spectree-characters.html`, `spectree-characters.js` e
 `spectree-presence-approved.md`. A localização desta sessão é
 `C:/Users/gilso/.codex/visualizations/2026/09/27/01a0e2cc-4919-76e1-a74f-3b662dca9777/`.
-Esses arquivos ainda não são componentes distribuídos pelo repositório.
+A fonte JavaScript foi preservada em [reference/spectree-characters.js](reference/spectree-characters.js).
+O componente integrado e suas diferenças estão descritos em [Presence P1](../presence.md).
 
 O estudo incorpora vozes gravadas de demonstração. Não captura microfone,
 não executa agentes e não está conectado ao harness. Houve aprovação visual

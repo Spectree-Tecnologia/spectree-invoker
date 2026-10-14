@@ -1,6 +1,6 @@
 # Roadmap do Spectree Invoker
 
-Atualizado em 2026-10-13. Este documento registra a ordem aprovada e seus motivos.
+Atualizado em 2026-10-14. Este documento registra a ordem aprovada e seus motivos.
 O escopo e os critérios de cada entrega pertencem à respectiva proposta de mudança;
 esta sequência não representa funcionalidades já disponíveis nem compromissos de data.
 
@@ -24,7 +24,7 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 | Ordem | Entrega | Estado | Por que vem nesta posição / evidência para avançar |
 |---|---|---|---|
-| P1 | Fundação visual e contrato de estados | Branch aberta; escopo documentado; implementação pendente | Transformar o estudo aprovado em componente Three.js local e verificável. Aceite visual, análise do áudio demonstrativo e estados determinísticos antes de conectar um harness. [Proposta](changes/presence-fundacao/proposal.md). |
+| P1 | Fundação visual e contrato de estados | Implementada na branch; validação local registrada; sem merge | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). Integração com harness continua em P2. |
 | P2 | Sessão local e integração Codex | Planejada | Provar primeiro o caminho de texto e eventos com autenticação oficial do usuário. Exigir envio, resposta, cancelamento e erros observáveis em canário; validar o transporte suportado antes de escolhê-lo. |
 | P3 | Conversa por voz com o Invoker | Planejada | Conectar microfone, turnos, transcrição e reprodução à sessão já comprovada. Comparar provedores de áudio por latência, qualidade em português, interrupção e custo; medir o áudio real, com autorização de microfone e orçamento definido para APIs pagas. |
 | P4 | Comunicação entre Invoker e especialista | Planejada | Começar com Invoker e Architect: delegação real, identidade do falante e retorno público audível. Expandir aos demais papéis após validar atribuição, fila de fala e legibilidade. |
@@ -50,6 +50,9 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-14:** iniciada e implementada a fundação P1 após GO do Founder. O comando
+  `npm run presence` abre uma superfície de demonstração isolada dos consumidores;
+  a versão do pacote permanece 1.13.0 até a preparação de uma release.
 - **2026-10-13:** registrada a aprovação da direção visual e aberta a branch
   `codex/presence-fundacao`. A fundação precede a integração para preservar o
   visual aprovado e definir estados cuja origem possa ser comprovada. O número

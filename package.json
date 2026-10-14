@@ -8,6 +8,7 @@
     "node": ">=20.11.0"
   },
   "scripts": {
+    "presence": "node scripts/presence.mjs",
     "console": "node scripts/console.mjs",
     "build": "node scripts/build.mjs",
     "check:drift": "node scripts/build.mjs --check",
@@ -15,5 +16,8 @@
     "capabilities": "node scripts/capabilities.mjs",
     "test": "node --test --test-concurrency=4 tests/*.test.mjs",
     "check": "npm run check:drift && npm run check:plugin && npm test"
+  },
+  "dependencies": {
+    "three": "0.180.0"
   }
 }
