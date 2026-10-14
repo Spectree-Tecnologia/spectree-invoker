@@ -26,6 +26,8 @@ Invoque com `$spectree-invoker`. Os seis especialistas vão para `.codex/agents/
 
 ## O que há aqui
 
+O **[Spectree Presence — P1](docs/presence.md)** inicia a interface conversacional: personagem Three.js, identidades por cor e expressão ligada ao áudio demonstrativo. Execute `npm ci --ignore-scripts` e `npm run presence` nesta raiz. Esta etapa usa vozes gravadas, sem microfone, harness ou acesso a projetos consumidores.
+
 A **[Confiabilidade de Entrega 1.13](docs/delivery-reliability.md)** verifica a suíte completa contra cenários e inventário de testes, integra pendências aos marcos de entrega e registra controles reais do reporter. O fechamento descobre planos ativos e arquivados; as métricas distinguem observações de execução de custo e espera desconhecidos. A política é habilitada explicitamente no consumidor.
 
 A **[Adoção e Reconciliação Operacional 1.11](docs/guided-reconciliation.md)** identifica divergências de instalação, configuração e estado, exige um mecanismo declarado para fechamento prepared e permite corrigir um modo de fechamento equivocado com plano auditável e retomada após interrupção. A Console apresenta o diagnóstico somente para leitura.
@@ -53,11 +55,14 @@ Uma fonte, duas renderizações. `protocol/` é a única fonte autoritativa; `CL
 | `CLAUDE.md`, `agents/`, `adapters/codex/dist/` | **Gerados.** Rode `node scripts/build.mjs`; não edite à mão |
 
 ```bash
+npm ci --ignore-scripts  # dependência local do renderer Presence
 npm run check     # drift + integridade + suíte
 ```
 
 Os artefatos que o squad produz nos projetos — specs, código, commits, cards — são em inglês. Tudo que chega ao Founder é em português. Este repositório é a ferramenta, não um projeto do squad: a história dele é em português.
 
 ## Como o plugin evolui
+
+O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **Spectree Presence**: uma interface de conversa por voz com o Invoker e os especialistas. A versão **1.14.0** contém a [primeira entrega](docs/changes/presence-fundacao/proposal.md), com a fundação visual demonstrativa e o contrato de estados; a integração real com o harness e a voz permanecem planejadas.
 
 Um **projeto canário** roda a metodologia de verdade, sem ninguém segurando a mão. O que o canário faz de diferente do que está escrito é achado; achado vira PR aqui, nunca correção lá. Seis dos artefatos e regras deste repositório nasceram assim — o squad inventou a guarda antes de a metodologia tê-la, e a metodologia a adotou.

@@ -1,6 +1,6 @@
 {
   "name": "@spectree/invoker",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "private": true,
   "type": "module",
   "description": "The Spectree Invoker squad: one protocol, two harness adapters, and the checks that refuse an invalid state.",
@@ -9,6 +9,7 @@
     "node": ">=20.11.0"
   },
   "scripts": {
+    "presence": "node scripts/presence.mjs",
     "console": "node scripts/console.mjs",
     "build": "node scripts/build.mjs",
     "check:drift": "node scripts/build.mjs --check",
@@ -16,5 +17,8 @@
     "capabilities": "node scripts/capabilities.mjs",
     "test": "node --test --test-concurrency=4 tests/*.test.mjs",
     "check": "npm run check:drift && npm run check:plugin && npm test"
+  },
+  "dependencies": {
+    "three": "0.180.0"
   }
 }
