@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "The Spectree Invoker squad: one protocol, two harness adapters, and the checks that refuse an invalid state.",
+  "license": "MIT",
   "engines": {
     "node": ">=20.11.0"
   },
