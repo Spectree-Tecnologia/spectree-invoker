@@ -613,6 +613,7 @@ test('a transition decided before a reopening does not land after it', () => {
       NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${BARRIER}`.trim(),
     }, 'transition', 'c1', 'pass2_complete');
 
+    assert.ok(existsSync(marker), `the barrier never released:\n${r.err}`);
     const observed = JSON.parse(readFileSync(marker, 'utf8'));
     assert.equal(observed.kind, 'reopen', 'the barrier really did hold until the reopening started');
     assert.equal(observed.phase, 'started');
@@ -657,6 +658,7 @@ test('the other ordering too: a reopening that COMPLETED under the barrier refus
       NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${BARRIER}`.trim(),
     }, 'transition', 'c1', 'pass2_complete');
 
+    assert.ok(existsSync(marker), `the barrier never released:\n${r.err}`);
     const observed = JSON.parse(readFileSync(marker, 'utf8'));
     assert.equal(observed.kind, 'reopen');
     assert.equal(observed.phase, 'done', 'the reopening really did finish before the release');

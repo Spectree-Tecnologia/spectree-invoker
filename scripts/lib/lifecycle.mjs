@@ -22,9 +22,10 @@
 //   .spectree/closure/<id>.receipt.json            what was observed about the integration
 
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync, closeSync, unlinkSync, renameSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { hostname } from 'node:os';
+import { writeAtomic } from './store.mjs';
 
 export const LIFECYCLE_VERSION = '1.0.0';
 export const PREP_CONTRACT_VERSION = '2.0.0';
@@ -159,13 +160,6 @@ export function readLifecycle(root, changeId) {
   }
   return { present: true, doc };
 }
-
-const writeAtomic = (file, text) => {
-  mkdirSync(dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
-  writeFileSync(tmp, text);
-  renameSync(tmp, file);
-};
 
 /**
  * The write boundary. Exclusive-create lock, expected revision re-read INSIDE it, and the whole

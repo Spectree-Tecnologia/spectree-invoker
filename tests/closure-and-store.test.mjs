@@ -2,9 +2,10 @@
 // §8.2 deltaless closure · §8.3 scenario loss and stale delta · §6 persistence
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { Store } from '../scripts/lib/store.mjs';
+import { Store, writeAtomic } from '../scripts/lib/store.mjs';
 import {
   checkDeltaless, checkProposalDeltaContract, checkModifiedScenarioLoss,
   checkRemovals, applyOrder, evidenceStillValid, DELTA_OPS,
@@ -121,6 +122,32 @@ test('the store refuses a concurrent update instead of merging it', () => {
     assert.throws(
       () => s.putChange({ ...s.change('c1'), state: 'scope_approved' }, { expected: 1 }),
       (e) => e.code === 'E_CONCURRENT_UPDATE');
+  } finally { cleanup(dir); }
+});
+
+test('an atomic write outlasts a reader that has the target open', { skip: process.platform !== 'win32' && 'a Windows sharing violation' }, () => {
+  const dir = tempDir();
+  try {
+    const target = join(dir, 'control.json');
+    const ready = join(dir, 'reader-ready');
+    writeFileSync(target, 'before');
+    // A reader in ANOTHER process — the barrier's poll, an unlocked decision read — holding the
+    // handle for a moment. The writer is synchronous, so the reader cannot be in this one.
+    const reader = spawn(process.execPath, ['-e',
+      `const fs = require('node:fs'); const fd = fs.openSync(${JSON.stringify(target)}, 'r');
+       fs.writeFileSync(${JSON.stringify(ready)}, ''); setTimeout(() => fs.closeSync(fd), 300);`]);
+    const until = performance.now() + 30_000;
+    while (!existsSync(ready)) {
+      assert.ok(performance.now() < until, 'the reader never opened the target');
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
+    }
+    // The window is real: a bare rename fails while the handle is held. Without this, a pass
+    // below would prove nothing about the retry.
+    writeFileSync(`${target}.bare`, 'bare');
+    assert.throws(() => renameSync(`${target}.bare`, target), (e) => ['EPERM', 'EACCES', 'EBUSY'].includes(e.code));
+    writeAtomic(target, 'after');
+    assert.equal(readFileSync(target, 'utf8'), 'after');
+    reader.kill();
   } finally { cleanup(dir); }
 });
 
