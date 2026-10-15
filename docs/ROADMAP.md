@@ -9,7 +9,8 @@ esta sequência não representa funcionalidades já disponíveis nem compromisso
 O pacote **1.14.0 — Fundação Presence** foi integrado, com a demonstração
 visual P1. O runtime mantém os gates, a execução resiliente e as evidências da
 1.13.0. A [Console](console.md) oferece observabilidade local somente para leitura.
-Integração real com harness e conversa por voz correspondem às etapas P2/P3.
+A entrega **1.15.0 — Sessão Presence Codex** acrescenta integração textual local
+com o harness (P2). Conversa por voz permanece na P3.
 
 ## Ciclo 1.14 — Spectree Presence
 
@@ -26,7 +27,7 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 | Ordem | Entrega | Estado | Por que vem nesta posição / evidência para avançar |
 |---|---|---|---|
 | P1 | Fundação visual e contrato de estados | Integrada em main, PR #41 / v1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). |
-| P2 | Sessão local e integração Codex | Implementação na branch; canário real validado; sem merge | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
+| P2 | Sessão local e integração Codex | Merge autorizado; candidato 1.15.0 preparado; confirmação no PR/CI | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
 | P3 | Conversa por voz com o Invoker | Planejada | Conectar microfone, turnos, transcrição e reprodução à sessão já comprovada. Comparar provedores de áudio por latência, qualidade em português, interrupção e custo; medir o áudio real, com autorização de microfone e orçamento definido para APIs pagas. |
 | P4 | Comunicação entre Invoker e especialista | Planejada | Começar com Invoker e Architect: delegação real, identidade do falante e retorno público audível. Expandir aos demais papéis após validar atribuição, fila de fala e legibilidade. |
 | P5 | Continuidade e recuperação da experiência | Planejada | Endurecer reconexão, retomada, interrupção pelo usuário e prevenção de ações ou falas duplicadas. Os mecanismos básicos de cancelamento e limpeza já são exigidos desde a etapa que os introduz. |
@@ -51,6 +52,9 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-15:** merge da P2 autorizado pelo Founder. Incorporado o README da
+  main / 1.14.1 e preparado o pacote 1.15.0. A confirmação de integração e da
+  publicação pertence ao PR e ao workflow do commit de merge.
 - **2026-10-15:** concluída a validação da P2 nesta branch, com conversa real,
   contexto preservado, interrupção confirmada e verificação da interface.
   A entrega permanece separada de main, aguardando revisão e autorização de merge.

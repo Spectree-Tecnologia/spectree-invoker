@@ -76,3 +76,13 @@ entrega não define a arquitetura de um serviço comercial hospedado. Consulte
 
 Próximo portão: revisão da branch e autorização de merge. Depois, a P3 integra
 voz com seleção de provedor e orçamento próprios, conforme o roadmap aprovado.
+
+## Preparação do merge autorizado
+
+Em 2026-10-15, o Founder autorizou o merge. A branch incorporou `origin/main`
+em `bb0de9e`, preservando a atualização do README e a release 1.14.1. Pacote,
+lockfile, manifesto do plugin e identificação do cliente Presence foram alinhados
+em **1.15.0**, pois cada merge publica uma tag própria. O escopo funcional da P2
+permanece o validado acima. A evidência final do candidato integrado, o merge e
+a publicação devem ser consultados no PR e no workflow correspondente, sem
+confundir a preparação com uma integração já concluída.
