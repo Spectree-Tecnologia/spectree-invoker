@@ -1,15 +1,15 @@
 # Roadmap do Spectree Invoker
 
-Atualizado em 2026-10-14. Este documento registra a ordem aprovada e seus motivos.
+Atualizado em 2026-10-15. Este documento registra a ordem aprovada e seus motivos.
 O escopo e os critérios de cada entrega pertencem à respectiva proposta de mudança;
 esta sequência não representa funcionalidades já disponíveis nem compromissos de data.
 
 ## Base entregue
 
-Esta entrega prepara o pacote **1.14.0 — Fundação Presence**, com a demonstração
+O pacote **1.14.0 — Fundação Presence** foi integrado, com a demonstração
 visual P1. O runtime mantém os gates, a execução resiliente e as evidências da
 1.13.0. A [Console](console.md) oferece observabilidade local somente para leitura.
-Integração real com harness e conversa por voz permanecem nas etapas P2/P3.
+Integração real com harness e conversa por voz correspondem às etapas P2/P3.
 
 ## Ciclo 1.14 — Spectree Presence
 
@@ -25,8 +25,8 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 | Ordem | Entrega | Estado | Por que vem nesta posição / evidência para avançar |
 |---|---|---|---|
-| P1 | Fundação visual e contrato de estados | Implementada; merge autorizado; entrega 1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). Integração com harness continua em P2. |
-| P2 | Sessão local e integração Codex | Planejada | Provar primeiro o caminho de texto e eventos com autenticação oficial do usuário. Exigir envio, resposta, cancelamento e erros observáveis em canário; validar o transporte suportado antes de escolhê-lo. |
+| P1 | Fundação visual e contrato de estados | Integrada em main, PR #41 / v1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). |
+| P2 | Sessão local e integração Codex | Implementação na branch; canário real validado; sem merge | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
 | P3 | Conversa por voz com o Invoker | Planejada | Conectar microfone, turnos, transcrição e reprodução à sessão já comprovada. Comparar provedores de áudio por latência, qualidade em português, interrupção e custo; medir o áudio real, com autorização de microfone e orçamento definido para APIs pagas. |
 | P4 | Comunicação entre Invoker e especialista | Planejada | Começar com Invoker e Architect: delegação real, identidade do falante e retorno público audível. Expandir aos demais papéis após validar atribuição, fila de fala e legibilidade. |
 | P5 | Continuidade e recuperação da experiência | Planejada | Endurecer reconexão, retomada, interrupção pelo usuário e prevenção de ações ou falas duplicadas. Os mecanismos básicos de cancelamento e limpeza já são exigidos desde a etapa que os introduz. |
@@ -51,6 +51,12 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-15:** concluída a validação da P2 nesta branch, com conversa real,
+  contexto preservado, interrupção confirmada e verificação da interface.
+  A entrega permanece separada de main, aguardando revisão e autorização de merge.
+- **2026-10-14:** GO para P2 após merge da P1. Aberta `codex/presence-sessao-codex`;
+  validado canário real de texto, continuidade e interrupção com Codex local.
+  A versão do pacote permanece 1.14.0; nenhuma voz ou execução do squad é alegada.
 - **2026-10-14:** complementada a P1 com reconstrução da sessão ao restaurar a
   página, fallback gráfico e testes de movimento reduzido e descarte de recursos.
   Evidências e limites constam no registro de verificação; integração real permanece em P2.

@@ -65,4 +65,6 @@ Os artefatos que o squad produz nos projetos — specs, código, commits, cards 
 
 O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **Spectree Presence**: uma interface de conversa por voz com o Invoker e os especialistas. A versão **1.14.0** contém a [primeira entrega](docs/changes/presence-fundacao/proposal.md), com a fundação visual demonstrativa e o contrato de estados; a integração real com o harness e a voz permanecem planejadas.
 
+Nesta branch, a [P2 conecta uma conversa por texto ao Codex local](docs/presence-codex.md): `npm run presence -- --codex`. Usa login ChatGPT existente e um canário próprio, sem abrir projetos consumidores. Voz e especialistas reais continuam nas próximas etapas.
+
 Um **projeto canário** roda a metodologia de verdade, sem ninguém segurando a mão. O que o canário faz de diferente do que está escrito é achado; achado vira PR aqui, nunca correção lá. Seis dos artefatos e regras deste repositório nasceram assim — o squad inventou a guarda antes de a metodologia tê-la, e a metodologia a adotou.

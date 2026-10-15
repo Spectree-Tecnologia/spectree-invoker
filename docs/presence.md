@@ -1,5 +1,8 @@
 # Spectree Presence — fundação local
 
+Para conversar por texto com o Codex real, veja a [sessão P2](presence-codex.md).
+Este documento descreve o modo demonstrativo, preservado sem alterações de comportamento.
+
 P1 do [roadmap](ROADMAP.md): personagem Three.js, estados explícitos e conversa
 demonstrativa Invoker → Architect → Invoker. O áudio é gravado; esta entrega
 não captura microfone, conecta harness, executa comandos nem abre projetos.
