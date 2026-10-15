@@ -108,10 +108,11 @@ Duas interfaces locais rodam a partir de um clone deste repositório.
 ```bash
 npm run console -- --demo                     # Spectree Console com dados sintéticos
 npm ci --ignore-scripts && npm run presence   # Spectree Presence, demonstração
+npm run presence -- --codex                   # Presence P2, conversa textual com Codex
 ```
 
 - **[Spectree Console](docs/console.md)** — observa o squad em modo somente leitura: pipeline, especialistas, tarefas, evidências e histórico. Aponte para um projeto real com `npm run console -- --project /caminho/do/projeto`. O endereço impresso carrega uma credencial temporária da sessão; não o compartilhe.
-- **[Spectree Presence](docs/presence.md)** — a fundação da interface de conversa por voz com o squad: personagem 3D, identidade por cor e estados explícitos. Nesta versão o áudio é gravado; não há microfone, harness nem acesso a projetos.
+- **[Spectree Presence](docs/presence.md)** — personagem 3D, identidade por cor e estados explícitos. O modo demonstrativo usa áudio gravado; o [modo Codex](docs/presence-codex.md) oferece conversa real por texto em canário isolado. Ainda sem microfone, voz ao vivo ou acesso a projetos.
 
 ## O que está comprovado — e o que não está
 
@@ -175,7 +176,9 @@ Contribuições são bem-vindas; leia o [guia de contribuição](CONTRIBUTING.md
 
 ## Como o plugin evolui
 
-O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **Spectree Presence**: uma interface de conversa por voz com o Invoker e os especialistas. A versão **1.14.0** contém a [primeira entrega](docs/changes/presence-fundacao/proposal.md), com a fundação visual demonstrativa e o contrato de estados; a integração real com o harness e a voz permanecem planejadas.
+O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **Spectree Presence**: uma interface de conversa por voz com o Invoker e os especialistas. A versão **1.15.0** acrescenta a sessão textual local com Codex à fundação visual da 1.14.0. Voz e participação real dos especialistas permanecem nas próximas etapas.
+
+A [P2 conecta uma conversa por texto ao Codex local](docs/presence-codex.md): `npm run presence -- --codex`. Usa login ChatGPT existente e um canário próprio, sem abrir projetos consumidores.
 
 Um **projeto canário** roda a metodologia de verdade, sem ninguém segurando a mão. O que o canário faz de diferente do que está escrito é achado; achado vira PR aqui, nunca correção lá. Seis dos artefatos e regras deste repositório nasceram assim — o squad inventou a guarda antes de a metodologia tê-la, e a metodologia a adotou.
 

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spectree Presence · Codex</title><link rel="icon" href="data:,"><link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./live.css"></head>
+<body><main id="presence">
+  <header><a class="brand" href="./" aria-label="Spectree Presence">spectree<span>PRESENCE</span></a><span class="demo">CODEX LOCAL · CONVERSA POR TEXTO</span></header>
+  <section class="world" aria-label="Presença do Invoker">
+    <canvas aria-label="Invoker branco com olhos luminosos" role="img"></canvas>
+    <div class="state" role="status" data-state>Desconectado · Invoker</div>
+    <div class="fallback" hidden><div class="static-character" aria-hidden="true"><i></i><i></i></div><p>A cena 3D está indisponível.<br>A conversa por texto continua disponível.</p></div>
+    <div class="copy"><p class="eyebrow">UMA PRESENÇA. UMA CONVERSA REAL.</p><h1>Vamos dar forma à sua ideia.</h1><p data-caption>Conecte o Codex para conversar com o Invoker.</p></div>
+  </section>
+  <section class="conversation" aria-label="Conversa com o Invoker">
+    <div class="session-bar"><span data-model>Login ChatGPT pelo Codex local</span><div class="controls">
+      <button data-connect class="primary" disabled>Conectar Codex</button><button data-disconnect disabled>Encerrar sessão</button>
+      <button data-refresh hidden>Verificar conexão</button><button data-motion aria-pressed="true">Pausar movimento</button>
+    </div></div>
+    <p class="notice" data-notice role="status">Canário isolado · sem acesso a projetos · sem microfone ou voz</p>
+    <div class="messages" role="log" aria-label="Mensagens da conversa" aria-live="off" tabindex="0"></div>
+    <form data-composer><label for="message">Sua mensagem</label>
+      <textarea id="message" name="message" rows="3" maxlength="8000" placeholder="Qual ideia vamos explorar?" disabled></textarea>
+      <div class="composer-actions"><span>Enter envia · Shift + Enter cria uma linha</span><div class="controls"><button type="button" data-interrupt disabled>Interromper</button><button type="submit" class="primary" data-send disabled>Enviar mensagem</button></div></div>
+    </form>
+    <p class="note">Esta etapa conversa por texto. Nenhuma aprovação de trabalho é concedida pela interface.<br>O envio usa sua sessão ChatGPT do Codex; limites da conta continuam aplicáveis.</p>
+  </section>
+  <footer>SPECTREE / PRESENCE <span>SESSÃO LOCAL · P2</span></footer>
+  <audio preload="none" hidden></audio>
+</main><script type="module" src="./live.mjs"></script></body></html>

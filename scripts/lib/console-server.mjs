@@ -79,10 +79,14 @@ export async function startConsole({ roots = [], demo = false, port = 0, presenc
 }
 
 // Fixed package resources only. No generic file serving or consumer paths.
-function presenceAssets() {
+export function presenceAssets(live = false) {
   const files = new Map();
   const add = (route, relative, type) => files.set(route, { type, body: readFileSync(new URL(relative, import.meta.url)) });
-  add('/presence/', '../../presence/index.html', 'text/html; charset=utf-8');
+  add('/presence/', live ? '../../presence/live.html' : '../../presence/index.html', 'text/html; charset=utf-8');
+  if (live) {
+    for (const name of ['live', 'client']) add(`/presence/${name}.mjs`, `../../presence/${name}.mjs`, 'text/javascript; charset=utf-8');
+    add('/presence/live.css', '../../presence/live.css', 'text/css; charset=utf-8');
+  }
   add('/presence/style.css', '../../presence/style.css', 'text/css; charset=utf-8');
   for (const name of ['app', 'state', 'audio', 'renderer', 'renderer-core', 'lifecycle']) add(`/presence/${name}.mjs`, `../../presence/${name}.mjs`, 'text/javascript; charset=utf-8');
   for (const name of ['invoker-intro', 'architect', 'invoker-return']) add(`/presence/audio/${name}.mp3`, `../../presence/audio/${name}.mp3`, 'audio/mpeg');
