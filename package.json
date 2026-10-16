@@ -19,6 +19,7 @@
     "check": "npm run check:drift && npm run check:plugin && npm test"
   },
   "dependencies": {
-    "three": "0.180.0"
+    "three": "0.180.0",
+    "ws": "8.22.0"
   }
 }

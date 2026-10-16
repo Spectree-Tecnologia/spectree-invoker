@@ -20,7 +20,9 @@ export function createOpenAiAudio({ key = process.env.OPENAI_API_KEY, fetcher = 
         method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: form, signal, redirect: 'error' });
       if (!response.ok) { await response.body?.cancel(); throw fail('E_AUDIO_PROVIDER'); }
       const value = JSON.parse((await readBounded(response, 64000)).toString('utf8'));
-      if (typeof value.text !== 'string' || !value.text.trim() || value.text.length > 8000) throw fail('E_TRANSCRIPT');
+      if (!value || typeof value.text !== 'string') throw fail('E_TRANSCRIPT_RESPONSE');
+      if (!value.text.trim()) throw fail('E_TRANSCRIPT');
+      if (value.text.length > 8000) throw fail('E_TRANSCRIPT_LIMIT');
       return value.text.trim();
     },
     async speak(text, signal) {
@@ -92,7 +94,7 @@ export function createPresenceVoice({ session, provider, budgetUsd = 0, now = Da
       return { ...(input.action === 'transcribe' ? { text: value } : { audio: value.toString('base64'), sampleRate: 24000, messageId: input.messageId, part: input.part }),
         elapsedMs: now() - started, reservedUsd: reservedCents / 100 };
     } catch (e) { throw fail(operation.controller.signal.aborted ? 'E_AUDIO_CANCELLED' :
-      ['E_AUDIO_LIMIT', 'E_AUDIO_FORMAT', 'E_TRANSCRIPT', 'E_AUDIO_CANCELLED'].includes(e.code) ? e.code : 'E_AUDIO_PROVIDER'); }
+      ['E_AUDIO_LIMIT', 'E_AUDIO_FORMAT', 'E_TRANSCRIPT', 'E_TRANSCRIPT_RESPONSE', 'E_TRANSCRIPT_LIMIT', 'E_AUDIO_CANCELLED'].includes(e.code) ? e.code : 'E_AUDIO_PROVIDER'); }
     finally { clearTimeout(timer); if (active === operation) active = undefined; }
   }
   return { config, action, cancel, close() { closed = true; clearInterval(monitor); cancel(); } };

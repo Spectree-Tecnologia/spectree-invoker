@@ -28,7 +28,8 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 |---|---|---|---|
 | P1 | Fundação visual e contrato de estados | Integrada em main, PR #41 / v1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). |
 | P2 | Sessão local e integração Codex | Integrada em main, PR #43 / v1.15.0 | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
-| P3 | Conversa por voz com o Invoker | Implementada em branch; 440 testes passaram; ensaio real pendente | OpenAI aprovada até US$ 2. Captura explícita, transcrição revisável, síntese da resposta pública e interrupção. [Uso](presence-voice.md), [proposta](changes/presence-voz-invoker/proposal.md) e [verificação](changes/presence-voz-invoker/verification.md). Configuração da chave, qualidade real em português e latência ainda precisam de ensaio. |
+| P3 | Fundação de áudio do Invoker | Implementada em branch; Founder confirmou funcionamento dos testes; 53 testes Presence passaram | Captura explícita, transcrição revisável, síntese e seleção de microfone. [Uso](presence-voice.md), [proposta](changes/presence-voz-invoker/proposal.md) e [verificação](changes/presence-voz-invoker/verification.md). Esta interação por gravações ainda não atende à conversa contínua desejada. |
+| P3-R | Conversa Realtime com o Invoker | Implementada em branch; canário nativo validado; aceite do Founder pendente | WebRTC, áudio em streaming, turnos automáticos, interrupção pela fala e consulta Codex confirmada. [Uso](presence-realtime.md), [proposta](changes/presence-realtime/proposal.md) e [verificação](changes/presence-realtime/verification.md). Prioridade antes dos especialistas. |
 | P4 | Comunicação entre Invoker e especialista | Planejada | Começar com Invoker e Architect: delegação real, identidade do falante e retorno público audível. Expandir aos demais papéis após validar atribuição, fila de fala e legibilidade. |
 | P5 | Continuidade e recuperação da experiência | Planejada | Endurecer reconexão, retomada, interrupção pelo usuário e prevenção de ações ou falas duplicadas. Os mecanismos básicos de cancelamento e limpeza já são exigidos desde a etapa que os introduz. |
 | P6 | Canário e preparação da entrega | Planejada | Validar a jornada completa em projeto descartável: compatibilidade com gates, acessibilidade, desempenho, instalação e custo observado. Consolidar evidências e instruções operacionais antes de recomendar merge/release. |
@@ -53,6 +54,23 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-16:** Founder escolheu voz nativa Realtime conduzindo a conversa e
+  Codex pela assinatura para análises/trabalho; implementação em
+  `codex/presence-realtime`. Teto dos ensaios elevado para US$ 5. Canário real
+  validou streaming, energia de áudio, interrupção e retorno Codex falado.
+  Saldo conservador de reserva US$ 1,70; extrato não consultado. Neste incremento
+  a ponte continua conversacional, sem execução em projetos ou especialistas.
+- **2026-10-16:** Founder confirmou que os testes de áudio funcionaram e
+  esclareceu que o objetivo é interação Realtime. P3 passa a ser tratada como
+  fundação de áudio; P3-R deve entregar conversa contínua antes de P4. Solicitada
+  decisão sobre autoria da conversa (voz nativa com ponte Codex ou Codex em cada
+  resposta), pois as alternativas têm latência e consumo de API diferentes.
+- **2026-10-16:** chave local validada; canários reais de API e captura via
+  AudioWorklet transcreveram fala conhecida. 50 testes da Presence passaram.
+  Founder confirmou reprodução de resposta por texto e relatou `E_TRANSCRIPT`
+  com pouca reação à entrada física. Adicionados seletor de microfone, medidor
+  e reprodução local para concluir esse diagnóstico e o aceite. Reserva
+  conservadora restante do ensaio: US$ 1,30; valor faturado não consultado.
 - **2026-10-16:** recuperado o resultado da regressão final P3: 440/440 testes.
   Implementação e documentação prontas para revisão na branch; chave OpenAI
   ainda ausente. Ensaio pago não executado, gasto de áudio zero; merge pendente.

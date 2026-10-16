@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { encodeWav, wavDuration, speechParts } from '../presence/voice-format.mjs';
 import { createPresenceVoice, createOpenAiAudio } from '../scripts/lib/presence-voice.mjs';
-import { createVoiceController } from '../presence/voice.mjs';
+import { createVoiceController, voiceErrorMessage } from '../presence/voice.mjs';
 import { createVoicePlayer } from '../presence/voice-player.mjs';
 import { createVoiceCapture } from '../presence/voice-capture.mjs';
 import { startPresence } from '../scripts/lib/presence-server.mjs';
@@ -105,9 +105,11 @@ test('voice HTTP requires bearer and origin; P2 keeps microphone disabled and au
   assert.equal((await wire(server, '/presence/api/voice/action', { method: 'POST', body, headers: { ...headers, Origin: 'https://evil.test' } })).status, 403);
   const reply = await wire(server, '/presence/api/voice/action', { method: 'POST', body, headers }); assert.equal(reply.status, 200); assert.equal(calls, 1);
   assert.match(reply.headers['permissions-policy'], /microphone=\(self\)/);
+  assert.match(reply.headers['content-security-policy'], /media-src 'self' blob:/);
   assert.equal((await wire(server, '/presence/api/voice/action', { method: 'POST', body, headers })).status, 409); assert.equal(calls, 1);
   const textOnly = await startPresence({ session }); t.after(() => { textOnly.server.closeAllConnections(); textOnly.server.close(); });
   assert.match((await wire(textOnly, '/presence/')).headers['permissions-policy'], /microphone=\(\)/);
+  assert.doesNotMatch((await wire(textOnly, '/presence/')).headers['content-security-policy'], /blob:/);
 });
 
 test('browser voice only speaks new completed answers once and drops late synthesis after stop', async () => {
@@ -179,4 +181,168 @@ test('microphone permission failure is explicit and releases pending state', asy
   const capture = createVoiceCapture({ onState() {}, onComplete: () => assert.fail('no audio expected'), onError: v => errors.push(v),
     environment: { navigator: { mediaDevices: { getUserMedia: async () => { throw Object.assign(new Error(), { name: 'NotAllowedError' }); } } }, AudioWorkletNode: class {} } });
   await capture.start(); assert.deepEqual(errors, ['E_MIC_PERMISSION']); capture.dispose();
+});
+
+function microphoneFixture(rate = 48000) {
+  let node, stopped = 0, closed = 0;
+  const context = { sampleRate: rate, audioWorklet: { addModule: async () => {} },
+    createMediaStreamSource: () => ({ connect() {}, disconnect() {} }),
+    resume: async () => {}, close: async () => { closed++; } };
+  return { environment: {
+    navigator: { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop() { stopped++; }, addEventListener() {} }] }) } },
+    AudioContext: class { constructor() { return context; } },
+    AudioWorkletNode: class { constructor() { node = this; this.port = { close() {} }; } connect() {} disconnect() {} },
+  }, samples(values) { node.port.onmessage({ data: { samples: values } }); },
+  get stopped() { return stopped; }, get closed() { return closed; } };
+}
+
+test('silent microphone never sends audio; a fresh capture at common device rates remains transcribable', async () => {
+  for (const rate of [44100, 48000]) {
+    const mic = microphoneFixture(rate), errors = [], completed = [];
+    const capture = createVoiceCapture({ environment: mic.environment, onState() {}, onError: code => errors.push(code), onComplete: bytes => completed.push(bytes) });
+    await capture.start(); mic.samples(new Float32Array(rate)); capture.finish();
+    assert.deepEqual(errors, ['E_MIC_SILENT']); assert.equal(completed.length, 0);
+    assert.equal(mic.stopped, 1); assert.equal(mic.closed, 1);
+    await capture.start(); mic.samples(new Float32Array(rate).fill(.02));
+    assert.ok(capture.sample().energy > 0); capture.finish();
+    assert.equal(wavDuration(completed[0]), 1); assert.equal(mic.stopped, 2);
+    assert.deepEqual(capture.sample(), { energy: 0, rms: 0 }); capture.dispose();
+  }
+});
+
+test('device capture goes through authenticated HTTP transcription into a draft without sending a Codex turn', async t => {
+  const value = snapshot(), mic = microphoneFixture(), states = [];
+  let providerCalls = 0, transcript = '', posted = 0;
+  const server = await startPresence({ voice: true, budgetUsd: .1,
+    session: { snapshot: () => value, touch() {}, close() {}, send() { assert.fail('must not send a turn'); } },
+    audioProvider: { ready: true, name: 'fake', async transcribe(bytes) {
+      providerCalls++; assert.equal(wavDuration(bytes), 2); return 'Quero definir uma especificação.';
+    } } });
+  t.after(() => { server.server.closeAllConnections(); server.server.close(); });
+  const voice = createVoiceController({ token: server.token, onState: v => states.push(v), onTranscript: text => { transcript = text; },
+    captureFactory: callbacks => createVoiceCapture({ ...callbacks, environment: mic.environment }),
+    playerFactory: () => ({ stop() {}, dispose() {}, sample: () => ({ energy: 0, rms: 0 }) }),
+    fetcher: async (url, options) => {
+      const headers = { ...options.headers, ...(options.method === 'POST' ? { Origin: server.origin } : {}) };
+      if (options.method === 'POST') posted++;
+      return fetch(server.origin + url, { ...options, headers });
+    } });
+  t.after(() => voice.dispose());
+  await voice.init(); voice.sync(value, true); await voice.record();
+  mic.samples(new Float32Array(48000 * 2).fill(.02)); assert.ok(voice.sample().energy > 0);
+  await voice.record();
+  for (let i = 0; i < 100 && !transcript; i++) await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(transcript, 'Quero definir uma especificação.'); assert.equal(posted, 1); assert.equal(providerCalls, 1);
+  assert.equal(states.at(-1).state, 'idle'); assert.equal(states.at(-1).config.reservedUsd, .1);
+});
+
+test('empty transcription and transport failures have safe actionable codes and no automatic retry', async () => {
+  for (const kind of ['empty', 'network', 'invalid-json']) {
+    let callbacks, calls = 0; const states = [];
+    const voice = createVoiceController({ token: 'opaque', onState: v => states.push(v), onTranscript: () => assert.fail('no draft on failure'),
+      captureFactory: value => { callbacks = value; return { start() {}, cancel() {}, dispose() {} }; },
+      playerFactory: () => ({ stop() {}, dispose() {} }),
+      fetcher: async url => {
+        if (url.endsWith('config')) return Response.json({ enabled: true, provider: 'fake' });
+        calls++;
+        if (kind === 'network') throw new Error('private transport details');
+        if (kind === 'invalid-json') return new Response('private raw response');
+        return Response.json({ error: 'E_TRANSCRIPT', reservedUsd: .1 }, { status: 409 });
+      } });
+    await voice.init(); voice.sync(snapshot(), true); await callbacks.onComplete(wav());
+    const code = { empty: 'E_TRANSCRIPT', network: 'E_AUDIO_NETWORK', 'invalid-json': 'E_AUDIO_RESPONSE' }[kind];
+    assert.equal(states.at(-1).error, code); assert.equal(calls, 1);
+    assert.match(voiceErrorMessage(code), new RegExp(code)); assert.doesNotMatch(JSON.stringify(states), /private/);
+    if (kind === 'empty') assert.match(voiceErrorMessage(code), /microfone/);
+    voice.dispose();
+  }
+  const provider = createOpenAiAudio({ key: 'synthetic', fetcher: async () => Response.json({ text: '' }) });
+  await assert.rejects(provider.transcribe(wav()), { code: 'E_TRANSCRIPT' });
+  assert.doesNotMatch(voiceErrorMessage('private raw response'), /private/);
+});
+
+test('transcription response distinguishes no speech, incompatible shape and excessive text', async () => {
+  for (const [value, code] of [[{ text: '' }, 'E_TRANSCRIPT'], [{ text: '  ' }, 'E_TRANSCRIPT'],
+    [null, 'E_TRANSCRIPT_RESPONSE'], [{ transcript: 'unexpected field' }, 'E_TRANSCRIPT_RESPONSE'],
+    [{ text: 'a'.repeat(8001) }, 'E_TRANSCRIPT_LIMIT']]) {
+    const provider = createOpenAiAudio({ key: 'synthetic', fetcher: async () => Response.json(value) });
+    await assert.rejects(provider.transcribe(wav()), { code });
+    assert.match(voiceErrorMessage(code), new RegExp(code));
+  }
+});
+
+test('microphone choice and local recording remain private and preview clears across sessions', async () => {
+  let callbacks, chosen, posted; const states = [], recordings = [];
+  const voice = createVoiceController({ token: 'opaque', onState: value => states.push(value), onTranscript() {}, onRecording: value => recordings.push(value),
+    captureFactory: value => { callbacks = value; return { cancel() {}, dispose() {}, start(options) { chosen = options.deviceId; } }; },
+    playerFactory: () => ({ stop() {}, dispose() {} }),
+    fetcher: async (url, options) => {
+      if (url.endsWith('config')) return Response.json({ enabled: true, provider: 'fake' });
+      posted = JSON.parse(options.body); return Response.json({ error: 'E_TRANSCRIPT', reservedUsd: .1 }, { status: 409 });
+    } });
+  await voice.init(); voice.sync(snapshot(), true);
+  callbacks.onDevices([{ id: 'local-device', label: 'Private microphone name' }], 'local-device');
+  voice.selectMicrophone('injected-device');
+  assert.equal(states.at(-1).microphoneId, 'local-device');
+  await voice.record(); assert.equal(chosen, 'local-device');
+  const bytes = wav(); await callbacks.onComplete(bytes);
+  assert.equal(recordings.at(-1), bytes); assert.equal(states.at(-1).error, 'E_TRANSCRIPT');
+  assert.doesNotMatch(JSON.stringify(posted), /local-device|Private microphone/);
+  voice.sync({ ...snapshot(), sessionId: 'different-session' }, true); assert.equal(recordings.at(-1), null);
+  voice.dispose(); assert.equal(recordings.at(-1), null);
+});
+
+test('microphone configuration can list the notebook input even when opening the default USB fails', async () => {
+  const mic = microphoneFixture(), states = [], errors = [], lists = [];
+  const originalGet = mic.environment.navigator.mediaDevices.getUserMedia;
+  let authorized = false, opened = [];
+  mic.environment.navigator.mediaDevices.enumerateDevices = async () => [
+    { kind: 'audioinput', deviceId: 'usb', label: authorized ? 'USB headset' : '' },
+    { kind: 'audioinput', deviceId: 'notebook', label: authorized ? 'Notebook microphone' : '' },
+    { kind: 'audiooutput', deviceId: 'speakers', label: 'Speakers' },
+  ];
+  mic.environment.navigator.mediaDevices.getUserMedia = async options => {
+    opened.push(options); authorized = true;
+    if (options.audio?.deviceId?.exact !== 'notebook') throw Object.assign(new Error('broken default input'), { name: 'NotReadableError' });
+    return originalGet(options);
+  };
+  const capture = createVoiceCapture({ environment: mic.environment, onState: value => states.push(value), onError: code => errors.push(code),
+    onDevices: devices => lists.push(devices), onComplete: () => assert.fail('configuration must not create a recording') });
+  await capture.prepare();
+  assert.deepEqual(errors, ['E_MIC_UNAVAILABLE']); assert.equal(lists.at(-1).length, 2);
+  assert.equal(lists.at(-1)[1].label, 'Notebook microphone'); assert.equal(mic.closed, 0);
+  await capture.prepare(); assert.equal(opened.length, 1); assert.equal(states.at(-1), 'idle');
+  await capture.start({ deviceId: 'notebook' });
+  assert.equal(opened.at(-1).audio.deviceId.exact, 'notebook'); assert.equal(states.at(-1), 'recording');
+  capture.dispose(); assert.equal(mic.stopped, 1);
+});
+
+test('permission-only preparation stops its probe immediately and drops a late grant after cancellation', async () => {
+  for (const cancelled of [false, true]) {
+    let grant, stops = 0; const states = [], lists = [];
+    const capture = createVoiceCapture({ onState: state => states.push(state), onError: () => assert.fail('unexpected failure'),
+      onDevices: devices => lists.push(devices), onComplete: () => assert.fail('no recording during setup'),
+      environment: { navigator: { mediaDevices: {
+        enumerateDevices: async () => [],
+        getUserMedia: () => new Promise(resolve => { grant = resolve; }),
+      } }, AudioContext: class { constructor() { assert.fail('no AudioContext during setup'); } } } });
+    const preparing = capture.prepare();
+    await new Promise(resolve => setImmediate(resolve)); if (cancelled) capture.cancel();
+    grant({ getTracks: () => [{ stop() { stops++; } }] }); await preparing;
+    assert.equal(stops, 1); assert.equal(states.at(-1), cancelled ? 'requesting' : 'idle');
+    assert.equal(lists.length, cancelled ? 1 : 2); capture.dispose();
+  }
+});
+
+test('configuring or refreshing microphones never issues a voice request and preserves an explicit selection', async () => {
+  let callbacks, prepares = 0, reads = 0; const states = [];
+  const devices = [{ id: 'notebook', label: 'Notebook microphone' }];
+  const voice = createVoiceController({ token: 'opaque', onState: value => states.push(value), onTranscript() {},
+    captureFactory: value => { callbacks = value; return { cancel() {}, dispose() {}, listDevices: async () => { callbacks.onDevices(devices); },
+      prepare: async () => { prepares++; callbacks.onDevices(devices); callbacks.onState('idle'); } }; },
+    playerFactory: () => ({ stop() {}, dispose() {} }),
+    fetcher: async url => { assert.ok(url.endsWith('config')); reads++; return Response.json({ enabled: true, provider: 'fake' }); } });
+  await voice.init(); voice.sync(snapshot(), true); voice.selectMicrophone('notebook');
+  await voice.prepareMicrophone(); assert.equal(prepares, 1); assert.equal(reads, 1);
+  assert.equal(states.at(-1).microphoneId, 'notebook'); assert.equal(states.at(-1).state, 'idle'); voice.dispose();
 });
