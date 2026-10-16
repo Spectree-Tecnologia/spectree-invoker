@@ -1,5 +1,8 @@
 # Presence P2 — conversa local com Codex
 
+A [P3 de voz opcional](presence-voice.md) está em desenvolvimento em branch
+própria. O modo `--codex` descrito aqui continua funcionando sem API de áudio.
+
 Esta etapa conecta o personagem aprovado a uma conversa real **por texto**.
 Não conecta microfone, sintetiza voz, delega especialistas nem executa tarefas
 do runtime. A animação nunca representa aprovação de gates.

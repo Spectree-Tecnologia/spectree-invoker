@@ -16,12 +16,18 @@
       <button data-refresh hidden>Verificar conexão</button><button data-motion aria-pressed="true">Pausar movimento</button>
     </div></div>
     <p class="notice" data-notice role="status">Canário isolado · sem acesso a projetos · sem microfone ou voz</p>
+    <section class="voice-panel" data-voice-panel hidden aria-label="Voz do Invoker">
+      <div><span class="eyebrow">VOZ DO INVOKER</span><p data-voice-status role="status">Preparando áudio…</p></div>
+      <div class="controls"><button type="button" data-record disabled>Gravar mensagem</button><button type="button" data-auto-voice aria-pressed="false" disabled>Ouvir respostas</button><button type="button" data-stop-voice disabled>Parar áudio</button></div>
+      <p class="voice-disclosure">Voz gerada por IA · OpenAI. O áudio gravado é enviado para transcrição; revise o texto antes de enviar ao Codex. Ao ativar a voz, novas respostas são enviadas para síntese. Cobrança de áudio separada da assinatura.</p>
+      <p class="voice-metrics" data-voice-metrics></p>
+    </section>
     <div class="messages" role="log" aria-label="Mensagens da conversa" aria-live="off" tabindex="0"></div>
     <form data-composer><label for="message">Sua mensagem</label>
       <textarea id="message" name="message" rows="3" maxlength="8000" placeholder="Qual ideia vamos explorar?" disabled></textarea>
       <div class="composer-actions"><span>Enter envia · Shift + Enter cria uma linha</span><div class="controls"><button type="button" data-interrupt disabled>Interromper</button><button type="submit" class="primary" data-send disabled>Enviar mensagem</button></div></div>
     </form>
-    <p class="note">Esta etapa conversa por texto. Nenhuma aprovação de trabalho é concedida pela interface.<br>O envio usa sua sessão ChatGPT do Codex; limites da conta continuam aplicáveis.</p>
+    <p class="note">Nenhuma aprovação de trabalho é concedida pela interface.<br>O texto usa sua sessão ChatGPT do Codex; limites da conta continuam aplicáveis.</p>
   </section>
   <footer>SPECTREE / PRESENCE <span>SESSÃO LOCAL · P2</span></footer>
   <audio preload="none" hidden></audio>

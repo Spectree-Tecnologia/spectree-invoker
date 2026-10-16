@@ -5,12 +5,14 @@ export const rpcError = code => Object.assign(new Error(code), { code });
 
 // Private stdio transport: no raw stderr, account payloads or RPC errors leave it.
 export function createCodexRpc({ cwd, executable = 'codex', onNotification = () => {}, onFailure = () => {},
-  spawnProcess = spawn, timeoutMs = 30000 } = {}) {
+  spawnProcess = spawn, timeoutMs = 30000, environment = process.env } = {}) {
   const overrides = ['web_search=disabled', 'mcp_servers={}', 'hooks={}', 'notify=[]',
     ...['shell_tool', 'apps', 'plugins', 'memories', 'multi_agent', 'browser_use', 'computer_use',
       'request_permissions_tool', 'shell_snapshot'].map(key => `features.${key}=false`)];
   const spec = launchSpec([executable, 'app-server', '--listen', 'stdio://', ...overrides.flatMap(v => ['-c', v])],
-    { cwd, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    { cwd, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
+      // The audio API credential belongs only to the audio adapter, never the harness.
+      env: Object.fromEntries(Object.entries(environment).filter(([key]) => key.toUpperCase() !== 'OPENAI_API_KEY')) });
   const child = spawnProcess(spec.file, spec.args, spec.options);
   const pending = new Map(); let sequence = 0, buffer = '', closed = false;
   const close = (code = 'E_CLOSED', notify = false) => {

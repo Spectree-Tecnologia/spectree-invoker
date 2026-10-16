@@ -108,6 +108,18 @@ function rpcFixture(options = {}) {
   return { rpc, child, outgoing, failures, events, emit: message => child.stdout.write(JSON.stringify(message) + '\n') };
 }
 
+test('audio API credential is removed from the Codex child environment', () => {
+  let childEnvironment;
+  const f = rpcFixture({ environment: { PATH: process.env.PATH, OPENAI_API_KEY: 'synthetic-secret', openai_api_key: 'synthetic-lowercase', KEEP: 'yes' },
+    spawnProcess: (_file, _args, options) => {
+      childEnvironment = options.env;
+      const child = new EventEmitter(); child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.kill = () => {};
+      return child;
+    } });
+  assert.equal(childEnvironment.KEEP, 'yes'); assert.equal(childEnvironment.OPENAI_API_KEY, undefined); assert.equal(childEnvironment.openai_api_key, undefined);
+  f.rpc.close();
+});
+
 test('stdio parser handles fragmented Unicode, correlation and refuses unsolicited approval requests', async () => {
   const f = rpcFixture(); const first = f.rpc.request('initialize'); const id = f.outgoing[0].id;
   const bytes = Buffer.from(JSON.stringify({ id, result: { text: 'ação' } }) + '\n');

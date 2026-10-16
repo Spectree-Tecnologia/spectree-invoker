@@ -84,7 +84,7 @@ export function presenceAssets(live = false) {
   const add = (route, relative, type) => files.set(route, { type, body: readFileSync(new URL(relative, import.meta.url)) });
   add('/presence/', live ? '../../presence/live.html' : '../../presence/index.html', 'text/html; charset=utf-8');
   if (live) {
-    for (const name of ['live', 'client']) add(`/presence/${name}.mjs`, `../../presence/${name}.mjs`, 'text/javascript; charset=utf-8');
+    for (const name of ['live', 'client', 'voice', 'voice-format', 'voice-capture', 'voice-player', 'voice-worklet']) add(`/presence/${name}.mjs`, `../../presence/${name}.mjs`, 'text/javascript; charset=utf-8');
     add('/presence/live.css', '../../presence/live.css', 'text/css; charset=utf-8');
   }
   add('/presence/style.css', '../../presence/style.css', 'text/css; charset=utf-8');

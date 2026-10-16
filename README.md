@@ -180,6 +180,8 @@ O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **S
 
 A [P2 conecta uma conversa por texto ao Codex local](docs/presence-codex.md): `npm run presence -- --codex`. Usa login ChatGPT existente e um canário próprio, sem abrir projetos consumidores.
 
+Nesta branch, a [P3 acrescenta voz opcional](docs/presence-voice.md): gravação, transcrição revisável e síntese das novas respostas. Requer chave OpenAI separada; ensaio real de voz ainda pendente. A versão publicada permanece 1.15.0.
+
 Um **projeto canário** roda a metodologia de verdade, sem ninguém segurando a mão. O que o canário faz de diferente do que está escrito é achado; achado vira PR aqui, nunca correção lá. Seis dos artefatos e regras deste repositório nasceram assim — o squad inventou a guarda antes de a metodologia tê-la, e a metodologia a adotou.
 
 ## Licença

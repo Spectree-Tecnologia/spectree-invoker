@@ -1,6 +1,6 @@
 # Roadmap do Spectree Invoker
 
-Atualizado em 2026-10-15. Este documento registra a ordem aprovada e seus motivos.
+Atualizado em 2026-10-16. Este documento registra a ordem aprovada e seus motivos.
 O escopo e os critérios de cada entrega pertencem à respectiva proposta de mudança;
 esta sequência não representa funcionalidades já disponíveis nem compromissos de data.
 
@@ -27,8 +27,8 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 | Ordem | Entrega | Estado | Por que vem nesta posição / evidência para avançar |
 |---|---|---|---|
 | P1 | Fundação visual e contrato de estados | Integrada em main, PR #41 / v1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). |
-| P2 | Sessão local e integração Codex | Merge autorizado; candidato 1.15.0 preparado; confirmação no PR/CI | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
-| P3 | Conversa por voz com o Invoker | Planejada | Conectar microfone, turnos, transcrição e reprodução à sessão já comprovada. Comparar provedores de áudio por latência, qualidade em português, interrupção e custo; medir o áudio real, com autorização de microfone e orçamento definido para APIs pagas. |
+| P2 | Sessão local e integração Codex | Integrada em main, PR #43 / v1.15.0 | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
+| P3 | Conversa por voz com o Invoker | Implementada em branch; 440 testes passaram; ensaio real pendente | OpenAI aprovada até US$ 2. Captura explícita, transcrição revisável, síntese da resposta pública e interrupção. [Uso](presence-voice.md), [proposta](changes/presence-voz-invoker/proposal.md) e [verificação](changes/presence-voz-invoker/verification.md). Configuração da chave, qualidade real em português e latência ainda precisam de ensaio. |
 | P4 | Comunicação entre Invoker e especialista | Planejada | Começar com Invoker e Architect: delegação real, identidade do falante e retorno público audível. Expandir aos demais papéis após validar atribuição, fila de fala e legibilidade. |
 | P5 | Continuidade e recuperação da experiência | Planejada | Endurecer reconexão, retomada, interrupção pelo usuário e prevenção de ações ou falas duplicadas. Os mecanismos básicos de cancelamento e limpeza já são exigidos desde a etapa que os introduz. |
 | P6 | Canário e preparação da entrega | Planejada | Validar a jornada completa em projeto descartável: compatibilidade com gates, acessibilidade, desempenho, instalação e custo observado. Consolidar evidências e instruções operacionais antes de recomendar merge/release. |
@@ -39,7 +39,8 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
   uma entrega posterior, sem alterar o suporte existente do plugin ao Claude Code.
 - A intenção é utilizar a assinatura do usuário pela autenticação oficial do
   harness. A compatibilidade do transporte será verificada em P2; APIs de áudio
-  têm contratação e orçamento próprios, ainda sem provedor escolhido.
+  têm contratação e orçamento próprios. Para P3, OpenAI foi aprovada até US$ 2
+  no ensaio, com configuração de chave local necessária.
 - Um coordenador local de sessão fará a ponte entre interface, harness e áudio.
   A interface não recebe credenciais de longa duração nem acesso arbitrário ao disco.
 - A fala entre agentes apresenta delegações, progresso e resultados públicos.
@@ -52,6 +53,13 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-16:** recuperado o resultado da regressão final P3: 440/440 testes.
+  Implementação e documentação prontas para revisão na branch; chave OpenAI
+  ainda ausente. Ensaio pago não executado, gasto de áudio zero; merge pendente.
+- **2026-10-15:** GO para P3, branch `codex/presence-voz-invoker`, a partir do
+  merge `87c6bc1` / v1.15.0. Founder escolheu OpenAI, até US$ 2 no ensaio.
+  O primeiro incremento usa captura explícita e texto concluído antes da síntese;
+  full duplex e inferência de emoção não fazem parte desta entrega.
 - **2026-10-15:** merge da P2 autorizado pelo Founder. Incorporado o README da
   main / 1.14.1 e preparado o pacote 1.15.0. A confirmação de integração e da
   publicação pertence ao PR e ao workflow do commit de merge.
