@@ -26,12 +26,27 @@ const DIR = '.spectree';
 
 const p = (root, ...rest) => join(root, DIR, ...rest);
 
-/** Atomic: write a sibling temp file, then rename over the target. */
-function writeAtomic(file, text) {
+/**
+ * Atomic: write a sibling temp file, then rename over the target.
+ *
+ * On Windows a rename over a file that another process has open — a reader, for the few
+ * milliseconds of a readFileSync — fails with EPERM/EACCES/EBUSY. That is a sharing violation,
+ * not a refusal: readers never take the lock, so the writer holding it must outlast them. It
+ * crashed a reopening mid-operation under a busy suite, leaving it open at `intent`.
+ */
+export function writeAtomic(file, text) {
   mkdirSync(dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
   writeFileSync(tmp, text);
-  renameSync(tmp, file);
+  // ponytail: bounded by wall clock, not attempts — a reader starved of CPU holds its handle longer.
+  const deadline = performance.now() + 10_000;
+  for (let wait = 5; ; wait = Math.min(wait * 2, 100)) {
+    try { return renameSync(tmp, file); } catch (e) {
+      const transient = process.platform === 'win32' && ['EPERM', 'EACCES', 'EBUSY'].includes(e.code);
+      if (!transient || performance.now() > deadline) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
+    }
+  }
 }
 
 const readJson = (f) => JSON.parse(readFileSync(f, 'utf8'));
