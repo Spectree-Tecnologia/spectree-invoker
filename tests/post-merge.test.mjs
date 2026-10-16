@@ -14,7 +14,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Store } from '../scripts/lib/store.mjs';
-import { contractDigestAt, contentDigestAt, gatedDigest } from '../scripts/lib/digest.mjs';
+import { contractDigest, contractDigestAt, contentDigest, contentDigestAt, gatedDigest } from '../scripts/lib/digest.mjs';
 import { buildManifest } from '../scripts/lib/closure-prep.mjs';
 import { emptyLifecycle, lifecyclePath, snapshotPath, currentPath } from '../scripts/lib/lifecycle.mjs';
 import { gitRepo, tempDir, cleanup, now, REPO, stubGh, greenRun, integrationApproval, ciConfig, recordIntegrationApproval } from './helpers.mjs';
@@ -407,4 +407,23 @@ test('a prepared artifact altered in the merge is not the artifact that was prep
     const failed = JSON.parse(r.out).steps.filter((s) => !s.ok).map((s) => s.name);
     assert.ok(failed.includes('prepared artifacts are in the merge, unchanged and alone'), `got ${failed.join(', ')}`);
   } finally { f.drop(); }
+});
+
+test('a file the repository stores with CRLF digests the same in the checkout and in the merge', () => {
+  // Git for Windows ships core.autocrlf=true. `hash-object` then converts CRLF to LF even for a
+  // file whose committed blob keeps CRLF, so the checkout and the merge tree named the same bytes
+  // differently and every confirmation on that machine refused a merge that was correct.
+  const repo = gitRepo({ '.gitignore': '.spectree/\n' });
+  try {
+    repo.git(['config', 'core.autocrlf', 'false']);
+    mkdirSync(join(repo.root, 'docs/changes/c1'), { recursive: true });
+    writeFileSync(join(repo.root, 'app.js'), 'export const n = 1;\r\n');
+    writeFileSync(join(repo.root, 'docs/changes/c1/proposal.md'), '# c1\r\n');
+    repo.git(['add', '-A']);
+    repo.git(['commit', '-qm', 'crlf in the repository']);
+    repo.git(['config', 'core.autocrlf', 'true']);
+    const change = { change_id: 'c1' };
+    assert.equal(contentDigest(repo.root).digest, contentDigestAt(repo.root, 'HEAD').digest);
+    assert.equal(contractDigest(repo.root, change).digest, contractDigestAt(repo.root, 'HEAD', change).digest);
+  } finally { cleanup(repo.root); }
 });
