@@ -1,8 +1,7 @@
 {
   "name": "spectree-invoker",
   "owner": {
-    "name": "Spectree Tecnologia",
-    "email": "gilsonjunior.developer@gmail.com"
+    "name": "Spectree Tecnologia"
   },
   "description": "Marketplace da Spectree Tecnologia: o runtime e o squad Invoker para Claude Code.",
   "plugins": [

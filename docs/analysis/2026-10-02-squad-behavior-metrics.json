@@ -3,9 +3,9 @@
   "from_utc": "2026-09-27T12:17:19.000Z",
   "through_utc": "2026-10-02T15:33:05.050Z",
   "source": {
-    "project": "C:/Users/gilso/Documents/spectree-projects/spectree-workspace",
+    "project": "~/Documents/spectree-projects/spectree-workspace",
     "session_id": "813b6a11-e77e-4817-988b-ef804ff1b04b",
-    "session_file": "C:/Users/gilso/.claude/projects/C--Users-gilso-Documents-spectree-projects-spectree-workspace/813b6a11-e77e-4817-988b-ef804ff1b04b.jsonl"
+    "session_file": "~/.claude/projects/<spectree-workspace>/813b6a11-e77e-4817-988b-ef804ff1b04b.jsonl"
   },
   "limits": [
     "Source project read only; no test/build/migration/deploy executed by this analysis.",

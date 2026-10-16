@@ -31,7 +31,7 @@
       },
       "modifications": [],
       "git_unchanged": true,
-      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-tmkW4f"
+      "fixture": "%TEMP%\\spectree-agent-eval-tmkW4f"
     },
     {
       "case_id": "stale-candidate",
@@ -54,7 +54,7 @@
       },
       "modifications": [],
       "git_unchanged": true,
-      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-wjXFq5"
+      "fixture": "%TEMP%\\spectree-agent-eval-wjXFq5"
     },
     {
       "case_id": "intermittent-baseline",
@@ -77,7 +77,7 @@
       },
       "modifications": [],
       "git_unchanged": true,
-      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-zPsspO"
+      "fixture": "%TEMP%\\spectree-agent-eval-zPsspO"
     },
     {
       "case_id": "insensitive-oracle",
@@ -100,7 +100,7 @@
       },
       "modifications": [],
       "git_unchanged": true,
-      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-ciRhUr"
+      "fixture": "%TEMP%\\spectree-agent-eval-ciRhUr"
     },
     {
       "case_id": "valid-candidate",
@@ -123,7 +123,7 @@
       },
       "modifications": [],
       "git_unchanged": true,
-      "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-agent-eval-8i5Yv6"
+      "fixture": "%TEMP%\\spectree-agent-eval-8i5Yv6"
     }
   ],
   "scope": "Real agent decisions and artifact discipline on synthetic incidents; not a full squad delivery benchmark.",
