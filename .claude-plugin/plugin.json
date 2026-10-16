@@ -1,10 +1,9 @@
 {
   "name": "spectree",
   "description": "Runtime que só aceita como pronto o que um comando provou — o harness por cima do Claude Code e do Codex — e o squad de agentes que ele executa: o Invoker e seis especialistas, para monólitos modulares spec-driven.",
-  "version": "1.15.2",
+  "version": "1.15.3",
   "author": {
-    "name": "Spectree Tecnologia",
-    "email": "gilsonjunior.developer@gmail.com"
+    "name": "Spectree Tecnologia"
   },
   "homepage": "https://github.com/Spectree-Tecnologia/spectree-invoker",
   "repository": "https://github.com/Spectree-Tecnologia/spectree-invoker",
