@@ -71,3 +71,34 @@ Aceite Realtime com o microfone físico do Founder, latência percebida em conve
 prolongada e matriz de dispositivos/navegadores. Sessões de 60 s são ensaios, não
 configuração de produção. Execução em projetos e especialistas ficam nas etapas
 posteriores. Nenhum merge realizado.
+
+## Correção de preparação do microfone após o primeiro aceite
+
+O Founder informou `E_MIC_PERMISSION` ao escolher o microfone, antes de iniciar
+a conversa. A enumeração já exibia o Realtek, mas nomes disponíveis não provam
+permissão para abrir a captura. O fluxo agora verifica a entrada explicitamente
+selecionada sem abrir o USB padrão, para as trilhas imediatamente e mantém a
+seleção. Trocar de entrada limpa o erro anterior. Falhas de reprodução e de
+acesso ao microfone têm códigos distintos; a solicitação de microfone Realtime
+não espera a reprodução para iniciar no gesto do botão.
+
+Na interface real do navegador integrado, selecionar **Grupo de microfones
+(Realtek(R) Audio)** e clicar **Escolher microfone** concluiu a verificação local
+sem erro e preservou a seleção. Nenhuma conversa paga foi iniciada pelo agente
+nesta correção. Captura `presence-microphone-realtek-verified.png` nos artefatos
+da conversa. Isso comprova abertura local, não qualidade do sinal ou conversa
+completa pelo microfone físico.
+
+Durante a interação do operador, o servidor registrou mais US$ 1 de reserva e
+encerramento remoto **confirmed**. Total conservador conhecido agora:
+**US$ 4,30 de US$ 5**, saldo **US$ 0,70**; sem afirmação de custo faturado.
+O servidor foi reiniciado na mesma origem com apenas esse saldo. A interface
+bloqueia novo ensaio de US$ 1 e continua permitindo a configuração local.
+
+Após esses ajustes: **65/65 testes Presence**, `check:drift` e `check:plugin`
+aprovados. Três casos novos verificam solicitação no gesto, reprodução recusada
+sem falsa negação de microfone e tentativa explícita após permissão recusada.
+O teste de configuração também verifica a abertura exata e liberação imediata
+do dispositivo selecionado. Uma execução inicial dentro do sandbox recusou o
+loopback; a repetição com acesso local passou. A suíte ampla de 458 testes é
+a evidência do commit anterior; não foi repetida para esta correção de cliente.

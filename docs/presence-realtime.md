@@ -11,7 +11,7 @@ e `.env` configurado com `OPENAI_API_KEY` e, se necessário,
 `SPECTREE_CODEX_EXECUTABLE`:
 
 ```powershell
-node --env-file=.env scripts/presence.mjs --codex --realtime --budget-usd 1.7
+node --env-file=.env scripts/presence.mjs --codex --realtime --budget-usd 0.7
 ```
 
 Abra a URL completa impressa. Conecte o Codex, use **Escolher microfone** para
@@ -21,6 +21,19 @@ de transcrição nesse modo. A voz detecta automaticamente os turnos e recebe
 nova fala durante a resposta. **Silenciar microfone** interrompe a entrada;
 **Encerrar conversa** para a mídia e solicita encerramento remoto. Ocultar ou
 fechar a página também encerra a conversa.
+
+O saldo conservador conhecido nesta conversa caiu a US$ 0,70 após mais uma
+tentativa do operador. O comando acima permite conferir o microfone localmente,
+mas bloqueia outro ensaio de US$ 1. Uma nova sessão paga depende de orçamento
+adicional autorizado, sem reiniciar reservas já usadas.
+
+Se ocorrer `E_MIC_PERMISSION` ao escolher o microfone, selecione o Realtek na
+lista e clique novamente em **Escolher microfone**. Com uma entrada explícita,
+essa ação verifica a abertura dela e para imediatamente as trilhas, sem criar
+gravação ou pedido de áudio. Listar nomes de dispositivos não comprova acesso
+de captura. Uma recusa do navegador ainda exige permitir o microfone nessa
+origem; em caso de recusa persistente no navegador integrado, compare a URL
+completa no Chrome ou Edge. Falha de reprodução tem diagnóstico separado.
 
 `--voice` mantém o primeiro modo por gravações. Os dois argumentos são
 mutuamente exclusivos. O texto P2 e a demonstração P1 continuam disponíveis.
@@ -63,12 +76,13 @@ não abre uma chamada paga. IDs impedem cancelamento de uma sessão diferente.
   a 4.000 tokens com truncamento.
 - Consulta Codex até 4.000 caracteres; retorno público até 6.000.
 - Reserva conservadora US$ 1 por sessão, antes de conectar, sem estorno
-  automático. Orçamento local por processo de US$ 1 a US$ 2.
+  automático. Orçamento local por processo de US$ 0,10 a US$ 2; um saldo menor
+  que a reserva por sessão mantém apenas a configuração local disponível.
 - Encerramento pelo servidor por tempo, perda de heartbeat ou mudança de sessão.
   O controle permanece conectado até a resposta de hangup. Recurso já ausente
   aparece como `already-ended`; falha de confirmação aparece como `unconfirmed`.
-- Teto total aprovado: **US$ 5**. Reservas conhecidas dos ensaios: **US$ 3,30**.
-  O comando acima usa o saldo conservador de **US$ 1,70**. Não é custo faturado.
+- Teto total aprovado: **US$ 5**. Reservas conhecidas dos ensaios: **US$ 4,30**.
+  O comando acima usa o saldo conservador de **US$ 0,70**. Não é custo faturado.
   Reiniciar o processo não autoriza ampliar o teto.
 
 Reservas e tokens observados não são o extrato da conta nem limite financeiro

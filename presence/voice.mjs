@@ -161,7 +161,7 @@ export function createVoiceController({ token, onState, onTranscript, onRecordin
     },
     async prepareMicrophone() {
       if (disposed || !config.enabled || !online || !['ready', 'completed', 'interrupted'].includes(snapshot?.status)) return;
-      stop(false); onRecording(null); await capture.prepare?.();
+      stop(false); onRecording(null); await capture.prepare?.({ deviceId: microphoneId });
     },
     selectMicrophone(id) { if (microphones.some(d => d.id === id) || id === '') { stop(); microphoneId = id; onRecording(null); emit(); } },
     beforeSend() { stop(false); onRecording(null); awaitingAt = now(); }, stop,

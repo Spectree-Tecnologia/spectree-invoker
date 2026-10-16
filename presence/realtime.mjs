@@ -3,7 +3,7 @@ import { audioEnergy } from './audio.mjs';
 export function createRealtimeConversation({ token, onState, environment = globalThis, fetcher = fetch }) {
   let session, generation = 0, context, peer, channel, stream, inputSource, outputSource, inputMeter, outputMeter, gain;
   let timer, controller, startId, remoteAudio, disposed = false, speaking = false, muted = false, phase = 'idle', error = null;
-  let server = { messages: [], reservedUsd: 0 }, samples = new Float32Array(1024);
+  let server = { messages: [] }, samples = new Float32Array(1024);
   const emit = () => { if (!disposed) onState({ ...server, phase, error, muted, active: !!startId, speaker: speaking ? 'invoker' : null }); };
   async function request(path, body, signal) {
     let response;
@@ -57,12 +57,23 @@ export function createRealtimeConversation({ token, onState, environment = globa
       controller = new AbortController(); const signal = controller.signal;
       let timeout = setTimeout(() => { if (epoch === generation) stop('error', 'E_REALTIME_TIMEOUT'); }, 20000);
       try {
-        context = new environment.AudioContext(); await context.resume();
-        if (epoch !== generation) return;
-        const obtained = await environment.navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true,
-          noiseSuppression: true, autoGainControl: true, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) } });
+        let playbackReady;
+        try {
+          context = new environment.AudioContext();
+          playbackReady = Promise.resolve(context.resume()).then(() => true, () => false);
+        } catch { throw new Error('E_AUDIO_PLAYBACK'); }
+        // Start both permission-sensitive operations in the button's gesture.
+        // A playback rejection is distinct from a microphone permission denial.
+        let obtained;
+        try {
+          obtained = await environment.navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true,
+            noiseSuppression: true, autoGainControl: true, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) } });
+        } catch (e) { throw new Error(e.name === 'NotAllowedError' ? 'E_MIC_PERMISSION' : 'E_MIC_UNAVAILABLE'); }
         if (epoch !== generation) { obtained.getTracks().forEach(track => track.stop()); return; }
-        stream = obtained; peer = new environment.RTCPeerConnection(); const current = peer;
+        stream = obtained;
+        if (!await playbackReady) throw new Error('E_AUDIO_PLAYBACK');
+        if (epoch !== generation) return;
+        peer = new environment.RTCPeerConnection(); const current = peer;
         inputMeter = context.createAnalyser(); inputMeter.fftSize = 1024;
         inputSource = context.createMediaStreamSource(stream); inputSource.connect(inputMeter);
         outputMeter = context.createAnalyser(); outputMeter.fftSize = 1024;
@@ -113,7 +124,7 @@ export function createRealtimeConversation({ token, onState, environment = globa
         server = { ...server, reservedUsd: value.reservedUsd }; phase = 'listening'; emit();
         clearTimeout(timeout); timeout = undefined; void poll(epoch);
       } catch (e) {
-        if (epoch === generation) stop('error', e.name === 'NotAllowedError' ? 'E_MIC_PERMISSION' : /^E_[A-Z_]+$/.test(e.message) ? e.message : 'E_REALTIME_PROVIDER');
+        if (epoch === generation) stop('error', /^E_[A-Z_]+$/.test(e.message) ? e.message : 'E_REALTIME_PROVIDER');
       } finally { clearTimeout(timeout); }
     },
     stop,

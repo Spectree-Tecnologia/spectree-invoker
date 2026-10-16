@@ -312,9 +312,12 @@ test('microphone configuration can list the notebook input even when opening the
   assert.deepEqual(errors, ['E_MIC_UNAVAILABLE']); assert.equal(lists.at(-1).length, 2);
   assert.equal(lists.at(-1)[1].label, 'Notebook microphone'); assert.equal(mic.closed, 0);
   await capture.prepare(); assert.equal(opened.length, 1); assert.equal(states.at(-1), 'idle');
+  await capture.prepare({ deviceId: 'notebook' });
+  assert.equal(opened.at(-1).audio.deviceId.exact, 'notebook');
+  assert.equal(mic.stopped, 1); assert.equal(mic.closed, 0); assert.equal(states.at(-1), 'idle');
   await capture.start({ deviceId: 'notebook' });
   assert.equal(opened.at(-1).audio.deviceId.exact, 'notebook'); assert.equal(states.at(-1), 'recording');
-  capture.dispose(); assert.equal(mic.stopped, 1);
+  capture.dispose(); assert.equal(mic.stopped, 2);
 });
 
 test('permission-only preparation stops its probe immediately and drops a late grant after cancellation', async () => {
@@ -339,7 +342,7 @@ test('configuring or refreshing microphones never issues a voice request and pre
   const devices = [{ id: 'notebook', label: 'Notebook microphone' }];
   const voice = createVoiceController({ token: 'opaque', onState: value => states.push(value), onTranscript() {},
     captureFactory: value => { callbacks = value; return { cancel() {}, dispose() {}, listDevices: async () => { callbacks.onDevices(devices); },
-      prepare: async () => { prepares++; callbacks.onDevices(devices); callbacks.onState('idle'); } }; },
+      prepare: async value => { assert.equal(value.deviceId, 'notebook'); prepares++; callbacks.onDevices(devices); callbacks.onState('idle'); } }; },
     playerFactory: () => ({ stop() {}, dispose() {} }),
     fetcher: async url => { assert.ok(url.endsWith('config')); reads++; return Response.json({ enabled: true, provider: 'fake' }); } });
   await voice.init(); voice.sync(snapshot(), true); voice.selectMicrophone('notebook');

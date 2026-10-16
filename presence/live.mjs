@@ -121,16 +121,20 @@ function mount() {
       $('[data-record]').parentElement.hidden = true; $('[data-recording]').hidden = true; $('[data-composer]').hidden = true;
       selected.disabled ||= realtimeView.active || realtimeView.phase === 'connecting';
       $('[data-prepare-microphone]').disabled ||= realtimeView.active || realtimeView.phase === 'connecting';
-      $('[data-realtime-start]').disabled = !v.config.enabled || !online || !['ready', 'completed', 'interrupted'].includes(snapshot?.status) || realtimeView.active || realtimeView.phase === 'connecting' || v.config.budgetUsd - (realtimeView.reservedUsd ?? 0) < v.config.reservePerSessionUsd;
+      const budgetLow = v.config.budgetUsd - (realtimeView.reservedUsd ?? v.config.reservedUsd ?? 0) < v.config.reservePerSessionUsd;
+      $('[data-realtime-start]').disabled = !v.config.enabled || !online || !['ready', 'completed', 'interrupted'].includes(snapshot?.status) || realtimeView.active || realtimeView.phase === 'connecting' || budgetLow;
       $('[data-realtime-mute]').disabled = !realtimeView.active;
       $('[data-realtime-stop]').disabled = !realtimeView.active && realtimeView.phase !== 'connecting';
       $('[data-realtime-mute]').textContent = realtimeView.muted ? 'Ativar microfone' : 'Silenciar microfone';
       const phases = { idle: 'Escolha o microfone e inicie nossa conversa.', connecting: 'Conectando áudio em tempo real…', listening: realtimeView.muted ? 'Microfone silenciado' : 'Estou ouvindo · pode falar naturalmente', thinking: 'Preparando minha resposta…', speaking: 'Invoker falando · você pode interromper pela voz', ended: 'Conversa encerrada', error: 'Não foi possível continuar a conversa.' };
       const rtErrors = { E_REALTIME_TIME: 'O ensaio de 60 segundos terminou.', E_REALTIME_LIMIT: 'Limite de turnos do ensaio atingido.',
+        E_MIC_PERMISSION: 'O navegador recusou o acesso ao microfone. Libere o microfone nas permissões desta página e tente Iniciar conversa novamente. Se o navegador integrado continuar recusando, abra a URL completa no Chrome ou Edge.',
+        E_AUDIO_PLAYBACK: 'O navegador não liberou a reprodução de áudio. Clique em Iniciar conversa novamente. Se persistir, abra a URL completa no Chrome ou Edge.',
         E_REALTIME_NETWORK: 'A conexão de áudio foi perdida. A conversa não será reiniciada automaticamente.', E_REALTIME_PROVIDER: 'O serviço Realtime não concluiu a conexão. Confira acesso ao modelo e saldo.',
         E_REALTIME_TIMEOUT: 'A conexão Realtime demorou além do limite.', E_REALTIME_PROTOCOL: 'Resposta Realtime incompatível.', E_REALTIME_CLOSED: 'O canal de controle foi encerrado.' };
       const rtError = realtimeView.error || v.error || v.config.reason;
-      $('[data-voice-status]').textContent = rtError ? rtErrors[rtError] ? `${rtErrors[rtError]} (${rtError})` : voiceErrorMessage(rtError) : phases[realtimeView.phase];
+      $('[data-voice-status]').textContent = rtError ? rtErrors[rtError] ? `${rtErrors[rtError]} (${rtError})` : voiceErrorMessage(rtError) :
+        budgetLow && !realtimeView.active && realtimeView.phase !== 'connecting' ? 'Saldo da reserva insuficiente para outro ensaio de US$ 1. A seleção local do microfone continua disponível.' : phases[realtimeView.phase];
       panel.dataset.state = rtError ? 'error' : realtimeView.phase;
       $('.demo').textContent = 'INVOKER · REALTIME';
       $('.note').textContent = 'Voz pela API OpenAI; análises pelo Codex local. Canário isolado, sem execução em projetos. Nenhuma aprovação de trabalho é concedida pela interface.';
@@ -164,7 +168,7 @@ function mount() {
   $('[data-disconnect]').addEventListener('click', () => void action('disconnect'), options);
   $('[data-interrupt]').addEventListener('click', () => void action('interrupt'), options);
   $('[data-record]').addEventListener('click', () => void voice.record(), options);
-  $('[data-microphone]').addEventListener('change', e => voice.selectMicrophone(e.target.value), options);
+  $('[data-microphone]').addEventListener('change', e => { const id = e.target.value; if (realtimeMode) realtime.stop(); voice.selectMicrophone(id); }, options);
   $('[data-prepare-microphone]').addEventListener('click', () => { if (realtimeMode) realtime.stop(); void voice.prepareMicrophone(); }, options);
   $('[data-realtime-start]').addEventListener('click', () => { voice.stop(); void realtime.start({ deviceId: voiceView.microphoneId }); }, options);
   $('[data-realtime-stop]').addEventListener('click', () => realtime.stop(), options);

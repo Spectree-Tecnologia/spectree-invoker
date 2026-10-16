@@ -85,7 +85,7 @@ test('server deadline hangs up even without a cooperative browser; provider erro
 function browserFixture(overrides = {}) {
   const views = [], requests = []; let stopped = 0, peer, gain, audio;
   const track = { enabled: true, stop() { stopped++; }, addEventListener() {} }, stream = { getAudioTracks: () => [track], getTracks: () => [track] };
-  const context = { state: 'running', resume: async () => {}, close: async () => {}, destination: {},
+  const context = { state: 'running', resume: overrides.resume ?? (async () => {}), close: async () => {}, destination: {},
     createAnalyser: () => ({ connect() {}, disconnect() {}, getFloatTimeDomainData: values => values.fill(.1) }),
     createMediaStreamSource: () => ({ connect() {}, disconnect() {} }), createGain: () => (gain = { gain: { value: 1 }, connect() {}, disconnect() {} }) };
   class Peer { constructor() { peer = this; } addTrack() {} close() {} createDataChannel() { return this.channel = { readyState: overrides.channelPending ? 'connecting' : 'open', close() {} }; }
@@ -124,6 +124,35 @@ test('permission granted after stopping a realtime start cannot create a paid se
   let grant; const f = browserFixture({ getUserMedia: () => new Promise(resolve => { grant = resolve; }) });
   const starting = f.client.start(); await settle(); f.client.stop(); grant(f.stream); await starting;
   assert.equal(f.stopped, 1); assert.equal(f.requests.length, 0); f.client.dispose();
+});
+
+test('microphone request starts in the click gesture without waiting for playback readiness', async () => {
+  let resume, constraints;
+  const f = browserFixture({ resume: () => new Promise(resolve => { resume = resolve; }),
+    getUserMedia: async value => { constraints = value; return f.stream; } });
+  const starting = f.client.start({ deviceId: 'notebook-realtek' });
+  assert.deepEqual(constraints.audio.deviceId, { exact: 'notebook-realtek' });
+  await settle(); assert.equal(f.requests.length, 0);
+  resume(); await starting; assert.equal(f.views.at(-1).phase, 'listening'); f.client.dispose();
+});
+
+test('blocked playback is not reported as a microphone denial and opens no paid session', async () => {
+  const f = browserFixture({ resume: async () => { throw Object.assign(new Error('blocked'), { name: 'NotAllowedError' }); } });
+  await f.client.start();
+  assert.equal(f.views.at(-1).error, 'E_AUDIO_PLAYBACK'); assert.equal(f.requests.length, 0);
+  assert.equal(f.stopped, 1); f.client.dispose();
+});
+
+test('microphone denial preserves zero paid calls and a later deliberate retry uses the selected input', async () => {
+  let denied = true;
+  const f = browserFixture({ getUserMedia: async () => {
+    if (denied) throw Object.assign(new Error('permission denied'), { name: 'NotAllowedError' });
+    return f.stream;
+  } });
+  await f.client.start({ deviceId: 'notebook-realtek' });
+  assert.equal(f.views.at(-1).error, 'E_MIC_PERMISSION'); assert.equal(f.requests.length, 0);
+  denied = false; await f.client.start({ deviceId: 'notebook-realtek' });
+  assert.equal(f.views.at(-1).error, null); assert.equal(f.views.at(-1).phase, 'listening'); f.client.dispose();
 });
 
 test('Realtime HTTP requires local bearer and origin, rejects arbitrary options and never opens the manual audio endpoint', async t => {

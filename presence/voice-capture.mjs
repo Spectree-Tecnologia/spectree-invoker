@@ -38,18 +38,18 @@ export function createVoiceCapture({ onState, onComplete, onError, onDevices = (
   }
   return {
     listDevices,
-    async prepare() {
+    async prepare({ deviceId = '' } = {}) {
       cancel(); const epoch = generation; onState('requesting');
       timer = setTimeout(() => { if (epoch === generation) { cancel(); onError('E_MIC_TIMEOUT'); } }, 15000);
       const devices = await listDevices(undefined, epoch);
       if (epoch !== generation) return;
       // Existing permission lets the operator select an input without opening the default.
-      if (devices.some(d => d.label)) { clearTimeout(timer); onState('idle'); return; }
+      if (!deviceId && devices.some(d => d.label)) { clearTimeout(timer); onState('idle'); return; }
       const media = environment.navigator?.mediaDevices;
       if (!media?.getUserMedia) { clearTimeout(timer); onError('E_MIC_UNAVAILABLE'); return; }
       let failure;
       try {
-        const obtained = await media.getUserMedia({ audio: true });
+        const obtained = await media.getUserMedia({ audio: deviceId ? { deviceId: { exact: deviceId } } : true });
         // Permission probe only: never create an AudioContext, recording or API call.
         obtained.getTracks().forEach(track => track.stop());
       } catch (e) { failure = e.name === 'NotAllowedError' ? 'E_MIC_PERMISSION' : 'E_MIC_UNAVAILABLE'; }
