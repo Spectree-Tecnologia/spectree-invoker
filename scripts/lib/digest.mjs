@@ -62,6 +62,12 @@ const unavailable = (message, cause) => {
  * line endings. Where git cannot answer — no repository, no git — it falls back to the raw
  * bytes, which is consistent within that project and is the only thing left to be consistent
  * about. The two are never mixed inside one digest.
+ *
+ * A tracked file git itself reports unmodified is answered with the blob already in the index.
+ * `hash-object` does not consult the index, so under `core.autocrlf=true` — Git for Windows'
+ * default — it converted CRLF to LF even for a file the repository stores WITH CRLF, and the
+ * checkout and the merge tree named the same bytes differently. `ls-files -m` decides
+ * "unmodified" with the index in hand, the same way `git status` does.
  */
 export function normalisedHashes(root, relPaths) {
   if (relPaths.length === 0) return [];
@@ -69,12 +75,26 @@ export function normalisedHashes(root, relPaths) {
   if (bad) throw unavailable(`"${posix(bad)}" contains a newline, and no path list can carry that unambiguously`);
   const absPaths = relPaths.map((p) => join(root, p));
   try {
-    const out = execFileSync('git', ['hash-object', '--stdin-paths'], {
-      cwd: root, encoding: 'utf8', input: `${absPaths.join('\n')}\n`,
-      stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
-    }).split(/\r?\n/).filter(Boolean);
-    if (out.length === absPaths.length) return out;
-    throw unavailable(`git hashed ${out.length} of ${absPaths.length} file(s); a partial answer is not an answer`);
+    const git = (args, input) => execFileSync('git', args, {
+      cwd: root, encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+    });
+    const indexed = new Map(git(['ls-files', '-s', '-z']).split('\0').filter(Boolean).map((line) => {
+      const tab = line.indexOf('\t');
+      return [line.slice(tab + 1), line.slice(0, tab).split(' ')[1]];
+    }));
+    for (const p of git(['ls-files', '-m', '-z']).split('\0')) indexed.delete(p);
+    // ponytail: a MODIFIED file stored with CRLF still goes through hash-object and digests as LF;
+    // it is uncommitted, so no merge tree is compared against it until it is committed.
+    const rel = relPaths.map(posix);
+    const ask = rel.filter((p) => !indexed.has(p));
+    const out = ask.length
+      ? git(['hash-object', '--stdin-paths'], `${ask.map((p) => join(root, p)).join('\n')}\n`).split(/\r?\n/).filter(Boolean)
+      : [];
+    if (out.length !== ask.length) {
+      throw unavailable(`git hashed ${out.length} of ${ask.length} file(s); a partial answer is not an answer`);
+    }
+    const hashed = new Map(ask.map((p, i) => [p, out[i]]));
+    return rel.map((p) => indexed.get(p) ?? hashed.get(p));
   } catch (e) {
     if (e.code === 'E_CONTENT_UNAVAILABLE') throw e;
     return absPaths.map((p, i) => {
