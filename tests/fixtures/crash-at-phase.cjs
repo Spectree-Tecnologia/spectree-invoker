@@ -9,7 +9,8 @@
 //   SPECTREE_CRASH_AT=receipt     die once the control points at a receipt (so the receipt itself
 //                                 is already on disk, and the transitions are not)
 //   SPECTREE_CRASH_ON_WRITE=<s>   die once a path ending in <s> has been written — a boundary the
-//                                 phases do not name, which is where a partial persistence lives
+//                                 phases do not name, which is where a partial persistence lives.
+//                                 An atomic write lands by rename, so the rename counts too.
 const fs = require('node:fs');
 const want = process.env.SPECTREE_CRASH_AT;
 const onWrite = process.env.SPECTREE_CRASH_ON_WRITE;
@@ -18,6 +19,7 @@ const posix = (p) => String(p).split('\\').join('/');
 const originalRename = fs.renameSync;
 fs.renameSync = function renameSync(from, to, ...rest) {
   const result = originalRename.call(this, from, to, ...rest);
+  if (onWrite && posix(to).endsWith(onWrite)) process.exit(86);
   if (want && String(to).endsWith('.lifecycle.json')) {
     let doc = null;
     try { doc = JSON.parse(fs.readFileSync(to, 'utf8')); } catch { /* mid-write */ }
