@@ -72,7 +72,7 @@ Testes de rede/protocolo usam injeção de falhas; não constituem auditoria ext
 O histórico da Presence fica em memória; não existe retomada persistente nesta
 P2. O provedor pode manter seus próprios metadados. A autenticação local desta
 entrega não define a arquitetura de um serviço comercial hospedado. Consulte
-[uso e fronteiras](../../presence-codex.md).
+[uso e fronteiras](../../../presence-codex.md).
 
 Próximo portão: revisão da branch e autorização de merge. Depois, a P3 integra
 voz com seleção de provedor e orçamento próprios, conforme o roadmap aprovado.

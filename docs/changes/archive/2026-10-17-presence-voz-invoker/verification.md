@@ -7,7 +7,7 @@ O Founder autorizou desenvolvimento e OpenAI até US$ 2 no ensaio, não merge.
 Retorno mais recente do Founder: os testes funcionaram após a configuração do
 microfone, mas a interação desejada é Realtime. Isso valida a base manual; não
 representa aceite da experiência final. A continuidade é definida na
-[proposta Realtime](../presence-realtime/proposal.md), antes dos especialistas.
+[proposta Realtime](../2026-10-17-presence-realtime/proposal.md), antes dos especialistas.
 
 ## Implementado
 
@@ -173,4 +173,4 @@ de áudio; respostas longas podem ter pausas entre partes. Não foi validada uma
 matriz de outros sistemas/navegadores/GPUs. Não alegar baixa latência real sem
 medição do provedor. Projetos consumidores não foram usados como alvo de teste.
 
-[Uso e configuração local](../../presence-voice.md).
+[Uso e configuração local](../../../presence-voice.md).

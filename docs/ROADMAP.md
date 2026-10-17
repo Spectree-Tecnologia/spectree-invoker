@@ -28,10 +28,10 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 | Ordem | Entrega | Estado | Por que vem nesta posição / evidência para avançar |
 |---|---|---|---|
-| P1 | Fundação visual e contrato de estados | Integrada em main, PR #41 / v1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). |
-| P2 | Sessão local e integração Codex | Integrada em main, PR #43 / v1.15.0 | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
-| P3 | Fundação de áudio do Invoker | Integrada em main, PR #48 / v1.16.0 | Captura explícita, transcrição revisável, síntese e seleção de microfone. [Uso](presence-voice.md), [proposta](changes/presence-voz-invoker/proposal.md) e [verificação](changes/presence-voz-invoker/verification.md). Disponível como modo por gravações; a conversa contínua é P3-R. |
-| P3-R | Conversa Realtime com o Invoker | Integrada em main, PR #48 / v1.16.0; aceita pelo Founder | WebRTC, turnos automáticos, interrupção pela fala e consulta Codex confirmada. [Uso](presence-realtime.md), [proposta](changes/presence-realtime/proposal.md) e [verificação](changes/presence-realtime/verification.md). 469/469 testes Windows; [CI do merge](https://github.com/Spectree-Tecnologia/spectree-invoker/actions/runs/38998524893) aprovada e tag no commit `8c7b099`. |
+| P1 | Fundação visual e contrato de estados | Integrada em main, PR #41 / v1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/archive/2026-10-14-presence-fundacao/proposal.md) e [verificação e limites](changes/archive/2026-10-14-presence-fundacao/verification.md). |
+| P2 | Sessão local e integração Codex | Integrada em main, PR #43 / v1.15.0 | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/archive/2026-10-15-presence-sessao-codex/proposal.md) e [verificação](changes/archive/2026-10-15-presence-sessao-codex/verification.md). |
+| P3 | Fundação de áudio do Invoker | Integrada em main, PR #48 / v1.16.0 | Captura explícita, transcrição revisável, síntese e seleção de microfone. [Uso](presence-voice.md), [proposta](changes/archive/2026-10-17-presence-voz-invoker/proposal.md) e [verificação](changes/archive/2026-10-17-presence-voz-invoker/verification.md). Disponível como modo por gravações; a conversa contínua é P3-R. |
+| P3-R | Conversa Realtime com o Invoker | Integrada em main, PR #48 / v1.16.0; aceita pelo Founder | WebRTC, turnos automáticos, interrupção pela fala e consulta Codex confirmada. [Uso](presence-realtime.md), [proposta](changes/archive/2026-10-17-presence-realtime/proposal.md) e [verificação](changes/archive/2026-10-17-presence-realtime/verification.md). 469/469 testes Windows; [CI do merge](https://github.com/Spectree-Tecnologia/spectree-invoker/actions/runs/38998524893) aprovada e tag no commit `8c7b099`. |
 | P4 | Comunicação entre Invoker e subagentes do squad | P4.1 implementada em branch; P4.2–P4.3 pendentes | Registro dos seis papéis, sessão por delegação, validação e cancelamento por instância. [API textual P4.1](presence-squad.md), [proposta e aceite](changes/presence-dialogo-squad/proposal.md), [incrementos](changes/presence-dialogo-squad/tasks.md) e [verificação](changes/presence-dialogo-squad/verification.md). Personagens e vozes ainda pendentes. |
 | P5 | Continuidade e recuperação da experiência | Planejada | Endurecer reconexão, retomada, interrupção pelo usuário e prevenção de ações ou falas duplicadas. Os mecanismos básicos de cancelamento e limpeza já são exigidos desde a etapa que os introduz. |
 | P6 | Canário e preparação da entrega | Planejada | Validar a jornada completa em projeto descartável: compatibilidade com gates, acessibilidade, desempenho, instalação e custo observado. Consolidar evidências e instruções operacionais antes de recomendar merge/release. |
@@ -55,8 +55,28 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 - Testes de integração usam apenas canários. `spectree-workspace` e `sindy-agent`
   não são alvos de escrita nem de testes deste ciclo.
 
+## Ciclo — o repositório seguindo a própria arquitetura
+
+Sequência aprovada pelo Founder em 2026-10-17. Cada tarefa é uma mudança própria em
+`docs/changes/`, deltaless, com PR e merge autorizado. O detalhe de cada uma vive na
+proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md).
+
+| Ordem | Entrega | Estado | Fecha |
+|---|---|---|---|
+| 1 | Adotar o próprio fluxo de mudança: archive e ledger de adiamentos | Em andamento, [proposta](changes/adotar-fluxo-de-mudanca/proposal.md) | — |
+| 2 | Núcleo `shared` e utilitários de CLI | Planejada | D-001 |
+| 3 | Fronteira do Presence e `bench/` sem `tests/` | Planejada; a P4.1 já integrou | D-002, D-003 |
+| 4 | Módulos com entrada publicada e grafo acíclico | Planejada | D-004 |
+| 5 | Fechamento como biblioteca, em três PRs | Planejada | D-005, D-006 |
+| 6 | Suíte mais rápida | Planejada, depois da 5 | D-007 |
+| 7 | Papéis deste repositório, extraídos do código | Planejada, depois da 4 | — |
+| 8 | Tamanho do protocolo | Aguarda decisão de produto do Founder | D-008 |
+
 ## Histórico de decisões
 
+- **2026-10-17:** Founder aprovou a sequência de modularização do repositório
+  (tarefas 1 a 8 acima). A tarefa 1 arquiva as mudanças integradas e cria o ledger
+  de adiamentos.
 - **2026-10-17:** o PR #54 entrou durante a preparação P4.1, avançando a main
   para `5d9f7c4` / 1.20.0. Publicação bloqueada antes do push; nova incorporação
   por merge `746c852`, com conflitos apenas de versão nos três manifestos,

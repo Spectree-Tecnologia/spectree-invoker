@@ -1,6 +1,6 @@
 # Presence — fundação visual e estados
 
-Primeira entrega do [ciclo 1.14](../../ROADMAP.md), na branch
+Primeira entrega do [ciclo 1.14](../../../ROADMAP.md), na branch
 `codex/presence-fundacao`, aberta após autorização do Founder em 2026-10-13.
 Estado em 2026-10-14: implementação local realizada após GO do Founder; evidências
 e limites de aceite em [verification.md](verification.md). Sem merge ou release.
@@ -18,7 +18,7 @@ demonstrativo e distinguir claramente o que está sendo simulado.
 
 ## Escopo
 
-1. Portar a [referência aprovada](../../design/presence.md) para um componente
+1. Portar a [referência aprovada](../../../design/presence.md) para um componente
    Three.js do repositório, com recursos locais e versões de dependências fixadas.
    Definir a estratégia de distribuição antes de adicionar dependências: a
    Console hoje usa módulos nativos sem bundler.

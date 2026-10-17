@@ -121,7 +121,7 @@ node scripts/presence-canary.mjs --live
 
 O último comando verifica dois turnos com memória de um marcador sintético e
 uma interrupção confirmada. Não faz parte do CI. Evidências e limites ficam em
-[verificação P2](changes/presence-sessao-codex/verification.md).
+[verificação P2](changes/archive/2026-10-15-presence-sessao-codex/verification.md).
 
 Referências oficiais consultadas em 2026-10-14:
 [App Server](https://learn.chatgpt.com/docs/app-server) e
