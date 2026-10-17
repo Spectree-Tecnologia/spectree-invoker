@@ -102,3 +102,12 @@ O teste de configuração também verifica a abertura exata e liberação imedia
 do dispositivo selecionado. Uma execução inicial dentro do sandbox recusou o
 loopback; a repetição com acesso local passou. A suíte ampla de 458 testes é
 a evidência do commit anterior; não foi repetida para esta correção de cliente.
+
+## Novo ensaio autorizado
+
+Em 2026-10-16, o Founder escolheu explicitamente **ampliar o teto total para
+US$ 6 e liberar outro ensaio de 60 segundos**. As reservas anteriores conhecidas
+permanecem US$ 4,30; saldo conservador US$ 1,70. A Presence foi reiniciada na
+mesma porta com esse saldo. Nenhuma chamada paga foi iniciada pelo agente para
+essa liberação; a conversa é iniciada pelo operador no botão da interface.
+Nenhuma autorização de merge foi inferida dessa decisão.

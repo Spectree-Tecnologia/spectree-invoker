@@ -54,6 +54,11 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-16:** Founder ampliou explicitamente o teto total dos ensaios para
+  **US$ 6**, liberando outro ensaio Realtime de 60 s. Reservas conhecidas US$ 4,30;
+  saldo conservador US$ 1,70, sem consulta ao extrato. Realtek abriu corretamente
+  na verificação local; correções de preparação/seleção validadas por 65 testes
+  Presence. Aceite da conversa física completa e merge continuam pendentes.
 - **2026-10-16:** Founder escolheu voz nativa Realtime conduzindo a conversa e
   Codex pela assinatura para análises/trabalho; implementação em
   `codex/presence-realtime`. Teto dos ensaios elevado para US$ 5. Canário real

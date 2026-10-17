@@ -29,11 +29,11 @@ try {
 Se a chave estiver no `.env` da raiz, ignorado pelo Git, carregue-o explicitamente:
 
 ```powershell
-node --env-file=.env scripts/presence.mjs --codex --voice --budget-usd 0.7
+node --env-file=.env scripts/presence.mjs --codex --voice --budget-usd 1.7
 ```
 
-O valor US$ 0,70 mantém a reserva restante dos ensaios conhecidos de 2026-10-16,
-após a ampliação do teto total para US$ 5 e a
+O valor US$ 1,70 mantém a reserva restante dos ensaios conhecidos de 2026-10-16,
+após a ampliação do teto total para US$ 6 e a
 [verificação Realtime](changes/presence-realtime/verification.md).
 O comando `npm run presence` não carrega
 `.env` automaticamente. Não versione nem compartilhe esse arquivo.
@@ -94,8 +94,8 @@ ferramentas não entram no fluxo; fala não aprova gates nem executa trabalho.
 
 ## Orçamento e ensaios
 
-O teto inicial era US$ 2; o Founder ampliou o total dos ensaios para US$ 5 ao
-validar a Realtime. Neste modo por gravações, o controle reserva **US$ 0,10 por
+O teto inicial era US$ 2; o Founder ampliou o total dos ensaios para US$ 5 e,
+depois, US$ 6 ao validar a Realtime. Neste modo por gravações, o controle reserva **US$ 0,10 por
 chamada**, antes de enviá-la, com orçamento de US$ 0,10 a US$ 2 por processo.
 US$ 2 permitem no máximo 20 chamadas de transcrição/síntese somadas. Erros e
 cancelamentos não estornam a reserva, pois o provedor pode ter processado o pedido.

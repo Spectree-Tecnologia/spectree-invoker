@@ -11,7 +11,7 @@ e `.env` configurado com `OPENAI_API_KEY` e, se necessário,
 `SPECTREE_CODEX_EXECUTABLE`:
 
 ```powershell
-node --env-file=.env scripts/presence.mjs --codex --realtime --budget-usd 0.7
+node --env-file=.env scripts/presence.mjs --codex --realtime --budget-usd 1.7
 ```
 
 Abra a URL completa impressa. Conecte o Codex, use **Escolher microfone** para
@@ -22,10 +22,10 @@ nova fala durante a resposta. **Silenciar microfone** interrompe a entrada;
 **Encerrar conversa** para a mídia e solicita encerramento remoto. Ocultar ou
 fechar a página também encerra a conversa.
 
-O saldo conservador conhecido nesta conversa caiu a US$ 0,70 após mais uma
-tentativa do operador. O comando acima permite conferir o microfone localmente,
-mas bloqueia outro ensaio de US$ 1. Uma nova sessão paga depende de orçamento
-adicional autorizado, sem reiniciar reservas já usadas.
+O Founder ampliou explicitamente o teto total para US$ 6 em 2026-10-16. Com
+US$ 4,30 de reservas conhecidas anteriores, o comando acima disponibiliza
+US$ 1,70 e permite outro ensaio de 60 segundos, com reserva US$ 1. Isso não
+estorna nem reinicia as reservas anteriores.
 
 Se ocorrer `E_MIC_PERMISSION` ao escolher o microfone, selecione o Realtek na
 lista e clique novamente em **Escolher microfone**. Com uma entrada explícita,
@@ -81,8 +81,8 @@ não abre uma chamada paga. IDs impedem cancelamento de uma sessão diferente.
 - Encerramento pelo servidor por tempo, perda de heartbeat ou mudança de sessão.
   O controle permanece conectado até a resposta de hangup. Recurso já ausente
   aparece como `already-ended`; falha de confirmação aparece como `unconfirmed`.
-- Teto total aprovado: **US$ 5**. Reservas conhecidas dos ensaios: **US$ 4,30**.
-  O comando acima usa o saldo conservador de **US$ 0,70**. Não é custo faturado.
+- Teto total aprovado: **US$ 6**. Reservas conhecidas dos ensaios: **US$ 4,30**.
+  O comando acima usa o saldo conservador de **US$ 1,70**. Não é custo faturado.
   Reiniciar o processo não autoriza ampliar o teto.
 
 Reservas e tokens observados não são o extrato da conta nem limite financeiro
