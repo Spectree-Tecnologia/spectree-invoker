@@ -101,6 +101,24 @@ export const ENTRY_REQUIREMENTS = {
 };
 
 /**
+ * A change that touches a core-domain module owes one proof more: a mutation of the rule the
+ * suite killed. The core is where a wrong rule costs the most, and a suite that stays green
+ * when the rule is broken has not proven the rule. Added from pass 2 onwards, where QA has
+ * attacked the candidate; a deltaless change has no new rule to mutate and is exempt.
+ */
+export const MUTATION_REQUIREMENT = Object.freeze({
+  property: 'mutation.killed', result: 'PASS', observed: true, fresh: true, contract: true, independentOf: ['full_stack_developer'],
+});
+const CORE_HARDENED = ['pass2_complete', 'integration_approved', 'integrated'];
+
+/** What entering `to` requires for THIS change, given the core modules it touches. */
+export function requirementsFor(change, to, { coreModules = [] } = {}) {
+  const base = ENTRY_REQUIREMENTS[to] ?? {};
+  if (!coreModules.length || change.deltaless === true || !CORE_HARDENED.includes(to)) return base;
+  return { ...base, evidence: [...(base.evidence ?? []), MUTATION_REQUIREMENT] };
+}
+
+/**
  * Properties whose PASS means the named test RAN AND FAILED. Pass 1's delivery is failing
  * tests, and nothing else in the pipeline asserts a failure.
  *
@@ -154,7 +172,7 @@ export function canTransition(change, to, ctx = {}) {
   const {
     evidence = [], approvals = [], revision, contentDigest, contractDigest, closure,
     scopeDigests = {}, expectedStateRevision,
-    authority, receipt, preparation, pendingOperation,
+    authority, receipt, preparation, pendingOperation, coreModules,
   } = ctx;
 
   // Authority is decided once, in `lib/lifecycle.mjs`, and passed in. A caller that could not
@@ -196,7 +214,7 @@ export function canTransition(change, to, ctx = {}) {
   }
 
   // Entering `blocked` needs nothing: a block is an admission, not an achievement.
-  const need = ENTRY_REQUIREMENTS[to] ?? {};
+  const need = requirementsFor(change, to, { coreModules });
 
   if (to !== 'blocked' && ctx.delivery?.ok === false)
     return deny(ctx.delivery.code, ctx.delivery.message);
