@@ -1,6 +1,6 @@
 # Roadmap do Spectree Invoker
 
-Atualizado em 2026-10-16. Este documento registra a ordem aprovada e seus motivos.
+Atualizado em 2026-10-17. Este documento registra a ordem aprovada e seus motivos.
 O escopo e os critérios de cada entrega pertencem à respectiva proposta de mudança;
 esta sequência não representa funcionalidades já disponíveis nem compromissos de data.
 
@@ -10,7 +10,9 @@ O pacote **1.14.0 — Fundação Presence** foi integrado, com a demonstração
 visual P1. O runtime mantém os gates, a execução resiliente e as evidências da
 1.13.0. A [Console](console.md) oferece observabilidade local somente para leitura.
 A entrega **1.15.0 — Sessão Presence Codex** acrescenta integração textual local
-com o harness (P2). Conversa por voz permanece na P3.
+com o harness (P2). A **1.16.0 — Conversa Realtime** integra a fundação de áudio
+P3 e a conversa contínua P3-R, pelo [PR #48](https://github.com/Spectree-Tecnologia/spectree-invoker/pull/48).
+Os especialistas audíveis são o próximo incremento, ainda não disponível.
 
 ## Ciclo 1.14 — Spectree Presence
 
@@ -28,9 +30,9 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 |---|---|---|---|
 | P1 | Fundação visual e contrato de estados | Integrada em main, PR #41 / v1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). |
 | P2 | Sessão local e integração Codex | Integrada em main, PR #43 / v1.15.0 | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
-| P3 | Fundação de áudio do Invoker | Implementada em branch; Founder confirmou funcionamento dos testes; 53 testes Presence passaram | Captura explícita, transcrição revisável, síntese e seleção de microfone. [Uso](presence-voice.md), [proposta](changes/presence-voz-invoker/proposal.md) e [verificação](changes/presence-voz-invoker/verification.md). Esta interação por gravações ainda não atende à conversa contínua desejada. |
-| P3-R | Conversa Realtime com o Invoker | Aceita pelo Founder; revisão corrigida; candidata à versão 1.16.0 | WebRTC, áudio em streaming, turnos automáticos, interrupção pela fala e consulta Codex confirmada. Canário nativo e ensaio do Founder com microfone físico validados. [Uso](presence-realtime.md), [proposta](changes/presence-realtime/proposal.md) e [verificação](changes/presence-realtime/verification.md). Integração e publicação confirmadas pelo PR e workflow do merge. Prioridade antes dos especialistas. |
-| P4 | Comunicação entre Invoker e especialista | Planejada | Começar com Invoker e Architect: delegação real, identidade do falante e retorno público audível. Expandir aos demais papéis após validar atribuição, fila de fala e legibilidade. |
+| P3 | Fundação de áudio do Invoker | Integrada em main, PR #48 / v1.16.0 | Captura explícita, transcrição revisável, síntese e seleção de microfone. [Uso](presence-voice.md), [proposta](changes/presence-voz-invoker/proposal.md) e [verificação](changes/presence-voz-invoker/verification.md). Disponível como modo por gravações; a conversa contínua é P3-R. |
+| P3-R | Conversa Realtime com o Invoker | Integrada em main, PR #48 / v1.16.0; aceita pelo Founder | WebRTC, turnos automáticos, interrupção pela fala e consulta Codex confirmada. [Uso](presence-realtime.md), [proposta](changes/presence-realtime/proposal.md) e [verificação](changes/presence-realtime/verification.md). 469/469 testes Windows; [CI do merge](https://github.com/Spectree-Tecnologia/spectree-invoker/actions/runs/38998524893) aprovada e tag no commit `8c7b099`. |
+| P4 | Comunicação entre Invoker e subagentes do squad | P4.1 implementada em branch; P4.2–P4.3 pendentes | Registro dos seis papéis, sessão por delegação, validação e cancelamento por instância. [API textual P4.1](presence-squad.md), [proposta e aceite](changes/presence-dialogo-squad/proposal.md), [incrementos](changes/presence-dialogo-squad/tasks.md) e [verificação](changes/presence-dialogo-squad/verification.md). Personagens e vozes ainda pendentes. |
 | P5 | Continuidade e recuperação da experiência | Planejada | Endurecer reconexão, retomada, interrupção pelo usuário e prevenção de ações ou falas duplicadas. Os mecanismos básicos de cancelamento e limpeza já são exigidos desde a etapa que os introduz. |
 | P6 | Canário e preparação da entrega | Planejada | Validar a jornada completa em projeto descartável: compatibilidade com gates, acessibilidade, desempenho, instalação e custo observado. Consolidar evidências e instruções operacionais antes de recomendar merge/release. |
 
@@ -40,8 +42,9 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
   uma entrega posterior, sem alterar o suporte existente do plugin ao Claude Code.
 - A intenção é utilizar a assinatura do usuário pela autenticação oficial do
   harness. A compatibilidade do transporte será verificada em P2; APIs de áudio
-  têm contratação e orçamento próprios. Para P3, OpenAI foi aprovada até US$ 2
-  no ensaio, com configuração de chave local necessária.
+  têm contratação e orçamento próprios. O teto dos ensaios foi ampliado de US$ 2
+  para US$ 6. Reservas conhecidas: US$ 5,30; saldo conservador US$ 0,70,
+  sem consulta ao faturamento. P4 começa com planejamento e testes sem API paga.
 - Um coordenador local de sessão fará a ponte entre interface, harness e áudio.
   A interface não recebe credenciais de longa duração nem acesso arbitrário ao disco.
 - A fala entre agentes apresenta delegações, progresso e resultados públicos.
@@ -54,6 +57,36 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-17:** o PR #54 entrou durante a preparação P4.1, avançando a main
+  para `5d9f7c4` / 1.20.0. Publicação bloqueada antes do push; nova incorporação
+  por merge `746c852`, com conflitos apenas de versão nos três manifestos,
+  resolvidos mantendo **1.21.0**. Gerados conferidos por build; `npm ci` e nova
+  validação sobre essa base: **507/507 testes**, zero falhas ou skips. Base e
+  versão reconsultadas após a suíte, antes do PR e sem merge na main.
+- **2026-10-17:** preparação P4.1 contra `origin/main` em `ac7fd7d`, incluindo
+  PRs #49–#53, por merge sem conflitos textuais. Preparação inicial **1.20.0**; `npm ci`
+  seguido de `npm run check`: **506/506 testes**, zero falhas ou skips. Nenhuma
+  lib adicionada a `RUNTIME_LIBS`; auditoria do runtime sem import de UI e teste
+  5e2 aprovados. O PR #54 passou a reservar 1.20.0 durante a validação: candidata
+  elevada para **1.21.0**, com nova revalidação limpa antes da publicação por PR.
+  Decisão de merge reservada ao Founder.
+- **2026-10-17:** Founder autorizou implementar P4.1 com registro completo dos
+  seis papéis desde o início. Branch `codex/presence-p4-delegation`; backend
+  textual opt-in, sem chamadas de áudio ou acesso a consumidores. Entrega
+  mantém os limites de consulta; `npm run check` aprovado com **498/498 testes**,
+  incluindo 29 novos de P4.1. RPC simulado e HTTP local; interface, voz,
+  compatibilidade real dos novos perfis e merge não são declarados prontos.
+- **2026-10-17:** Founder corrigiu o escopo P4: delegação para qualquer subagente
+  elegível, não apenas Architect. Planejamento passa a prever registro dos seis
+  papéis, ferramenta genérica e identidade por instância desde P4.1. Architect
+  é apenas o primeiro canário; demais papéis pertencem ao mesmo ciclo.
+- **2026-10-17:** após o merge, Founder aprovou iniciar o planejamento P4.
+  Branch `codex/presence-p4-planning`, base `8c7b099` / v1.16.0. Definidos
+  contrato de delegação, autoria, fila de fala, cancelamento e critérios de aceite
+  para Invoker e Architect em canário isolado. Nenhum novo ensaio pago.
+- **2026-10-17:** P3-R integrada pelo PR #48 em `8c7b099`; tag v1.16.0
+  confirmada nesse commit. Candidata com 469/469 testes Windows e conteúdo
+  idêntico ao merge; CI da main e publicação da tag concluídas com sucesso.
 - **2026-10-17:** Founder aprovou a recomendação de merge. Preparação da versão
   1.16.0, incorporando `origin/main` em `104f709` para preservar escrita atômica
   no Windows, digest CRLF e remoção de dados pessoais. O aceite da interface e
