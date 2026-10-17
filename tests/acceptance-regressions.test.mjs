@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, cpSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { canTransition, canDispatchWithCapabilities, legalTargets, ENTRY_REQUIREMENTS, CODES } from '../scripts/lib/state-machine.mjs';
 import { Store } from '../scripts/lib/store.mjs';
@@ -204,6 +204,29 @@ test('5e. the installed scripts actually run from inside the consumer', () => {
     assert.match(out, /VERIFIED/);
     const st = execFileSync(process.execPath, [join(dir, '.spectree/squad/scripts/state.mjs'), 'resume'], { cwd: dir, encoding: 'utf8' });
     assert.match(st, /change\s+none open/);
+  } finally { cleanup(dir); }
+});
+
+test('5e2. every module the installer ships resolves its imports inside the consumer', () => {
+  // The installer copied scripts/lib/ wholesale minus console-*, so the Presence libraries
+  // travelled without presence/ and console-server.mjs and failed to load there. Resolution is
+  // checked statically: importing a CLI would run it.
+  const dir = tempDir('spectree-consumer-imports-');
+  try {
+    execFileSync(process.execPath, [join(REPO, 'scripts', 'install-codex.mjs'), dir, '--apply'], { encoding: 'utf8' });
+    const squad = join(dir, '.spectree/squad');
+    const modules = readdirSync(squad, { recursive: true }).filter((f) => f.endsWith('.mjs'));
+    assert.ok(modules.includes(join('scripts', 'state.mjs')), 'the walk reached the installed scripts');
+    const unresolved = [];
+    for (const rel of modules) {
+      const text = readFileSync(join(squad, rel), 'utf8');
+      for (const [, spec] of text.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g)) {
+        if (!existsSync(join(squad, dirname(rel), spec))) unresolved.push(`${rel} -> ${spec}`);
+      }
+    }
+    assert.deepEqual(unresolved, [], 'every relative import of an installed module exists in the consumer');
+    const lib = readdirSync(join(squad, 'scripts/lib'));
+    assert.deepEqual(lib.filter((f) => /^(presence|console)-/.test(f)), [], 'local UI libraries stay in the Invoker checkout');
   } finally { cleanup(dir); }
 });
 
