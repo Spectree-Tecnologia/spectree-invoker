@@ -1,6 +1,6 @@
 # Roadmap do Spectree Invoker
 
-Atualizado em 2026-10-15. Este documento registra a ordem aprovada e seus motivos.
+Atualizado em 2026-10-16. Este documento registra a ordem aprovada e seus motivos.
 O escopo e os critérios de cada entrega pertencem à respectiva proposta de mudança;
 esta sequência não representa funcionalidades já disponíveis nem compromissos de data.
 
@@ -27,8 +27,9 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 | Ordem | Entrega | Estado | Por que vem nesta posição / evidência para avançar |
 |---|---|---|---|
 | P1 | Fundação visual e contrato de estados | Integrada em main, PR #41 / v1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). |
-| P2 | Sessão local e integração Codex | Merge autorizado; candidato 1.15.0 preparado; confirmação no PR/CI | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
-| P3 | Conversa por voz com o Invoker | Planejada | Conectar microfone, turnos, transcrição e reprodução à sessão já comprovada. Comparar provedores de áudio por latência, qualidade em português, interrupção e custo; medir o áudio real, com autorização de microfone e orçamento definido para APIs pagas. |
+| P2 | Sessão local e integração Codex | Integrada em main, PR #43 / v1.15.0 | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
+| P3 | Fundação de áudio do Invoker | Implementada em branch; Founder confirmou funcionamento dos testes; 53 testes Presence passaram | Captura explícita, transcrição revisável, síntese e seleção de microfone. [Uso](presence-voice.md), [proposta](changes/presence-voz-invoker/proposal.md) e [verificação](changes/presence-voz-invoker/verification.md). Esta interação por gravações ainda não atende à conversa contínua desejada. |
+| P3-R | Conversa Realtime com o Invoker | Aceita pelo Founder; revisão corrigida; candidata à versão 1.16.0 | WebRTC, áudio em streaming, turnos automáticos, interrupção pela fala e consulta Codex confirmada. Canário nativo e ensaio do Founder com microfone físico validados. [Uso](presence-realtime.md), [proposta](changes/presence-realtime/proposal.md) e [verificação](changes/presence-realtime/verification.md). Integração e publicação confirmadas pelo PR e workflow do merge. Prioridade antes dos especialistas. |
 | P4 | Comunicação entre Invoker e especialista | Planejada | Começar com Invoker e Architect: delegação real, identidade do falante e retorno público audível. Expandir aos demais papéis após validar atribuição, fila de fala e legibilidade. |
 | P5 | Continuidade e recuperação da experiência | Planejada | Endurecer reconexão, retomada, interrupção pelo usuário e prevenção de ações ou falas duplicadas. Os mecanismos básicos de cancelamento e limpeza já são exigidos desde a etapa que os introduz. |
 | P6 | Canário e preparação da entrega | Planejada | Validar a jornada completa em projeto descartável: compatibilidade com gates, acessibilidade, desempenho, instalação e custo observado. Consolidar evidências e instruções operacionais antes de recomendar merge/release. |
@@ -39,7 +40,8 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
   uma entrega posterior, sem alterar o suporte existente do plugin ao Claude Code.
 - A intenção é utilizar a assinatura do usuário pela autenticação oficial do
   harness. A compatibilidade do transporte será verificada em P2; APIs de áudio
-  têm contratação e orçamento próprios, ainda sem provedor escolhido.
+  têm contratação e orçamento próprios. Para P3, OpenAI foi aprovada até US$ 2
+  no ensaio, com configuração de chave local necessária.
 - Um coordenador local de sessão fará a ponte entre interface, harness e áudio.
   A interface não recebe credenciais de longa duração nem acesso arbitrário ao disco.
 - A fala entre agentes apresenta delegações, progresso e resultados públicos.
@@ -52,6 +54,52 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-17:** Founder aprovou a recomendação de merge. Preparação da versão
+  1.16.0, incorporando `origin/main` em `104f709` para preservar escrita atômica
+  no Windows, digest CRLF e remoção de dados pessoais. O aceite da interface e
+  as correções P2 permanecem; integração e tag dependem do PR e seus workflows.
+- **2026-10-17:** correções dos dois P2 concluídas, com seis regressões novas e
+  **467/467 testes** em `npm run check`, incluindo integridade e drift. Revisão
+  das correções não encontrou outro bloqueio no escopo analisado. Recomendado
+  seguir para o merge da P3-R; autorização de merge continua pendente.
+- **2026-10-16:** após revisão, Founder autorizou corrigir dois achados P2 da
+  P3-R: análise Codex sobrevivendo à interrupção/timeout e confirmação de hangup
+  antiga atingindo outra chamada. Correções e seis regressões implementadas;
+  71 testes Presence aprovados. Regressão completa em verificação. Orçamento
+  preservado, sem chamadas pagas adicionais e sem autorização de merge inferida.
+- **2026-10-16:** Founder confirmou que a experiência Realtime funcionou
+  perfeitamente. Aceite P3-R registrado; merge ainda depende de autorização
+  própria. Ensaio atingiu o limite previsto de 60 s e teve hangup confirmado.
+  Reservas conhecidas US$ 5,30 de US$ 6; saldo conservador US$ 0,70, sem extrato.
+- **2026-10-16:** Founder ampliou explicitamente o teto total dos ensaios para
+  **US$ 6**, liberando outro ensaio Realtime de 60 s. Reservas conhecidas US$ 4,30;
+  saldo conservador US$ 1,70, sem consulta ao extrato. Realtek abriu corretamente
+  na verificação local; correções de preparação/seleção validadas por 65 testes
+  Presence. Aceite da conversa física completa e merge continuam pendentes.
+- **2026-10-16:** Founder escolheu voz nativa Realtime conduzindo a conversa e
+  Codex pela assinatura para análises/trabalho; implementação em
+  `codex/presence-realtime`. Teto dos ensaios elevado para US$ 5. Canário real
+  validou streaming, energia de áudio, interrupção e retorno Codex falado.
+  Saldo conservador de reserva US$ 1,70; extrato não consultado. Neste incremento
+  a ponte continua conversacional, sem execução em projetos ou especialistas.
+- **2026-10-16:** Founder confirmou que os testes de áudio funcionaram e
+  esclareceu que o objetivo é interação Realtime. P3 passa a ser tratada como
+  fundação de áudio; P3-R deve entregar conversa contínua antes de P4. Solicitada
+  decisão sobre autoria da conversa (voz nativa com ponte Codex ou Codex em cada
+  resposta), pois as alternativas têm latência e consumo de API diferentes.
+- **2026-10-16:** chave local validada; canários reais de API e captura via
+  AudioWorklet transcreveram fala conhecida. 50 testes da Presence passaram.
+  Founder confirmou reprodução de resposta por texto e relatou `E_TRANSCRIPT`
+  com pouca reação à entrada física. Adicionados seletor de microfone, medidor
+  e reprodução local para concluir esse diagnóstico e o aceite. Reserva
+  conservadora restante do ensaio: US$ 1,30; valor faturado não consultado.
+- **2026-10-16:** recuperado o resultado da regressão final P3: 440/440 testes.
+  Implementação e documentação prontas para revisão na branch; chave OpenAI
+  ainda ausente. Ensaio pago não executado, gasto de áudio zero; merge pendente.
+- **2026-10-15:** GO para P3, branch `codex/presence-voz-invoker`, a partir do
+  merge `87c6bc1` / v1.15.0. Founder escolheu OpenAI, até US$ 2 no ensaio.
+  O primeiro incremento usa captura explícita e texto concluído antes da síntese;
+  full duplex e inferência de emoção não fazem parte desta entrega.
 - **2026-10-15:** merge da P2 autorizado pelo Founder. Incorporado o README da
   main / 1.14.1 e preparado o pacote 1.15.0. A confirmação de integração e da
   publicação pertence ao PR e ao workflow do commit de merge.

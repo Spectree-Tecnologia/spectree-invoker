@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
+import { join } from 'node:path';
 import { request as httpRequest } from 'node:http';
 import { createPresenceSession } from '../scripts/lib/presence-session.mjs';
 import { createCodexRpc } from '../scripts/lib/presence-rpc.mjs';
@@ -107,6 +108,39 @@ function rpcFixture(options = {}) {
   const rpc = createCodexRpc({ cwd: process.cwd(), spawnProcess: () => child, onFailure: code => failures.push(code), onNotification: (...e) => events.push(e), ...options });
   return { rpc, child, outgoing, failures, events, emit: message => child.stdout.write(JSON.stringify(message) + '\n') };
 }
+
+test('Codex executable override works without PATH, preserves spaces and remains server-side', () => {
+  const configured = join(process.cwd(), 'Codex local', 'codex.exe');
+  const explicit = join(process.cwd(), 'Other Codex', 'codex.exe');
+  for (const [executable, expected] of [[undefined, configured], [explicit, explicit]]) {
+    let launched;
+    const f = rpcFixture({ executable,
+      environment: { PATH: '', SPECTREE_CODEX_EXECUTABLE: configured, OPENAI_API_KEY: 'synthetic-secret' },
+      spawnProcess: (file, args, options) => {
+        launched = { file, args, options };
+        const child = new EventEmitter();
+        child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.kill = () => {};
+        return child;
+      } });
+    assert.equal(launched.file, expected);
+    assert.deepEqual(launched.args.slice(0, 3), ['app-server', '--listen', 'stdio://']);
+    assert.equal(launched.options.shell, false);
+    assert.equal(launched.options.env.OPENAI_API_KEY, undefined);
+    f.rpc.close();
+  }
+});
+
+test('audio API credential is removed from the Codex child environment', () => {
+  let childEnvironment;
+  const f = rpcFixture({ environment: { PATH: process.env.PATH, OPENAI_API_KEY: 'synthetic-secret', openai_api_key: 'synthetic-lowercase', KEEP: 'yes' },
+    spawnProcess: (_file, _args, options) => {
+      childEnvironment = options.env;
+      const child = new EventEmitter(); child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.kill = () => {};
+      return child;
+    } });
+  assert.equal(childEnvironment.KEEP, 'yes'); assert.equal(childEnvironment.OPENAI_API_KEY, undefined); assert.equal(childEnvironment.openai_api_key, undefined);
+  f.rpc.close();
+});
 
 test('stdio parser handles fragmented Unicode, correlation and refuses unsolicited approval requests', async () => {
   const f = rpcFixture(); const first = f.rpc.request('initialize'); const id = f.outgoing[0].id;

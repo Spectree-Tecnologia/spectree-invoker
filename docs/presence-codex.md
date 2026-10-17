@@ -1,5 +1,8 @@
 # Presence P2 — conversa local com Codex
 
+A [P3 de voz opcional](presence-voice.md) está em desenvolvimento em branch
+própria. O modo `--codex` descrito aqui continua funcionando sem API de áudio.
+
 Esta etapa conecta o personagem aprovado a uma conversa real **por texto**.
 Não conecta microfone, sintetiza voz, delega especialistas nem executa tarefas
 do runtime. A animação nunca representa aprovação de gates.
@@ -19,6 +22,14 @@ o login. Abra o endereço completo impresso, inclusive `#session=...`, e clique
 em **Conectar Codex**. O token desse endereço é uma credencial efêmera da
 interface local; não é o token da sua conta. Não compartilhe esse endereço.
 Para uma porta fixa: `npm run presence -- --codex --port 4319`.
+
+Se o terminal não encontrar `codex`, configure `SPECTREE_CODEX_EXECUTABLE` no
+`.env` local com o caminho completo do executável instalado, entre aspas.
+Use somente o caminho, sem argumentos, e inicie com
+`node --env-file=.env scripts/presence.mjs --codex`. A configuração explícita
+tem prioridade sobre o PATH. Não altera o PATH global nem instala outro CLI.
+Se uma atualização do aplicativo remover o executável configurado, atualize
+esse caminho ou remova a variável após disponibilizar o CLI no PATH.
 
 Escreva a mensagem e pressione Enter; Shift + Enter quebra a linha. A resposta
 aparece progressivamente. **Interromper** aguarda a confirmação do Codex antes

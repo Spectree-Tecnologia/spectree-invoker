@@ -143,7 +143,7 @@ npm run presence -- --codex                   # Presence P2, conversa textual co
 ```
 
 - **[Spectree Console](docs/console.md)** — a trilha do runtime em modo somente leitura: pipeline, especialistas, tarefas, tentativas, evidências e histórico. Aponte para um projeto real com `npm run console -- --project /caminho/do/projeto`. O endereço impresso carrega uma credencial temporária da sessão; não o compartilhe.
-- **[Spectree Presence](docs/presence.md)** — personagem 3D, identidade por cor e estados explícitos. O modo demonstrativo usa áudio gravado; o [modo Codex](docs/presence-codex.md) oferece conversa real por texto em canário isolado. Ainda sem microfone, voz ao vivo ou acesso a projetos.
+- **[Spectree Presence](docs/presence.md)** — personagem 3D, identidade por cor e estados explícitos. O modo demonstrativo usa áudio gravado; o [modo Codex](docs/presence-codex.md) oferece texto em canário isolado. [Voz por gravações](docs/presence-voice.md) e [conversa Realtime](docs/presence-realtime.md) acrescentam áudio com API separada, sem acesso a projetos.
 
 ## O que está comprovado — e o que não está
 
@@ -205,13 +205,15 @@ Contribuições são bem-vindas; leia o [guia de contribuição](CONTRIBUTING.md
 - **Entender** — [arquitetura](docs/architecture.md) · [ciclo de entrega](docs/workflow.md) · [manutenção e limites conhecidos](docs/maintenance.md)
 - **O runtime** — [próximo passo](docs/planning.md) · [retomada e verificação](docs/reliability.md) · [execução e avaliações](docs/evolution.md) · [execução resiliente](docs/resilient-execution.md) · [confiabilidade de entrega](docs/delivery-reliability.md) · [runtime conectado](docs/runtime-connected.md)
 - **Projetos existentes** — [adoção operacional](docs/operational-adoption.md) · [reconciliação guiada](docs/guided-reconciliation.md)
-- **Interfaces** — [Console](docs/console.md) · [Presence](docs/presence.md)
+- **Interfaces** — [Console](docs/console.md) · [Presence](docs/presence.md) · [voz Realtime](docs/presence-realtime.md)
 
 ## Como o plugin evolui
 
-O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **Spectree Presence**: uma interface de conversa por voz com o Invoker e os especialistas. A versão **1.15.0** acrescenta a sessão textual local com Codex à fundação visual da 1.14.0. Voz e participação real dos especialistas permanecem nas próximas etapas.
+O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **Spectree Presence**: uma interface de conversa por voz com o Invoker e os especialistas. A versão **1.16.0** acrescenta voz opcional e conversa Realtime à sessão textual local com Codex. A participação real dos especialistas permanece nas próximas etapas.
 
 A [P2 conecta uma conversa por texto ao Codex local](docs/presence-codex.md): `npm run presence -- --codex`. Usa login ChatGPT existente e um canário próprio, sem abrir projetos consumidores.
+
+A [P3 acrescenta voz opcional por gravações](docs/presence-voice.md). O [modo Realtime](docs/presence-realtime.md) oferece conversa contínua nativa OpenAI, interrupção pela fala e consulta ao Codex local. Requer API de voz separada; canário real validado e experiência aceita pelo Founder em 2026-10-16. O guia registra os comandos, limites e saldo conservador dos ensaios.
 
 Um **projeto canário** roda a metodologia de verdade, sem ninguém segurando a mão. O que o canário faz de diferente do que está escrito é achado; achado vira PR aqui, nunca correção lá. Seis dos artefatos e regras deste repositório nasceram assim — o squad inventou a guarda antes de a metodologia tê-la, e a metodologia a adotou.
 

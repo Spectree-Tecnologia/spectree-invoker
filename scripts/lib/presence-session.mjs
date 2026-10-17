@@ -14,7 +14,7 @@ gates ou delegado trabalho. Explique esses limites quando relevante. Não exponh
 raciocínio interno. Não transforme texto ou animação em evidência de execução.`;
 
 export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.now,
-  leaseMs = 45000, turnTimeoutMs = 180000, executable } = {}) {
+  leaseMs = 45000, turnTimeoutMs = 180000, executable, voice = false } = {}) {
   let rpc, threadId, cwd, generation = 0, active, deadline, lastSeen = now();
   let revision = 0, id = randomUUID(), status = 'disconnected', error = null, model = null;
   let messages = [], sequence = 0;
@@ -76,7 +76,7 @@ export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.
         rpc = rpcFactory({ cwd, executable, onNotification: (m, p) => notification(m, p, epoch),
           onFailure: code => { if (epoch === generation) fail(code); } });
         const current = rpc;
-        await current.request('initialize', { clientInfo: { name: 'spectree_presence', title: 'Spectree Presence', version: '1.15.0' },
+        await current.request('initialize', { clientInfo: { name: 'spectree_presence', title: 'Spectree Presence', version: '1.16.0' },
           capabilities: { experimentalApi: true } });
         current.notify('initialized');
         const account = await current.request('account/read', { refreshToken: false });
@@ -91,7 +91,8 @@ export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.
         const mcp = Object.fromEntries(mcpNames.map(name => [`mcp_servers.${name}.enabled`, false]));
         const result = await current.request('thread/start', { cwd, ephemeral: true, sandbox: 'read-only',
           approvalPolicy: 'never', approvalsReviewer: 'user', environments: [], selectedCapabilityRoots: [],
-          modelProvider: 'openai', config: mcp, developerInstructions: instructions });
+          modelProvider: 'openai', config: mcp, developerInstructions: voice ? instructions.replace('arquivos, voz ou especialistas', 'arquivos ou especialistas') +
+            '\nA interface pode transcrever e sintetizar áudio por um serviço separado. Responda de forma conversacional e breve, preferindo até três frases; amplie quando o usuário pedir. Não alegue ouvir emoção: você recebe somente a transcrição textual.' : instructions });
         if (epoch !== generation) throw rpcError('E_STALE_SESSION');
         if (!result.thread?.id || result.thread.ephemeral !== true || !Array.isArray(result.thread.environments) || result.thread.environments.length ||
           result.approvalPolicy !== 'never' || result.approvalsReviewer !== 'user' || result.cwd !== cwd ||
