@@ -86,7 +86,7 @@ const RUNTIME_LIBS = [
   'delivery.mjs', 'diff.mjs', 'digest.mjs', 'engineering-reports.mjs', 'flow-evals.mjs', 'gh.mjs',
   'harness.mjs', 'launch.mjs', 'lifecycle.mjs', 'mutation.mjs', 'planner-ci.mjs', 'planner.mjs',
   'process-job.cs', 'process-job.ps1', 'process-supervisor.mjs', 'process-worker.mjs',
-  'project-diagnostics.mjs', 'reconciliation.mjs', 'run-events.mjs', 'state-machine.mjs',
+  'project-diagnostics.mjs', 'reconciliation.mjs', 'run-events.mjs', 'scope-policy.mjs', 'state-machine.mjs',
   'store.mjs', 'tap.mjs', 'task-executor.mjs', 'validate.mjs', 'verification.mjs', 'work.mjs',
 ];
 for (const f of RUNTIME_LIBS) {

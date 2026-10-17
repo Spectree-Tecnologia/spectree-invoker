@@ -1061,6 +1061,23 @@ test('21d3. change 1 starts from a convention catalogue, and convergence refuses
   }
 });
 
+test('21d4. the autonomy policy: cheap stack slots, round owners and gate 1 by standing policy', () => {
+  // The Invoker asked the Founder everything by default: the cheap end of the stack table, every
+  // block of an exploration round, every gate 1. Each assertion is one place that default ended.
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /The cheap end of that table is yours, not his/, `${f}: cheap stack slots are closed by the Invoker`);
+    assert.match(body, /Gate 1 by standing policy/, `${f}: a marked roadmap item carries its changes past gate 1`);
+    assert.match(body, /founder_policy/, `${f}: the policy approval names its kind`);
+    assert.match(body, /marked `Owner: Invoker` you answer yourself/, `${f}: the Invoker answers its own round blocks`);
+  }
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /Owner: <Founder \| Invoker>/, `${f}: every round block says who answers`);
+    assert.match(body, /policy: scope/, `${f}: only the Founder's approval puts the marker on the roadmap`);
+  }
+});
+
 test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced', () => {
   // The sixth type passed the boundary test on blast radius — money and a paid credential — and
   // that is only true while the card keeps the fences that make it so. Each assertion below is one
