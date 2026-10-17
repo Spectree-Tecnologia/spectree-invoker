@@ -1,6 +1,5 @@
-import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { readFileSync, existsSync } from 'node:fs';
+import { writeAtomic } from './store.mjs';
 import { inside, refuse } from './work.mjs';
 import { assertValid } from './validate.mjs';
 
@@ -56,9 +55,7 @@ export function ledgerView(root, { apply = false } = {}) {
   const file = inside(root, 'docs/DEFERRED.md');
   const current = existsSync(file) ? readFileSync(file, 'utf8').replaceAll('\r\n', '\n') : null;
   if (current !== text && apply) {
-    mkdirSync(dirname(file), { recursive: true });
-    const temp = `${file}.${randomUUID()}.tmp`;
-    writeFileSync(temp, text); renameSync(temp, file);
+    writeAtomic(file, text);
   }
   return { ok: current === text || apply, changed: current !== text, expected: text,
     code: current === text || apply ? null : 'E_DELIVERY_LEDGER_DRIFT' };
