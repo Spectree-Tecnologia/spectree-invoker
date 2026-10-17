@@ -1134,7 +1134,7 @@ test('21d6. the project keeps its language and its technical decisions', () => {
     'the Platform Engineer reads the stack from the artifact');
 });
 
-test('21d7. a legacy codebase is modularized by a sequence of deltaless extractions', () => {
+test('21d8. a legacy codebase is modularized by a sequence of deltaless extractions', () => {
   // The squad assumed every project was born modular; adoption was operational only, and nothing
   // said how to take a Big Ball of Mud to modules without stopping the product.
   for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
