@@ -46,6 +46,7 @@ import { validate } from './lib/validate.mjs';
 import { pendingWork, doctor } from './lib/work.mjs';
 import { requireTasksComplete, taskStatus } from './lib/task-executor.mjs';
 import { diagnoseProject, selectClosureMode, closureStrategy } from './lib/project-diagnostics.mjs';
+import { POLICY_KIND, checkPolicyApproval } from './lib/scope-policy.mjs';
 
 // A gate is bound to what it authorises. Scope-class gates authorise the contract; the
 // gates that put code somewhere authorise the contract AND the code that will travel with it.
@@ -712,6 +713,12 @@ switch (cmd) {
         // ONE read for the whole command: the revision this reservation uses is the revision that
         // validated the preparation being approved. A second, newer read taken just before the
         // write would reserve against a world the decision never saw.
+        // A standing-policy approval is checked against the roadmap and the module map before it
+        // is written: the Founder's earlier decision covers a change only where those agree.
+        if (doc.granted_by?.kind === POLICY_KIND) {
+          const policy = checkPolicyApproval(root, doc, doc.change_id ? store.change(doc.change_id) : null);
+          if (!policy.ok) die(`${policy.code}: ${policy.message}`, 1);
+        }
         const cc = doc.gate === 'integration' && doc.change_id ? closureContext(doc.change_id) : null;
         if (doc.gate === 'integration' && doc.change_id) {
           if (cc.authority.ok === false) die(`${cc.authority.code}: ${cc.authority.message}`, 1);
