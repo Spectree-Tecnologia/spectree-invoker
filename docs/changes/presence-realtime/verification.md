@@ -111,3 +111,20 @@ permanecem US$ 4,30; saldo conservador US$ 1,70. A Presence foi reiniciada na
 mesma porta com esse saldo. Nenhuma chamada paga foi iniciada pelo agente para
 essa liberação; a conversa é iniciada pelo operador no botão da interface.
 Nenhuma autorização de merge foi inferida dessa decisão.
+
+## Aceite do Founder
+
+Em 2026-10-16, depois de executar o ensaio com seu microfone físico, o Founder
+confirmou: **"Otimo funcionou perfeitamente"**. Esse é o aceite da experiência
+P3-R; não é autorização de merge nem medição de latência ou matriz de hardware.
+
+A consulta somente de metadados ao servidor encontrou reserva US$ 1 de
+US$ 1,70, término por **E_REALTIME_TIME** (deadline previsto de 60 segundos) e
+hangup **confirmed**. O conteúdo da conversa não foi copiado para este registro.
+Reservas conhecidas acumuladas: **US$ 5,30 do teto US$ 6**, saldo **US$ 0,70**;
+valor faturado não consultado. Nenhuma nova chamada foi iniciada pelo agente.
+
+O aceite físico está concluído. Permanecem a revisão para integração, a
+autorização de merge e as validações futuras de uso prolongado/produção e
+especialistas. Esta atualização é documental; código e evidências de testes
+do commit `b936730` permanecem os mesmos.

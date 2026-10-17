@@ -180,7 +180,7 @@ O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **S
 
 A [P2 conecta uma conversa por texto ao Codex local](docs/presence-codex.md): `npm run presence -- --codex`. Usa login ChatGPT existente e um canário próprio, sem abrir projetos consumidores.
 
-Nesta branch, a [P3 acrescenta voz opcional por gravações](docs/presence-voice.md). O [modo Realtime](docs/presence-realtime.md) oferece conversa contínua nativa OpenAI, interrupção pela fala e consulta ao Codex local: `node --env-file=.env scripts/presence.mjs --codex --realtime --budget-usd 1.7`. Esse saldo conservador permite outro ensaio de 60 segundos após a ampliação autorizada do teto total para US$ 6. Requer API de voz separada; o canário real passou e o aceite completo com o microfone do Founder está pendente. A versão publicada permanece 1.15.0.
+Nesta branch, a [P3 acrescenta voz opcional por gravações](docs/presence-voice.md). O [modo Realtime](docs/presence-realtime.md) oferece conversa contínua nativa OpenAI, interrupção pela fala e consulta ao Codex local. Requer API de voz separada; canário real validado e experiência aceita pelo Founder em 2026-10-16. Merge pendente; a versão publicada permanece 1.15.0. O guia registra os comandos, limites e saldo conservador dos ensaios.
 
 Um **projeto canário** roda a metodologia de verdade, sem ninguém segurando a mão. O que o canário faz de diferente do que está escrito é achado; achado vira PR aqui, nunca correção lá. Seis dos artefatos e regras deste repositório nasceram assim — o squad inventou a guarda antes de a metodologia tê-la, e a metodologia a adotou.
 

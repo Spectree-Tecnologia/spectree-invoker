@@ -29,10 +29,10 @@ try {
 Se a chave estiver no `.env` da raiz, ignorado pelo Git, carregue-o explicitamente:
 
 ```powershell
-node --env-file=.env scripts/presence.mjs --codex --voice --budget-usd 1.7
+node --env-file=.env scripts/presence.mjs --codex --voice --budget-usd 0.7
 ```
 
-O valor US$ 1,70 mantém a reserva restante dos ensaios conhecidos de 2026-10-16,
+O valor US$ 0,70 mantém a reserva restante dos ensaios conhecidos de 2026-10-16,
 após a ampliação do teto total para US$ 6 e a
 [verificação Realtime](changes/presence-realtime/verification.md).
 O comando `npm run presence` não carrega

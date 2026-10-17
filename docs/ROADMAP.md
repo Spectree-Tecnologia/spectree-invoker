@@ -29,7 +29,7 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 | P1 | Fundação visual e contrato de estados | Integrada em main, PR #41 / v1.14.0 | Componente Three.js local, áudio demonstrativo analisado e estados determinísticos. [Uso](presence.md), [proposta](changes/presence-fundacao/proposal.md) e [verificação e limites](changes/presence-fundacao/verification.md). |
 | P2 | Sessão local e integração Codex | Integrada em main, PR #43 / v1.15.0 | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
 | P3 | Fundação de áudio do Invoker | Implementada em branch; Founder confirmou funcionamento dos testes; 53 testes Presence passaram | Captura explícita, transcrição revisável, síntese e seleção de microfone. [Uso](presence-voice.md), [proposta](changes/presence-voz-invoker/proposal.md) e [verificação](changes/presence-voz-invoker/verification.md). Esta interação por gravações ainda não atende à conversa contínua desejada. |
-| P3-R | Conversa Realtime com o Invoker | Implementada em branch; canário nativo validado; aceite do Founder pendente | WebRTC, áudio em streaming, turnos automáticos, interrupção pela fala e consulta Codex confirmada. [Uso](presence-realtime.md), [proposta](changes/presence-realtime/proposal.md) e [verificação](changes/presence-realtime/verification.md). Prioridade antes dos especialistas. |
+| P3-R | Conversa Realtime com o Invoker | Aceita pelo Founder em 2026-10-16; merge pendente | WebRTC, áudio em streaming, turnos automáticos, interrupção pela fala e consulta Codex confirmada. Canário nativo e ensaio do Founder com microfone físico validados. [Uso](presence-realtime.md), [proposta](changes/presence-realtime/proposal.md) e [verificação](changes/presence-realtime/verification.md). Prioridade antes dos especialistas. |
 | P4 | Comunicação entre Invoker e especialista | Planejada | Começar com Invoker e Architect: delegação real, identidade do falante e retorno público audível. Expandir aos demais papéis após validar atribuição, fila de fala e legibilidade. |
 | P5 | Continuidade e recuperação da experiência | Planejada | Endurecer reconexão, retomada, interrupção pelo usuário e prevenção de ações ou falas duplicadas. Os mecanismos básicos de cancelamento e limpeza já são exigidos desde a etapa que os introduz. |
 | P6 | Canário e preparação da entrega | Planejada | Validar a jornada completa em projeto descartável: compatibilidade com gates, acessibilidade, desempenho, instalação e custo observado. Consolidar evidências e instruções operacionais antes de recomendar merge/release. |
@@ -54,6 +54,10 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-16:** Founder confirmou que a experiência Realtime funcionou
+  perfeitamente. Aceite P3-R registrado; merge ainda depende de autorização
+  própria. Ensaio atingiu o limite previsto de 60 s e teve hangup confirmado.
+  Reservas conhecidas US$ 5,30 de US$ 6; saldo conservador US$ 0,70, sem extrato.
 - **2026-10-16:** Founder ampliou explicitamente o teto total dos ensaios para
   **US$ 6**, liberando outro ensaio Realtime de 60 s. Reservas conhecidas US$ 4,30;
   saldo conservador US$ 1,70, sem consulta ao extrato. Realtek abriu corretamente
