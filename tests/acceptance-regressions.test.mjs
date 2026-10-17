@@ -1026,6 +1026,23 @@ test('21d. the Founder is asked one question at a time, on both harnesses', () =
   }
 });
 
+test('21d2. the Architect models the domain before the graph, and remembers it, on both harnesses', () => {
+  // The course methodology walks entities, relationships, aggregates and only then modules; a graph
+  // drawn first is a guess about folders. And a domain fact the Founder settled once has to survive
+  // the round, or the squad cannot run many projects without asking him the same thing again.
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /Modelling the domain/, `${f} must carry the modelling sequence`);
+    assert.match(body, /Relationships, with cardinality decided/, `${f} must decide cardinality`);
+    assert.match(body, /core domain/, `${f} must name the core domain`);
+    assert.match(body, /counterexample scenario/, `${f} must ask the Founder only business-specific facts`);
+    assert.match(body, /docs\/DOMAIN\.md/, `${f} must keep the domain memory`);
+  }
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /DOMAIN\.md/, `${f} must list the domain memory among the artifacts`);
+  }
+});
+
 test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced', () => {
   // The sixth type passed the boundary test on blast radius — money and a paid credential — and
   // that is only true while the card keeps the fences that make it so. Each assertion below is one
