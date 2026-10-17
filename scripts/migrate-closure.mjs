@@ -21,6 +21,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { Store } from './lib/store.mjs';
+import { stamp } from './lib/shared/time.mjs';
 import {
   readLifecycle, emptyLifecycle, lifecyclePath, currentPath, snapshotPath,
   LIFECYCLE_VERSION, PREP_CONTRACT_VERSION,
@@ -37,7 +38,6 @@ if (!store.present) {
   process.exit(1);
 }
 
-const stamp = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 const plan = [];
 const refusals = [];
 

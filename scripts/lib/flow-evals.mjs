@@ -1,14 +1,16 @@
 // Exercise a lifecycle from draft through verified implementation in a NEW synthetic repo.
 // Scope policy is a declared fixture. No QA-isolation, CI, merge or production claim is made.
+import { git as gitIn } from './shared/git.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { packageRoot, hash } from './context.mjs';
 import { planAdoption, applyAdoption } from './adoption.mjs';
 import { initTasks, runTask, recoverTask, verifyTasks, taskStatus } from './task-executor.mjs';
-import { pendingWork, reconcileWork, refuse } from './work.mjs';
+import { pendingWork, reconcileWork } from './work.mjs';
+import { refuse } from './shared/guard.mjs';
 import { Store } from './store.mjs';
 
 export function runFlowEvaluation({ config, output, mode = 'live' }) {
@@ -22,7 +24,7 @@ export function runFlowEvaluation({ config, output, mode = 'live' }) {
     steps: [], completed: false, passed: false };
   const persist = () => writeFileSync(join(runDir, 'summary.json'), JSON.stringify(report, null, 2)); persist();
   const put = (p, text) => { mkdirSync(dirname(join(root, p)), { recursive: true }); writeFileSync(join(root, p), text); };
-  const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: 'pipe' }).trim();
+  const git = (...args) => gitIn(root, args).trim();
   const env = { ...process.env, SPECTREE_PROJECT_ROOT: root }; delete env.NODE_TEST_CONTEXT;
   const step = (name, fn) => {
     const began = performance.now(); const result = fn();

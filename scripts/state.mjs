@@ -22,10 +22,11 @@
 //
 // Exit codes: 0 allowed/valid, 1 refused/invalid, 2 usage.
 
+import { git as gitIn } from './lib/shared/git.mjs';
+import { flags } from './lib/shared/cli.mjs';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
 import { canTransition, ASSERTS_FAILURE } from './lib/state-machine.mjs';
@@ -58,15 +59,12 @@ const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const store = new Store(root);
 const argv = process.argv.slice(2);
 const cmd = argv[0];
-const flag = (name, fallback) => {
-  const i = argv.indexOf(`--${name}`);
-  return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : fallback;
-};
-const has = (name) => argv.includes(`--${name}`);
+const { value: flag, has } = flags(argv);
 const die = (msg, code = 2) => { console.error(msg); process.exit(code); };
 
 function git(args, fallback = null) {
-  try { return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim(); }
+  // git's own stderr stays on the terminal here, as it always has for `state.mjs`.
+  try { return gitIn(root, args, { stdio: ['pipe', 'pipe', 'inherit'], maxBuffer: 1024 * 1024 }).trim(); }
   catch { return fallback; }
 }
 
@@ -539,10 +537,7 @@ switch (cmd) {
     const sep = argv.indexOf('--');
     if (sep === -1 || sep === argv.length - 1) die('the command goes after `--`: state.mjs run c1 ci.green --role platform_engineer -- npm test');
     const pre = argv.slice(0, sep);
-    const opt = (name, fallback) => {
-      const i = pre.indexOf(`--${name}`);
-      return i >= 0 && pre[i + 1] && !pre[i + 1].startsWith('--') ? pre[i + 1] : fallback;
-    };
+    const opt = flags(pre).value;
     const cmd = argv.slice(sep + 1);
     const change = store.change(id) ?? die(`no such change: ${id}`, 1);
     const role = opt('role') ?? die('--role is required: evidence that cannot say who produced it is not evidence');

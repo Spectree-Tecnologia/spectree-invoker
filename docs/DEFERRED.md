@@ -7,9 +7,9 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Parsing de argv feito à mão em 9 CLIs e git() local em 7 arquivos; a classe 'flag virou valor' já produziu defeito registrado. Adiado para um núcleo shared sobre node:util.parseArgs.
+- Decision: Entregue pela mudança nucleo-shared-cli: scripts/lib/shared/ concentra flags, git e timestamp, e tests/shared-core.test.mjs trava a volta da duplicação. Continua aberto só porque fechar exige evidência observada, que este repositório ainda não registra (D-009).
 - Due: Roadmap de modularização, tarefa 2 (núcleo shared)
-- Closure condition: Nenhum indexOf('--' nem function git( fora de shared, conferido por teste.
+- Closure condition: Nenhuma leitura manual de valor de flag nem helper git local fora de scripts/lib/shared, conferido por teste, com evidência observada registrada.
 
 ## D-002 — Presence no mesmo pacote do runtime de governança
 
@@ -73,4 +73,22 @@
 - Decision: CLAUDE.md gerado tem 77 KB, boa parte justificativa histórica. Separar regra de justificativa depende de decisão de produto.
 - Due: Decisão do Founder sobre quanto do porquê fica no contexto (roadmap de modularização, tarefa 8)
 - Closure condition: CLAUDE.md com tamanho-alvo decidido e a mesma cobertura de regras, conferida por check-plugin.
+
+## D-009 — O ledger deste repositório não consegue fechar item
+
+- Status: open
+- Owner: own_change
+- Impact: behaviour
+- Decision: Fechar um item exige evidência observada em .spectree/evidence/, e este repositório não abre mudanças estruturadas nem roda state.mjs run. Os itens pagos ficam abertos com a decisão atualizada até isso existir.
+- Due: Roadmap de modularização, tarefa 5 (fechamento como biblioteca), ou a primeira mudança deste repositório aberta com state.mjs
+- Closure condition: D-001 fechado com closure_evidence de uma execução observada.
+
+## D-010 — state.mjs lê flags depois do separador --
+
+- Status: open
+- Owner: own_change
+- Impact: defect
+- Decision: Em init, as flags globais são lidas no argv inteiro, inclusive no comando de consolidação depois de --. Um comando que carregue --ci-workflow ou --repository seria lido como opção do init. Mudar isso muda o que o init aceita, então fica fora desta mudança deltaless.
+- Due: Roadmap de modularização, tarefa 5 (state.mjs vira um handler por comando)
+- Closure condition: init lê flags só antes de --, com teste que prova que uma flag dentro do comando de consolidação é ignorada.
 

@@ -1,5 +1,6 @@
 import { supervisedLaunch } from './process-supervisor.mjs';
-import { outcome, refuse, inside } from './work.mjs';
+import { outcome } from './work.mjs';
+import { refuse, inside } from './shared/guard.mjs';
 import { accessSync, constants, statSync, writeFileSync } from 'node:fs';
 import { resolve, delimiter, basename } from 'node:path';
 import { resolveOnPath, launchSpec } from './launch.mjs';

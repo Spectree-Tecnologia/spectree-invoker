@@ -1,12 +1,13 @@
 // Accidental-edit isolation, not a security sandbox for arbitrary executable code.
+import { git as gitIn } from './shared/git.mjs';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, lstatSync, chmodSync } from 'node:fs';
 import { join, dirname, resolve, relative, isAbsolute, delimiter } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
 import { contentDigest } from './digest.mjs';
 import { launch } from './launch.mjs';
 import { parseTap, judgePassingRun, judgeMutationRun } from './tap.mjs';
-import { inside, bounded, refuse } from './work.mjs';
+import { bounded } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 
 function command(value, label) {
   if (!Array.isArray(value) || !value.length || value.some((x) => typeof x !== 'string' || !x || x.includes('\0'))) refuse('E_MUTATION_PLAN', `${label} must be an argv array.`);
@@ -29,7 +30,7 @@ const excluded = (p) => p.split('/').some((part) => ['.git', '.spectree', '.log'
   /^(?:\.aws|\.ssh|\.claude|\.codex)\//.test(p) || /(?:^|\/)\.npmrc$/.test(p);
 
 export function candidateFiles(root) {
-  const git = (args) => execFileSync('git', ['--no-optional-locks', ...args], { cwd: root, encoding: 'utf8', stdio: 'pipe', maxBuffer: 64 * 1024 * 1024 });
+  const git = (args) => gitIn(root, ['--no-optional-locks', ...args]);
   if (git(['ls-files', '-u', '-z']).length) refuse('E_MUTATION_CONFLICT', 'Resolve the conflicted index before copying the candidate.');
   const files = [...new Set(git(['ls-files', '-z', '--cached', '--others', '--exclude-standard']).split('\0').filter(Boolean))]
     .map((p) => p.replaceAll('\\', '/')).filter((p) => !excluded(p)).sort();

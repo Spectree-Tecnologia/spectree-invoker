@@ -26,12 +26,12 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync, closeSync
 import { join, dirname } from 'node:path';
 import { hostname } from 'node:os';
 import { writeAtomic } from './store.mjs';
+import { stamp } from './shared/time.mjs';
 
 export const LIFECYCLE_VERSION = '1.0.0';
 export const PREP_CONTRACT_VERSION = '2.0.0';
 
 const posix = (s) => String(s).split('\\').join('/');
-const stamp = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 const refuse = (code, message, extra) => ({ ok: false, code, message, ...(extra ?? {}) });
 
 export const closureDir = () => join('.spectree', 'closure');

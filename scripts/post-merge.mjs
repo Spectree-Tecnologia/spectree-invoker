@@ -19,6 +19,8 @@
 //
 // Exit codes: 0 confirmed (or planned), 1 refused, 2 usage.
 
+import { git as gitIn } from './lib/shared/git.mjs';
+import { flags } from './lib/shared/cli.mjs';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { Store, SCHEMA_VERSION } from './lib/store.mjs';
@@ -42,7 +44,7 @@ const argv = process.argv.slice(2);
 const changeId = argv[0];
 const apply = argv.includes('--apply');
 const asJson = argv.includes('--json');
-const flag = (n, d) => { const i = argv.indexOf(`--${n}`); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
+const flag = flags(argv).value;
 const die = (msg, code = 2) => { console.error(msg); process.exit(code); };
 
 if (!changeId || changeId.startsWith('--')) die('usage: post-merge.mjs <change-id> --pr <number> [--base main] [--apply] [--json]');
@@ -63,7 +65,7 @@ const impediments = [];
 const step = (name, ok, detail) => { steps.push({ name, ok, detail }); if (!ok) impediments.push(`${name}: ${detail}`); };
 const git = (args) => {
   metrics.git_calls_here += 1;
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+  return gitIn(root, args).trim();
 };
 
 // --- 0. the durable control ------------------------------------------------------------------

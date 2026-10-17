@@ -3,7 +3,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, lstatS
 import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
 import { Store } from './store.mjs';
-import { inside, identifier, bounded, references, snapshot, pendingWork, workRecords, refuse } from './work.mjs';
+import { identifier, bounded, references, snapshot, pendingWork, workRecords } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 import { inspectProcesses } from './process-supervisor.mjs';
 import { hash } from './context.mjs';
 import { contractDigest } from './digest.mjs';

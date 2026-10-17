@@ -14,8 +14,8 @@
 // gate again. A commit that changes the tree is a different candidate, and that one is
 // exactly what must be caught.
 
+import { git as gitIn } from './shared/git.mjs';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, statSync, lstatSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -75,9 +75,7 @@ export function normalisedHashes(root, relPaths) {
   if (bad) throw unavailable(`"${posix(bad)}" contains a newline, and no path list can carry that unambiguously`);
   const absPaths = relPaths.map((p) => join(root, p));
   try {
-    const git = (args, input) => execFileSync('git', args, {
-      cwd: root, encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
-    });
+    const git = (args, input) => gitIn(root, args, { input });
     const indexed = new Map(git(['ls-files', '-s', '-z']).split('\0').filter(Boolean).map((line) => {
       const tab = line.indexOf('\t');
       return [line.slice(tab + 1), line.slice(0, tab).split(' ')[1]];
@@ -173,9 +171,7 @@ const contractPathIn = (path, changeId) => {
  * @returns {{ digest: string, source: string, files: string[] }}
  */
 export function contractDigestAt(root, revision, change) {
-  const git = (args) => execFileSync('git', args, {
-    cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
-  });
+  const git = (args) => gitIn(root, args);
   let entries;
   try {
     entries = git(['ls-tree', '-r', '-z', revision]).split('\0').filter(Boolean).map((line) => {
@@ -224,9 +220,7 @@ export function contractDigestAt(root, revision, change) {
  * @returns {{ digest: string, revision: string, tree: string, dirty: boolean }}
  */
 export function contentDigest(root) {
-  const git = (args, input) => execFileSync('git', args, {
-    cwd: root, encoding: 'utf8', input, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
-  });
+  const git = (args, input) => gitIn(root, args, { input });
   const exclude = OPERATIONAL.map((p) => `:(exclude)${p}`);
   let revision, tree, paths, indexModes, dirty;
   try {
@@ -319,9 +313,7 @@ function modeOf(root, rel, indexModes) {
  * @returns {{ digest: string, revision: string, tree: string }}
  */
 export function contentDigestAt(root, revision) {
-  const git = (args) => execFileSync('git', args, {
-    cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
-  });
+  const git = (args) => gitIn(root, args);
   let resolved, tree, entries;
   try {
     resolved = git(['rev-parse', `${revision}^{commit}`]).trim();

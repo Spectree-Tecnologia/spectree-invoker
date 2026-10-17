@@ -1,11 +1,11 @@
+import { git as gitIn } from './shared/git.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, lstatSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { phaseContext, packageRoot, hash } from './context.mjs';
 import { runAgent } from './agent-runner.mjs';
-import { inside, refuse } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 
 export function evaluationCases() {
   const suite = JSON.parse(readFileSync(join(packageRoot, 'evals/cases.json'), 'utf8'));
@@ -42,7 +42,7 @@ export function runEvaluations({ config, output, caseId = 'all', mode = 'live' }
     at: new Date().toISOString(), cases: [], scope: 'Real agent decisions and artifact discipline on synthetic incidents; not a full squad delivery benchmark.' };
   for (const c of selected) {
     const root = mkdtempSync(join(tmpdir(), 'spectree-agent-eval-'));
-    const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+    const git = (...args) => gitIn(root, args);
     git('init', '-q', '-b', 'eval'); git('config', 'user.email', 'eval@example.invalid'); git('config', 'user.name', 'Spectree evaluation'); git('config', 'commit.gpgsign', 'false');
     writeFileSync(join(root, 'facts.json'), JSON.stringify(c.facts, null, 2));
     writeFileSync(join(root, 'protected.txt'), 'This fixture must remain unchanged.\n');

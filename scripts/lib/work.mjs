@@ -1,12 +1,12 @@
 // Operational checkpoints are observations, never approvals or lifecycle transitions.
 import { existsSync, lstatSync, readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
-import { resolve, relative, isAbsolute, join } from 'node:path';
+import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { contentDigest } from './digest.mjs';
 import { Store } from './store.mjs';
+import { refuse, inside } from './shared/guard.mjs';
 
-export function refuse(code, message) { throw Object.assign(new Error(message), { code }); }
 export function identifier(value) {
   if (typeof value !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(value)) {
     refuse('E_WORK_ID', 'Use a nonempty identifier of at most 128 letters, digits, dots, underscores or hyphens.');
@@ -16,24 +16,6 @@ export function identifier(value) {
 export function bounded(value, label, max = 1000) {
   if (typeof value !== 'string' || !value.trim() || value.length > max) refuse('E_WORK_FIELD', `${label} must contain 1..${max} characters.`);
   return value;
-}
-
-/** Reject traversal and symlink/junction ancestors, for both reads and writes. */
-export function inside(root, rel) {
-  if (typeof rel !== 'string' || !rel || isAbsolute(rel) || /[:\0]/.test(rel)) refuse('E_WORK_PATH', 'Expected a repository-relative path.');
-  const parts = rel.replaceAll('\\', '/').split('/');
-  if (parts.some((p) => !p || p === '.' || p === '..')) refuse('E_WORK_PATH', 'Path traversal or empty segments are not allowed.');
-  const base = resolve(root); const target = resolve(base, ...parts);
-  const r = relative(base, target);
-  if (!r || r.startsWith('..') || isAbsolute(r)) refuse('E_WORK_PATH', 'Path escapes the project.');
-  let current = base;
-  for (const part of ['', ...parts]) {
-    if (part) current = join(current, part);
-    let stat;
-    try { stat = lstatSync(current); } catch (e) { if (e.code !== 'ENOENT') throw e; }
-    if (stat?.isSymbolicLink()) refuse('E_WORK_PATH', `Symlink/junction refused: ${current}`);
-  }
-  return target;
 }
 
 const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');

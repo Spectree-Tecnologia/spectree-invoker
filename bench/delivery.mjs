@@ -18,6 +18,7 @@
 // The counts it prints — pull requests, pushes to main — are what the procedure PRODUCES. How many
 // CI runs those become is a fact about a real repository, and this does not infer it.
 
+import { flags } from '../scripts/lib/shared/cli.mjs';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
@@ -25,7 +26,7 @@ import { gitRepo, tempDir, cleanup, REPO, now, preparationOf, stubGh, greenRun }
 import { contentDigest } from '../scripts/lib/digest.mjs';
 
 const argv = process.argv.slice(2);
-const opt = (name, fallback) => { const i = argv.indexOf(`--${name}`); return i >= 0 ? argv[i + 1] : fallback; };
+const opt = flags(argv).value;
 const MODE = opt('mode', 'prepared');
 const N = Number(opt('n', 7));
 if (!['prepared', 'legacy', 'compare'].includes(MODE)) { console.error('--mode is "prepared", "legacy" or "compare"'); process.exit(2); }

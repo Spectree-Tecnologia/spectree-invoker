@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { inside, references, refuse } from './work.mjs';
+import { references } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 
 export const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const hash = (value) => createHash('sha256').update(typeof value === 'string' || Buffer.isBuffer(value) ? value : JSON.stringify(value)).digest('hex');

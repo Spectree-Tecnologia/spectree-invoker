@@ -5,7 +5,7 @@
 - [x] Criar `.spectree/deferred.json` (D-001 a D-008) e gerar `docs/DEFERRED.md`.
 - [x] Registrar a sequência aprovada em `docs/ROADMAP.md`.
 - [x] Subir a versão para 1.22.0.
-- [ ] Suíte, build e integridade verdes no CI do PR.
-- [ ] Arquivar esta pasta depois do merge, junto com a próxima mudança do ciclo.
+- [x] Suíte, build e integridade verdes no CI do PR #58.
+- [x] Arquivar esta pasta depois do merge, junto com a próxima mudança do ciclo.
 
 Evidência local fica no PR; uma marca nesta lista não é prova.
