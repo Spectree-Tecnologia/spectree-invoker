@@ -1043,6 +1043,24 @@ test('21d2. the Architect models the domain before the graph, and remembers it, 
   }
 });
 
+test('21d3. change 1 starts from a convention catalogue, and convergence refuses the false DRY', () => {
+  // The role decisions of change 1 used to start from a blank page; the methodology already argued
+  // most of them through. And a convergence lens with no "same reason to change" test demands that
+  // coincidentally identical shapes be unified, which couples modules the graph keeps apart.
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /Start the role decisions from the catalogue/, `${f} must carry the convention catalogue`);
+    assert.match(body, /Deleted is not inactive/, `${f} must separate removal from deactivation`);
+    assert.match(body, /Validation reports everything/, `${f} must aggregate validation errors`);
+  }
+  for (const f of ['agents/quality-engineer.md', 'adapters/codex/dist/agents/quality_engineer.toml']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /change for the same reason/, `${f} must test duplication by its reason to change`);
+  }
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /false DRY/, `${f} must qualify "two representations" with the false DRY`);
+  }
+});
+
 test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced', () => {
   // The sixth type passed the boundary test on blast radius — money and a paid credential — and
   // that is only true while the card keeps the fences that make it so. Each assertion below is one

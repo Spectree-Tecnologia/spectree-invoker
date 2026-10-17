@@ -94,6 +94,8 @@ Compare **across** modules, not within one:
 
 Accepted evidence: the two declarations side by side with path and line, or a failing check. Divergence is a defect of the module that drifted from the role, not a tie between two styles.
 
+**And the opposite finding is not one: identical code is not a duplicated concept.** Two DTOs with the same fields in two modules, two validators that happen to read alike — ask whether they **change for the same reason**. Same reason: one rule written twice, a finding, unify it. Different reasons: a coincidence of shape, and unifying it couples two modules that the graph keeps apart. That is the false DRY, and demanding it is how a convergence lens rebuilds the Big Ball of Mud. Name the reason each side would change; if you cannot name one shared reason, there is no finding.
+
 ## Lens 4 — what the change did that it never promised
 
 Pass 1, the Developers and lenses 1 to 3 all ask whether the change **did what it said**. Nothing asks whether it **did anything else** — the gate approved a scope and no step confirms the scope was kept. Scope creep is invisible to every other stage, ships as working code, and is discovered a year later by whoever wonders why this is here.
