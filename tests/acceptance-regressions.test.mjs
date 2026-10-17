@@ -1085,7 +1085,7 @@ test('21d5. exploration records the Founder\'s answers and holds them against th
   for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
     const body = readFileSync(join(REPO, f), 'utf8');
     assert.match(body, /Record before you recompute/, `${f}: a round writes the answers it was handed first`);
-    assert.match(body, /only\*\* `docs\/DOMAIN\.md`, with the answers already given/, `${f}: the tool grant names the one exploration write`);
+    assert.match(body, /only\*\* `docs\/DOMAIN\.md` and `docs\/DECISIONS\.md`, with the answers already given/, `${f}: the tool grant names the exploration writes`);
     assert.match(body, /Not yet specified:/, `${f}: the round hands the next one its fog`);
     assert.match(body, /Out of scope:/, `${f}: and what an answer ruled out`);
     assert.match(body, /Hold every answer against the code/, `${f}: an answer the code contradicts is a question`);
@@ -1110,6 +1110,28 @@ test('21d5. the core domain owes a killed mutation, and the cards say where the 
   for (const f of ['agents/quality-engineer.md', 'adapters/codex/dist/agents/quality_engineer.toml']) {
     assert.match(readFileSync(join(REPO, f), 'utf8'), /state\.mjs run <change> mutation\.killed/, `${f}: QA records the probe as observed evidence`);
   }
+});
+
+test('21d6. the project keeps its language and its technical decisions', () => {
+  // A term the Founder settled lived only in a delta's vocabulary, and a technical decision
+  // taken outside a proposal (the stack table, a slot the Invoker closed) lived nowhere.
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /## Language — <subdomain>/, `${f}: the language has a shape`);
+    assert.match(body, /_Avoid_:/, `${f}: each term names the words not to use`);
+    assert.match(body, /_Resolved_:/, `${f}: and the ambiguities already settled`);
+    assert.match(body, /## D-<n> · <short title>/, `${f}: a decision entry has a shape`);
+    assert.match(body, /superseded by D-<m>/, `${f}: a decision is superseded, never edited`);
+    assert.match(body, /goes to `docs\/DECISIONS\.md`, in the same write/, `${f}: technical answers are recorded with the domain ones`);
+  }
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /DECISIONS\.md\s+<- how it is built/, `${f}: the artifact tree lists the decisions log`);
+    assert.match(body, /record the decision and its one-line reason in `docs\/DECISIONS\.md`/, `${f}: a slot the Invoker closed has a home`);
+    assert.doesNotMatch(body, /where the next agent will read it\*\*/, `${f}: the vague location is gone`);
+  }
+  assert.match(readFileSync(join(REPO, 'agents/platform-engineer.md'), 'utf8'), /recorded in `docs\/DECISIONS\.md`/,
+    'the Platform Engineer reads the stack from the artifact');
 });
 
 test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced', () => {
