@@ -1149,6 +1149,24 @@ test('21d7. a fact the interview owes from outside is dispatched, not asked', ()
   }
 });
 
+test('21d8. a legacy codebase is modularized by a sequence of deltaless extractions', () => {
+  // The squad assumed every project was born modular; adoption was operational only, and nothing
+  // said how to take a Big Ball of Mud to modules without stopping the product.
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /## Modularizing a legacy codebase/, `${f}: the Architect has the roadmap`);
+    assert.match(body, /\*\*Extract leaves first\.\*\*/, `${f}: the order follows the dependency graph`);
+    assert.match(body, /\*\*Every extraction is a deltaless change, and only that\.\*\*/, `${f}: behaviour never moves inside an extraction`);
+    assert.match(body, /characterize it first/, `${f}: untested code is pinned before it moves`);
+    assert.match(body, /never give an extracted module a spec written from its characterization tests/, `${f}: no backfill through the side door`);
+  }
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /\*\*Architectural adoption is not operational adoption\.\*\*/, `${f}: the protocol tells the two adoptions apart`);
+    assert.match(body, /Never accept a legacy extraction that also changes behaviour/, `${f}: the Invoker refuses a mixed extraction`);
+  }
+});
+
 test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced', () => {
   // The sixth type passed the boundary test on blast radius — money and a paid credential — and
   // that is only true while the card keeps the fences that make it so. Each assertion below is one
