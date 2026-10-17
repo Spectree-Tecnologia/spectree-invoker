@@ -1167,6 +1167,25 @@ test('21d8. a legacy codebase is modularized by a sequence of deltaless extracti
   }
 });
 
+test('21d9. a write across modules is a process with an owner, its facts and its compensations', () => {
+  // The simple case (two aggregates in one transaction) was covered; a write across modules had
+  // only "a gate in proposal.md", and nothing said how to keep it acyclic or how to undo a step.
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /## Processes across modules/, `${f}: the Architect has the design`);
+    assert.match(body, /\*\*The process has an owner, upstream of every participant\.\*\*/, `${f}: the graph stays acyclic`);
+    assert.match(body, /\| Step \| Module \| Outcome facts \| Compensation \|/, `${f}: the proposal carries the process table`);
+    assert.match(body, /\*\*A step that cannot be undone is the pivot\*\*/, `${f}: the irreversible step goes last`);
+    assert.match(body, /\*\*The half-way states are behaviour, so they are `Scenario`s\*\*/, `${f}: compensations are specified`);
+    assert.doesNotMatch(body, /is a gate in `proposal\.md`, never two loose writes/, `${f}: the old non-answer is gone`);
+  }
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /does not bend this rule — it becomes a process/, `${f}: §5 says how a write crosses modules`);
+    assert.match(body, /Never accept a write across modules done as loose writes/, `${f}: the Invoker refuses the shortcut`);
+  }
+});
+
 test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced', () => {
   // The sixth type passed the boundary test on blast radius — money and a paid credential — and
   // that is only true while the card keeps the fences that make it so. Each assertion below is one

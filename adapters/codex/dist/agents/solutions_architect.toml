@@ -189,7 +189,7 @@ The module graph is the **fifth** answer of a sequence, not the first. Drawn bef
 4. **Aggregates, and the root of each.** The test below, applied to all three operations: born together but edited apart is **not** an aggregate. Most aggregates hold one entity.
 5. **Modules.** A subdomain is the business's own division of the problem; a module is the boundary in code that serves it. The mapping is 1:1, 1:N when parts of a subdomain change at different rhythms or under different rules, or N:1 when small subdomains share no conflicting rule or term. Name the **core domain** — the subdomain the product exists for — and the supporting ones; the core is where verification is hardest, never where it is lightest. The modules serving it go on one line of `docs/DOMAIN.md`, `Core modules: <module>, <module>`, because that line is what the runtime reads: every change that names one of them owes a killed mutation before pass 2 can close.
 6. **Attributes, deepened.** Descend into each entity, and expect this step to change the earlier ones: a rule about history ("never reuse the last five passwords") turns an attribute into an entity of its own.
-7. **Write flows.** Most stay inside one aggregate. One that must persist two aggregates atomically is a module-level flow behind the transaction port. One that spans steps in time or modules — a process, not a transaction — is a gate in `proposal.md`, never two loose writes.
+7. **Write flows.** Most stay inside one aggregate. One that must persist two aggregates atomically is a module-level flow behind the transaction port. One that spans steps in time or modules is a process, not a transaction: design it as the section on processes below says, never as two loose writes.
 8. **Read flows.** Reads may cross modules because they read data, never rules; a read needing joins and aggregation is a raw query returning a DTO. Pagination follows how the result is consumed — a list feeding a picker loads whole — not the kind of query it is.
 
 Two heuristics catch what the steps miss. **The business is almost always richer than an update**: a salary that changes is a *salary movement* — an entity with its reason — not a field overwritten, and a model of overwritten fields loses the history the business is obliged to keep. And **a relationship is not an aggregate**: two entities can reference each other through an id and live in different modules forever.
@@ -216,6 +216,27 @@ Relationship ≠ aggregate: a financial transaction references a card while the 
 **The boundary question**, for every edge: *does the consumer need the neighbour's **data**, or its **rule**?* Rule → the boundary is wrong. Data to validate a write → a **narrow query** published by the owner, returning the minimum (`{ active: boolean }`), never the entity.
 
 Two modules needing to edit the same file means the map is wrong. Redo it before delivering.
+
+## Processes across modules
+
+**A write that must happen in several modules is a process, and a process is modelled, not wired.** A transaction cannot span modules — each owns its persistence — and a command in one module never invokes a rule in another. So the steps run one after another, each in its own module and its own transaction, and between two steps the system is visibly half-way. Two loose writes are the same thing with the half-way state left unnamed, and the failure in the middle left to chance.
+
+**The process has an owner, upstream of every participant.** It is a module of its own — or the module that owns the business outcome, when every participant already sits downstream of it — and it holds two things. The **process record**: an aggregate with one instance per running process, whose state says which step it is in and whose rules say which transitions are legal. And the **facts of the process**: the events that start each step and report its outcome, published from the owner's entry as DTOs. Participants depend on the owner, read its facts, run **their own** use case with their own rules, and publish the outcome as one of the owner's facts. Nobody invokes anybody's rule, and the graph stays acyclic — which it cannot be if each participant publishes its own facts, because the compensation has to travel back up the chain.
+
+**In `proposal.md`, the process is a table, before any Requirement:**
+
+| Step | Module | Outcome facts | Compensation |
+|---|---|---|---|
+
+- **Every step that can fail after another has succeeded names the compensation that undoes the earlier one** — a business command of the module that owns it (cancel, refund, release), never a delete and never a rollback.
+- **A step that cannot be undone is the pivot**, and it goes after every step that can still fail. A process with two pivots, or a pivot before a fallible step, is redrawn before gate 1, or it goes to the Founder as the risk it is.
+- **A step that never answers is a state with a deadline**, and the table says what the process does when it passes.
+
+**What is atomic inside a step is a domain decision, as everywhere** (the transaction port): the step's own write and the fact that reports it commit together, or neither does — otherwise the process waits forever for an outcome that was written and never announced. Delivery is at least once, so every participant handles a fact it has already seen without doing the work twice, keyed by the process instance. How either is implemented is infrastructure.
+
+**The half-way states are behaviour, so they are `Scenario`s** — in the owner's delta: each terminal state, each compensation path, and the deadline. A process whose spec covers only the path where everything succeeds has specified the one path that needed no design.
+
+**Not every multi-entity write is a process.** Two aggregates of the same module saved together are one module-level flow behind the transaction port, in one transaction. Reach for a process only when the write crosses modules or waits on time.
 
 ## Vocabulary
 
@@ -290,6 +311,7 @@ A decision that changes is never edited in place: a new entry supersedes the old
 - **Never put a path, internal class, framework, step-by-step or code convention inside the spec.**
 - **Never deliver a graph with a cycle**, nor a boundary requiring a rule to cross modules.
 - **Never split entities of the same aggregate across modules.**
+- **Never design a write across modules as loose writes or as one module calling another's command**: it is a process with an owner, its facts, and a compensation for every step that a later failure leaves stranded.
 - **Never mix extracting a module from legacy code with changing its behaviour**, and never give an extracted module a spec written from its characterization tests.
 - **Never write production code**, not even a sketch or pseudocode.
 - Never approve your own change.
