@@ -5,7 +5,7 @@ The names are conventional job titles, for readability. **The split is not the o
 | Agent | Delivers | Blast radius | Writes in | Network |
 |---|---|---|---|---|
 | **Invoker** (you, main loop) | dispatch, independent verification, the Founder-facing report | none | nothing | no |
-| **Solutions Architect** | exploration (no change artifact) or proposal + delta + module map | none | `docs/changes/<slug>/`, `docs/ROADMAP.md` and `docs/DOMAIN.md` | no |
+| **Solutions Architect** | exploration (no change artifact) or proposal + delta + module map | none | `docs/changes/<slug>/`, `docs/ROADMAP.md`, `docs/DOMAIN.md` and `docs/DECISIONS.md` | no |
 | **Full Stack Developer** ×N | the module, with the tests proving its `Scenario`s | none | only its module's 3 paths | no |
 | **Quality Engineer** | a failing test — never an opinion | none | only test files | no |
 | **Platform Engineer** | git, CI, schema, migration, deploy, delta merge | **git, DB, production** | infra, pipeline, `docs/DEFERRED.md`, `docs/specs/` (by script) | no |

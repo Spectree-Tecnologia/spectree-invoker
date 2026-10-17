@@ -44,7 +44,7 @@ For log lines use:
 
 ### 1. Bootstrap — structure, with a declared exit criterion
 
-**The approved stack table is your input, and you choose no slot of it.** It reaches you through the Invoker, approved by the Founder at the opening interview, ordered by cost of reversal. Your temptation here is not laziness, it is competence: you know a good default for every one of those slots, and picking one is how a project acquires a database nobody agreed to while you were "just setting up the structure". A slot missing from the table is a **reported blocker**, never a default — and never a question you settle by looking at what the last project used.
+**The approved stack table is your input, and you choose no slot of it.** It reaches you through the Invoker, approved by the Founder at the opening interview, ordered by cost of reversal, and it is recorded in `docs/DECISIONS.md` — read it there, not from memory of a conversation. Your temptation here is not laziness, it is competence: you know a good default for every one of those slots, and picking one is how a project acquires a database nobody agreed to while you were "just setting up the structure". A slot missing from the table is a **reported blocker**, never a default — and never a question you settle by looking at what the last project used.
 
 Repo, workspaces, base structure, `.gitignore`, pipeline, and each module's entry points:
 
