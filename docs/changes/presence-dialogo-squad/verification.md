@@ -27,21 +27,36 @@ Nenhuma escrita ou teste em projetos consumidores.
 ## Verificação documental
 
 Proposta, tarefas e roadmap são os únicos artefatos desta mudança. Os **17 links
-locais** dos quatro documentos apontam para arquivos existentes. HEAD e tag
-v1.16.0 foram consultados e resolvem para `8c7b0999cb233cab0ffec15b71d19386b14813f7`.
+locais** dos quatro documentos apontam para arquivos existentes. Na abertura da
+branch, HEAD e tag v1.16.0 foram consultados e resolviam para
+`8c7b0999cb233cab0ffec15b71d19386b14813f7`.
 Nenhum código do runtime mudou. `git diff --check` aprovado na revisão documental;
 repetir sobre o conteúdo staged antes do commit. Não foi repetida a suíte completa
 para documentos: nenhuma nova evidência de execução P4 pode ser inferida disso.
 
 ## Pendências para recomendar entrega
 
-Todos os cenários A1–A12 e incrementos P4.1–P4.3 estão pendentes de implementação
+Todos os cenários A1–A15 e incrementos P4.1–P4.3 estão pendentes de implementação
 e evidência. Não existe aceite de timbre `cedar` em português, fila de áudio real,
-delegação Architect ou desempenho P4. A consulta à documentação oficial verificou
+delegação dos subagentes ou desempenho P4. A consulta à documentação oficial verificou
 possibilidades da API, sem testar compatibilidade desta conta ou do transporte.
 
 Saldo conservador conhecido: US$ 0,70 do teto US$ 6, após US$ 5,30 reservados;
 não é extrato do provedor. Nenhuma reserva foi reiniciada ou ampliada.
 
-Recomendação do planejamento: implementar P4.1 primeiro e provar autoria e
-cancelamento com transporte falso antes de integrar a fala do especialista.
+## Correção de escopo pelo Founder — 2026-10-17
+
+O Founder esclareceu que a delegação se aplica a qualquer subagente, não apenas
+ao Architect. Proposta, tarefas e roadmap foram corrigidos: ferramenta genérica,
+registro dos seis papéis canônicos de `schemas/common.json`, instâncias próprias
+e voz/apresentação atribuídas por participante. Architect permanece somente como
+primeiro exemplo e ensaio pago; os demais papéis não ficam para outro ciclo.
+
+A13–A15 exigem cobertura dos papéis, elegibilidade e isolamento entre instâncias.
+Isso é planejamento corrigido, sem nova implementação ou evidência de execução.
+Os seis IDs da tabela foram conferidos contra `schemas/common.json` e os seis
+arquivos de perfil existem em `protocol/roles/`. Links locais e whitespace foram
+verificados novamente após a correção.
+
+Recomendação do planejamento: implementar P4.1 com o registro completo e provar
+autoria, roteamento e cancelamento por instância antes de integrar as vozes.

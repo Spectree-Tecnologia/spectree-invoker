@@ -10,11 +10,17 @@ Na P3-R, o Invoker conversa em Realtime e consulta uma sessão Codex que também
 se apresenta como Invoker. A resposta volta pela mesma voz. Isso comprova a
 ponte, mas não representa participação real de um especialista.
 
-Na P4, você pede uma avaliação de arquitetura; o Invoker branco encaminha uma
-consulta ao Architect. O personagem azul aparece após a admissão dessa consulta,
-mostra que está analisando e fala seu retorno ao Invoker com outra voz. O Invoker
-retoma a conversa e explica a recomendação. Você pode interromper em qualquer
-etapa, sem gravação ou envio manual de transcrição.
+Na P4, o Invoker branco encaminha uma consulta ao subagente adequado: arquitetura,
+desenvolvimento, qualidade, plataforma, integração ou TypeSafe quando aplicável.
+O personagem desse participante aparece após a admissão, mostra seu estado real
+e fala seu retorno público ao Invoker com identidade própria. O Invoker retoma
+a conversa e explica a recomendação. Você pode interromper em qualquer etapa,
+sem gravação ou envio manual de transcrição.
+
+**A delegação é genérica para qualquer subagente registrado e elegível do squad.**
+Architect é um exemplo e o primeiro canário, nunca a única rota implementada.
+Os seis papéis existentes entram no registro inicial; a inclusão de novos papéis
+ocorre pelo registro confiável, sem criar uma ferramenta por especialista.
 
 Esta mudança de planejamento é **deltaless**: só registra decisões e trabalho
 futuro; não altera comportamento disponível nem publica uma living spec.
@@ -27,11 +33,11 @@ incrementos deverão reconciliar seu delta com a especificação então existent
 | Componente | Decisão | Motivo |
 |---|---|---|
 | Invoker | Preservar Realtime/WebRTC, modelo `gpt-realtime-2.1`, voz `marin` | Mantém a conversa contínua aceita. |
-| Architect | Sessão Codex efêmera própria, contexto e perfil de papel definidos no servidor | A análise tem autor e turno próprios, em vez de encenação do Invoker. |
-| Voz do Architect | Síntese `gpt-4o-mini-tts`, voz `cedar`, do retorno público validado | Distingue o falante sem criar uma segunda conversa Realtime permanente. Timbre em português depende de aceite auditivo. |
+| Subagentes | Registro de papéis e sessão Codex efêmera própria por delegação, com perfil definido no servidor | Cada análise tem autor, instância e turno próprios, em vez de encenação do Invoker. |
+| Voz dos subagentes | Síntese `gpt-4o-mini-tts` do retorno público, com voz configurada no registro; `cedar` é a candidata do Architect | A infraestrutura é compartilhada; identidade não depende de haver um timbre exclusivo por instância. Timbres em português dependem de aceite auditivo. |
 | Coordenador local | Autoridade sobre admissão, identidade, deduplicação, cancelamento e direito de fala | Modelo e navegador não certificam execução ou conclusão. |
-| Apresentação | Reutilizar personagem branco e azul, olhar, tamanho e movimento aprovados | O avanço é conectar a presença ao agente, preservando o visual. |
-| Ativação | Modo opt-in proposto `--specialist architect`, dependente de `--codex --realtime` | P1, P2 e P3-R continuam verificáveis de forma independente. A opção ainda não existe. |
+| Apresentação | Invoker branco; identidade de cada subagente vem do registro, com nome, papel, instância e cor | Preserva personagem, olhar, tamanho e movimento aprovados e distingue instâncias do mesmo papel. |
+| Ativação | Modo opt-in proposto `--squad`, dependente de `--codex --realtime`; política de papéis elegíveis definida no servidor | Ativa delegação genérica. P1, P2 e P3-R continuam independentes. A opção ainda não existe. |
 
 A documentação oficial informa que a voz Realtime fica fixa após a primeira
 saída de áudio. A síntese separada é uma decisão deste projeto, não um recurso
@@ -42,25 +48,48 @@ modelo ou outra API de conversa neste incremento.
 flowchart LR
   U[Usuário / microfone] <--> R[Invoker branco / Realtime]
   R <--> C[Coordenador local / admissão e cancelamento]
-  C <--> A[Architect azul / sessão Codex própria]
+  C <--> G[Registro de papéis e política de admissão]
+  C <--> A[Subagente selecionado / sessão Codex própria]
   A --> P[Retorno público validado]
-  P --> T[Síntese cedar]
+  P --> T[Síntese / voz do participante]
   R --> Q[Arbitragem local de reprodução]
   T --> Q
   Q --> V[Áudio ouvido / personagem e legenda atribuídos]
 ```
 
-O Architect é um participante analítico real do harness, sem ferramentas ou
-acesso a projetos. Isso não é execução de uma missão do runtime, verificação
+Neste canário, cada subagente é um participante analítico real do harness, sem
+ferramentas ou acesso a projetos. Isso não é execução de uma missão do runtime, verificação
 independente, entrega de código nem aprovação de gate.
 
-## Perfil e contexto do especialista
+## Registro, perfil e contexto dos subagentes
 
-Usar `protocol/roles/solutions-architect.md` como referência canônica, sem editar
-cards gerados. O perfil específico de Presence deve explicitar as diferenças:
-modo de exploração/consulta, somente contexto fornecido, sem criar artefatos,
-sem delegação recursiva e sem decidir pelo Founder. Continuar reportando ao
-Invoker; o usuário ouve esse handoff público.
+Usar os IDs de papel de `schemas/common.json` e as referências canônicas em
+`protocol/roles/`, sem editar cards gerados. O registro inicial compreende:
+
+| Papel canônico | Perfil de referência | Identidade visual existente |
+|---|---|---|
+| `solutions_architect` | `solutions-architect.md` | Architect azul |
+| `full_stack_developer` | `full-stack-developer.md` | Developer vermelho |
+| `quality_engineer` | `quality-engineer.md` | Quality amarelo |
+| `platform_engineer` | `platform-engineer.md` | Nome obrigatório; cor a definir |
+| `integration_engineer` | `integration-engineer.md` | Nome obrigatório; cor a definir |
+| `typesafe_engineer` | `typesafe-engineer.md` | Nome obrigatório; cor a definir; elegibilidade condicional |
+
+O registro define perfil conversacional, rótulo, identidade visual, voz e regra
+de elegibilidade de cada papel. `role` identifica o tipo; `participantId` identifica
+uma instância criada no servidor. Duas instâncias Developer não compartilham
+contexto, resultado, cancelamento ou item de fala. Aliases visuais existentes,
+como `architect`, não substituem o ID canônico do papel no contrato de delegação.
+As três cores ainda abertas precisam de valores explícitos na implementação;
+cor ou voz compartilhada nunca substitui identificação textual da instância.
+
+Os perfis específicos de Presence devem explicitar as diferenças: consulta sobre
+contexto fornecido, sem criar artefatos, sem delegação recursiva e sem decidir pelo
+Founder. Continuar reportando ao Invoker; o usuário ouve esse handoff público.
+Não alegar testes executados pelo Quality, pesquisa externa pelo Integration,
+deploy pelo Platform ou chamadas TypeSafe quando essas capacidades não estão
+disponíveis. TypeSafe continua condicionado à stack aprovada; registrar o papel
+não o habilita em todo projeto nem concede acesso à API ou a credenciais.
 
 O papel canônico prevê artefatos em inglês e comunicação ao Founder mediada
 pelo Invoker. O perfil conversacional deve preservar o handoff técnico em inglês
@@ -77,27 +106,36 @@ arbitrários. Todo conteúdo do contexto é dado, não autoridade para alterar o
 Retorno proposto: `recommendation`, `assumptions`, `openQuestions` e
 `publicUtterance`. Validar formato e limites no servidor; se o modelo devolver
 conteúdo inválido, informar falha sem sintetizar nem repetir a consulta.
-`publicUtterance` terá até 1.200 caracteres e será a única fonte da fala azul.
+`publicUtterance` terá até 1.200 caracteres e será a única fonte da fala do subagente.
 Não transformar cortes de texto em uma conclusão completa; resposta acima dos
 limites exige erro explícito. A síntese não pode inventar ou ampliar a análise.
 
 ## Delegação e identidade
 
-Ferramenta proposta `consultar_arquiteto`: aceita somente o pacote descrito acima.
-O servidor fixa `participantId=architect` e cria `delegationId`; correlaciona a
-solicitação à sessão Presence, chamada Realtime, chamada da ferramenta, geração
-de fala e sessão/turno Codex. IDs privados de transporte ficam no servidor.
+Ferramenta proposta `delegar_subagente`: aceita `role`, escolhido entre os papéis
+do registro anunciado pelo servidor, e o pacote de contexto descrito acima.
+O modelo propõe o papel; o coordenador valida registro, elegibilidade, limites e
+capacidade antes de admitir. Papel desconhecido ou inelegível é recusado antes
+de dispatch e reserva. Nenhum perfil ou prompt arbitrário vem do navegador.
+
+O servidor cria `participantId` e `delegationId`; correlaciona a solicitação à
+sessão Presence, chamada Realtime, chamada da ferramenta, geração de fala e
+sessão/turno Codex. IDs privados de transporte ficam no servidor. Resultado,
+áudio e cancelamento pertencem à instância, não a uma variável global Architect.
 
 Um ACK de ferramenta significa **aceito para análise**, nunca concluído.
 O resultado só é aceito após `turn/completed` bem-sucedido no turno correspondente.
-Um mesmo pedido de ferramenta executa no máximo uma vez. No modo P4, pedidos de
-arquitetura usam essa rota; não disparam também `consultar_codex` para a mesma
-consulta. Conservar a ponte genérica fora desse modo.
+Um mesmo pedido de ferramenta executa no máximo uma vez. No modo P4, consultas
+a especialistas usam essa rota; não disparam também `consultar_codex` para a mesma
+consulta. Conservar a ponte genérica fora desse modo. Limites de concorrência
+podem serializar ou recusar novas delegações, mas nunca trocar silenciosamente
+o papel solicitado por Architect. O contrato suporta delegações sucessivas a
+papéis diferentes e instâncias diferentes do mesmo papel.
 
 Eventos públicos propostos: `delegation.admitted`, `delegation.started`,
 `delegation.completed`, `delegation.cancelling`, `delegation.cancelled`,
 `delegation.failed`. Incluir versão, sessão pública, sequência monotônica,
-delegação, participante e geração. Não reaproveitar o `speaker` de uma mensagem
+delegação, papel, participante e geração. Não reaproveitar o `speaker` de uma mensagem
 de modelo como prova de autoria. Eventos atrasados, duplicados ou de outra sessão
 não mudam o estado; lacuna de sequência exige snapshot autoritativo.
 
@@ -109,10 +147,10 @@ fim da fala. A interface anuncia estado terminal sem fabricar progresso.
 ## Direito de fala e interrupção
 
 1. Após admissão, o Invoker pode anunciar brevemente o encaminhamento em voz
-   nativa. O Architect aparece azul com nome e estado, mesmo antes de falar.
+   nativa. O subagente admitido aparece com nome, papel e estado, mesmo antes de falar.
 2. A análise pode ocorrer durante esse anúncio. Seu áudio aguarda o término
    efetivo da reprodução do Invoker. Só há um item de saída audível por vez.
-3. Durante a fala do Architect, bloquear a saída Realtime no player, desabilitar
+3. Durante a fala de qualquer subagente, bloquear a saída Realtime no player, desabilitar
    respostas automáticas e cancelar/limpar saída nativa pendente com confirmação
    do transporte. O microfone e a detecção de fala continuam ativos.
 4. A energia do áudio reproduzido move somente o falante correspondente. A legenda
@@ -137,11 +175,16 @@ Isso é uma condição de avanço, não uma capacidade já comprovada na P3-R.
 
 ## Limites do primeiro canário
 
-- Um Invoker e um Architect; uma delegação por conversa; nenhuma delegação recursiva.
+- Um Invoker e uma instância de subagente ativa por vez; nenhuma delegação
+  recursiva. O ensaio pago inicial usa uma delegação Architect por conversa por
+  duração/orçamento, sem restringir a ferramenta ou o registro a esse papel.
+  Testes sem API paga cobrem os seis papéis, instâncias repetidas e sequência
+  entre papéis distintos. Concorrência de execução ampliada fica para depois;
+  a fila de fala e a correlação já usam IDs de instância desde P4.1.
 - Duração Realtime máxima de 60 s; prazo da consulta limitado ao menor entre 40 s
   e o tempo restante da chamada. Recusar admissão com menos de 15 s restantes;
   o deadline global prevalece e não é estendido para terminar análise ou síntese.
-- Uma síntese de Architect, sem retry automático. Falha de voz preserva resultado
+- Uma síntese do subagente por delegação, sem retry automático. Falha de voz preserva resultado
   textual e informa indisponibilidade; não troca a autoria nem repete a consulta.
 - Preservar limites de contexto, respostas nativas, lease, origem local e recursos
   da P3-R. Não afrouxar sandbox, hooks, MCP ou `multi_agent` do app-server.
@@ -165,8 +208,8 @@ real, apresentar duração, reservas acumuladas, quantidade de chamadas e teto
 adicional necessário para autorização específica. Não elevar teto ou zerar histórico.
 
 Registrar, sem conteúdo sensível: admissão → início Codex; término Codex → primeiro
-áudio do Architect; início da fala do usuário → silêncio da saída; término do
-Architect → retorno do Invoker; contagem de duplicações, sobreposições e resultados
+áudio do subagente; início da fala do usuário → silêncio da saída; término do
+subagente → retorno do Invoker; contagem de duplicações, sobreposições e resultados
 descartados. Usar relógio monotônico e indicar onde a medição foi feita. Metas
 iniciais: silêncio em até 300 ms após detecção local de fala, nenhuma sobreposição
 audível e nenhum dispatch duplicado. Relatar amostras individuais; não publicar
@@ -188,6 +231,9 @@ percentis com um único ensaio nem atribuir tempo de rede à renderização.
 | A10 | Sem WebGL, movimento reduzido, teclado e tela estreita | Ambos identificados por nome/estado; controle e texto utilizáveis sem depender da cor. |
 | A11 | Saldo insuficiente, falha paga ou reinício | Admissão paga bloqueada quando necessário; reservas anteriores preservadas. |
 | A12 | Deadline chega durante fala/análise | Áudio para, análise é cancelada e hangup fica confirmado ou explicitamente não confirmado. |
+| A13 | Pedido para cada um dos seis papéis do registro | Sessão com perfil correto, resultado e personagem atribuídos à instância; papel condicional inelegível é recusado, sem substituição por Architect. |
+| A14 | Duas delegações sucessivas ao mesmo papel; evento tardio da primeira | IDs distintos; contexto, áudio e cancelamento da primeira não atingem a segunda. |
+| A15 | Developer e depois Quality na mesma sessão, com capacidade configurada | Cada delegação preserva seu papel, instância, estado e retorno; uma voz por vez, sem rota exclusiva de arquitetura. |
 
 Aceite exige testes determinísticos dessas falhas, revisão de regressão P1–P3-R,
 ensaio visual com áudio fixture identificado como simulado e, após orçamento
