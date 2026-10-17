@@ -1078,6 +1078,27 @@ test('21d4. the autonomy policy: cheap stack slots, round owners and gate 1 by s
   }
 });
 
+test('21d5. exploration records the Founder\'s answers and holds them against the code', () => {
+  // The card told the Architect to put every settled domain fact in DOMAIN.md and, in the same
+  // breath, to write no file in exploration: the answers lived only in the Invoker's conversation
+  // until proposal mode, and a session that ended there made the Founder answer again.
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /Record before you recompute/, `${f}: a round writes the answers it was handed first`);
+    assert.match(body, /only\*\* `docs\/DOMAIN\.md`, with the answers already given/, `${f}: the tool grant names the one exploration write`);
+    assert.match(body, /Not yet specified:/, `${f}: the round hands the next one its fog`);
+    assert.match(body, /Out of scope:/, `${f}: and what an answer ruled out`);
+    assert.match(body, /Hold every answer against the code/, `${f}: an answer the code contradicts is a question`);
+    assert.doesNotMatch(body, /Never write a file in exploration mode/, `${f}: the contradiction is gone`);
+    assert.doesNotMatch(body, /\*\*never\*\* in exploration mode/, `${f}: the tool grant no longer forbids the domain write`);
+  }
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.doesNotMatch(body, /writing no file at all/, `${f}: exploration writes the domain memory`);
+    assert.match(body, /do not end the interview with any of them unrecorded/, `${f}: the Invoker does not drop answers`);
+  }
+});
+
 test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced', () => {
   // The sixth type passed the boundary test on blast radius — money and a paid credential — and
   // that is only true while the card keeps the fences that make it so. Each assertion below is one
