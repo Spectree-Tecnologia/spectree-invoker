@@ -113,7 +113,7 @@ node --env-file=.env tests/fixtures/presence-realtime-browser.mjs --live
 A fixture envia fala demonstrativa por MediaStream, uma consulta sintética ao
 Codex e nova fala para testar interrupção. `--live --short` limita a 15 segundos
 e três respostas, com reserva US$ 0,30. Chamadas reais não fazem parte do CI.
-[Evidências e pendências](changes/presence-realtime/verification.md).
+[Evidências e pendências](changes/archive/2026-10-17-presence-realtime/verification.md).
 
 Fontes oficiais consultadas em 2026-10-16: [WebRTC](https://developers.openai.com/api/docs/guides/voice-webrtc?voice-api=realtime),
 [conversas](https://developers.openai.com/api/docs/guides/realtime-conversations),

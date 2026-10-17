@@ -91,4 +91,4 @@ p95 para afirmar ausência de travamentos.
 Validação automatizada: `node --test tests/presence*.test.mjs`, seguida de
 `npm run check`. Repetir no navegador: três turnos, pausa/retomada, reinício,
 troca de identidade, transcrição por teclado, cena fora da tela e viewport
-estreito. Resultados e limitações ficam no [registro de verificação](changes/presence-fundacao/verification.md).
+estreito. Resultados e limitações ficam no [registro de verificação](changes/archive/2026-10-14-presence-fundacao/verification.md).

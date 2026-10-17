@@ -34,7 +34,7 @@ node --env-file=.env scripts/presence.mjs --codex --voice --budget-usd 0.7
 
 O valor US$ 0,70 mantém a reserva restante dos ensaios conhecidos de 2026-10-16,
 após a ampliação do teto total para US$ 6 e a
-[verificação Realtime](changes/presence-realtime/verification.md).
+[verificação Realtime](changes/archive/2026-10-17-presence-realtime/verification.md).
 O comando `npm run presence` não carrega
 `.env` automaticamente. Não versione nem compartilhe esse arquivo.
 Se aparecer `E_CODEX_UNAVAILABLE`, configure também `SPECTREE_CODEX_EXECUTABLE`
@@ -126,7 +126,7 @@ até início de reprodução. A síntese começa após a conclusão do texto, re
 cada parte inteira antes de tocar. Ainda não é streaming fim a fim; partes longas
 podem ter pausas. Não se promete latência abaixo de um segundo.
 Qualidade em português e latência real devem ser registradas na
-[verificação P3](changes/presence-voz-invoker/verification.md).
+[verificação P3](changes/archive/2026-10-17-presence-voz-invoker/verification.md).
 
 Fontes oficiais consultadas em 2026-10-15: [síntese](https://developers.openai.com/api/docs/guides/text-to-speech),
 [transcrição](https://developers.openai.com/api/reference/resources/audio/subresources/transcriptions/methods/create)
