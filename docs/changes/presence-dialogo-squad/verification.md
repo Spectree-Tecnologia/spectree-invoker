@@ -5,13 +5,17 @@
 Após solicitação do Founder, `origin/main` em `ac7fd7d` foi incorporada por
 merge à branch `codex/presence-p4-delegation`, sem rebase, force-push ou merge
 na main. A integração inclui PRs #49–#53; o #53 já estava integrado com 1.19.0.
-O merge de base não teve conflitos textuais. Nenhum arquivo gerado foi editado
-à mão: `npm run build` confirmou que os artefatos já correspondiam a `protocol/`.
+Esse primeiro merge de base não teve conflitos textuais. Após o avanço da main
+para `5d9f7c4` / 1.20.0 pelo PR #54, um segundo merge foi concluído em `746c852`.
+Os únicos conflitos foram os campos de versão em `.claude-plugin/plugin.json`,
+`package.json` e `package-lock.json`: preservada a candidata 1.21.0 e todos os
+demais conteúdos da main. Nenhum arquivo gerado foi editado à mão: `npm run build`
+confirmou que os artefatos já correspondiam a `protocol/`, inclusive os do #54.
 
 Versão candidata **1.21.0** alinhada em manifesto, pacote, lockfile e
 `clientInfo` do Presence. Durante a conferência para publicação, o PR #54 foi
-encontrado aberto com 1.20.0, tornando 1.21.0 a próxima minor livre. A main
-continuava em 1.19.0; base e versões serão consultadas novamente antes do push.
+encontrado aberto com 1.20.0, tornando 1.21.0 a próxima minor livre. Ele depois
+entrou na main; base e versões serão consultadas novamente antes do push.
 
 Auditoria da fronteira: **56 módulos de runtime**, excluídos apenas os quatro
 entrypoints locais `console.mjs`, `presence.mjs`, `presence-canary.mjs` e
@@ -33,9 +37,20 @@ Após identificar a reserva concorrente da 1.20.0 no PR #54, a candidata foi
 elevada para 1.21.0. A revalidação limpa dessa versão sobre `ac7fd7d` passou:
 **506/506 testes**, zero falhas ou skips, em **395.014,857 ms**. Entretanto, na
 conferência final o PR #54 já havia avançado a main para `5d9f7c4` / 1.20.0.
-O push foi bloqueado antes de ocorrer: essa nova base precisa ser incorporada e
-revalidada. Nenhuma API paga ou projeto consumidor real foi usado. Publicação
-por push da branch e PR para main, sem autorização inferida de merge.
+O push foi bloqueado antes de ocorrer. A nova base foi incorporada em `746c852`;
+a revalidação limpa sobre `5d9f7c4` foi concluída: **507 testes, 507 aprovados,
+zero falhas, cancelamentos ou skips**, em **443.415,1809 ms** (aproximadamente
+7 min 23 s). `npm ci`, `npm run build`, drift e integridade também passaram.
+O teste 5e2 e as regressões do PR #54 passaram nesta última execução.
+
+`git fetch origin` após a suíte confirmou novamente `5d9f7c4` / 1.20.0, sem
+outro PR aberto ou tag 1.21.0 reservando a candidata. A auditoria da fronteira
+foi repetida: 56 módulos, zero imports de UI pelo runtime. Comparação dos três
+manifestos com a main confirmou igualdade dos demais campos, exceto versões.
+Depois da suíte, apenas registros documentais foram atualizados; código, testes,
+versões e dependências permaneceram iguais. Somente esta última execução é o
+check final do PR. Nenhuma API paga ou projeto consumidor real foi usado.
+Publicação por push da branch e PR para main, sem autorização inferida de merge.
 
 ## Estado atual — P4.1 implementada, sem merge
 

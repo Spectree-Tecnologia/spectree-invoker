@@ -57,6 +57,12 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-17:** o PR #54 entrou durante a preparação P4.1, avançando a main
+  para `5d9f7c4` / 1.20.0. Publicação bloqueada antes do push; nova incorporação
+  por merge `746c852`, com conflitos apenas de versão nos três manifestos,
+  resolvidos mantendo **1.21.0**. Gerados conferidos por build; `npm ci` e nova
+  validação sobre essa base: **507/507 testes**, zero falhas ou skips. Base e
+  versão reconsultadas após a suíte, antes do PR e sem merge na main.
 - **2026-10-17:** preparação P4.1 contra `origin/main` em `ac7fd7d`, incluindo
   PRs #49–#53, por merge sem conflitos textuais. Preparação inicial **1.20.0**; `npm ci`
   seguido de `npm run check`: **506/506 testes**, zero falhas ou skips. Nenhuma
