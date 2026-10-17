@@ -1134,6 +1134,21 @@ test('21d6. the project keeps its language and its technical decisions', () => {
     'the Platform Engineer reads the stack from the artifact');
 });
 
+test('21d7. a fact the interview owes from outside is dispatched, not asked', () => {
+  // A question about an external system had no slot in the round: it either reached the Founder,
+  // who cannot answer it, or sat in nobody's queue while the decisions under it waited.
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /Research: <one line per fact an external system owes this interview/, `${f}: the round carries the missions`);
+    assert.match(body, /Holds: <the decisions waiting on it, which are not in this round>/, `${f}: each mission names what waits on it`);
+    assert.match(body, /a "not found" comes back too/, `${f}: a missing source still reaches the Founder as an assumption`);
+  }
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /`Research` lines you dispatch to the Integration Engineer at once, all in parallel/,
+      `${f}: the Invoker dispatches the research before the first question`);
+  }
+});
+
 test('21d8. a legacy codebase is modularized by a sequence of deltaless extractions', () => {
   // The squad assumed every project was born modular; adoption was operational only, and nothing
   // said how to take a Big Ball of Mud to modules without stopping the product.

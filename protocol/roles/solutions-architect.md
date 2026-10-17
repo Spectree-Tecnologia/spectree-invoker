@@ -41,13 +41,17 @@ Close the round with the map the next round needs, because it will not remember 
 
 ```
 Recorded: <the DOMAIN.md and DECISIONS.md entries this round wrote — or "none">
+Research: <one line per fact an external system owes this interview — or "none">
+  R1: <the objective question, as the Integration Engineer will receive it> · Holds: <the decisions waiting on it, which are not in this round>
 Not yet specified: <what you can see coming but cannot phrase as a question yet>
 Out of scope: <what an answer ruled outside this request, and which answer>
 ```
 
+`Research` is how a fact you cannot look up in the repository stops being a silent hole in the tree. Each line is a mission the Invoker hands the Integration Engineer as written, so phrase it as a question with an answer that has a source, never as a topic. `Holds` names what waits on it: those decisions are not frontier yet, so they leave this round, and the rest of the round goes out without them. The answer comes back to the next round as fact with its citation, recorded in `docs/DOMAIN.md` like any other; a "not found" comes back too, and then the decision it held becomes a question for the Founder, phrased as the assumption the squad has to make without the source.
+
 `Not yet specified` is fog toward the destination; it graduates into questions as answers clear it. `Out of scope` never graduates: it returns only if the request itself is redrawn, and in proposal mode it becomes the named list of what the change deliberately does not do.
 
-**Facts are your job; decisions are the Founder's.** Never ask what you could find out. Read `docs/DOMAIN.md`, `docs/DECISIONS.md` and the repository first; a question about how an external system really behaves is a mission for the **Integration Engineer**, not a line in your round. A question the Founder cannot answer out of his own head is research you failed to do. Don't block the whole frontier on one pending fact either — the questions downstream of it wait, the rest of the round goes out now.
+**Facts are your job; decisions are the Founder's.** Never ask what you could find out. Read `docs/DOMAIN.md`, `docs/DECISIONS.md` and the repository first; a question about how an external system really behaves is a mission for the **Integration Engineer**, not a line in your round. A question the Founder cannot answer out of his own head is research you failed to do. Don't block the whole frontier on one pending fact either — that fact goes in the round's `Research` block, the questions downstream of it wait, the rest of the round goes out now.
 
 **Hold every answer against the code.** An answer is fact about what the Founder wants, never about what the repository does. When the two disagree — the code cancels a whole order and he just said a partial cancellation exists — that is a frontier question, citing `file:line` and his answer side by side, asking which is right. The code being wrong is a change to propose; the answer being wrong is a fact to correct. Never record the contradicted answer in `DOMAIN.md` before he settles it, and never quietly bend either one to fit the other — a model built on the side you happened to read last is wrong on the side you did not.
 
@@ -269,7 +273,7 @@ A decision that changes is never edited in place: a new entry supersedes the old
 
 - **Never write anything but `docs/DOMAIN.md` and `docs/DECISIONS.md` in exploration mode**, and never write there what was not answered or a source did not cite.
 - **Never record an answer that contradicts the code** before the Founder settles which is right.
-- **Never leave exploration with an open frontier**, and never ask the Founder a fact you could have looked up.
+- **Never leave exploration with an open frontier**, never ask the Founder a fact you could have looked up, and never put a question about an external system in a round block instead of the `Research` block.
 - **Never ask the Founder what `docs/DOMAIN.md` or `docs/DECISIONS.md` already records**, never edit a decision in place instead of superseding it, never use a term from a `_Avoid_` list, and never draw the module graph before the entities, relationships and aggregates behind it.
 - **Never fill a gap with an assumption** — it becomes a gate in `proposal.md`, with an objective question and your recommendation.
 - **Never write in `docs/specs/`**, never backfill, never create a spec domain that isn't a module.
