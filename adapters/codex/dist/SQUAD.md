@@ -56,7 +56,7 @@ The names are conventional job titles, for readability. **The split is not the o
 | Agent | Delivers | Blast radius | Writes in | Network |
 |---|---|---|---|---|
 | **Invoker** (you, main loop) | dispatch, independent verification, the Founder-facing report | none | nothing | no |
-| **Solutions Architect** | exploration (no artifact) or proposal + delta + module map | none | `docs/changes/<slug>/` and `docs/ROADMAP.md` | no |
+| **Solutions Architect** | exploration (no artifact) or proposal + delta + module map | none | `docs/changes/<slug>/`, `docs/ROADMAP.md` and `docs/DOMAIN.md` | no |
 | **Full Stack Developer** ×N | the module, with the tests proving its `Scenario`s | none | only its module's 3 paths | no |
 | **Quality Engineer** | a failing test — never an opinion | none | only test files | no |
 | **Platform Engineer** | git, CI, schema, migration, deploy, delta merge | **git, DB, production** | infra, pipeline, `docs/DEFERRED.md`, `docs/specs/` (by script) | no |
@@ -150,6 +150,7 @@ docs/
   changes/archive/<YYYY-MM-DD>-<slug>/
   DEFERRED.md                     <- what was seen, decided and left out. Outlives the change.
   ROADMAP.md                      <- the sequencing the Founder already approved. Never scope, never dates.
+  DOMAIN.md                       <- the business: subdomains, core domain, settled domain facts with their source.
 ```
 
 **`DEFERRED.md` is the ledger of what a change saw and deliberately did not do**, and it is not the same list as a proposal's named absences. Those are **scope** — what this change does not contain — and they die with the change that declared them. This file carries what is **not** feature scope: the ceiling nobody has hit yet, the defect found in passing that belongs to its own change, the thing that is safe today and stops being safe the day the product is reachable. A named absence answers "why isn't this in here"; a deferral answers "who owes this, and when does it come due".
@@ -157,6 +158,8 @@ docs/
 Three rules make it a ledger instead of a graveyard. **Numbers are stable** — never reused, never renumbered, because the log, the proposals and the archive cite them. **A closed item keeps its number and is struck through with what closed it**, so the file records that the debt was paid rather than quietly losing it. And **every closure writes a status line saying what that change owed and did not pay** — without it, deferring is free, and free deferral is how a list of forty things becomes a list nobody reads. Each item names its owner: the Architect, the Platform Engineer, a change of its own, or the first deploy.
 
 **`ROADMAP.md` records sequencing the Founder has already approved**, and exists because that decision is otherwise the only one he makes that never becomes an artifact — the order survives the conversation and every reason for it does not. It is emphatically **not scope** (each change still faces its own gate 1, from its own proposal), **not a date** (the order is the claim; the calendar is not), and **not the living spec** (that says what is true today; this says what is agreed to come next). The Architect owns it, writing from the Invoker's report of the round — the Invoker still writes nothing.
+
+**`DOMAIN.md` is the project's memory of the business**, and exists so that a domain fact the Founder settled once is never asked of him again — across changes, sessions and the many projects the squad runs at the same time. It holds what the product is and for whom, the subdomains with the core domain named and the module serving each, and every settled fact with its source: the Founder's answer and its date, or a source the Integration Engineer cited. It is **not the living spec** (behaviour lives in `Scenario`s), **not scope**, and **not `PRODUCT.md`**, which belongs to the design tool. The Architect owns it, writing from the Invoker's report, as with the roadmap.
 
 **A spec domain is a module, always 1:1.** Never a spec per layer (`auth-backend`), per component (`auth-user-menu`), per use case (`authenticate-user-usecase`) or per setup task (`monorepo-bootstrap`). **Setup tasks get no spec** — no externally observable behaviour, so no test can ever fail because of them; they live in `tasks.md` and die there.
 
