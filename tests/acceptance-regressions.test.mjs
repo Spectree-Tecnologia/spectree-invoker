@@ -1186,6 +1186,23 @@ test('21d9. a write across modules is a process with an owner, its facts and its
   }
 });
 
+test('21d10. a read across modules is a read module, and every list says whole or paged', () => {
+  // The Architect knew reads may cross modules, and nothing said where a screen that gathers three
+  // owners lives, how it gets their data without their tables, or who decides pagination.
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /## Reads across modules/, `${f}: the Architect has the design`);
+    assert.match(body, /\*\*Composed\*\* — it calls the narrow queries the owners publish/, `${f}: composition is the default`);
+    assert.match(body, /\*\*Projected\*\* — it keeps its own copy/, `${f}: projection is the named alternative`);
+    assert.match(body, /\*\*A rule never moves into the read module\.\*\*/, `${f}: a read module carries no rule`);
+    assert.match(body, /\*\*Pagination is decided per list, by how the list is consumed\.\*\*/, `${f}: each list says whole or paged`);
+  }
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /Never accept a read that joins another module's persistence/,
+      `${f}: the Invoker refuses a read through someone else's tables`);
+  }
+});
+
 test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced', () => {
   // The sixth type passed the boundary test on blast radius — money and a paid credential — and
   // that is only true while the card keeps the fences that make it so. Each assertion below is one
