@@ -1,6 +1,6 @@
 {
   "name": "@spectree/invoker",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "private": true,
   "type": "module",
   "description": "The Spectree Invoker squad: one protocol, two harness adapters, and the checks that refuse an invalid state.",

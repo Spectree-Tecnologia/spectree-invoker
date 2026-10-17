@@ -1,6 +1,6 @@
 {
   "mode": "live-synthetic-runtime",
-  "fixture": "C:\\Users\\gilso\\AppData\\Local\\Temp\\spectree-executor-smoke-EsaMKt",
+  "fixture": "%TEMP%\\spectree-executor-smoke-EsaMKt",
   "limitation": "Lifecycle preconditions are seeded fixtures. This run observes real dispatch, implementation and acceptance verification, not the full squad pipeline.",
   "ok": true,
   "attempt": {

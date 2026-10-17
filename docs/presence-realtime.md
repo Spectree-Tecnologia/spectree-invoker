@@ -1,8 +1,8 @@
 # Presence Realtime
 
 Conversa contínua com áudio nativo OpenAI Realtime e ponte de análise para o
-Codex local. Escolha aprovada pelo Founder em 2026-10-16. Disponível na branch
-`codex/presence-realtime`; ainda não integrada à main / versão publicada 1.15.0.
+Codex local. Escolha aprovada pelo Founder em 2026-10-16. Incluída na versão
+1.16.0 do Spectree Presence.
 Experiência aceita pelo Founder em 2026-10-16 após o ensaio com microfone físico.
 
 ## Usar

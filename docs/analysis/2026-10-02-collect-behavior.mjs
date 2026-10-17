@@ -4,9 +4,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
-const project = 'C:/Users/gilso/Documents/spectree-projects/spectree-workspace';
+// usage: node 2026-10-02-collect-behavior.mjs <project-dir> <claude-session-dir>
+const [project, sessionRoot] = process.argv.slice(2);
+if (!project || !sessionRoot) { console.error('usage: <project-dir> <claude-session-dir>'); process.exit(2); }
 const sessionId = '813b6a11-e77e-4817-988b-ef804ff1b04b';
-const sessionRoot = 'C:/Users/gilso/.claude/projects/C--Users-gilso-Documents-spectree-projects-spectree-workspace';
 const from = '2026-09-27T12:17:19.000Z';
 const through = '2026-10-02T15:33:05.050Z';
 const readRows = (file) => fs.readFileSync(file, 'utf8').split('\n').filter(Boolean)

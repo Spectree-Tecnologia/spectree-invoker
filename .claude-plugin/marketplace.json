@@ -1,15 +1,14 @@
 {
   "name": "spectree-invoker",
   "owner": {
-    "name": "Spectree Tecnologia",
-    "email": "gilsonjunior.developer@gmail.com"
+    "name": "Spectree Tecnologia"
   },
-  "description": "Marketplace da Spectree Tecnologia: o squad Invoker para Claude Code.",
+  "description": "Marketplace da Spectree Tecnologia: o runtime e o squad Invoker para Claude Code.",
   "plugins": [
     {
       "name": "spectree",
       "source": "./",
-      "description": "Squad de agentes de IA AI First orquestrado pelo Invoker, para monólitos modulares spec-driven."
+      "description": "Runtime que só aceita como pronto o que um comando provou — o harness por cima do Claude Code e do Codex — e o squad de agentes que ele executa: o Invoker e seis especialistas, para monólitos modulares spec-driven."
     }
   ]
 }

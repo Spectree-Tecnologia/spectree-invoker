@@ -160,3 +160,16 @@ mudou. A revisão das correções não encontrou outro bloqueio no escopo analis
 Não houve novo ensaio pago, acesso a consumidores ou merge. O aceite físico
 anterior continua registrado. **Recomendação: seguir para o merge desta P3-R**,
 respeitando os checks da integração e a autorização específica do Founder.
+
+## Preparação do merge autorizado — 2026-10-17
+
+O Founder aprovou a recomendação de merge. A candidata incorpora `origin/main`
+em `104f709`, preservando as correções de escrita atômica e digest CRLF no
+Windows, a descrição do runtime e a remoção de dados pessoais. O conflito no
+README foi conciliado preservando essa descrição e os novos modos de voz.
+
+Pacote, lockfile, manifesto do plugin e identificação do cliente Presence foram
+alinhados em **1.16.0**: cada merge na main publica uma tag própria. Nenhum novo
+ensaio pago foi executado. O resultado do candidato integrado, a integração e
+a publicação pertencem aos checks do PR e ao workflow do commit de merge;
+esta preparação não os declara concluídos.
