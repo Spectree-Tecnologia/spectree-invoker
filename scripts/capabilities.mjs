@@ -150,7 +150,7 @@ add('operating_mode', mode, signal ? D : U,
 const MATRIX = [
   { role: 'invoker', needs: ['shell', 'git'], restriction: 'writes no project file by protocol',
     enforced_by: 'protocol only', residual: 'nothing in the harness prevents the Invoker from writing; the restriction is behavioural' },
-  { role: 'solutions_architect', needs: [], restriction: 'writes only docs/changes/<slug>/, docs/ROADMAP.md and docs/DOMAIN.md',
+  { role: 'solutions_architect', needs: [], restriction: 'writes only docs/changes/<slug>/, docs/ROADMAP.md, docs/DOMAIN.md and docs/DECISIONS.md',
     enforced_by: 'protocol; adapter tool list where the harness supports one', residual: 'a card-level tool list narrows tools, not paths' },
   { role: 'full_stack_developer', needs: ['shell'], restriction: 'writes only its module\'s paths; no mutable git',
     enforced_by: 'protocol; path ownership checked after the fact by verify-change',
