@@ -47,6 +47,7 @@ import { pendingWork, doctor } from './lib/work.mjs';
 import { requireTasksComplete, taskStatus } from './lib/task-executor.mjs';
 import { diagnoseProject, selectClosureMode, closureStrategy } from './lib/project-diagnostics.mjs';
 import { POLICY_KIND, checkPolicyApproval } from './lib/scope-policy.mjs';
+import { coreModulesTouched } from './lib/core-domain.mjs';
 
 // A gate is bound to what it authorises. Scope-class gates authorise the contract; the
 // gates that put code somewhere authorise the contract AND the code that will travel with it.
@@ -195,6 +196,9 @@ function transitionContext(change, d, cc, g, to) {
       preparation: (a) => change.closure_mode === 'legacy'
         ? { ok: true, legacy: true } : approvalCoversPreparation(a, cc.manifest),
       scopeDigests: d.byGate,
+      // Read from disk on every transition: which modules are core is a fact about the project,
+      // and a change opened before the classification still owes the proof once it exists.
+      coreModules: coreModulesTouched(root, change),
       expectedStateRevision: has('expect') ? Number(flag('expect')) : undefined,
   };
 }

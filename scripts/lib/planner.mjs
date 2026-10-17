@@ -1,5 +1,5 @@
 // Read-only advice over the SAME gate decision used by can/transition. Never authority.
-import { canTransition, legalTargets, ENTRY_REQUIREMENTS } from './state-machine.mjs';
+import { canTransition, legalTargets, requirementsFor } from './state-machine.mjs';
 
 export function nextTarget(change) {
   return change.state === 'baselined' && change.deltaless ? 'implemented'
@@ -29,7 +29,7 @@ export function planNext(change, ctx = {}, { isolationSignal = null, ci = null, 
   const gate = canTransition(change, to, ctx);
   base.target_state = to;
   base.gate = gate;
-  const need = ENTRY_REQUIREMENTS[to];
+  const need = requirementsFor(change, to, { coreModules: ctx.coreModules });
   if (ctx.delivery?.ok === false) return answer('inspect_delivery', 'platform_engineer', 'blocked', ctx.delivery.message,
     { code: ctx.delivery.code, command: ['delivery.mjs', 'preflight', change.change_id], command_mode: 'read-only' });
   // Administrative scope approval is checked by the gate BEFORE any preparation advice.
@@ -60,7 +60,7 @@ export function planNext(change, ctx = {}, { isolationSignal = null, ci = null, 
       { code: gate.code, approval_gate: gate.detail.gate, requires_human_decision: true });
     if (gate.detail?.property) {
       const property = gate.detail.property;
-      const role = property.startsWith('pass') ? 'quality_engineer' : 'platform_engineer';
+      const role = property.startsWith('pass') || property === 'mutation.killed' ? 'quality_engineer' : 'platform_engineer';
       return answer('produce_evidence', role, 'blocked', gate.message, { code: gate.code, property,
         instruction: 'Choose the project check that exercises this property; do not invent a passing command or independence.' });
     }

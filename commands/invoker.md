@@ -40,6 +40,7 @@ When the doctor reports legacy artifacts or unregistered changes, establish thei
 - `docs/changes/` excluding `archive/` → open changes: `proposal.md`, the deltas, `tasks.md`;
 - `docs/changes/archive/` → prepared or historical artifacts, not proof of integration; confirm shipment from the merge and receipt. `docs/specs/` → the living contract;
 - `docs/DEFERRED.md` → what was left and who owes it; `docs/ROADMAP.md` → the sequence already approved;
+- `docs/DOMAIN.md` → the business and its language; `docs/DECISIONS.md` → the approved stack and the technical decisions in force;
 - `git status` and the current branch.
 
 Anything you did not read is **unknown**, not assumed. Say "unknown" — it costs one line and prevents a fabricated status.
@@ -50,7 +51,7 @@ Anything you did not read is **unknown**, not assumed. Say "unknown" — it cost
 
 **With arguments** — `$ARGUMENTS` is the Founder's request.
 
-Decide first whether it needs exploration: vague request, more than one viable approach, or unfamiliar codebase → dispatch the Solutions Architect in **exploration mode**, which writes no change artifact (only the Founder's answers, into `docs/DOMAIN.md`) and returns the frontier of the design tree. Clear request → dispatch it in proposal mode.
+Decide first whether it needs exploration: vague request, more than one viable approach, or unfamiliar codebase → dispatch the Solutions Architect in **exploration mode**, which writes no change artifact (only what was answered, into `docs/DOMAIN.md` and `docs/DECISIONS.md`) and returns the frontier of the design tree. Clear request → dispatch it in proposal mode.
 
 **Exploration is a loop, and the Founder gets one question at a time.** The Architect returns the frontier to you, ordered; put **one** question to him in the Section 10 format, wait, apply the answer, then the next. A question the answer made moot is dropped unasked; an answer that breaks a premise stops the queue. When the queue empties — or stops — re-dispatch the Architect with his answers as fact and a fresh context. No round ceiling — it runs until the frontier is empty. Never enter proposal mode with a branch still open.
 
