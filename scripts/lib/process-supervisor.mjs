@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { launchSpec } from './launch.mjs';
-import { inside, refuse } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 
 const lib = dirname(fileURLToPath(import.meta.url));
 const read = (p) => JSON.parse(readFileSync(p, 'utf8'));

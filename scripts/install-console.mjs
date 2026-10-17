@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync, lstatS
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { inside, refuse } from './lib/work.mjs';
+import { inside, refuse } from './lib/shared/guard.mjs';
 
 const source = fileURLToPath(new URL('..', import.meta.url));
 export function installConsole(destination, { apply = false } = {}) {

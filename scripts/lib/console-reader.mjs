@@ -1,7 +1,7 @@
 // Read-only projection: never evaluates gates, executes commands or follows artifact refs.
 import { openSync, readSync, closeSync, fstatSync, readdirSync, statSync, lstatSync, constants } from 'node:fs';
 import { basename } from 'node:path';
-import { inside } from './work.mjs';
+import { inside } from './shared/guard.mjs';
 import { validate } from './validate.mjs';
 import { validRunEvent } from './run-events.mjs';
 import { ORDER, ENTRY_REQUIREMENTS } from './state-machine.mjs';

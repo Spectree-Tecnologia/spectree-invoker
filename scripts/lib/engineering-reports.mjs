@@ -1,5 +1,6 @@
 // Structural consistency only: prose and references do not prove an experiment ran.
-import { references, snapshot, bounded, refuse } from './work.mjs';
+import { references, snapshot, bounded } from './work.mjs';
+import { refuse } from './shared/guard.mjs';
 export function engineeringReport(root, kind, doc) {
   if (!doc || doc.version !== 1 || !['diagnosis', 'review'].includes(kind)) refuse('E_REPORT', 'Unknown report kind/version.');
   const current = snapshot(root);

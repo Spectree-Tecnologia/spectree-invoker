@@ -3,7 +3,8 @@
 import { readFileSync, writeFileSync, mkdirSync, linkSync, unlinkSync, existsSync, lstatSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { inside, identifier, bounded, references, refuse } from './work.mjs';
+import { identifier, bounded, references } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 import { hash } from './context.mjs';
 
 const path = (root, id, name) => inside(root, `.spectree/bridge-mailbox/${identifier(id)}/${name}.json`);

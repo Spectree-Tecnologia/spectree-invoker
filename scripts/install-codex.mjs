@@ -88,6 +88,7 @@ const RUNTIME_LIBS = [
   'process-job.cs', 'process-job.ps1', 'process-supervisor.mjs', 'process-worker.mjs',
   'core-domain.mjs', 'project-diagnostics.mjs', 'reconciliation.mjs', 'run-events.mjs', 'scope-policy.mjs', 'state-machine.mjs',
   'store.mjs', 'tap.mjs', 'task-executor.mjs', 'validate.mjs', 'verification.mjs', 'work.mjs',
+  'shared/cli.mjs', 'shared/git.mjs', 'shared/guard.mjs', 'shared/time.mjs',
 ];
 for (const f of RUNTIME_LIBS) {
   planCopy(join(pkg, 'scripts', 'lib', f), join(squadRoot, 'scripts', 'lib', f), 'library');

@@ -20,6 +20,7 @@ import {
 import { join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { assertValid } from './validate.mjs';
+import { stamp } from './shared/time.mjs';
 
 export const SCHEMA_VERSION = '1.0.0';
 const DIR = '.spectree';
@@ -50,7 +51,6 @@ export function writeAtomic(file, text) {
 }
 
 const readJson = (f) => JSON.parse(readFileSync(f, 'utf8'));
-const stamp = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 
 /**
  * Read-modify-write is not atomic just because the final rename is. Two processes can read

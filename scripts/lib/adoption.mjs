@@ -3,7 +3,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { dirname } from 'node:path';
 import { Store } from './store.mjs';
 import { assertValid } from './validate.mjs';
-import { doctor, inside, identifier, bounded, references, snapshot, refuse } from './work.mjs';
+import { doctor, identifier, bounded, references, snapshot } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 import { hash } from './context.mjs';
 import { diagnoseProject, selectClosureMode } from './project-diagnostics.mjs';
 

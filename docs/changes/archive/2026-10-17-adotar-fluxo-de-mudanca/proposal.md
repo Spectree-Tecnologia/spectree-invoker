@@ -1,6 +1,6 @@
 # Adotar o próprio fluxo de mudança
 
-Tarefa 1 do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura),
+Tarefa 1 do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura),
 sequência aprovada pelo Founder em 2026-10-17.
 
 **Mudança deltaless.** Nenhum comportamento observável do runtime muda, então esta

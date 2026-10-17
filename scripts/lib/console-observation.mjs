@@ -2,7 +2,8 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { readdirSync, existsSync, lstatSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { inside, identifier, refuse } from './work.mjs';
+import { identifier } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 import { taskStatus } from './task-executor.mjs';
 import { observeProcesses } from './process-supervisor.mjs';
 import { diagnoseProject } from './project-diagnostics.mjs';

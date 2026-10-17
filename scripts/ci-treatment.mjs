@@ -13,13 +13,14 @@
 //
 // Exit codes: 0 classified, 1 the comparison is unavailable, 2 usage.
 
+import { flags } from './lib/shared/cli.mjs';
 import { appendFileSync } from 'node:fs';
 import { readDiff, classifyDiff } from './lib/diff.mjs';
 import { treatmentFor, REQUIRED_JOBS } from './lib/ci-policy.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const argv = process.argv.slice(2);
-const flag = (n, d) => { const i = argv.indexOf(`--${n}`); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
+const flag = flags(argv).value;
 
 const base = flag('base') ?? process.env.GITHUB_BASE_REF;
 if (!base) {

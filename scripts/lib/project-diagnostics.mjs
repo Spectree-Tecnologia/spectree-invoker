@@ -2,7 +2,8 @@
 import { existsSync, readFileSync, readdirSync, lstatSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { assertValid } from './validate.mjs';
-import { inside, identifier, refuse } from './work.mjs';
+import { identifier } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 import { consolidationCommand } from './closure-prep.mjs';
 import { readLifecycle, pendingOperation, currentPath, receiptPath } from './lifecycle.mjs';
 

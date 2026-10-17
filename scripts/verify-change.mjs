@@ -7,6 +7,7 @@
 // IMMUTABLE base_revision, and reports findings. Errors exit 1; review items exit 0
 // and are listed, because they need a reader, not a matcher.
 
+import { flags } from './lib/shared/cli.mjs';
 import { existsSync } from 'node:fs';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,10 +19,9 @@ const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const argv = process.argv.slice(2);
 const changeId = argv[0];
 const asJson = argv.includes('--json');
-const headArg = argv.indexOf('--head');
-const head = headArg >= 0 ? argv[headArg + 1] : 'HEAD';
+const head = flags(argv).value('head', argv.includes('--head') ? null : 'HEAD');
 
-if (!changeId) { console.error('usage: verify-change.mjs <change-id> [--head <rev>] [--json]'); process.exit(2); }
+if (!changeId || head === null) { console.error('usage: verify-change.mjs <change-id> [--head <rev>] [--json]'); process.exit(2); }
 
 const store = new Store(root);
 const change = store.change(changeId);

@@ -17,6 +17,7 @@
 //
 // Exit codes: 0 prepared (or already prepared), 1 refused, 2 usage.
 
+import { flags } from './lib/shared/cli.mjs';
 import { existsSync, mkdirSync, renameSync, readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
@@ -44,14 +45,8 @@ const apply = argv.includes('--apply');
 const asJson = argv.includes('--json');
 const legacy = argv.includes('--legacy');
 const reopen = argv.includes('--reopen');
-const flagValue = (name) => {
-  const i = argv.indexOf(`--${name}`);
-  if (i < 0) return undefined;
-  const v = argv[i + 1];
-  // A value that is itself a flag is a missing value, not a value. `--reason --apply` recorded
-  // "--apply" as the justification for retiring a human's approval.
-  return v === undefined || v.startsWith('--') ? undefined : v;
-};
+// `--reason ""` stays an empty reason, refused below as one, rather than reading as no flag at all.
+const flagValue = flags(argv, { emptyIsValue: true }).value;
 const reopenReason = flagValue('reason');
 const resume = argv.includes('--resume');
 const abandon = argv.includes('--abandon');

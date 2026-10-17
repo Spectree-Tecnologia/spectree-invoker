@@ -1,6 +1,7 @@
 // Durable observations, never lifecycle authority. One operation has one writer.
 import { mkdirSync, writeFileSync, readdirSync, readFileSync, lstatSync } from 'node:fs';
-import { inside, identifier, refuse } from './work.mjs';
+import { identifier } from './work.mjs';
+import { inside, refuse } from './shared/guard.mjs';
 
 const TYPES = new Set(['run.started', 'agent.finished', 'check.finished', 'run.finished', 'run.uncertain', 'run.reconciled']);
 export function validRunEvent(event, change, operation, sequence) {
