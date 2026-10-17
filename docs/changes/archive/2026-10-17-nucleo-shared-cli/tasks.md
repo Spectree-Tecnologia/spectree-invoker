@@ -7,6 +7,6 @@
 - [x] Incluir `shared/` na lista do instalador.
 - [x] `tests/shared-core.test.mjs`, que falha na base e passa na candidata.
 - [x] Arquivar a mudança da tarefa 1 e atualizar o ROADMAP e o ledger (D-001, D-009, D-010).
-- [ ] Suíte, build e integridade verdes no CI do PR.
+- [x] Suíte, build e integridade verdes no CI do PR (#61, `ecdf0c6`).
 
 Uma marca nesta lista não é prova; a evidência está no PR.

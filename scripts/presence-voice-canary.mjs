@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Opt-in provider probe. Uses only this fixed synthetic sentence, never a microphone.
-import { createPresenceVoice, createOpenAiAudio } from './lib/presence-voice.mjs';
+import { createPresenceVoice, createOpenAiAudio } from '../presence/server/voice.mjs';
 import { encodeWav } from '../presence/voice-format.mjs';
 
 if (process.argv.slice(2).join(' ') !== '--live') {

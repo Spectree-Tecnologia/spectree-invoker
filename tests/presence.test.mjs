@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createSession, applyEvent } from '../presence/state.mjs';
 import { audioEnergy, createAudioPlayer } from '../presence/audio.mjs';
 import { startConsole } from '../scripts/lib/console-server.mjs';
+import { startPresenceDemo } from '../presence/server/demo.mjs';
 
 function session() {
   let state = createSession('test-session');
@@ -132,7 +133,7 @@ function get(origin, route, { method = 'GET', headers = {} } = {}) {
   });
 }
 test('Presence serves only local allowlisted assets, blocks mutation/origins and exposes no consumer API', async t => {
-  const instance = await startConsole({ presence: true });
+  const instance = await startPresenceDemo();
   t.after(() => new Promise(resolve => { instance.server.close(resolve); instance.server.closeAllConnections(); }));
   assert.equal(instance.url, `${instance.origin}/presence/`);
   const page = await get(instance.origin, '/presence/'); assert.equal(page.status, 200);
@@ -152,8 +153,8 @@ test('Presence serves only local allowlisted assets, blocks mutation/origins and
   const audio = await get(instance.origin, '/presence/audio/architect.mp3'); assert.equal(audio.headers['content-type'], 'audio/mpeg'); assert.ok(audio.body.length > 10000);
 });
 test('Presence cannot open consumer roots or change the existing Console security boundary', async t => {
-  await assert.rejects(startConsole({ presence: true, roots: ['unused'] }));
-  await assert.rejects(startConsole({ presence: true, demo: true }));
+  await assert.rejects(startPresenceDemo({ roots: ['unused'] }), /não abre projetos/);
+  await assert.rejects(startPresenceDemo({ demo: true }), /não abre projetos/);
   const instance = await startConsole({ demo: true });
   t.after(() => new Promise(resolve => { instance.server.close(resolve); instance.server.closeAllConnections(); }));
   assert.equal((await get(instance.origin, '/presence/')).status, 404);
@@ -162,7 +163,7 @@ test('Presence cannot open consumer roots or change the existing Console securit
   assert.equal((await get(instance.origin, '/')).headers['content-security-policy'].includes('media-src'), false);
 });
 test('Presence renderer package is pinned with a lockfile and local module dependencies', () => {
-  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url)));
+  const pkg = JSON.parse(readFileSync(new URL('../presence/package.json', import.meta.url)));
   const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url)));
   assert.equal(pkg.dependencies.three, '0.180.0'); assert.equal(lock.packages['node_modules/three'].version, pkg.dependencies.three);
   assert.match(lock.packages['node_modules/three'].integrity, /^sha512-/);

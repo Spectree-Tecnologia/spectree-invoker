@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { startConsole } from './lib/console-server.mjs';
-import { startPresence } from './lib/presence-server.mjs';
+import { startPresence } from '../presence/server/server.mjs';
+import { startPresenceDemo } from '../presence/server/demo.mjs';
 try {
   const args = process.argv.slice(2); let port = 0, live = false, voice = false, realtime = false, budgetUsd = 0, squad = false;
   if (args.length === 1 && args[0] === '--help') {
@@ -20,7 +20,7 @@ try {
     if (squad && (!live || voice || realtime || budgetUsd)) throw new Error('P4.1: --squad exige --codex e funciona somente por API textual, sem áudio ou orçamento de API.');
     if (realtime && (voice || !live || budgetUsd < .1 || budgetUsd > 2)) throw new Error('Realtime exige --codex --realtime --budget-usd <0.10 a 2.00>, sem --voice. Um saldo menor que US$ 1 permite configurar o microfone, mas não iniciar outro ensaio.');
     if (!realtime && ((voice && (!live || budgetUsd < .1 || budgetUsd > 2)) || (!voice && budgetUsd))) throw new Error('Voz exige --codex --voice --budget-usd <0.10 a 2.00>.');
-    const { server, url } = await (live ? startPresence({ port, voice: voice || realtime, realtime, budgetUsd, squad }) : startConsole({ presence: true, port }));
+    const { server, url } = await (live ? startPresence({ port, voice: voice || realtime, realtime, budgetUsd, squad }) : startPresenceDemo({ port }));
     if (squad) console.log('P4.1 · delegação textual: /presence/api/squad/snapshot e /presence/api/squad/action. Interface visual de subagentes ainda pendente.');
     console.log(`\n  spectree / presence\n  ${live ? realtime ? 'REALTIME OPENAI · ponte CODEX LOCAL · canário · ensaio de 60 s' : voice ? 'CODEX LOCAL · áudio OpenAI · canário · voz sintética' : 'CODEX LOCAL · texto · canário · sem voz' : 'DEMONSTRAÇÃO · sem microfone ou harness'}\n\n  ${url}\n\n  Ctrl+C para encerrar.\n`);
     for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { server.close(); server.closeAllConnections(); });

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { launchSpec } from './launch.mjs';
+import { launchSpec } from '../../scripts/lib/launch.mjs';
 
 export const rpcError = code => Object.assign(new Error(code), { code });
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Explicit opt-in: uses the user's authenticated Codex subscription. Never run in CI.
-import { createPresenceSession } from './lib/presence-session.mjs';
+import { createPresenceSession } from '../presence/server/session.mjs';
 import { randomBytes } from 'node:crypto';
 if (process.argv.slice(2).join(' ') !== '--live') {
   console.error('Use node scripts/presence-canary.mjs --live. Consome a sessão ChatGPT do Codex local.');

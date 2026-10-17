@@ -1,7 +1,7 @@
 # Núcleo shared e utilitários de CLI
 
-Tarefa 2 do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
-Fecha, em código, o [D-001](../../DEFERRED.md).
+Tarefa 2 do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
+Fecha, em código, o [D-001](../../../DEFERRED.md).
 
 **Mudança deltaless.** Nenhum comportamento observável do runtime muda, com uma exceção
 declarada abaixo. Esta mudança não carrega delta em `specs/`. O critério de saída é a suíte

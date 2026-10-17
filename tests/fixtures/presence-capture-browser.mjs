@@ -3,7 +3,7 @@
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { presenceAssets } from '../../scripts/lib/console-server.mjs';
-import { createOpenAiAudio, createPresenceVoice } from '../../scripts/lib/presence-voice.mjs';
+import { createOpenAiAudio, createPresenceVoice } from '../../presence/server/voice.mjs';
 import { wavDuration } from '../../presence/voice-format.mjs';
 
 const args = process.argv.slice(2);

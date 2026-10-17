@@ -64,8 +64,8 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | Ordem | Entrega | Estado | Fecha |
 |---|---|---|---|
 | 1 | Adotar o próprio fluxo de mudança: archive e ledger de adiamentos | Integrada, PR #58 / v1.24.0, [proposta](changes/archive/2026-10-17-adotar-fluxo-de-mudanca/proposal.md) | — |
-| 2 | Núcleo `shared` e utilitários de CLI | Em andamento, [proposta](changes/nucleo-shared-cli/proposal.md) | D-001 |
-| 3 | Fronteira do Presence e `bench/` sem `tests/` | Planejada; a P4.1 já integrou | D-002, D-003 |
+| 2 | Núcleo `shared` e utilitários de CLI | Integrada, PR #61 / v1.27.0, [proposta](changes/archive/2026-10-17-nucleo-shared-cli/proposal.md) | D-001 |
+| 3 | Fronteira do Presence e `bench/` sem `tests/` | Em andamento, [proposta](changes/fronteira-presence/proposal.md) | D-002, D-003 |
 | 4 | Módulos com entrada publicada e grafo acíclico | Planejada | D-004 |
 | 5 | Fechamento como biblioteca, em três PRs | Planejada | D-005, D-006 |
 | 6 | Suíte mais rápida | Planejada, depois da 5 | D-007 |

@@ -1,0 +1,11 @@
+{
+  "name": "@spectree/presence",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local Presence UI and its server. Depends on the governance runtime; the runtime never depends on it.",
+  "type": "module",
+  "dependencies": {
+    "three": "0.180.0",
+    "ws": "8.22.0"
+  }
+}
