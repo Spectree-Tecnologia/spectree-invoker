@@ -1,8 +1,9 @@
 # P4 — incrementos e condições de avanço
 
 Planejamento em `codex/presence-p4-planning`; P4.1 autorizada e implementada em
-`codex/presence-p4-delegation`. P4.2–P4.3 permanecem abertas. A versão fica em
-1.16.0 até a preparação de uma entrega integrada.
+`codex/presence-p4-delegation`. P4.2–P4.3 permanecem abertas. Candidata preparada
+como 1.21.0 após incorporação da main / 1.19.0, pois o PR #54 reserva 1.20.0;
+merge depende do Founder pelo PR.
 
 ## Planejamento
 

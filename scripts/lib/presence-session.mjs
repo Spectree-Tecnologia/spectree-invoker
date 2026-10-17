@@ -82,7 +82,7 @@ export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.
         rpc = rpcFactory({ cwd, executable, onNotification: (m, p) => notification(m, p, epoch),
           onFailure: code => { if (epoch === generation) fail(code); } });
         const current = rpc;
-        await current.request('initialize', { clientInfo: { name: 'spectree_presence', title: 'Spectree Presence', version: '1.16.0' },
+        await current.request('initialize', { clientInfo: { name: 'spectree_presence', title: 'Spectree Presence', version: '1.21.0' },
           capabilities: { experimentalApi: true } });
         current.notify('initialized');
         const account = await current.request('account/read', { refreshToken: false });

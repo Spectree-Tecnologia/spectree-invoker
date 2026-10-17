@@ -1,9 +1,47 @@
 # P4 — estado da verificação
 
+## Preparação contra main atual — candidata 1.21.0
+
+Após solicitação do Founder, `origin/main` em `ac7fd7d` foi incorporada por
+merge à branch `codex/presence-p4-delegation`, sem rebase, force-push ou merge
+na main. A integração inclui PRs #49–#53; o #53 já estava integrado com 1.19.0.
+O merge de base não teve conflitos textuais. Nenhum arquivo gerado foi editado
+à mão: `npm run build` confirmou que os artefatos já correspondiam a `protocol/`.
+
+Versão candidata **1.21.0** alinhada em manifesto, pacote, lockfile e
+`clientInfo` do Presence. Durante a conferência para publicação, o PR #54 foi
+encontrado aberto com 1.20.0, tornando 1.21.0 a próxima minor livre. A main
+continuava em 1.19.0; base e versões serão consultadas novamente antes do push.
+
+Auditoria da fronteira: **56 módulos de runtime**, excluídos apenas os quatro
+entrypoints locais `console.mjs`, `presence.mjs`, `presence-canary.mjs` e
+`presence-voice-canary.mjs`. Nenhum import relativo de runtime aponta para
+`presence/` ou libs `presence-*`/`console-*`. As 37 entradas nomeadas de
+`RUNTIME_LIBS`, incluindo `scope-policy.mjs` da main, foram preservadas.
+**Nenhuma lib adicionada:** `presence-roles.mjs` e `presence-squad.mjs` pertencem
+à UI local e não são dependências do runtime instalado no consumidor.
+
+`npm ci` concluído com sucesso: 2 pacotes instalados, zero vulnerabilidades.
+Execução integrada em 1.20.0, após `npm ci`: **506 testes, 506 aprovados,
+zero falhas, cancelamentos ou skips**, em **409.922,7585 ms** (aproximadamente
+6 min 50 s). Drift e integridade do plugin também passaram. O teste **5e2**
+passou, assim como as regressões de Architect modelador, catálogo de convenções
+e política de autonomia da main. Os **498/498 anteriores são históricos da
+base antiga e não validam esta candidata**.
+
+Após identificar a reserva concorrente da 1.20.0 no PR #54, a candidata foi
+elevada para 1.21.0. A revalidação limpa dessa versão sobre `ac7fd7d` passou:
+**506/506 testes**, zero falhas ou skips, em **395.014,857 ms**. Entretanto, na
+conferência final o PR #54 já havia avançado a main para `5d9f7c4` / 1.20.0.
+O push foi bloqueado antes de ocorrer: essa nova base precisa ser incorporada e
+revalidada. Nenhuma API paga ou projeto consumidor real foi usado. Publicação
+por push da branch e PR para main, sem autorização inferida de merge.
+
 ## Estado atual — P4.1 implementada, sem merge
 
 Após autorização do Founder, implementação em `codex/presence-p4-delegation`,
-partindo do planejamento corrigido em `1fd3fdf`. Versão preservada em 1.16.0.
+partindo do planejamento corrigido em `1fd3fdf`. A implementação inicial foi
+validada em 1.16.0; a preparação atual é a candidata 1.21.0 descrita acima.
 
 - Registro dos seis papéis e perfis fixos em `presence-roles.mjs`, incluindo
   TypeSafe condicional, sem aceitar prompts ou capacidades do navegador.
@@ -36,7 +74,7 @@ A primeira execução restrita encontrou `EACCES` no loopback, inclusive no test
 HTTP já existente da P2. A repetição com acesso local permitido passou; não houve
 chamada a API paga nem mudança de expectativa para contornar o bloqueio.
 
-Regressão completa `npm run check`: **498/498 aprovados**, zero falhas,
+Regressão completa **da base antiga**, `npm run check`: **498/498 aprovados**, zero falhas,
 cancelamentos ou skips, em **782.390,8386 ms** (aproximadamente 13 min 2 s).
 `check:drift` e `check:plugin` também aprovados. A suíte inclui os **29 testes
 novos P4.1**, incluindo a CLI. Depois da execução, somente os registros de

@@ -57,6 +57,13 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-17:** preparação P4.1 contra `origin/main` em `ac7fd7d`, incluindo
+  PRs #49–#53, por merge sem conflitos textuais. Preparação inicial **1.20.0**; `npm ci`
+  seguido de `npm run check`: **506/506 testes**, zero falhas ou skips. Nenhuma
+  lib adicionada a `RUNTIME_LIBS`; auditoria do runtime sem import de UI e teste
+  5e2 aprovados. O PR #54 passou a reservar 1.20.0 durante a validação: candidata
+  elevada para **1.21.0**, com nova revalidação limpa antes da publicação por PR.
+  Decisão de merge reservada ao Founder.
 - **2026-10-17:** Founder autorizou implementar P4.1 com registro completo dos
   seis papéis desde o início. Branch `codex/presence-p4-delegation`; backend
   textual opt-in, sem chamadas de áudio ou acesso a consumidores. Entrega
