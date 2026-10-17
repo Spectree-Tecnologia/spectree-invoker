@@ -128,3 +128,35 @@ O aceite físico está concluído. Permanecem a revisão para integração, a
 autorização de merge e as validações futuras de uso prolongado/produção e
 especialistas. Esta atualização é documental; código e evidências de testes
 do commit `b936730` permanecem os mesmos.
+
+## Correções da revisão autorizadas pelo Founder
+
+O Founder autorizou corrigir os dois achados P2 da revisão do commit `50a25f1`.
+Antes da correção, cinco regressões novas falharam e reproduziram cancelamento
+antes do ACK de início, timeout da análise, cancelamento não confirmado e
+encerramentos concorrentes. Nenhuma usou a API paga.
+
+A análise agora conserva sua propriedade até estado terminal ou desconexão da
+sessão correspondente. Um cancelamento solicitado antes do ACK é aplicado
+quando o turno fica interrompível. O ACK da RPC de interrupção não é tratado
+como término. Após até 10 s sem confirmação, a sessão é desconectada, sem
+atingir uma sessão substituta. O estado público inclui `cancelling`.
+
+O encerramento agora conserva um proprietário até concluir em paralelo a
+limpeza Codex e o hangup. Novos starts são recusados antes de reservar orçamento
+durante essa espera. End/stop repetidos aguardam o mesmo resultado. A publicação
+final exige a mesma chamada e geração; uma confirmação antiga não pode
+reescrever o estado de outra chamada.
+
+**71/71 testes Presence aprovados**, incluindo seis novas regressões (as cinco
+originais e a preservação de sessão substituta).
+
+Regressão completa concluída em **2026-10-17** com árvore estável:
+**`npm run check` aprovado, 467/467 testes**, zero falhas, cancelamentos ou skips,
+em 445.289 ms. `check:drift` e `check:plugin` também aprovados. Depois da suíte,
+apenas este registro de evidência e o roadmap foram atualizados; nenhum código
+mudou. A revisão das correções não encontrou outro bloqueio no escopo analisado.
+
+Não houve novo ensaio pago, acesso a consumidores ou merge. O aceite físico
+anterior continua registrado. **Recomendação: seguir para o merge desta P3-R**,
+respeitando os checks da integração e a autorização específica do Founder.

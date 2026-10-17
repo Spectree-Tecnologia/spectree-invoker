@@ -29,11 +29,12 @@ async function boundedText(response, limit) {
 
 export function createPresenceRealtime({ session, key = process.env.OPENAI_API_KEY, budgetUsd = 0,
   fetcher = fetch, socketFactory = (url, options) => new WebSocket(url, options), now = Date.now,
-  maxSessionMs = 60000, leaseMs = 10000 } = {}) {
+  maxSessionMs = 60000, leaseMs = 10000, cancelTimeoutMs = 10000 } = {}) {
   if (!Number.isFinite(budgetUsd) || budgetUsd < 0 || budgetUsd > 2) throw fail('E_VOICE_BUDGET');
   if (!Number.isFinite(maxSessionMs) || maxSessionMs <= 0 || maxSessionMs > 60000) throw fail('E_REALTIME_TIME');
+  if (!Number.isFinite(cancelTimeoutMs) || cancelTimeoutMs <= 0 || cancelTimeoutMs > 10000) throw fail('E_REALTIME_TIME');
   const reserveUsd = maxSessionMs <= 15000 ? .3 : 1, responseLimit = maxSessionMs <= 15000 ? 3 : 6;
-  let active, revision = 0, status = 'idle', error = null, reservedUsd = 0, closed = false, epoch = 0;
+  let active, closing, revision = 0, status = 'idle', error = null, reservedUsd = 0, closed = false, epoch = 0;
   let messages = [], work = 'idle', usage = { inputTokens: 0, outputTokens: 0 }, hangup = 'none';
   const used = new Set();
   const config = () => ({ enabled: !closed && !!key?.trim(), reason: !key?.trim() ? 'E_AUDIO_KEY' : null,
@@ -59,30 +60,64 @@ export function createPresenceRealtime({ session, key = process.env.OPENAI_API_K
       await response.body?.cancel(); return response.ok ? 'confirmed' : [404, 410].includes(response.status) ? 'already-ended' : 'unconfirmed';
     } catch { return 'unconfirmed'; }
   }
-  async function end(code = null) {
-    const old = active; active = undefined; epoch++;
-    if (!old) return snapshot();
+  async function cancelAnalysis(call) {
+    const analysis = call.analysis;
+    if (!analysis) return;
+    analysis.cancelRequested = true;
+    if (live(call)) { work = 'cancelling'; publish(); }
+    if (!analysis.dispatched) return;
+    if (!analysis.cancellation) analysis.cancellation = (async () => {
+      // An interrupt RPC acknowledgement is not a terminal turn notification.
+      // Wait for the turn ID if start is pending; otherwise close this harness
+      // session after a bounded wait, without touching a replacement session.
+      const deadline = performance.now() + cancelTimeoutMs;
+      while (performance.now() < deadline) {
+        const value = session.snapshot();
+        if (value.sessionId !== analysis.sessionId || ['completed', 'interrupted', 'disconnected', 'error'].includes(value.status)) return;
+        if (!analysis.interruptRequested && value.canInterrupt) {
+          analysis.interruptRequested = true;
+          try { void Promise.resolve(session.interrupt(analysis.sessionId)).catch(() => {}); } catch {}
+          continue;
+        }
+        await new Promise(resolve => setTimeout(resolve, 25));
+      }
+      if (session.snapshot().sessionId === analysis.sessionId) {
+        try { session.disconnect(analysis.sessionId); }
+        catch { if (session.snapshot().sessionId === analysis.sessionId) session.close(); }
+      }
+    })();
+    return analysis.cancellation;
+  }
+  function end(code = null) {
+    if (!active) return closing?.promise ?? Promise.resolve(snapshot());
+    const old = active; active = undefined;
+    const ending = { call: old, epoch: ++epoch }; closing = ending;
     old.controller.abort();
-    if (old.busy && session.snapshot().canInterrupt) void session.interrupt(session.snapshot().sessionId).catch(() => {});
-    status = code ? 'error' : 'ended'; error = code; work = 'idle'; hangup = old.callId ? 'pending' : 'none'; publish();
-    // Keep the control connection alive until the hangup request has completed.
-    // Closing both media and control first can remove the call before this acknowledgement.
-    if (old.callId) { const result = await remoteHangup(old.callId); if (!active) { hangup = result; publish(); } }
-    old.socket?.close(); old.socket?.terminate?.();
-    return snapshot();
+    status = code ? 'error' : 'ended'; error = code; work = old.analysis ? 'cancelling' : 'idle';
+    hangup = old.callId ? 'pending' : 'none'; publish();
+    ending.promise = (async () => {
+      // Retain control and exclude a new paid start until both boundaries close.
+      const [, result] = await Promise.all([cancelAnalysis(old), old.callId ? remoteHangup(old.callId) : 'none']);
+      old.socket?.close(); old.socket?.terminate?.();
+      if (closing === ending && epoch === ending.epoch) {
+        hangup = result; work = 'idle'; closing = undefined; publish();
+      }
+      return snapshot();
+    })();
+    return ending.promise;
   }
   async function consult(call, item) {
     if (!live(call) || call.tools.has(item.call_id)) return;
     call.tools.add(item.call_id); const generation = call.speechEpoch;
-    let output, owned = false;
+    let output, analysis;
     try {
-      if (item.name !== 'consultar_codex' || typeof item.call_id !== 'string' || item.call_id.length > 200 || call.tools.size > 2 || call.busy) throw fail('E_CODEX_BUSY');
+      if (item.name !== 'consultar_codex' || typeof item.call_id !== 'string' || item.call_id.length > 200 || call.tools.size > 2 || call.analysis) throw fail('E_CODEX_BUSY');
       const args = JSON.parse(item.arguments);
       if (!args || Object.keys(args).some(k => k !== 'pedido') || typeof args.pedido !== 'string' || !args.pedido.trim() || args.pedido.length > 4000) throw fail('E_INPUT');
-      call.busy = true; owned = true; work = 'consulting'; publish();
-      let value = session.snapshot();
-      if (['disconnected', 'error'].includes(value.status)) value = await session.connect();
+      const value = session.snapshot();
+      if (value.sessionId !== call.sessionId || !['ready', 'completed', 'interrupted'].includes(value.status)) throw fail('E_CODEX_BUSY');
       if (!live(call) || generation !== call.speechEpoch) throw fail('E_ANALYSIS_INTERRUPTED');
+      analysis = { sessionId: value.sessionId, dispatched: true }; call.analysis = analysis; work = 'consulting'; publish();
       session.touch(); await session.send(value.sessionId, args.pedido);
       const deadline = now() + 40000;
       while (live(call) && generation === call.speechEpoch && now() < deadline) {
@@ -97,7 +132,13 @@ export function createPresenceRealtime({ session, key = process.env.OPENAI_API_K
       }
       if (!output) throw fail('E_ANALYSIS_INTERRUPTED');
     } catch (e) { output = { status: 'error', code: /^E_[A-Z_]+$/.test(e.code ?? '') ? e.code : 'E_CODEX_RESULT' }; }
-    finally { if (owned) call.busy = false; if (live(call) && owned) { work = output?.status === 'completed' ? 'completed' : 'error'; publish(); } }
+    finally {
+      if (analysis) {
+        if (output?.status !== 'completed' || analysis.cancelRequested) await cancelAnalysis(call);
+        if (call.analysis === analysis) call.analysis = undefined;
+        if (live(call)) { work = output?.status === 'completed' && !analysis.cancelRequested ? 'completed' : 'error'; publish(); }
+      }
+    }
     if (!live(call)) return;
     const stale = generation !== call.speechEpoch;
     send(call, { type: 'conversation.item.create', item: { type: 'function_call_output', call_id: item.call_id,
@@ -108,7 +149,7 @@ export function createPresenceRealtime({ session, key = process.env.OPENAI_API_K
     if (!live(call) || !value || typeof value.type !== 'string') return;
     if (value.type === 'input_audio_buffer.speech_started') {
       call.speechEpoch++; status = 'listening'; publish();
-      if (call.busy && session.snapshot().canInterrupt) void session.interrupt(session.snapshot().sessionId).catch(() => {});
+      void cancelAnalysis(call);
     } else if (value.type === 'input_audio_buffer.speech_stopped') { status = 'thinking'; publish(); }
     else if (value.type === 'output_audio_buffer.started') { status = 'speaking'; publish(); }
     else if (['output_audio_buffer.stopped', 'output_audio_buffer.cleared'].includes(value.type)) { status = 'listening'; publish(); }
@@ -133,15 +174,15 @@ export function createPresenceRealtime({ session, key = process.env.OPENAI_API_K
     else if (session.snapshot().sessionId !== active.sessionId) void end('E_STALE_SESSION');
   }, 250); monitor.unref();
   return { config, snapshot, touch() { if (active) active.seen = now(); }, end,
-    stop(targetRequestId) { used.add(targetRequestId); return active?.requestId === targetRequestId ? end() : Promise.resolve(snapshot()); },
+    stop(targetRequestId) { used.add(targetRequestId); return active?.requestId === targetRequestId || closing?.call.requestId === targetRequestId ? end() : Promise.resolve(snapshot()); },
     async start(input) {
       if (closed || !key?.trim()) throw fail('E_AUDIO_KEY');
       if (!input || Object.keys(input).some(k => !['action', 'requestId', 'sessionId', 'sdp'].includes(k)) || input.action !== 'start' ||
         typeof input.requestId !== 'string' || !/^[a-zA-Z0-9-]{8,80}$/.test(input.requestId) || typeof input.sdp !== 'string' || input.sdp.length > 64000 || !input.sdp.startsWith('v=0')) throw fail('E_INPUT');
       if (input.sessionId !== session.snapshot().sessionId) throw fail('E_STALE_SESSION');
-      if (!['ready', 'completed', 'interrupted'].includes(session.snapshot().status)) throw fail('E_NOT_READY');
       if (used.has(input.requestId)) throw fail('E_VOICE_DUPLICATE');
-      if (active) throw fail('E_VOICE_BUSY');
+      if (active || closing) throw fail('E_VOICE_BUSY');
+      if (!['ready', 'completed', 'interrupted'].includes(session.snapshot().status)) throw fail('E_NOT_READY');
       if (Math.round((reservedUsd + reserveUsd) * 100) > Math.round(budgetUsd * 100)) throw fail('E_VOICE_BUDGET');
       used.add(input.requestId); reservedUsd = Math.round((reservedUsd + reserveUsd) * 100) / 100;
       const call = { controller: new AbortController(), requestId: input.requestId, sessionId: input.sessionId, epoch: ++epoch, deadline: now() + maxSessionMs,

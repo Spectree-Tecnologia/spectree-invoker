@@ -7,13 +7,20 @@ import { startPresence } from '../scripts/lib/presence-server.mjs';
 
 const startInput = () => ({ action: 'start', sessionId: 'session', requestId: crypto.randomUUID(), sdp: 'v=0\r\nsynthetic' });
 const settle = () => new Promise(resolve => setTimeout(resolve, 5));
+const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
+async function until(check) {
+  const deadline = Date.now() + 1500;
+  while (!check() && Date.now() < deadline) await settle();
+  assert.ok(check(), 'expected state did not arrive');
+}
 function fixture(t, options = {}) {
-  let socket, sends = 0, interrupts = 0;
+  let socket, sends = 0, interrupts = 0, disconnects = 0;
   const outbound = [], calls = [], value = { sessionId: 'session', status: 'ready', messages: [] };
   const session = { snapshot: () => structuredClone(value), touch() {}, async send(_id, text) {
     sends++; if (options.send) return options.send(value, text);
     value.status = 'completed'; value.messages.push({ id: 'codex-answer', role: 'assistant', text: 'Análise pública confirmada.' });
-  }, async interrupt() { interrupts++; value.status = 'interrupted'; } };
+  }, async interrupt() { interrupts++; if (options.interrupt) return options.interrupt(value); value.status = 'interrupted'; },
+    disconnect(id) { assert.equal(id, value.sessionId); disconnects++; value.status = 'disconnected'; options.disconnect?.(); } };
   const service = createPresenceRealtime({ session, key: 'synthetic-secret', budgetUsd: 1,
     fetcher: async (url, init) => {
       calls.push({ url, init });
@@ -25,7 +32,7 @@ function fixture(t, options = {}) {
       calls.push({ url, init }); queueMicrotask(() => socket.emit('open')); return socket;
     }, ...options.service });
   t.after(() => service.close());
-  return { service, session, calls, outbound, value, get sends() { return sends; }, get interrupts() { return interrupts; },
+  return { service, session, calls, outbound, value, get sends() { return sends; }, get interrupts() { return interrupts; }, get disconnects() { return disconnects; },
     emit(event) { socket.emit('message', Buffer.from(JSON.stringify(event))); } };
 }
 
@@ -71,6 +78,86 @@ test('speech interruption invalidates late Codex results without starting an uns
   await settle(); f.emit({ type: 'input_audio_buffer.speech_started' }); complete(); await settle();
   assert.equal(f.interrupts, 1); assert.equal(f.outbound.length, 1);
   assert.equal(JSON.parse(f.outbound[0].item.output).code, 'E_ANALYSIS_INTERRUPTED');
+});
+
+const analysisEvent = id => ({ type: 'response.done', response: { status: 'completed', output: [
+  { type: 'function_call', name: 'consultar_codex', call_id: id, arguments: '{"pedido":"Analise a especificacao"}' } ] } });
+
+test('speech before the Codex start acknowledgement still cancels once and waits for terminal confirmation', async t => {
+  const acknowledgement = deferred();
+  const f = fixture(t, { send: value => { value.status = 'running'; value.canInterrupt = false; return acknowledgement.promise; },
+    interrupt: value => { value.status = 'interrupting'; } });
+  await f.service.start(startInput()); f.emit(analysisEvent('late-start')); await until(() => f.sends === 1);
+  f.emit({ type: 'input_audio_buffer.speech_started' });
+  assert.equal(f.interrupts, 0);
+  f.value.canInterrupt = true; acknowledgement.resolve(); await until(() => f.interrupts === 1);
+  assert.equal(f.service.snapshot().work, 'cancelling');
+  assert.equal(f.outbound.length, 0, 'an interrupt acknowledgement is not terminal confirmation');
+  f.value.status = 'interrupted'; await until(() => f.service.snapshot().work === 'error');
+  assert.equal(f.interrupts, 1); assert.equal(f.disconnects, 0);
+  assert.equal(f.outbound.length, 1); assert.equal(JSON.parse(f.outbound[0].item.output).code, 'E_ANALYSIS_INTERRUPTED');
+});
+
+test('analysis deadline cancels the owned Codex turn before releasing the bridge', async t => {
+  let now = 0;
+  const f = fixture(t, { service: { now: () => now }, send: value => { value.status = 'running'; value.canInterrupt = true; } });
+  await f.service.start(startInput()); f.emit(analysisEvent('analysis-deadline')); await until(() => f.sends === 1); await settle();
+  now = 41000; await until(() => f.service.snapshot().work === 'error');
+  assert.equal(f.interrupts, 1); assert.equal(f.value.status, 'interrupted');
+  await f.service.end(); assert.equal(f.interrupts, 1); assert.equal(f.disconnects, 0);
+});
+
+test('ending during an unacknowledged Codex start disconnects the harness if cancellation cannot be confirmed', async t => {
+  const acknowledgement = deferred();
+  const f = fixture(t, { service: { cancelTimeoutMs: 30 },
+    send: value => { value.status = 'running'; value.canInterrupt = false; return acknowledgement.promise; },
+    disconnect: () => acknowledgement.reject(Object.assign(new Error('closed'), { code: 'E_STALE_SESSION' })) });
+  await f.service.start(startInput()); f.emit(analysisEvent('never-acknowledged')); await until(() => f.sends === 1);
+  await f.service.end();
+  assert.equal(f.disconnects, 1); assert.equal(f.value.status, 'disconnected');
+  assert.equal(f.interrupts, 0); assert.equal(f.service.snapshot().hangup, 'confirmed'); assert.equal(f.outbound.length, 0);
+});
+
+test('an unconfirmed Codex interrupt cannot release the bridge while its turn is still running', async t => {
+  const f = fixture(t, { service: { cancelTimeoutMs: 30 }, send: value => { value.status = 'running'; value.canInterrupt = true; },
+    interrupt: value => { value.status = 'interrupting'; } });
+  await f.service.start(startInput()); f.emit(analysisEvent('never-interrupted')); await until(() => f.sends === 1);
+  f.emit({ type: 'input_audio_buffer.speech_started' });
+  await until(() => f.service.snapshot().work === 'error');
+  assert.equal(f.interrupts, 1); assert.equal(f.disconnects, 1); assert.equal(f.value.status, 'disconnected');
+});
+
+test('late cancellation never interrupts or disconnects a replacement Codex session', async t => {
+  const acknowledgement = deferred();
+  const f = fixture(t, { send: value => { value.status = 'running'; value.canInterrupt = false; return acknowledgement.promise; } });
+  await f.service.start(startInput()); f.emit(analysisEvent('replaced-session')); await until(() => f.sends === 1);
+  f.emit({ type: 'input_audio_buffer.speech_started' });
+  f.value.sessionId = 'replacement'; f.value.canInterrupt = true; acknowledgement.resolve();
+  await until(() => f.service.snapshot().work === 'error');
+  assert.equal(f.interrupts, 0); assert.equal(f.disconnects, 0); assert.equal(f.value.status, 'running');
+  await f.service.end(); assert.equal(f.interrupts, 0); assert.equal(f.disconnects, 0);
+});
+
+test('pending hangup blocks another paid call and duplicate ends cannot overwrite a later call result', async t => {
+  const oldHangup = deferred(); let created = 0;
+  const f = fixture(t, { service: { budgetUsd: 2 }, fetcher: async url => {
+    if (url.endsWith('/rtc_first/hangup')) return oldHangup.promise;
+    if (url.endsWith('/hangup')) return new Response(null, { status: 500 });
+    return new Response('v=0\r\nanswer', { headers: { location: `/v1/realtime/calls/${++created === 1 ? 'rtc_first' : 'rtc_second'}` } });
+  } });
+  const first = startInput(); await f.service.start(first);
+  const ending = f.service.end(), duplicate = f.service.end(), duplicateStop = f.service.stop(first.requestId);
+  assert.equal(f.service.snapshot().hangup, 'pending');
+  await assert.rejects(f.service.start(startInput()), { code: 'E_VOICE_BUSY' });
+  assert.equal(created, 1); assert.equal(f.service.snapshot().reservedUsd, 1);
+  oldHangup.resolve(new Response(null, { status: 200 }));
+  const endings = await Promise.all([ending, duplicate, duplicateStop]);
+  assert.ok(endings.every(value => value.hangup === 'confirmed'));
+  assert.equal(f.service.snapshot().hangup, 'confirmed');
+  await f.service.start(startInput()); await f.service.end();
+  await f.service.stop(first.requestId);
+  assert.equal(f.service.snapshot().hangup, 'unconfirmed'); assert.equal(f.service.snapshot().reservedUsd, 2);
+  assert.equal(f.calls.filter(call => call.url.endsWith('/rtc_first/hangup')).length, 1);
 });
 
 test('server deadline hangs up even without a cooperative browser; provider errors remain sanitized', async t => {

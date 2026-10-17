@@ -67,6 +67,13 @@ antigo não dispara resposta espontânea. O playout usa um elemento de áudio
 nativo, com um analisador Web Audio silencioso para medir a energia sem tocar
 duas cópias do áudio.
 
+A ponte mantém a propriedade da análise até seu término ou cancelamento
+confirmado. Fala antes da confirmação de início e timeout da análise também
+cancelam o turno. Se não houver confirmação em até 10 segundos, a sessão Codex
+correspondente é desconectada; uma sessão substituta não é atingida. O estado
+`cancelling` aparece como **Interrompendo análise Codex**. Não há reconexão
+automática do harness pela ferramenta.
+
 Falhas não causam reconexão, reenvio ou repetição automática de análise. A sessão
 só fica pronta após abrir o canal RTC. Uma permissão concedida depois de cancelar
 não abre uma chamada paga. IDs impedem cancelamento de uma sessão diferente.
@@ -83,6 +90,9 @@ não abre uma chamada paga. IDs impedem cancelamento de uma sessão diferente.
 - Encerramento pelo servidor por tempo, perda de heartbeat ou mudança de sessão.
   O controle permanece conectado até a resposta de hangup. Recurso já ausente
   aparece como `already-ended`; falha de confirmação aparece como `unconfirmed`.
+  Outra chamada paga fica bloqueada enquanto o encerramento anterior aguarda
+  hangup e limpeza da análise. Encerramentos repetidos aguardam o mesmo
+  resultado, correlacionado à chamada e à geração que o iniciou.
 - Teto total aprovado: **US$ 6**. Reservas conhecidas dos ensaios: **US$ 5,30**.
   O comando acima usa o saldo conservador de **US$ 0,70**. Não é custo faturado.
   Reiniciar o processo não autoriza ampliar o teto.

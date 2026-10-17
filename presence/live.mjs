@@ -139,7 +139,7 @@ function mount() {
       $('.demo').textContent = 'INVOKER · REALTIME';
       $('.note').textContent = 'Voz pela API OpenAI; análises pelo Codex local. Canário isolado, sem execução em projetos. Nenhuma aprovação de trabalho é concedida pela interface.';
       $('[data-model]').textContent = `Voz · ${v.config.model} | Codex · ${snapshot?.model ?? 'não conectado'}`;
-      $('[data-voice-metrics]').textContent = `Reserva local: US$ ${(realtimeView.reservedUsd ?? v.config.reservedUsd ?? 0).toFixed(2)} / ${v.config.budgetUsd.toFixed(2)} · US$ 1 por ensaio · ${realtimeView.remainingSeconds ?? 60} s restantes${realtimeView.work === 'consulting' ? ' · Consultando Codex' : ''}${realtimeView.hangup === 'unconfirmed' ? ' · Encerramento remoto não confirmado' : ''}`;
+      $('[data-voice-metrics]').textContent = `Reserva local: US$ ${(realtimeView.reservedUsd ?? v.config.reservedUsd ?? 0).toFixed(2)} / ${v.config.budgetUsd.toFixed(2)} · US$ 1 por ensaio · ${realtimeView.remainingSeconds ?? 60} s restantes${realtimeView.work === 'consulting' ? ' · Consultando Codex' : realtimeView.work === 'cancelling' ? ' · Interrompendo análise Codex' : ''}${realtimeView.hangup === 'unconfirmed' ? ' · Encerramento remoto não confirmado' : ''}`;
       $('.voice-disclosure').textContent = 'Conversa por voz gerada por IA · OpenAI Realtime. Ao iniciar, o microfone transmite áudio continuamente à OpenAI. O Codex recebe consultas de análise pela assinatura local. Cobrança da voz por API separada. Ensaio limitado a 60 segundos; encerre quando quiser.';
       $('[data-notice]').textContent = 'Conversa Realtime · ponte Codex para análise · canário isolado, sem acesso a projetos';
       if (realtimeView.active) {
