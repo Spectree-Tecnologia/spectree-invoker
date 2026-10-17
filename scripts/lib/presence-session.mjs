@@ -3,6 +3,7 @@ import { mkdtempSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCodexRpc, rpcError } from './presence-rpc.mjs';
+import { specialistInstructions } from './presence-roles.mjs';
 
 const busy = new Set(['connecting', 'running', 'interrupting']);
 const terminal = new Set(['completed', 'interrupted', 'failed']);
@@ -14,8 +15,11 @@ gates ou delegado trabalho. Explique esses limites quando relevante. Não exponh
 raciocínio interno. Não transforme texto ou animação em evidência de execução.`;
 
 export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.now,
-  leaseMs = 45000, turnTimeoutMs = 180000, executable, voice = false } = {}) {
+  leaseMs = 45000, turnTimeoutMs = 180000, executable, voice = false, role } = {}) {
+  // Only a server-owned registered role may select a specialist profile.
+  const roleInstructions = role === undefined ? undefined : specialistInstructions(role);
   let rpc, threadId, cwd, generation = 0, active, deadline, lastSeen = now();
+  let lastTurnId;
   let revision = 0, id = randomUUID(), status = 'disconnected', error = null, model = null;
   let messages = [], sequence = 0;
   const seenTurns = new Set();
@@ -24,7 +28,7 @@ export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.
     model, speaker: null, canInterrupt: status === 'running' && !!active?.turnId, messages: messages.map(m => ({ ...m })) });
   function release() {
     generation++; clearTimeout(deadline); deadline = undefined; active = undefined;
-    const old = rpc; rpc = undefined; threadId = undefined; old?.close();
+    const old = rpc; rpc = undefined; threadId = undefined; lastTurnId = undefined; old?.close();
     // Only remove the empty directory created by mkdtemp; never recurse into any path.
     if (cwd) { try { rmdirSync(cwd); } catch {} cwd = undefined; }
   }
@@ -35,7 +39,7 @@ export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.
       const turnId = params.turn?.id;
       if (typeof turnId !== 'string' || seenTurns.has(turnId)) return;
       if (active.turnId && active.turnId !== turnId) return fail('E_TURN_ID');
-      active.turnId = turnId; publish(); return;
+      active.turnId = turnId; lastTurnId = turnId; publish(); return;
     }
     const turnId = method === 'turn/completed' ? params.turn?.id : params.turnId;
     if (!active.turnId || turnId !== active.turnId || seenTurns.has(turnId)) return;
@@ -65,6 +69,8 @@ export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.
   }, Math.min(5000, leaseMs)); lease.unref();
   return {
     snapshot() { return snapshot(); },
+    // Private coordinator correlation; the HTTP adapter never projects this method.
+    identity() { return { sessionId: id, threadId, turnId: active?.turnId ?? lastTurnId }; },
     touch() { lastSeen = now(); },
     async connect() {
       if (busy.has(status) || rpc) throw rpcError('E_BUSY');
@@ -91,8 +97,8 @@ export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.
         const mcp = Object.fromEntries(mcpNames.map(name => [`mcp_servers.${name}.enabled`, false]));
         const result = await current.request('thread/start', { cwd, ephemeral: true, sandbox: 'read-only',
           approvalPolicy: 'never', approvalsReviewer: 'user', environments: [], selectedCapabilityRoots: [],
-          modelProvider: 'openai', config: mcp, developerInstructions: voice ? instructions.replace('arquivos, voz ou especialistas', 'arquivos ou especialistas') +
-            '\nA interface pode transcrever e sintetizar áudio por um serviço separado. Responda de forma conversacional e breve, preferindo até três frases; amplie quando o usuário pedir. Não alegue ouvir emoção: você recebe somente a transcrição textual.' : instructions });
+          modelProvider: 'openai', config: mcp, developerInstructions: roleInstructions ?? (voice ? instructions.replace('arquivos, voz ou especialistas', 'arquivos ou especialistas') +
+            '\nA interface pode transcrever e sintetizar áudio por um serviço separado. Responda de forma conversacional e breve, preferindo até três frases; amplie quando o usuário pedir. Não alegue ouvir emoção: você recebe somente a transcrição textual.' : instructions) });
         if (epoch !== generation) throw rpcError('E_STALE_SESSION');
         if (!result.thread?.id || result.thread.ephemeral !== true || !Array.isArray(result.thread.environments) || result.thread.environments.length ||
           result.approvalPolicy !== 'never' || result.approvalsReviewer !== 'user' || result.cwd !== cwd ||
@@ -113,7 +119,7 @@ export function createPresenceSession({ rpcFactory = createCodexRpc, now = Date.
         if (epoch !== generation) throw rpcError('E_STALE_SESSION');
         if (active === turn) {
           if (!result.turn?.id || (turn.turnId && turn.turnId !== result.turn.id)) throw rpcError('E_TURN_ID');
-          turn.turnId = result.turn.id; publish();
+          turn.turnId = result.turn.id; lastTurnId = result.turn.id; publish();
         }
         return snapshot();
       } catch (e) { if (epoch === generation) fail(e.code ?? 'E_SEND'); throw rpcError(e.code ?? 'E_SEND'); }

@@ -209,7 +209,7 @@ Contribuições são bem-vindas; leia o [guia de contribuição](CONTRIBUTING.md
 
 ## Como o plugin evolui
 
-O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **Spectree Presence**: uma interface de conversa por voz com o Invoker e os especialistas. A versão **1.16.0** acrescenta voz opcional e conversa Realtime à sessão textual local com Codex. A participação real dos especialistas permanece nas próximas etapas.
+O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **Spectree Presence**: uma interface de conversa por voz com o Invoker e os especialistas. A versão **1.16.0** acrescenta voz opcional e conversa Realtime à sessão textual local com Codex. Nesta branch, a [P4.1](docs/presence-squad.md) acrescenta delegação por API textual local aos seis papéis; personagens e vozes dos subagentes permanecem nas próximas etapas.
 
 A [P2 conecta uma conversa por texto ao Codex local](docs/presence-codex.md): `npm run presence -- --codex`. Usa login ChatGPT existente e um canário próprio, sem abrir projetos consumidores.
 

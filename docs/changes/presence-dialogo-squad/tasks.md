@@ -1,7 +1,8 @@
 # P4 — incrementos e condições de avanço
 
-Esta branch entrega o planejamento. Itens de implementação permanecem abertos;
-não são tarefas já executadas nem comandos disponíveis. A versão fica em 1.16.0.
+Planejamento em `codex/presence-p4-planning`; P4.1 autorizada e implementada em
+`codex/presence-p4-delegation`. P4.2–P4.3 permanecem abertas. A versão fica em
+1.16.0 até a preparação de uma entrega integrada.
 
 ## Planejamento
 
@@ -12,18 +13,21 @@ não são tarefas já executadas nem comandos disponíveis. A versão fica em 1.
 
 ## P4.1 — delegação verificável, sem áudio pago
 
-- [ ] Criar registro dos seis papéis canônicos e seus perfis Presence; preservar
+- [x] Criar registro dos seis papéis canônicos e seus perfis Presence; preservar
   elegibilidade, defaults e isolamento da sessão Invoker existente.
-- [ ] Implementar `delegar_subagente(role, contexto)` com admissão pelo servidor
+- [x] Implementar `delegar_subagente(role, contexto)` com admissão pelo servidor
   e sessão Codex proprietária por delegação; nenhum caminho exclusivo Architect.
-- [ ] Implementar coordenador e envelope público versionado, com deduplicação,
+- [x] Implementar coordenador e envelope público versionado, com deduplicação,
   estados de trabalho e correlação privada de sessão/chamada/turno.
-- [ ] Validar entrada/retorno e impedir consultas genérica e especializada duplicadas.
-- [ ] Testar admissão, erro, timeout, interrupção antes/depois do ACK, troca de
+- [x] Validar entrada/retorno e impedir consultas genérica e especializada duplicadas.
+- [x] Testar admissão, erro, timeout, interrupção antes/depois do ACK, troca de
   sessão e resultado atrasado com RPC falso; mapear A1–A4, A7–A9 e A12.
-- [ ] Parametrizar os testes pelos seis papéis, elegibilidade TypeSafe, sequência
+- [x] Parametrizar os testes pelos seis papéis, elegibilidade TypeSafe, sequência
   de papéis distintos e múltiplas instâncias do mesmo papel; cobrir A13–A15.
-- [ ] Provar por testes que o perfil não habilita ferramentas ou acesso a projetos.
+- [x] Provar por testes que o perfil não habilita ferramentas ou acesso a projetos.
+
+A P4.1 antecipa `--codex --squad` para expor somente a API textual, sem UI de
+especialistas ou áudio. A ativação em Realtime continua na P4.2–P4.3.
 
 Saída: resultado textual atribuível a cada subagente elegível, com evidência de despacho e
 cancelamento. RPC falso deve ser identificado como simulado. Sessão real de

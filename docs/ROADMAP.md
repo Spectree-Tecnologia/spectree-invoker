@@ -32,7 +32,7 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 | P2 | Sessão local e integração Codex | Integrada em main, PR #43 / v1.15.0 | Texto e eventos por app-server/stdio, autenticação local ChatGPT, thread efêmera sem ambientes, resposta incremental e interrupção. [Uso](presence-codex.md), [proposta](changes/presence-sessao-codex/proposal.md) e [verificação](changes/presence-sessao-codex/verification.md). |
 | P3 | Fundação de áudio do Invoker | Integrada em main, PR #48 / v1.16.0 | Captura explícita, transcrição revisável, síntese e seleção de microfone. [Uso](presence-voice.md), [proposta](changes/presence-voz-invoker/proposal.md) e [verificação](changes/presence-voz-invoker/verification.md). Disponível como modo por gravações; a conversa contínua é P3-R. |
 | P3-R | Conversa Realtime com o Invoker | Integrada em main, PR #48 / v1.16.0; aceita pelo Founder | WebRTC, turnos automáticos, interrupção pela fala e consulta Codex confirmada. [Uso](presence-realtime.md), [proposta](changes/presence-realtime/proposal.md) e [verificação](changes/presence-realtime/verification.md). 469/469 testes Windows; [CI do merge](https://github.com/Spectree-Tecnologia/spectree-invoker/actions/runs/38998524893) aprovada e tag no commit `8c7b099`. |
-| P4 | Comunicação entre Invoker e subagentes do squad | Planejamento iniciado após GO do Founder; escopo genérico corrigido; implementação pendente | Delegação aos seis papéis registrados, com sessão por delegação, identidade por instância e um falante por vez. Architect é o primeiro canário, sem limitar a arquitetura. [Proposta e aceite](changes/presence-dialogo-squad/proposal.md), [incrementos](changes/presence-dialogo-squad/tasks.md) e [estado da verificação](changes/presence-dialogo-squad/verification.md). |
+| P4 | Comunicação entre Invoker e subagentes do squad | P4.1 implementada em branch; P4.2–P4.3 pendentes | Registro dos seis papéis, sessão por delegação, validação e cancelamento por instância. [API textual P4.1](presence-squad.md), [proposta e aceite](changes/presence-dialogo-squad/proposal.md), [incrementos](changes/presence-dialogo-squad/tasks.md) e [verificação](changes/presence-dialogo-squad/verification.md). Personagens e vozes ainda pendentes. |
 | P5 | Continuidade e recuperação da experiência | Planejada | Endurecer reconexão, retomada, interrupção pelo usuário e prevenção de ações ou falas duplicadas. Os mecanismos básicos de cancelamento e limpeza já são exigidos desde a etapa que os introduz. |
 | P6 | Canário e preparação da entrega | Planejada | Validar a jornada completa em projeto descartável: compatibilidade com gates, acessibilidade, desempenho, instalação e custo observado. Consolidar evidências e instruções operacionais antes de recomendar merge/release. |
 
@@ -57,6 +57,12 @@ cores próprias, olhos que acompanham o cursor e reação à fala. O estudo apro
 
 ## Histórico de decisões
 
+- **2026-10-17:** Founder autorizou implementar P4.1 com registro completo dos
+  seis papéis desde o início. Branch `codex/presence-p4-delegation`; backend
+  textual opt-in, sem chamadas de áudio ou acesso a consumidores. Entrega
+  mantém os limites de consulta; `npm run check` aprovado com **498/498 testes**,
+  incluindo 29 novos de P4.1. RPC simulado e HTTP local; interface, voz,
+  compatibilidade real dos novos perfis e merge não são declarados prontos.
 - **2026-10-17:** Founder corrigiu o escopo P4: delegação para qualquer subagente
   elegível, não apenas Architect. Planejamento passa a prever registro dos seis
   papéis, ferramenta genérica e identidade por instância desde P4.1. Architect

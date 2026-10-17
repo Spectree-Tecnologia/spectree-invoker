@@ -2,7 +2,8 @@
 
 Estado: planejamento iniciado em 2026-10-17 após GO do Founder para a
 recomendação de planejar P4. Branch `codex/presence-p4-planning`, base
-`8c7b099` / v1.16.0. Implementação, aceite físico e merge pendentes.
+`8c7b099` / v1.16.0. P4.1 autorizada e implementada em
+`codex/presence-p4-delegation`; P4.2, P4.3, aceite físico e merge pendentes.
 
 ## Problema e experiência esperada
 
@@ -22,11 +23,11 @@ Architect é um exemplo e o primeiro canário, nunca a única rota implementada.
 Os seis papéis existentes entram no registro inicial; a inclusão de novos papéis
 ocorre pelo registro confiável, sem criar uma ferramenta por especialista.
 
-Esta mudança de planejamento é **deltaless**: só registra decisões e trabalho
-futuro; não altera comportamento disponível nem publica uma living spec.
-Os cenários abaixo são o contrato proposto para implementação, não evidência
-de funcionalidade entregue. O domínio comportamental é Presence; os futuros
-incrementos deverão reconciliar seu delta com a especificação então existente.
+O planejamento original era deltaless. Após autorização para implementar P4.1,
+esta mudança passa a incluir comportamento e um delta para o módulo **Presence**
+em [specs/presence/spec.md](specs/presence/spec.md). Nenhuma living spec é publicada
+antes da integração. Os cenários abaixo distinguem backend P4.1 de voz/interface
+P4.2–P4.3; o estado de execução pertence à [verificação](verification.md).
 
 ## Decisões de arquitetura
 
@@ -37,7 +38,7 @@ incrementos deverão reconciliar seu delta com a especificação então existent
 | Voz dos subagentes | Síntese `gpt-4o-mini-tts` do retorno público, com voz configurada no registro; `cedar` é a candidata do Architect | A infraestrutura é compartilhada; identidade não depende de haver um timbre exclusivo por instância. Timbres em português dependem de aceite auditivo. |
 | Coordenador local | Autoridade sobre admissão, identidade, deduplicação, cancelamento e direito de fala | Modelo e navegador não certificam execução ou conclusão. |
 | Apresentação | Invoker branco; identidade de cada subagente vem do registro, com nome, papel, instância e cor | Preserva personagem, olhar, tamanho e movimento aprovados e distingue instâncias do mesmo papel. |
-| Ativação | Modo opt-in proposto `--squad`, dependente de `--codex --realtime`; política de papéis elegíveis definida no servidor | Ativa delegação genérica. P1, P2 e P3-R continuam independentes. A opção ainda não existe. |
+| Ativação | `--codex --squad` habilita a API textual P4.1; sua combinação com voz fica para P4.2–P4.3 | Ativa delegação genérica sem API de áudio. A sessão Realtime existente permanece independente. |
 
 A documentação oficial informa que a voz Realtime fica fixa após a primeira
 saída de áudio. A síntese separada é uma decisão deste projeto, não um recurso
