@@ -1099,6 +1099,19 @@ test('21d5. exploration records the Founder\'s answers and holds them against th
   }
 });
 
+test('21d5. the core domain owes a killed mutation, and the cards say where the core is written', () => {
+  // The Architect named the core domain and nothing used it: every module got the same verification.
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /The core domain owes a killed mutation/, `${f}: the rule is in the protocol`);
+  }
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /Core modules: <module>, <module>/, `${f}: the Architect writes the line the runtime reads`);
+  }
+  for (const f of ['agents/quality-engineer.md', 'adapters/codex/dist/agents/quality_engineer.toml']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /state\.mjs run <change> mutation\.killed/, `${f}: QA records the probe as observed evidence`);
+  }
+});
+
 test('21d6. the project keeps its language and its technical decisions', () => {
   // A term the Founder settled lived only in a delta's vocabulary, and a technical decision
   // taken outside a proposal (the stack table, a slot the Invoker closed) lived nowhere.

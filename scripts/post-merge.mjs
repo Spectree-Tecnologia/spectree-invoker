@@ -28,6 +28,7 @@ import { readDiff, classifyDiff } from './lib/diff.mjs';
 import { treatmentFor, aggregate, resolveCi } from './lib/ci-policy.mjs';
 import { preparationCovers, approvalsInForce, readManifest, compareArtifacts } from './lib/closure-prep.mjs';
 import { canTransition, ORDER } from './lib/state-machine.mjs';
+import { coreModulesTouched } from './lib/core-domain.mjs';
 import {
   readLifecycle, pendingOperation, beginOperation, advanceOperation, completeOperation,
   buildReceipt, writeReceipt, readReceipt, receiptCovers,
@@ -327,6 +328,7 @@ const contextFor = (receipt, { checkPointer = true } = {}) => ({
     lifecycle: checkPointer ? (controlAfterPointer ?? lifecycle) : null,
   }),
   preparation: (a) => (legacyMode ? { ok: true } : approvalCoversPreparation(a, manifest)),
+  coreModules: coreModulesTouched(root, change),
   scopeDigests: {
     scope: contract?.digest, ambiguity: contract?.digest,
     integration: gated, irreversible: gated, exposure: gated,
