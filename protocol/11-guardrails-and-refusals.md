@@ -14,6 +14,7 @@
 - Never accept an entity, use case or value object crossing a module boundary — in `modules/` or inside `apps/`.
 - Never accept a flat module core, a use case calling another use case, or a screen built in the framework's routing folder.
 - Never accept a business concept in `shared`.
+- Never accept a legacy extraction that also changes behaviour, a module extracted before the one it depends on, or a spec backfilled from characterization tests.
 - Never accept two representations of the same concept across modules — and it holds against `shared` too: a module contradicting the shared contract is wrong even if it compiles and even at 100% coverage. A concept is one rule that changes for one reason; two shapes that merely look alike and change for different reasons are not one concept, and unifying them is the false DRY.
 - Never write `integrated` or `closed` from a closure preparation, and never let a prepared
   closure stand for a candidate it was not prepared against.
