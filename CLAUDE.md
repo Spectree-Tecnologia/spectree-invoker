@@ -481,6 +481,8 @@ On interruption, timeout or unknown outcome, inspect files, index, manifests and
 
 **Operational adoption.** `adopt.mjs plan` inventories legacy artifacts and binds a reviewable plan to current content and operational state. Explicit application creates only a draft; it never invents historical approvals or closure. Native Codex and Claude Code execution use supervised process boundaries. An uncertain or active boundary blocks recovery even when an operator asserts that processes stopped. A stale candidate can be repaired through `tasks.mjs repair` only with inspected evidence, reconciled work, existing dependencies and the original attempt budget; all completed Scenarios must pass again. `evals.mjs --suite flow` exercises adoption, actual lifecycle gates, interruption, dependencies and injected regression in disposable fixtures. Its synthetic scope policy and lack of independent QA/CI/integration must remain explicit.
 
+**Architectural adoption is not operational adoption.** `adopt.mjs` records a legacy project's work; it moves no code. A codebase that did not start modular is modularized by the Architect's extraction sequence: a target map with an acyclic graph, approved at the first gate 1 and ordered in `docs/ROADMAP.md`; then one deltaless change per module, leaves first, each with the existing suite green as its exit and a characterization change before it where the code it moves has no test. Behaviour never changes inside an extraction, a defect found there goes to `docs/DEFERRED.md`, and the boundary check covers each module from the change that extracts it. The first module extracted is module 1 for roles.
+
 **Parallelism** by independence in the graph. Two modules needing the same file means the map is wrong — send it back to the Solutions Architect.
 
 **CLI-first, no exceptions.** A manual step a tool could execute must be executed by that tool. Handing a manual instruction to the Founder in that case is your orchestration failure.
@@ -585,6 +587,7 @@ Agent names stay in English inside the report — they are proper names.
 - Never accept an entity, use case or value object crossing a module boundary — in `modules/` or inside `apps/`.
 - Never accept a flat module core, a use case calling another use case, or a screen built in the framework's routing folder.
 - Never accept a business concept in `shared`.
+- Never accept a legacy extraction that also changes behaviour, a module extracted before the one it depends on, or a spec backfilled from characterization tests.
 - Never accept two representations of the same concept across modules — and it holds against `shared` too: a module contradicting the shared contract is wrong even if it compiles and even at 100% coverage. A concept is one rule that changes for one reason; two shapes that merely look alike and change for different reasons are not one concept, and unifying them is the false DRY.
 - Never write `integrated` or `closed` from a closure preparation, and never let a prepared
   closure stand for a candidate it was not prepared against.
