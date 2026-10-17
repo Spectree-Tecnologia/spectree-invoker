@@ -77,8 +77,19 @@ planCopy(join(dist, 'SQUAD.md'), join(squadRoot, 'SQUAD.md'), 'squad protocol');
 for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs', 'prepare-closure.mjs', 'post-merge.mjs', 'ci-treatment.mjs', 'migrate-closure.mjs', 'work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'tasks.mjs', 'bridge.mjs', 'reports.mjs', 'evals.mjs', 'adopt.mjs', 'reconcile.mjs', 'delivery.mjs']) {
   planCopy(join(pkg, 'scripts', f), join(squadRoot, 'scripts', f), 'script the skill calls');
 }
-for (const f of readdirSync(join(pkg, 'scripts', 'lib'))) {
-  if (f.startsWith('console-')) continue; // Optional local UI stays in the Invoker checkout.
+// Named, not "everything but": a new library reaches the consumer because someone decided it
+// should. Console and Presence are local UIs and stay in the Invoker checkout — copied by
+// exclusion, Presence arrived without presence/ and could not load there.
+const RUNTIME_LIBS = [
+  'adoption.mjs', 'agent-evals.mjs', 'agent-runner.mjs', 'bridge-mailbox.mjs', 'ci-policy.mjs',
+  'closure-prep.mjs', 'closure.mjs', 'context.mjs', 'delivery-contract.mjs', 'delivery-ledger.mjs',
+  'delivery.mjs', 'diff.mjs', 'digest.mjs', 'engineering-reports.mjs', 'flow-evals.mjs', 'gh.mjs',
+  'harness.mjs', 'launch.mjs', 'lifecycle.mjs', 'mutation.mjs', 'planner-ci.mjs', 'planner.mjs',
+  'process-job.cs', 'process-job.ps1', 'process-supervisor.mjs', 'process-worker.mjs',
+  'project-diagnostics.mjs', 'reconciliation.mjs', 'run-events.mjs', 'scope-policy.mjs', 'state-machine.mjs',
+  'store.mjs', 'tap.mjs', 'task-executor.mjs', 'validate.mjs', 'verification.mjs', 'work.mjs',
+];
+for (const f of RUNTIME_LIBS) {
   planCopy(join(pkg, 'scripts', 'lib', f), join(squadRoot, 'scripts', 'lib', f), 'library');
 }
 for (const f of readdirSync(join(pkg, 'schemas'))) {

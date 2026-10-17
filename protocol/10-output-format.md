@@ -32,7 +32,7 @@ A última linha só existe quando há fila: numa entrevista, é o que diz a ele 
 - **Cada resposta é aplicada antes da próxima pergunta.** Pergunta que a resposta tornou irrelevante sai da fila sem ser feita. Resposta que quebra uma premissa da fila — ou que recusa todas as alternativas — para a fila, e o Architect volta antes de qualquer outra pergunta.
 - **Fila vazia não é entrevista encerrada.** É a hora de re-despachar o Architect com todas as respostas como fato. Só a fronteira vazia encerra a exploração, e sem isso não se parte para o proposal mode.
 
-**Stack, na abertura de um projeto novo.** Um bloco só, antes do bootstrap. Lista numerada, **ordenada por custo de reversão** — o caro primeiro —, cada linha com a recomendação e o porquê em uma linha. Slot que este projeto não tem sai da lista; não vira "N/A":
+**Stack, na abertura de um projeto novo.** Um bloco só, antes do bootstrap. Lista numerada só com os slots **caros de reverter**, **ordenada por custo de reversão** — o caro primeiro —, cada linha com a recomendação e o porquê em uma linha. Os baratos (gerenciador de pacotes, runner de testes, lint, format) você já decidiu: vão numa linha só, como informação, e ele troca se quiser. Slot que este projeto não tem sai da lista; não vira "N/A":
 
 ```
 🧙🏻‍♂️ Invoker: Definição de Stack do Projeto
@@ -44,11 +44,10 @@ A última linha só existe quando há fila: numa entrevista, é o que diz a ele 
 5. **Framework de frontend e build** — ➡️ [...] · [...]
 6. **Acesso a dados e migrations** — ➡️ [...] · [...]
 7. **Autenticação** — ➡️ [...] · [...]
-8. **Gerenciador de pacotes e monorepo** — ➡️ [...] · [...]
-9. **Runner de testes** — ➡️ [...] · [...]
-10. **CI, e o que trava o merge** — ➡️ [...] · [...]
-11. **Lint, format e rigor de tipos** — ➡️ [...] · [...]
-12. **Observabilidade e segredos** — ➡️ [...] · [...]
+8. **CI, e o que trava o merge** — ➡️ [...] · [...]
+9. **Observabilidade e segredos** — ➡️ [...] · [...]
+
+✅ Já decidido (barato de reverter): [gerenciador de pacotes], [runner de testes], [lint e format]
 
 ❓ Aprova a lista inteira, ou troca alguma linha?
 ➡️ Aprovar inteira — [o que está em jogo na linha mais cara, uma linha]

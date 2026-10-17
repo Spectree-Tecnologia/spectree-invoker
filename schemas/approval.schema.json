@@ -48,9 +48,10 @@
           "enum": [
             "human_in_session",
             "external_review",
-            "repository_policy"
+            "repository_policy",
+            "founder_policy"
           ],
-          "description": "How the authorisation reached the record. There is no 'agent' value on purpose."
+          "description": "How the authorisation reached the record. There is no 'agent' value on purpose. founder_policy is a scope approval the Founder gave in advance, by marking a roadmap item; it names him and cites that item."
         },
         "reference": {
           "type": "string"

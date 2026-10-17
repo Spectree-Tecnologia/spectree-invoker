@@ -17,10 +17,10 @@
 //
 // Exit codes: 0 prepared (or already prepared), 1 refused, 2 usage.
 
-import { existsSync, mkdirSync, renameSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
-import { Store, SCHEMA_VERSION } from './lib/store.mjs';
+import { Store, SCHEMA_VERSION, writeAtomic } from './lib/store.mjs';
 import { closureDeliveryPreflight } from './lib/delivery.mjs';
 import { contractDigest, contentDigest } from './lib/digest.mjs';
 import { readDiff, classifyDiff, outsideAllowedPaths } from './lib/diff.mjs';
@@ -555,8 +555,8 @@ if (resuming && resuming.kind === 'refresh') {
   const body = `${JSON.stringify({ ...refreshed, artifacts_refreshed_at: at }, null, 2)}\n`;
   const snap = join(root, snapshotPath(changeId, refreshed.preparation_id));
   mkdirSync(dirname(snap), { recursive: true });
-  if (!existsSync(snap)) writeFileSync(snap, body);
-  writeFileSync(join(root, manifestPath(changeId)), existsSync(snap) ? readFileSync(snap, 'utf8') : body);
+  if (!existsSync(snap)) writeAtomic(snap, body);
+  writeAtomic(join(root, manifestPath(changeId)), existsSync(snap) ? readFileSync(snap, 'utf8') : body);
   store.appendHistory(changeId, {
     event_id: `closure_artifacts_refreshed:${resuming.operation_id}`,
     type: 'closure_artifacts_refreshed',
@@ -626,8 +626,8 @@ if (verdict.state === 'unchanged' && !blocking.length && !reopen && !resuming) {
   advanceOperation(root, changeId, opId, PHASE.PERSISTING);
   const body = `${JSON.stringify({ ...refreshed, artifacts_refreshed_at: at }, null, 2)}\n`;
   mkdirSync(dirname(join(root, snapshotPath(changeId, refreshedId))), { recursive: true });
-  writeFileSync(join(root, snapshotPath(changeId, refreshedId)), body);
-  writeFileSync(join(root, manifestPath(changeId)), body);
+  writeAtomic(join(root, snapshotPath(changeId, refreshedId)), body);
+  writeAtomic(join(root, manifestPath(changeId)), body);
   store.appendHistory(changeId, {
     event_id: `closure_artifacts_refreshed:${opId}`,
     type: 'closure_artifacts_refreshed',
@@ -731,7 +731,7 @@ if (reopen && !resuming) {
   if (existingRead.bytes) {
     const kept = join(root, snapshotPath(changeId, `${existing.preparation_id}.approved`));
     mkdirSync(dirname(kept), { recursive: true });
-    writeFileSync(kept, existingRead.bytes);
+    writeAtomic(kept, existingRead.bytes);
   }
   store.appendHistory(changeId, {
     event_id: `closure_reopened:${operationId}`,
@@ -971,7 +971,8 @@ const manifest = buildManifest({
 const file = join(root, manifestPath(changeId));
 mkdirSync(dirname(file), { recursive: true });
 // The immutable snapshot first, then the projection: a reader that finds the pointer always
-// finds the document it points at.
+// finds the document it points at. Both atomically — the snapshot is written once and never
+// again, so a torn one would be read back by the resume as the record itself.
 //
 // And on a RESUME the snapshot that already exists IS the record — rewriting it would stamp a new
 // `prepared_at` over an immutable document, so a resumed persistence produces the same bytes it
@@ -981,8 +982,8 @@ mkdirSync(dirname(snapFile), { recursive: true });
 const body = resuming && existsSync(snapFile)
   ? readFileSync(snapFile, 'utf8')
   : `${JSON.stringify(manifest, null, 2)}\n`;
-if (!existsSync(snapFile)) writeFileSync(snapFile, body);
-writeFileSync(file, body);
+if (!existsSync(snapFile)) writeAtomic(snapFile, body);
+writeAtomic(file, body);
 const recorded = JSON.parse(body);
 
 // The event first, then the close. A crash between them would otherwise lose the trail entry for

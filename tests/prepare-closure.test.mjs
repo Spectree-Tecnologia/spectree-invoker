@@ -42,12 +42,16 @@ function fixture({ allowed = ['src', 'docs'], baseFiles = {} } = {}) {
   };
   const prep = (...args) => run(args);
   /** The same run, a day later on the wall clock. Nothing on disk moves. */
+  /** The same run, killed half way through writing the preparation's snapshot. */
+  const prepTorn = (...args) => run(args, {
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${join(REPO, 'tests/fixtures/torn-write.cjs').split('\\').join('/')}`.trim(),
+  });
   const prepTomorrow = (...args) => run(args, {
     SPECTREE_CLOCK_AHEAD_DAYS: '1',
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${join(REPO, 'tests/fixtures/clock-ahead.cjs').split('\\').join('/')}`.trim(),
   });
   return {
-    ...repo, store, change, prep, prepTomorrow,
+    ...repo, store, change, prep, prepTomorrow, prepTorn,
     writeManifest: (m) => writeFileSync(join(repo.root, '.spectree/closure/c1.json'), `${JSON.stringify(m, null, 2)}\n`),
     ran: () => existsSync(join(repo.root, '.spectree/ran')),
     manifest: () => { try { return JSON.parse(readFileSync(join(repo.root, '.spectree/closure/c1.json'), 'utf8')); } catch { return null; } },
@@ -376,6 +380,26 @@ test('the consolidation command is itself held to the change\'s ownership', () =
 });
 
 // --- progress is not a candidate, and a commit is not an escape --------------
+
+test('a preparation killed mid-write leaves no partial record, and its resume finishes it', () => {
+  // The snapshot is written once and never again, so a torn snapshot was permanent: the resume
+  // found the file, read half a document as the record and could not parse it.
+  const f = fixture();
+  try {
+    assert.notEqual(f.prepTorn('--apply').code, 0, 'the run was killed');
+    const closure = join(f.root, '.spectree/closure');
+    const records = readdirSync(closure, { recursive: true }).filter((p) => String(p).endsWith('.json'));
+    for (const p of records) {
+      assert.doesNotThrow(() => JSON.parse(readFileSync(join(closure, p), 'utf8')), `${p} is a whole document or absent`);
+    }
+    const resumed = f.prep('--apply', '--resume');
+    assert.equal(resumed.code, 0, resumed.err || resumed.out);
+    const m = f.manifest();
+    assert.ok(m, 'the projection is readable');
+    assert.equal(readFileSync(join(closure, 'c1', `${m.preparation_id}.json`), 'utf8'),
+      readFileSync(join(closure, 'c1.json'), 'utf8'), 'and it is the snapshot it names');
+  } finally { f.drop(); }
+});
 
 test('ticking a task refreshes the artifact record without re-preparing anything', () => {
   const f = fixture();
