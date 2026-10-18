@@ -1,11 +1,12 @@
 // POSIX process-group watchdog. Detached sessions/remote jobs are outside this boundary.
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync, renameSync, openSync, closeSync, statSync } from 'node:fs';
+import { readFileSync, openSync, closeSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { writeAtomic } from './persistence.mjs';
 const r = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const receipt = (state, pid, exit_code = null, error = null) => {
   const path = join(r.dir, 'receipt.json');
-  writeFileSync(`${path}.tmp`, JSON.stringify({ id: r.id, state, pid, exit_code, error })); renameSync(`${path}.tmp`, path);
+  writeAtomic(path, JSON.stringify({ id: r.id, state, pid, exit_code, error }));
 };
 const fds = ['stdin', 'stdout', 'stderr'].map((n, i) => openSync(join(r.dir, n), i ? 'w' : 'r'));
 const child = spawn(r.file, r.args, { cwd: r.cwd, env: process.env, detached: true, stdio: fds });

@@ -1,9 +1,9 @@
 // Operational checkpoints are observations, never approvals or lifecycle transitions.
-import { existsSync, lstatSync, readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { contentDigest, refuse, inside } from '../shared/index.mjs';
+import { contentDigest, refuse, inside, writeOnce } from '../shared/index.mjs';
 import { Store } from './store.mjs';
 
 export function identifier(value) {
@@ -55,7 +55,7 @@ function writeEvent(dir, name, payload) {
   mkdirSync(dir, { recursive: true });
   const doc = { version: 1, event: name, at: new Date().toISOString(), advisory: true, authorizes_execution: false, ...payload };
   // Exclusive creation refuses concurrent replacement. A crash while writing is detectable on read.
-  try { writeFileSync(join(dir, `${name}.json`), JSON.stringify(doc, null, 2) + '\n', { flag: 'wx' }); }
+  try { writeOnce(join(dir, `${name}.json`), JSON.stringify(doc, null, 2) + '\n'); }
   catch (e) { if (e.code === 'EEXIST') refuse('E_WORK_CONFLICT', `${name} already recorded; use a new operation ID after reconciliation.`); throw e; }
   return doc;
 }

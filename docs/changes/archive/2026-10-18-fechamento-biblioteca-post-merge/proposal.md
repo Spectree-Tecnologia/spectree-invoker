@@ -1,7 +1,7 @@
 # Confirmação pós-merge como biblioteca
 
-Tarefa 5c do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
-Entrega em código o D-005 do [ledger](../../DEFERRED.md): depois do `prepare-closure.mjs` (5a) e do
+Tarefa 5c do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
+Entrega em código o D-005 do [ledger](../../../DEFERRED.md): depois do `prepare-closure.mjs` (5a) e do
 `state.mjs` (5b), o `post-merge.mjs` é o último dos três CLIs de fechamento a virar fachada fina. O
 D-006 (uma camada de persistência só) fica para a 5d, numa mudança própria.
 

@@ -1,7 +1,5 @@
 // Correct configuration, never historical gates. Persistence is recoverable under the lifecycle lock.
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, lstatSync, linkSync, unlinkSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
-import { dirname } from 'node:path';
+import { existsSync, readFileSync, readdirSync, lstatSync } from 'node:fs';
 import {
   Store,
   identifier,
@@ -19,7 +17,7 @@ import {
   receiptPath,
   PHASE,
 } from '../change/index.mjs';
-import { inside, refuse, inspectProcesses, contractDigest } from '../shared/index.mjs';
+import { inside, refuse, inspectProcesses, contractDigest, publishOnce } from '../shared/index.mjs';
 import { hash } from '../execution/index.mjs';
 import { diagnoseProject, selectClosureMode, correctionStage } from './project-diagnostics.mjs';
 
@@ -103,14 +101,9 @@ function checkedPlan(plan) {
 function writeOnce(root, path, value) {
   const file = inside(root, path), text = JSON.stringify(value, null, 2) + '\n';
   if (existsSync(file)) { if (bytes(root, path).toString('utf8') !== text) refuse('E_RECONCILIATION_COLLISION', 'Audit record identity conflict.'); return; }
-  mkdirSync(dirname(file), { recursive: true });
   // Publish a complete immutable file atomically, without replacing an existing audit record.
   // An interrupted temp write never becomes the record a subsequent resume must trust.
-  const temporary = `${file}.${randomUUID()}.tmp`;
-  try {
-    writeFileSync(temporary, text, { flag: 'wx' });
-    linkSync(temporary, file);
-  } finally { try { unlinkSync(temporary); } catch { /* orphan temp is not authority */ } }
+  publishOnce(file, text);
 }
 function persist(root, plan) {
   const id = plan.before.change_id, op = operationId(plan), store = new Store(root);

@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from 'node:fs';
-import { writeAtomic } from '../change/index.mjs';
+import { writeAtomic } from '../shared/index.mjs';
 import { inside, refuse, assertValid } from '../shared/index.mjs';
 
 export const DELIVERY_STATES = ['implemented', 'pass2_complete', 'ci_green', 'integration_approved', 'integrated', 'closed'];

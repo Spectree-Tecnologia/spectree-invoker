@@ -13,41 +13,14 @@
 // Current state and history are separate on purpose: resume reads the first and never has to
 // replay the second, and nothing that rewrites current state can rewrite what already happened.
 
-import {
-  readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync,
-  appendFileSync, renameSync, openSync, closeSync, unlinkSync,
-} from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, readdirSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { randomUUID } from 'node:crypto';
-import { assertValid, stamp } from '../shared/index.mjs';
+import { assertValid, stamp, withLock, writeAtomic } from '../shared/index.mjs';
 
 export const SCHEMA_VERSION = '1.0.0';
 const DIR = '.spectree';
 
 const p = (root, ...rest) => join(root, DIR, ...rest);
-
-/**
- * Atomic: write a sibling temp file, then rename over the target.
- *
- * On Windows a rename over a file that another process has open — a reader, for the few
- * milliseconds of a readFileSync — fails with EPERM/EACCES/EBUSY. That is a sharing violation,
- * not a refusal: readers never take the lock, so the writer holding it must outlast them. It
- * crashed a reopening mid-operation under a busy suite, leaving it open at `intent`.
- */
-export function writeAtomic(file, text) {
-  mkdirSync(dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
-  writeFileSync(tmp, text);
-  // ponytail: bounded by wall clock, not attempts — a reader starved of CPU holds its handle longer.
-  const deadline = performance.now() + 10_000;
-  for (let wait = 5; ; wait = Math.min(wait * 2, 100)) {
-    try { return renameSync(tmp, file); } catch (e) {
-      const transient = process.platform === 'win32' && ['EPERM', 'EACCES', 'EBUSY'].includes(e.code);
-      if (!transient || performance.now() > deadline) throw e;
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
-    }
-  }
-}
 
 const readJson = (f) => JSON.parse(readFileSync(f, 'utf8'));
 
@@ -56,33 +29,12 @@ const readJson = (f) => JSON.parse(readFileSync(f, 'utf8'));
  * the same `state_revision`, both find it acceptable, and both write — the second silently
  * winning. `renameSync` makes the file swap atomic; it does not make the *decision* atomic.
  *
- * So the whole critical section runs under an exclusive-create lock: `wx` fails when the file
- * already exists, and that failure IS the mutual exclusion. State and history are written
- * inside it, so a reader never finds one without the other.
+ * So the whole critical section runs under the change's lock (`withLock`, shared persistence).
+ * State and history are written inside it, so a reader never finds one without the other.
  */
-function withLock(lockFile, fn, { attempts = 100, waitMs = 20 } = {}) {
-  mkdirSync(dirname(lockFile), { recursive: true });
-  for (let i = 0; i < attempts; i++) {
-    let fd;
-    try {
-      fd = openSync(lockFile, 'wx'); // atomic create-or-fail
-    } catch (e) {
-      if (e.code !== 'EEXIST') throw e;
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs); // short, synchronous
-      continue;
-    }
-    try {
-      writeFileSync(fd, String(process.pid));
-      return fn();
-    } finally {
-      closeSync(fd);
-      try { unlinkSync(lockFile); } catch { /* already released */ }
-    }
-  }
-  const e = new Error(`could not acquire ${lockFile}: another process is writing this change`);
-  e.code = 'E_CONCURRENT_UPDATE';
-  throw e;
-}
+const busy = (file) => {
+  throw Object.assign(new Error(`could not acquire ${file}: another process is writing this change`), { code: 'E_CONCURRENT_UPDATE' });
+};
 
 export class Store {
   constructor(root) { this.root = root; }
@@ -137,7 +89,7 @@ export class Store {
    */
   putChange(change, { event, expected } = {}) {
     assertValid('spectree/change', change, `change ${change.change_id}`);
-    return withLock(p(this.root, 'changes', `${change.change_id}.lock`), () => {
+    return withLock('change', p(this.root, 'changes', `${change.change_id}.lock`), () => {
       // Re-read INSIDE the lock. Reading before taking it is what made this a race.
       const existing = this.change(change.change_id);
       const current = existing?.state_revision ?? 0;
@@ -152,7 +104,7 @@ export class Store {
       if (event) this.appendHistory(change.change_id, { ...event, at: next.updated_at, state_revision: next.state_revision });
       writeAtomic(p(this.root, 'changes', `${change.change_id}.json`), JSON.stringify(next, null, 2) + '\n');
       return next;
-    });
+    }, { busy });
   }
 
   /** Append-only. Idempotent on event_id: replaying a resume never duplicates an event. */
@@ -222,7 +174,7 @@ export class Store {
 
   /** Stable ids: the next id is one past the highest ever used, closed items included. */
   putDeferred(item) {
-    return withLock(p(this.root, 'deferred.lock'), () => this.#putDeferredLocked(item));
+    return withLock('deferred', p(this.root, 'deferred.lock'), () => this.#putDeferredLocked(item), { busy });
   }
 
   #putDeferredLocked(item) {

@@ -1,6 +1,6 @@
-import { supervisedLaunch, refuse, inside, resolveOnPath, launchSpec } from '../shared/index.mjs';
+import { supervisedLaunch, refuse, inside, resolveOnPath, launchSpec, writeOnce } from '../shared/index.mjs';
 import { outcome } from '../change/index.mjs';
-import { accessSync, constants, statSync, writeFileSync } from 'node:fs';
+import { accessSync, constants, statSync } from 'node:fs';
 import { resolve, delimiter, basename } from 'node:path';
 
 export function preflightAgent(root, config) {
@@ -144,6 +144,6 @@ export function runAgent(root, packet, config = {}) {
     error: result.error?.code ?? null, process: result.process, stdout, stderr };
   // Persist the transport observation before any acceptance checks or caller code.
   // After a crash it is inspectable; it never authorizes replay or completion.
-  if (result.process?.ref) writeFileSync(inside(root, `${result.process.ref}/agent-result.json`), JSON.stringify(observation) + '\n', { flag: 'wx' });
+  if (result.process?.ref) writeOnce(inside(root, `${result.process.ref}/agent-result.json`), JSON.stringify(observation) + '\n');
   return observation;
 }
