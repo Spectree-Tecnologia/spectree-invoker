@@ -7,6 +7,6 @@
 - [x] Instalador copiando módulos inteiros.
 - [x] `tests/module-graph.test.mjs`, que falha na base e passa na candidata.
 - [x] Arquivar a mudança da tarefa 3 e atualizar ROADMAP, ledger (D-004) e `docs/architecture.md`.
-- [ ] Suíte, build e integridade verdes no CI do PR.
+- [x] Suíte, build e integridade verdes no CI do PR (#66, `f58e165`).
 
 Uma marca nesta lista não é prova; a evidência está no PR.
