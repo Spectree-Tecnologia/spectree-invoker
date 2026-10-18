@@ -31,6 +31,7 @@ Missing, skipped, duplicated or stale results and due deferred obligations refus
 12 Platform Engineer — ONE merge
 13 Platform Engineer — post-merge confirmation, then closed
 14 [gate 3] exposure / deploy, when applicable — a separate gate, never folded into 11
+[after closed] Invoker — closure retro: findings recorded, never fixed in place
 [after module 1 closes] Platform Engineer reverse-engineers the project's roles + skills
 ```
 
@@ -108,6 +109,13 @@ for a fresh architecture review, a rewrite of the roles, a manual recount of the
 investigation into an auxiliary tool, or an opportunistic fix — each of those turns a
 confirmation into a second delivery. A real failure stops the closure and produces an
 impediment; a short confirmation that hides one is worse than a long one.
+
+**The retro comes after `closed`, never inside the confirmation.** Once the change is closed, load
+the squad skill `squad-closure-retro` and read the change's trail for what in the project's
+environment let a mistake through or cost an attempt. A mechanical mistake becomes a check, a
+judgement becomes a line in a role, and an instruction that changed nothing is cut. Each finding
+names its owner and enters through a change of its own: the retro fixes nothing in place and asks
+the Founder nothing.
 
 **And it produces a receipt, which `integrated` and `closed` require.** The receipt names the
 repository, the PR, the head, the base branch, the merge commit, the preparation and its digest,
