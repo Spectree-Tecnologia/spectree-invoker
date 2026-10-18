@@ -17,6 +17,7 @@
   "targets": {
     "core": "adapters/codex/dist/SQUAD.md",
     "skill_dir": "adapters/codex/dist/skills/spectree-invoker",
+    "skills_dir": "adapters/codex/dist/skills",
     "agents_dir": "adapters/codex/dist/agents"
   }
 }

@@ -28,6 +28,7 @@
   "targets": {
     "core": "CLAUDE.md",
     "roles_dir": "agents",
-    "role_ext": ".md"
+    "role_ext": ".md",
+    "skills_dir": "skills"
   }
 }
