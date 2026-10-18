@@ -69,18 +69,16 @@ const unavailable = (message, cause) => {
  * checkout and the merge tree named the same bytes differently. `ls-files -m` decides
  * "unmodified" with the index in hand, the same way `git status` does.
  */
-export function normalisedHashes(root, relPaths) {
+export function normalisedHashes(root, relPaths, { index, modified } = {}) {
   if (relPaths.length === 0) return [];
   const bad = relPaths.find((p) => /[\r\n]/.test(p));
   if (bad) throw unavailable(`"${posix(bad)}" contains a newline, and no path list can carry that unambiguously`);
   const absPaths = relPaths.map((p) => join(root, p));
   try {
     const git = (args, input) => gitIn(root, args, { input });
-    const indexed = new Map(git(['ls-files', '-s', '-z']).split('\0').filter(Boolean).map((line) => {
-      const tab = line.indexOf('\t');
-      return [line.slice(tab + 1), line.slice(0, tab).split(' ')[1]];
-    }));
-    for (const p of git(['ls-files', '-m', '-z']).split('\0')) indexed.delete(p);
+    // A caller that already listed the index hands it over: the same listing, asked once.
+    const indexed = new Map((index ?? indexEntries(git(['ls-files', '-s', '-z']))).map((e) => [e.path, e.blob]));
+    for (const p of modified ?? git(['ls-files', '-m', '-z']).split('\0')) indexed.delete(p);
     // ponytail: a MODIFIED file stored with CRLF still goes through hash-object and digests as LF;
     // it is uncommitted, so no merge tree is compared against it until it is committed.
     const rel = relPaths.map(posix);
@@ -100,6 +98,37 @@ export function normalisedHashes(root, relPaths) {
       catch (err) { throw unavailable(`"${posix(relPaths[i])}" is part of the content and cannot be read`, err.message); }
     });
   }
+}
+
+/** An index line of `git ls-files -s`: mode, blob and merge stage, a tab, then the path. */
+const INDEX_LINE = /^(\d{6}) ([0-9a-f]+) (\d)\t/;
+
+/** `git ls-files -s -z` as entries: mode, blob, merge stage and path. */
+function indexEntries(listing) {
+  return listing.split('\0').filter(Boolean).map(indexEntry);
+}
+function indexEntry(line) {
+  const [head, mode, blob, stage] = line.match(INDEX_LINE);
+  return { mode, blob, stage, path: line.slice(head.length) };
+}
+
+/**
+ * The paths `git ls-files -m` would list, read off `git status --porcelain -z`: a second column
+ * that is not blank, `?` or `!` is the work tree differing from the index — a deletion included.
+ * A rename or copy in the first column carries its original path as the next entry. Porcelain
+ * names paths from the top of the repository, `ls-files` from `root`, hence the prefix.
+ */
+export function worktreeModified(status, prefix) {
+  const entries = status.split('\0');
+  const out = [];
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.length < 4) continue;
+    const path = e.slice(3);
+    if (!' ?!'.includes(e[1]) && path.startsWith(prefix)) out.push(path.slice(prefix.length));
+    if (e[0] === 'R' || e[0] === 'C') i++;
+  }
+  return out;
 }
 
 /** Where the change folder is now: open, or already moved into the archive. */
@@ -222,31 +251,34 @@ export function contractDigestAt(root, revision, change) {
 export function contentDigest(root) {
   const git = (args, input) => gitIn(root, args, { input });
   const exclude = OPERATIONAL.map((p) => `:(exclude)${p}`);
-  let revision, tree, paths, indexModes, dirty;
+  let revision, tree, paths, index, indexModes, dirty, modified;
   try {
-    revision = git(['rev-parse', 'HEAD']).trim();
-    tree = git(['rev-parse', 'HEAD^{tree}']).trim();
+    // The prefix is where `root` sits inside the repository: `status` names paths from the top.
+    let prefix;
+    [prefix, revision, tree] = git(['rev-parse', '--show-prefix', 'HEAD', 'HEAD^{tree}']).split(/\r?\n/);
     // Every file in scope, tracked or not, ignored files excluded. -z everywhere: git quotes and
     // escapes non-ASCII paths in its default output, and a path read back through that escaping
     // is not the path on disk.
-    paths = [...new Set(
-      git(['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '.', ...exclude])
-        .split('\0').filter(Boolean),
-    )].filter((p) => !excluded(p)).sort();
+    //
+    // One listing answers both questions: with `-s`, a tracked path comes with its index entry
+    // (mode, blob, stage) and an untracked one comes bare.
+    const listed = git(['ls-files', '-z', '-s', '--cached', '--others', '--exclude-standard', '--', '.', ...exclude])
+      .split('\0').filter(Boolean);
     // The mode git tracks, which is what a merge carries. Windows has no executable bit on the
     // filesystem, so asking the filesystem would answer a different question from the one the
     // other side of the merge is answering.
-    indexModes = new Map(
-      git(['ls-files', '-s', '-z', '--', '.', ...exclude]).split('\0').filter(Boolean).map((line) => {
-        const tab = line.indexOf('\t');
-        return [line.slice(tab + 1), line.slice(0, 6)];
-      }),
-    );
-    dirty = git(['status', '--porcelain', '-z', '--', '.', ...exclude]).length > 0;
+    index = listed.filter((line) => INDEX_LINE.test(line)).map(indexEntry);
+    paths = [...new Set([...index.map((e) => e.path), ...listed.filter((line) => !INDEX_LINE.test(line))])]
+      .filter((p) => !excluded(p)).sort();
+    indexModes = new Map(index.map((e) => [e.path, e.mode]));
+    const status = git(['status', '--porcelain', '-z', '--', '.', ...exclude]);
+    dirty = status.length > 0;
+    modified = worktreeModified(status, prefix);
     // A conflicted index has more than one version of a path, so "the content" is not a
     // question with an answer yet. Digesting whichever stage happened to be on disk would
-    // produce a number nobody could reproduce.
-    if (git(['ls-files', '-u', '-z', '--', '.', ...exclude]).length > 0) {
+    // produce a number nobody could reproduce. A stage other than 0 is exactly what
+    // `ls-files -u` lists.
+    if (index.some((e) => e.stage !== '0')) {
       throw unavailable(`the index under ${root} has unmerged paths; resolve the conflict before anything is measured`);
     }
   } catch (e) {
@@ -280,7 +312,7 @@ export function contentDigest(root) {
     }
     present.push(p);
   }
-  const blobs = normalisedHashes(root, present);
+  const blobs = normalisedHashes(root, present, { index, modified });
   const byPath = new Map(present.map((p, i) => [p, blobs[i]]));
 
   const h = createHash('sha256');

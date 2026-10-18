@@ -61,7 +61,7 @@
 - Status: open
 - Owner: own_change
 - Impact: ceiling
-- Decision: npm test leva 64 s porque 20 dos 36 arquivos sobem processos. Depende do fechamento como biblioteca.
+- Decision: A mudança suite-mais-rapida levou npm test de 71 s para 43 s numa VM de 4 vCPU: digest com 5 chamadas ao git em vez de 9, CLIs de fechamento no próprio processo nos testes, os três arquivos mais longos divididos e 8 arquivos em paralelo. O resto é espera por git e node em testes de ponta a ponta; a meta de 30 s aguarda decisão do Gilson.
 - Due: Roadmap de modularização, tarefa 6 (suíte mais rápida)
 - Closure condition: npm test abaixo de 30 s sem perder nenhum cenário.
 

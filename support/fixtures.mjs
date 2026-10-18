@@ -2,7 +2,7 @@
 // project, needs a credential, touches the network, or depends on anything outside this
 // repository. tests/ and bench/ both import this module; neither imports the other.
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, appendFileSync, rmSync, readFileSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -28,9 +28,8 @@ const git = (cwd, args) => execFileSync('git', args, { cwd, encoding: 'utf8', st
 export function gitRepo(files = { 'seed.txt': 'seed\n' }) {
   const root = tempDir('spectree-git-');
   git(root, ['init', '-q', '-b', 'main']);
-  git(root, ['config', 'user.email', 'test@example.invalid']);
-  git(root, ['config', 'user.name', 'test']);
-  git(root, ['config', 'commit.gpgsign', 'false']);
+  // The same three `git config` settings, written in one go instead of three processes.
+  appendFileSync(join(root, '.git', 'config'), '[user]\n\temail = test@example.invalid\n\tname = test\n[commit]\n\tgpgsign = false\n');
   writeFiles(root, files);
   git(root, ['add', '-A']);
   git(root, ['commit', '-qm', 'base']);

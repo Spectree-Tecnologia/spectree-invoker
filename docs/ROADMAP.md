@@ -67,8 +67,8 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 2 | Núcleo `shared` e utilitários de CLI | Integrada, PR #61 / v1.27.0, [proposta](changes/archive/2026-10-17-nucleo-shared-cli/proposal.md) | D-001 |
 | 3 | Fronteira do Presence e `bench/` sem `tests/` | Integrada, PR #63 / v1.30.0, [proposta](changes/archive/2026-10-18-fronteira-presence/proposal.md) | D-002, D-003 |
 | 4 | Módulos com entrada publicada e grafo acíclico | Integrada, PR #66 / v1.32.0, [proposta](changes/archive/2026-10-18-modulos-runtime/proposal.md) | D-004 |
-| 5 | Fechamento como biblioteca: três CLIs e a persistência | Em andamento: 5a `prepare-closure` (PR #67 / v1.34.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-prepare/proposal.md)), 5b `state.mjs` (PR #69 / v1.36.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-state/proposal.md)) e 5c `post-merge.mjs` (PR #71 / v1.38.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-post-merge/proposal.md)) integradas; 5d, a camada única de persistência com a ordem de lock, [proposta](changes/persistencia-unica/proposal.md), fecha a tarefa | D-005, D-006, D-010 |
-| 6 | Suíte mais rápida | Planejada, depois da 5 | D-007 |
+| 5 | Fechamento como biblioteca: três CLIs e a persistência | Concluída: 5a `prepare-closure` (PR #67 / v1.34.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-prepare/proposal.md)), 5b `state.mjs` (PR #69 / v1.36.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-state/proposal.md)), 5c `post-merge.mjs` (PR #71 / v1.38.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-post-merge/proposal.md)) e 5d, a camada única de persistência com a ordem de lock (PR #73 / v1.40.0, [proposta](changes/archive/2026-10-18-persistencia-unica/proposal.md)) | D-005, D-006, D-010 |
+| 6 | Suíte mais rápida | Em andamento: de 71 s para 43 s, [proposta](changes/suite-mais-rapida/proposal.md); a meta de 30 s aguarda decisão | D-007 |
 | 7 | Papéis deste repositório, extraídos do código | Planejada, depois da 4 | — |
 | 8 | Tamanho do protocolo | Aguarda decisão de produto do Founder | D-008 |
 

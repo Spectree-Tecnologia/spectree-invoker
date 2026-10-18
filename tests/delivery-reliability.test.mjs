@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync, spawn } from 'node:child_process';
 import { writeFileSync, readFileSync, mkdirSync, renameSync, unlinkSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { gitRepo, cleanup, change, writeFiles, REPO, approval } from './helpers.mjs';
+import { gitRepo, cleanup, change, writeFiles, REPO, approval, closureCli } from './helpers.mjs';
 import { Store } from '../scripts/lib/change/store.mjs';
 import { deliveryContract, suiteVerdict } from '../scripts/lib/evidence/delivery-contract.mjs';
 import { deliveryGate, deliveryPlan, deliveryPreflight, runDelivery, deliveryMetrics, recoverDelivery } from '../scripts/lib/evidence/delivery.mjs';
@@ -128,7 +128,7 @@ test('a delta scenario omitted from the verification plan is refused before exec
 });
 test('state can, planner and transition share delivery gates; observations cannot substitute for scope approval', () => {
   const f = fixture();
-  const cli = args => spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), ...args], { cwd: f.root, encoding: 'utf8' });
+  const cli = args => closureCli(join(REPO, 'scripts/state.mjs'), args, { cwd: f.root });
   try {
     assert.match(cli(['can', 'c1', 'implemented']).stderr, /E_DELIVERY_MISSING/);
     const advice = JSON.parse(cli(['plan', 'c1', '--json']).stdout);

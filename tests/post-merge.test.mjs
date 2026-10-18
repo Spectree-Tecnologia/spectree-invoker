@@ -17,7 +17,7 @@ import { Store } from '../scripts/lib/change/store.mjs';
 import { contractDigest, contractDigestAt, contentDigest, contentDigestAt, gatedDigest } from '../scripts/lib/shared/digest.mjs';
 import { buildManifest } from '../scripts/lib/closure/closure-prep.mjs';
 import { emptyLifecycle, lifecyclePath, snapshotPath, currentPath } from '../scripts/lib/change/lifecycle.mjs';
-import { gitRepo, tempDir, cleanup, now, REPO, stubGh, greenRun, integrationApproval, ciConfig, recordIntegrationApproval } from './helpers.mjs';
+import { gitRepo, tempDir, cleanup, now, REPO, stubGh, greenRun, integrationApproval, ciConfig, recordIntegrationApproval, closureCli } from './helpers.mjs';
 import { confirmMerge } from '../scripts/lib/closure/index.mjs';
 
 /**
@@ -167,12 +167,8 @@ function fixture({
     repo: 'fixture/repo', pr, runs: [green.run], jobs: { [String(green.run.databaseId)]: green.jobs },
   });
 
-  const post = (...args) => {
-    const r = spawnSync(process.execPath, [join(REPO, 'scripts/post-merge.mjs'), 'c1', '--pr', '999', ...args], {
-      cwd: repo.root, encoding: 'utf8', env: { ...process.env, PATH: shim.path() },
-    });
-    return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
-  };
+  const post = (...args) => closureCli(join(REPO, 'scripts/post-merge.mjs'), ['c1', '--pr', '999', ...args],
+    { cwd: repo.root, env: { PATH: shim.path() } });
   /** The same confirmation, called in this process: the project root is NOT this process's cwd. */
   const confirm = (...args) => {
     const out = [];

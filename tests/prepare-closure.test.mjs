@@ -15,7 +15,7 @@ import { contentDigest, contractDigest, gatedDigest } from '../scripts/lib/share
 import { buildManifest } from '../scripts/lib/closure/closure-prep.mjs';
 import { emptyLifecycle, lifecyclePath } from '../scripts/lib/change/lifecycle.mjs';
 import { classifyPath, KIND } from '../scripts/lib/evidence/diff.mjs';
-import { gitRepo, cleanup, now, REPO, integrationApproval, recordIntegrationApproval, lifecycleOf, preparationOf } from './helpers.mjs';
+import { gitRepo, cleanup, now, REPO, integrationApproval, recordIntegrationApproval, lifecycleOf, preparationOf, closureCli } from './helpers.mjs';
 
 /** A change at `implemented`, whose consolidation command leaves a mark when it runs. */
 function fixture({ allowed = ['src', 'docs'], baseFiles = {} } = {}) {
@@ -35,11 +35,7 @@ function fixture({ allowed = ['src', 'docs'], baseFiles = {} } = {}) {
   writeFileSync(join(repo.root, 'docs/changes/c1/proposal.md'), '# proposal\n\nno delta\n');
   repo.git(['add', '-A']); repo.git(['commit', '-qm', 'the proposal']);
 
-  const run = (args, env) => {
-    const r = spawnSync(process.execPath, [join(REPO, 'scripts/prepare-closure.mjs'), 'c1', ...args],
-      { cwd: repo.root, encoding: 'utf8', env: { ...process.env, ...env } });
-    return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
-  };
+  const run = (args, env) => closureCli(join(REPO, 'scripts/prepare-closure.mjs'), ['c1', ...args], { cwd: repo.root, env });
   const prep = (...args) => run(args);
   /** The same run, a day later on the wall clock. Nothing on disk moves. */
   /** The same run, killed half way through writing the preparation's snapshot. */
@@ -120,8 +116,7 @@ function gateFixture(manifestBody) {
     revision: content.revision, manifest: prepared,
   }));
 
-  const can = () => spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), 'can', 'c1', 'integration_approved'],
-    { cwd: f.root, encoding: 'utf8' });
+  const can = () => closureCli(join(REPO, 'scripts/state.mjs'), ['can', 'c1', 'integration_approved'], { cwd: f.root });
   return { ...f, can, contract, content };
 }
 

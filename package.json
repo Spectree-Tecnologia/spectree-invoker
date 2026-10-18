@@ -1,6 +1,6 @@
 {
   "name": "@spectree/invoker",
-  "version": "1.40.0",
+  "version": "1.41.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -18,7 +18,7 @@
     "check:drift": "node scripts/build.mjs --check",
     "check:plugin": "node scripts/check-plugin.mjs",
     "capabilities": "node scripts/capabilities.mjs",
-    "test": "node --test --test-concurrency=4 tests/*.test.mjs",
+    "test": "node --test --test-concurrency=8 tests/*.test.mjs",
     "check": "npm run check:drift && npm run check:plugin && npm test"
   }
 }
