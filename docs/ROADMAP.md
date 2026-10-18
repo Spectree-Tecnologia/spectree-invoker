@@ -66,8 +66,8 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 1 | Adotar o próprio fluxo de mudança: archive e ledger de adiamentos | Integrada, PR #58 / v1.24.0, [proposta](changes/archive/2026-10-17-adotar-fluxo-de-mudanca/proposal.md) | — |
 | 2 | Núcleo `shared` e utilitários de CLI | Integrada, PR #61 / v1.27.0, [proposta](changes/archive/2026-10-17-nucleo-shared-cli/proposal.md) | D-001 |
 | 3 | Fronteira do Presence e `bench/` sem `tests/` | Integrada, PR #63 / v1.30.0, [proposta](changes/archive/2026-10-18-fronteira-presence/proposal.md) | D-002, D-003 |
-| 4 | Módulos com entrada publicada e grafo acíclico | Em andamento, [proposta](changes/modulos-runtime/proposal.md) | D-004 |
-| 5 | Fechamento como biblioteca, em três PRs | Planejada | D-005, D-006 |
+| 4 | Módulos com entrada publicada e grafo acíclico | Integrada, PR #66 / v1.32.0, [proposta](changes/archive/2026-10-18-modulos-runtime/proposal.md) | D-004 |
+| 5 | Fechamento como biblioteca, em três PRs | Em andamento: 5a `prepare-closure`, [proposta](changes/fechamento-biblioteca-prepare/proposal.md); depois `state.mjs` e `post-merge.mjs` | D-005, D-006, D-010 |
 | 6 | Suíte mais rápida | Planejada, depois da 5 | D-007 |
 | 7 | Papéis deste repositório, extraídos do código | Planejada, depois da 4 | — |
 | 8 | Tamanho do protocolo | Aguarda decisão de produto do Founder | D-008 |

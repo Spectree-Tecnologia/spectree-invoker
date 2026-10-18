@@ -93,6 +93,10 @@ shared <- change <- evidence, execution <- closure <- console, evaluation
 `tests/module-graph.test.mjs` fails on a deep import between modules, on an index that re-exports
 another module, and on a cycle. Tests themselves import files directly: they are white-box.
 
+A CLI is a thin command line over a module function. `prepare-closure.mjs` hands `root` and `argv`
+to `prepareClosure` (`closure/prepare.mjs`) and turns the returned code into the exit code, so
+every preparation flow can be tested in the same process. `state.mjs` and `post-merge.mjs` follow.
+
 ## Four kinds of check, kept apart
 
 1. **Structural integrity** — `check-plugin.mjs`. Files, content, references, manifests.
