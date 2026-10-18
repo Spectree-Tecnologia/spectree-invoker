@@ -187,7 +187,7 @@ test('5d. installing over an existing AGENTS.md preserves it, appends once, and 
 
     assert.ok(existsSync(join(dir, '.codex/agents/quality_engineer.toml')), 'specialists land in .codex/agents');
     assert.ok(existsSync(join(dir, '.agents/skills/spectree-invoker/SKILL.md')), 'the skill lands in .agents/skills');
-    for (const name of ['squad-test-quality', 'squad-code-smells']) {
+    for (const name of ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro']) {
       assert.ok(existsSync(join(dir, `.agents/skills/${name}/SKILL.md`)), `the squad skill ${name} lands beside it`);
     }
     assert.ok(existsSync(join(dir, '.spectree/squad/scripts/state.mjs')), 'the scripts travel with it');
@@ -1141,7 +1141,7 @@ test('21d8. the squad ships its own method as skills, on both harnesses, and the
   // The plugin shipped no skill for its roles: the method lived only in text loaded on every turn.
   // A squad skill describes how the squad works, so it exists before any project's module 1.
   const manifest = JSON.parse(readFileSync(join(REPO, 'protocol/manifest.json'), 'utf8'));
-  assert.deepEqual(manifest.skills, ['squad-test-quality', 'squad-code-smells'], 'the manifest declares the squad skills');
+  assert.deepEqual(manifest.skills, ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro'], 'the manifest declares the squad skills');
   for (const name of manifest.skills) {
     for (const f of [`skills/${name}/SKILL.md`, `adapters/codex/dist/skills/${name}/SKILL.md`]) {
       const body = readFileSync(join(REPO, f), 'utf8');
@@ -1168,6 +1168,29 @@ test('21d8. the squad ships its own method as skills, on both harnesses, and the
   }
   assert.match(readFileSync(join(REPO, 'agents/platform-engineer.md'), 'utf8'), /It says nothing either about the \*\*squad skills\*\*/,
     'the module-1 rule is about project skills, and says so');
+});
+
+test('21d11. a closed change is followed by a retro that records findings and fixes nothing in place', () => {
+  // A closure confirmed and archived but learned nothing: the same mistake caught late on one change
+  // was caught late again on the next, and the usual remedy was one more paragraph read on every turn.
+  for (const f of ['skills/squad-closure-retro/SKILL.md', 'adapters/codex/dist/skills/squad-closure-retro/SKILL.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /\*\*After `closed`, never before\.\*\*/, `${f}: the retro is outside the post-merge confirmation`);
+    assert.match(body, /\*\*It records; it fixes nothing\.\*\*/, `${f}: a finding is a proposal with an owner`);
+    assert.match(body, /It never gets a rule in a role/, `${f}: a mechanical violation becomes a check`);
+    assert.match(body, /seen rejecting the incident's own input/, `${f}: the check is watched failing before it counts`);
+    assert.match(body, /\*\*A candidate without a record behind it is not a finding\.\*\*/, `${f}: evidence comes from artifacts`);
+    assert.match(body, /owner: <Platform Engineer \| Architect \| Invoker \| change of its own \| squad>/, `${f}: every finding names its owner`);
+  }
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /\[after closed\] Invoker — closure retro/, `${f}: the pipeline places the retro after closure`);
+    assert.match(body, /load\s+the squad skill `squad-closure-retro`/, `${f}: the Invoker points at the retro`);
+  }
+  for (const f of ['agents/platform-engineer.md', 'adapters/codex/dist/agents/platform_engineer.toml']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /Record them in `docs\/DEFERRED\.md` on the next branch you cut, before any other write on it/,
+      `${f}: the findings enter through a branch, never straight to the default branch`);
+  }
 });
 
 test('21d7. a fact the interview owes from outside is dispatched, not asked', () => {

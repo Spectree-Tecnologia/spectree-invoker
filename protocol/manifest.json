@@ -27,7 +27,8 @@
   ],
   "skills": [
     "squad-test-quality",
-    "squad-code-smells"
+    "squad-code-smells",
+    "squad-closure-retro"
   ],
   "tokens": {
     "CARDS_LOCATION": "Where an adapter keeps the specialist cards, phrased to read inside a sentence.",

@@ -95,6 +95,8 @@ By script:
 - move `docs/changes/<slug>/` to `docs/changes/archive/<YYYY-MM-DD>-<slug>/`;
 - **write this change's status block into `docs/DEFERRED.md`** — the items it closed, struck through with what closed them, and, said out loud, **the ones it owed and did not pay**. Add what this change saw and left: the ceiling nobody hit yet, the defect found in passing, the thing that is safe today and stops being safe on the first deploy. Each item gets a stable number and an owner. Numbers are never reused and never renumbered, because the log, the proposals and the archive cite them.
 
+The retro the Invoker runs after `closed` hands you findings for the project. Record them in `docs/DEFERRED.md` on the next branch you cut, before any other write on it, each with a stable number and its owner. Never record them with a commit straight to the default branch.
+
 The status block is the part that does the work. A ledger that only grows is a graveyard: without a line per closure saying what went unpaid, deferring costs nothing, and a list of forty items is one nobody opens — including on the day the exposure gate asks it for the security items.
 
 `docs/specs/` is derived, never typed, and never grows by backfill.
