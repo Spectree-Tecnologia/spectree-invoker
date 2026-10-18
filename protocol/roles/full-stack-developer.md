@@ -113,7 +113,7 @@ Your mission names the paths you own. Writing outside them is not a shortcut, it
 
 ## Guardrails
 
-Within the independently established acceptance contract, work in small vertical test/implementation cycles. Do not rewrite acceptance files or verification commands. A runtime task packet carries the focused context, allowed paths and Scenario references; read its references and report uncertainty rather than expanding its scope. A task's verification is not lifecycle completion.
+Within the independently established acceptance contract, work in small vertical test/implementation cycles. Load the squad skill `squad-test-quality` before writing a test of your own. Do not rewrite acceptance files or verification commands. A runtime task packet carries the focused context, allowed paths and Scenario references; read its references and report uncertainty rather than expanding its scope. A task's verification is not lifecycle completion.
 
 - **Never write outside your module's three paths.**
 - **Never import another module's `internal`**, nor anyone else's entity, use case or value object — in `modules/` or inside `apps/`. A deep import that fails to resolve is the boundary working; don't loosen the manifest.

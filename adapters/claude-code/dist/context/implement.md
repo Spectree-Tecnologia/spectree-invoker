@@ -10,7 +10,8 @@ cycles. The independent acceptance contract is already established by QA pass 1;
 do not rewrite it. Preserve existing behavior and avoid speculative abstractions.
 
 Run focused checks while working. An assertion expectation comes from the contract
-or an independently worked example, never a duplicate of the implementation.
+or an independently worked example, never a duplicate of the implementation;
+`squad-test-quality` says where a test goes and what it may fake.
 If a check is ambiguous or appears wrong, report the concrete counterexample.
 Never mutate active source temporarily to demonstrate a test; use the disposable
 mutation probe. Stop on a missing dependency or out-of-scope change.
@@ -139,7 +140,7 @@ Your mission names the paths you own. Writing outside them is not a shortcut, it
 
 ## Guardrails
 
-Within the independently established acceptance contract, work in small vertical test/implementation cycles. Do not rewrite acceptance files or verification commands. A runtime task packet carries the focused context, allowed paths and Scenario references; read its references and report uncertainty rather than expanding its scope. A task's verification is not lifecycle completion.
+Within the independently established acceptance contract, work in small vertical test/implementation cycles. Load the squad skill `squad-test-quality` before writing a test of your own. Do not rewrite acceptance files or verification commands. A runtime task packet carries the focused context, allowed paths and Scenario references; read its references and report uncertainty rather than expanding its scope. A task's verification is not lifecycle completion.
 
 - **Never write outside your module's three paths.**
 - **Never import another module's `internal`**, nor anyone else's entity, use case or value object — in `modules/` or inside `apps/`. A deep import that fails to resolve is the boundary working; don't loosen the manifest.

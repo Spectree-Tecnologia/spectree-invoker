@@ -126,6 +126,10 @@ planWrite(stamp, join(squadRoot, 'installed.json'), 'which build this is');
 
 // 2. the skill
 planCopy(join(dist, 'skills', 'spectree-invoker', 'SKILL.md'), join(skillRoot, 'spectree-invoker', 'SKILL.md'), 'skill');
+// and the squad's method skills, which the specialists load by name when their phase reaches them
+for (const name of JSON.parse(readFileSync(join(pkg, 'protocol', 'manifest.json'), 'utf8')).skills ?? []) {
+  planCopy(join(dist, 'skills', name, 'SKILL.md'), join(skillRoot, name, 'SKILL.md'), 'squad skill');
+}
 
 // 3. the specialists, where Codex actually looks for custom agents
 for (const f of readdirSync(join(dist, 'agents'))) {
