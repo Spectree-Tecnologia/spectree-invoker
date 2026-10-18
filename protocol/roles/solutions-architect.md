@@ -185,7 +185,7 @@ The module graph is the **fifth** answer of a sequence, not the first. Drawn bef
 5. **Modules.** A subdomain is the business's own division of the problem; a module is the boundary in code that serves it. The mapping is 1:1, 1:N when parts of a subdomain change at different rhythms or under different rules, or N:1 when small subdomains share no conflicting rule or term. Name the **core domain** — the subdomain the product exists for — and the supporting ones; the core is where verification is hardest, never where it is lightest. The modules serving it go on one line of `docs/DOMAIN.md`, `Core modules: <module>, <module>`, because that line is what the runtime reads: every change that names one of them owes a killed mutation before pass 2 can close.
 6. **Attributes, deepened.** Descend into each entity, and expect this step to change the earlier ones: a rule about history ("never reuse the last five passwords") turns an attribute into an entity of its own.
 7. **Write flows.** Most stay inside one aggregate. One that must persist two aggregates atomically is a module-level flow behind the transaction port. One that spans steps in time or modules is a process, not a transaction: design it as the section on processes below says, never as two loose writes.
-8. **Read flows.** Reads may cross modules because they read data, never rules; a read needing joins and aggregation is a raw query returning a DTO. Pagination follows how the result is consumed — a list feeding a picker loads whole — not the kind of query it is.
+8. **Read flows.** Reads may cross modules because they read data, never rules; a read needing joins and aggregation is a raw query returning a DTO. A read that gathers several modules into one screen or report has a design of its own, and pagination is decided per list — both in the section on reads below.
 
 Two heuristics catch what the steps miss. **The business is almost always richer than an update**: a salary that changes is a *salary movement* — an entity with its reason — not a field overwritten, and a model of overwritten fields loses the history the business is obliged to keep. And **a relationship is not an aggregate**: two entities can reference each other through an id and live in different modules forever.
 
@@ -232,6 +232,22 @@ Two modules needing to edit the same file means the map is wrong. Redo it before
 **The half-way states are behaviour, so they are `Scenario`s** — in the owner's delta: each terminal state, each compensation path, and the deadline. A process whose spec covers only the path where everything succeeds has specified the one path that needed no design.
 
 **Not every multi-entity write is a process.** Two aggregates of the same module saved together are one module-level flow behind the transaction port, in one transaction. Reach for a process only when the write crosses modules or waits on time.
+
+## Reads across modules
+
+**A read that gathers several modules is a read module, not a reach into their tables.** A dashboard, a report, a search over orders with their customer and their payment: the data belongs to three owners, and the screen belongs to none of them. Put it in a module whose only job is that read — downstream of every module it reads, upstream of nothing, with no command, no rule and no write of anyone else's data. It is still a module: it sits in the graph, it has a spec when it has behaviour (filters, ordering, what an empty result returns), and its published entry exports DTOs like any other.
+
+**It gets its data one of two ways, and the proposal says which.**
+- **Composed** — it calls the narrow queries the owners publish and assembles the result. The default: nothing is copied, nothing goes stale. A query it needs and the owner does not publish is a mission for the owner, never a join into the owner's tables, because shared persistence is the boundary dissolving under a read.
+- **Projected** — it keeps its own copy, shaped for the screen, fed by the facts the owners publish. For when composing is too slow or the read searches across owners. The copy is behind by however long a fact takes to arrive, so how stale it may be is a decision you record, and what the screen shows while it is behind is a `Scenario`.
+
+**A rule never moves into the read module.** The moment it computes something a command depends on — a balance, a limit, an eligibility — the rule has two homes, and the next change edits one of them. Totals for display are fine; a total a write is checked against belongs to its owner.
+
+**Pagination is decided per list, by how the list is consumed.** In `proposal.md`, every list read says one of two things:
+- **Whole** — bounded by the business and small, fed to a picker, a select or a client-side filter: it loads entire, and the bound is stated ("the active branches of one company").
+- **Paged** — anything that grows with use, such as transactions, logs or customers: paged, with the page size capped and the ordering stable, so that a page never repeats or skips a row while new ones arrive.
+
+A list that is neither — "it is small for now" — is one that will be paged later by an incident. Say which it is.
 
 ## Vocabulary
 
@@ -302,6 +318,7 @@ A decision that changes is never edited in place: a new entry supersedes the old
 - **Never put a path, internal class, framework, step-by-step or code convention inside the spec.**
 - **Never deliver a graph with a cycle**, nor a boundary requiring a rule to cross modules.
 - **Never split entities of the same aggregate across modules.**
+- **Never let a read join another module's tables or carry a rule a command depends on**: a read across modules is a read module, composed from published queries or projected from published facts.
 - **Never design a write across modules as loose writes or as one module calling another's command**: it is a process with an owner, its facts, and a compensation for every step that a later failure leaves stranded.
 - **Never mix extracting a module from legacy code with changing its behaviour**, and never give an extracted module a spec written from its characterization tests.
 - **Never write production code**, not even a sketch or pseudocode.
