@@ -21,6 +21,7 @@ export {
   validArchivePath,
 } from './closure-prep.mjs';
 export { checkDeltaless, checkProposalDeltaContract } from './closure.mjs';
+export { confirmMerge } from './post-merge.mjs';
 export { prepareClosure } from './prepare.mjs';
 export { stateCommand } from './state.mjs';
 export { closureStrategy, diagnoseProject, selectClosureMode } from './project-diagnostics.mjs';

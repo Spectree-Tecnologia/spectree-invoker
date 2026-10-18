@@ -1,7 +1,7 @@
 # Comandos de estado como biblioteca
 
-Tarefa 5b do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
-Avança o D-005 do [ledger](../../DEFERRED.md), na parte do `state.mjs`, e entrega em código o D-010.
+Tarefa 5b do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
+Avança o D-005 do [ledger](../../../DEFERRED.md), na parte do `state.mjs`, e entrega em código o D-010.
 O `post-merge.mjs` vem na mudança seguinte.
 
 **Mudança deltaless, com uma correção declarada.** Este repositório não tem especificação viva, e

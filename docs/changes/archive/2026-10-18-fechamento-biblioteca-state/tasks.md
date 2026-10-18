@@ -6,6 +6,6 @@
 - [x] Deixar o CLI como fachada fina e publicar a função no `index.mjs` do `closure`.
 - [x] `tests/state-library.test.mjs`, em processo, com a raiz fora do diretório de trabalho.
 - [x] Arquivar a mudança da tarefa 5a e atualizar ROADMAP, ledger (D-005, D-010) e documentos.
-- [ ] Suíte, build e integridade verdes no CI do PR.
+- [x] Suíte, build e integridade verdes no CI do PR (#69, `0c74294`).
 
 Uma marca nesta lista não é prova; a evidência está no PR.
