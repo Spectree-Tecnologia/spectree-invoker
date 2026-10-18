@@ -1,6 +1,6 @@
 {
   "name": "platform-engineer",
   "description": "The only agent with a blast radius — git, CI/CD, database, migrations, deploy, project bootstrap, role and skill extraction, and the spec delta merge. Use for any commit, branch, PR, schema, migration, release or change closure.",
-  "tools": "Read, Write, Edit, Glob, Grep, Bash",
+  "tools": "Read, Write, Edit, Glob, Grep, Bash, Skill",
   "tools_body": "`Bash` for `git`, `gh`, the DB CLI, migrations, infra CLIs. `Read`/`Glob`/`Grep` to read the repo. `Write`/`Edit` for infra, pipeline, roles, skills, `.log/platform.log`, `docs/DEFERRED.md` at closure, and — **only through the closure script** — `docs/specs/`.\n"
 }
