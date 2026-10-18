@@ -12,14 +12,13 @@
 //
 // Exit codes: 0 prepared (or already prepared), 1 refused, 2 usage.
 
-import { flags, contractDigest, contentDigest, launch } from '../shared/index.mjs';
+import { flags, contractDigest, contentDigest, launch, writeAtomic } from '../shared/index.mjs';
 import { existsSync, mkdirSync, renameSync, readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import {
   Store,
   SCHEMA_VERSION,
-  writeAtomic,
   ORDER,
   readLifecycle,
   updateLifecycle,

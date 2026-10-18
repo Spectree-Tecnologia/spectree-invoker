@@ -1,7 +1,7 @@
 // Durable observations, never lifecycle authority. One operation has one writer.
-import { mkdirSync, writeFileSync, readdirSync, readFileSync, lstatSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, lstatSync } from 'node:fs';
 import { identifier } from './work.mjs';
-import { inside, refuse } from '../shared/index.mjs';
+import { inside, refuse, writeOnce } from '../shared/index.mjs';
 
 const TYPES = new Set(['run.started', 'agent.finished', 'check.finished', 'run.finished', 'run.uncertain', 'run.reconciled']);
 export function validRunEvent(event, change, operation, sequence) {
@@ -44,7 +44,7 @@ export function appendRunEvent(root, change, operation, type, details = {}) {
   const event = { ...details, version: 1, sequence, change_id: change, operation_id: operation, type, at: new Date().toISOString(), authorizes_execution: false };
   const text = JSON.stringify(event) + '\n';
   if (Buffer.byteLength(text) > 128 * 1024) refuse('E_RUN_LIMIT', 'Event exceeds 128 KiB.');
-  writeFileSync(inside(root, `.spectree/runs/${change}/${operation}/${String(sequence).padStart(6, '0')}.json`), text, { flag: 'wx' });
+  writeOnce(inside(root, `.spectree/runs/${change}/${operation}/${String(sequence).padStart(6, '0')}.json`), text);
   return event;
 }
 const number = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;

@@ -1,5 +1,5 @@
 // Sequential implementation executor. Task completion never advances lifecycle state.
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, unlinkSync, readdirSync, lstatSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, unlinkSync, readdirSync, lstatSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -30,24 +30,23 @@ import {
   inspectProcesses,
   parseTap,
   judgePassingRun,
+  withLock,
+  writeAtomic,
+  writeOnce,
 } from '../shared/index.mjs';
 import { hash, contextPacket, packageRoot } from './context.mjs';
 import { runAgent, preflightAgent } from './agent-runner.mjs';
 
 const file = (root, id) => inside(root, `.spectree/tasks/${identifier(id)}.json`);
 const json = (path) => JSON.parse(readFileSync(path, 'utf8'));
-function atomic(path, doc) {
-  mkdirSync(dirname(path), { recursive: true });
-  const temp = `${path}.${randomUUID()}.tmp`;
-  writeFileSync(temp, JSON.stringify(doc, null, 2) + '\n', { flag: 'wx' });
-  renameSync(temp, path);
-}
+function atomic(path, doc) { writeAtomic(path, JSON.stringify(doc, null, 2) + '\n'); }
+// The executor lock is the outermost of the shared lock order: it owns the checkout, and the
+// closure control is taken inside it. One attempt, no waiting — a second executor is refused.
 function exclusive(root, id, fn) {
-  const lock = inside(root, '.spectree/tasks/executor.lock');
-  mkdirSync(dirname(lock), { recursive: true });
-  try { writeFileSync(lock, JSON.stringify({ pid: process.pid, host: hostname(), change_id: id }), { flag: 'wx' }); }
-  catch (e) { if (e.code === 'EEXIST') refuse('E_TASK_BUSY', 'An executor owns this checkout. Inspect its process and pending attempt before recovery.'); throw e; }
-  try { return withAuthority(root, id, {}, fn); } finally { unlinkSync(lock); }
+  return withLock('executor', inside(root, '.spectree/tasks/executor.lock'), () => withAuthority(root, id, {}, fn), {
+    attempts: 1, owner: { change_id: id },
+    busy: () => refuse('E_TASK_BUSY', 'An executor owns this checkout. Inspect its process and pending attempt before recovery.'),
+  });
 }
 function save(root, doc) { atomic(file(root, doc.change_id), doc); }
 function effectiveBudget(doc, taskId) {
@@ -272,7 +271,7 @@ function checks(root, tasks, processRef, observation) {
 }
 function record(root, id, name, doc) {
   const path = inside(root, `.spectree/tasks/${id}/${name}.json`); mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(doc, null, 2) + '\n', { flag: 'wx' }); return `.spectree/tasks/${id}/${name}.json`;
+  writeOnce(path, JSON.stringify(doc, null, 2) + '\n'); return `.spectree/tasks/${id}/${name}.json`;
 }
 export function runTask(root, id, taskId, config, repair = null) {
   const preflight = preflightAgent(root, config); // Observable local prerequisites, before consuming an attempt.

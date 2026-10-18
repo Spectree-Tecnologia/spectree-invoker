@@ -22,11 +22,9 @@
 //   .spectree/closure/<id>.receipt.json            what was observed about the integration
 
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync, closeSync, unlinkSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { hostname } from 'node:os';
-import { writeAtomic } from './store.mjs';
-import { stamp } from '../shared/index.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { stamp, withLock, writeAtomic } from '../shared/index.mjs';
 
 export const LIFECYCLE_VERSION = '1.0.0';
 export const PREP_CONTRACT_VERSION = '2.0.0';
@@ -165,64 +163,24 @@ export function readLifecycle(root, changeId) {
  * The write boundary. Exclusive-create lock, expected revision re-read INSIDE it, and the whole
  * decision made there — not just the final rename, which was never the part that raced.
  *
- * A lock is not abandoned because it is old. Where the owner can be identified and is gone the
- * caller may break it deliberately; otherwise this waits a bounded time and then refuses, which
- * is a state a human can act on. An infinite wait is not one.
+ * A lock is not abandoned because it is old. Where the owner can be identified and is gone it is
+ * broken once, and announced; otherwise this waits a bounded time and then refuses, which is a
+ * state a human can act on. An infinite wait is not one.
  */
 export function withLifecycleLock(root, changeId, fn, { attempts = 150, waitMs = 20 } = {}) {
-  const file = join(root, lockPath(changeId));
-  mkdirSync(dirname(file), { recursive: true });
-  let brokenOnce = false;
-  for (let i = 0; i < attempts; i++) {
-    let fd;
-    try { fd = openSync(file, 'wx'); }
-    catch (e) {
-      if (e.code !== 'EEXIST') throw e;
-      // A lock is never broken for being OLD — a slow consolidation is not an abandoned one.
-      // It is broken only when its owner can be identified and is demonstrably gone, and the
-      // breaking is announced. A process that died holding it would otherwise wedge the change
-      // permanently, which is not safety, it is a different failure.
-      if (!brokenOnce && ownerIsGone(file)) {
-        brokenOnce = true;
-        process.emitWarning(
-          `the closure lock for ${changeId} was held by a process that is no longer running; breaking it once. ` +
-          'Any operation it left open is still recorded, and is recovered explicitly.',
-          'SpectreeLock');
-        try { unlinkSync(file); } catch { /* somebody else got there first */ }
-      }
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs);
-      continue;
-    }
-    try {
-      writeFileSync(fd, JSON.stringify({ pid: process.pid, host: hostname(), at: stamp() }));
-      return fn();
-    } finally {
-      closeSync(fd);
-      try { unlinkSync(file); } catch { /* already released */ }
-    }
-  }
-  const e = new Error(
-    `could not acquire the closure lock for ${changeId}: another process is writing it. ` +
-    `If nothing is running, remove ${posix(lockPath(changeId))} deliberately — it is not removed automatically for being old.`);
-  e.code = 'E_CONCURRENT_UPDATE';
-  throw e;
-}
-
-/**
- * Is the process that holds this lock gone?
- *
- * Only answerable on the machine that took it, and only for a pid this process may signal.
- * Anything else — another host, an unreadable lock, a pid that still answers — is "unknown", and
- * unknown leaves the lock alone. Signal 0 tests for existence without delivering anything.
- */
-function ownerIsGone(file) {
-  let owner;
-  try { owner = JSON.parse(readFileSync(file, 'utf8')); } catch { return false; }
-  if (!owner || typeof owner.pid !== 'number') return false;
-  if (owner.host && owner.host !== hostname()) return false;
-  if (owner.pid === process.pid) return false;
-  try { process.kill(owner.pid, 0); return false; }
-  catch (e) { return e.code === 'ESRCH'; }
+  return withLock('lifecycle', join(root, lockPath(changeId)), fn, {
+    attempts, waitMs,
+    // A process that died holding it would otherwise wedge the change permanently, which is not
+    // safety, it is a different failure.
+    breakAbandoned: `the closure lock for ${changeId} was held by a process that is no longer running; breaking it once. ` +
+      'Any operation it left open is still recorded, and is recovered explicitly.',
+    busy: () => {
+      throw Object.assign(new Error(
+        `could not acquire the closure lock for ${changeId}: another process is writing it. ` +
+        `If nothing is running, remove ${posix(lockPath(changeId))} deliberately — it is not removed automatically for being old.`),
+      { code: 'E_CONCURRENT_UPDATE' });
+    },
+  });
 }
 
 /**
@@ -235,7 +193,7 @@ function ownerIsGone(file) {
  * change store's own optimistic check sees nothing.
  *
  * LOCK ORDER, and it is the only one used anywhere: closure lifecycle lock, then the change lock.
- * Nothing takes the lifecycle lock while holding a change lock, so the two cannot cycle.
+ * `withLock` refuses the reverse order when it is attempted (`LOCK_ORDER`), so the two cannot cycle.
  *
  * @param {object} opts
  * @param {number} [opts.expectedRevision]  the control revision the DECISION was computed at

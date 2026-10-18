@@ -1,8 +1,8 @@
 // Adoption starts a new draft. Artifact location never becomes historical authority.
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { Store, doctor, identifier, bounded, references, snapshot } from '../change/index.mjs';
-import { assertValid, inside, refuse } from '../shared/index.mjs';
+import { assertValid, inside, refuse, writeOnce } from '../shared/index.mjs';
 import { hash } from '../execution/index.mjs';
 import { diagnoseProject, selectClosureMode } from './project-diagnostics.mjs';
 
@@ -65,7 +65,7 @@ export function applyAdoption(root, reviewed) {
   for (const rel of destinations) if (existsSync(inside(root, rel))) refuse('E_ADOPTION_EXISTS', `Refusing to replace ${rel}.`);
   // Persist the exact approved plan first. A crash leaves explicit partial adoption for inspection;
   // never resume by overwriting a potentially newer change or synthesizing a finished receipt.
-  const put = (rel, value) => { const p = inside(root, rel); mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, JSON.stringify(value) + '\n', { flag: 'wx' }); };
+  const put = (rel, value) => { const p = inside(root, rel); mkdirSync(dirname(p), { recursive: true }); writeOnce(p, JSON.stringify(value) + '\n'); };
   put(`.spectree/adoptions/${id}.json`, { version: 1, at: new Date().toISOString(), state: 'prepared', plan: fresh });
   if (fresh.create_project) put('.spectree/project.json', fresh.project);
   const change = { ...fresh.change, state_revision: 1, updated_at: new Date().toISOString().replace(/\.\d+Z$/, 'Z') };

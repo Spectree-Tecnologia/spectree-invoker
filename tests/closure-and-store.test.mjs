@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { Store, writeAtomic } from '../scripts/lib/change/store.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { writeAtomic } from '../scripts/lib/shared/persistence.mjs';
 import {
   checkDeltaless, checkProposalDeltaContract, checkModifiedScenarioLoss,
   checkRemovals, applyOrder, evidenceStillValid, DELTA_OPS,

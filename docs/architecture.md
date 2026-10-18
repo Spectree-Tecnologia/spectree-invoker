@@ -99,6 +99,13 @@ every preparation flow can be tested in the same process. `state.mjs` does the s
 `stateCommand` (`closure/state.mjs`), one function per command, and `post-merge.mjs` through
 `confirmMerge` (`closure/post-merge.mjs`).
 
+Every write under `.spectree/` goes through `shared/persistence.mjs`: `writeAtomic` replaces a
+document whole, `writeOnce` and `publishOnce` create a record that must not exist yet, and
+`withLock` runs a critical section under a lock file. `LOCK_ORDER` is executor, closure control,
+change, deferral ledger, and `withLock` refuses a lock requested out of that order
+(`E_LOCK_ORDER`). `tests/persistence.test.mjs` fails on a raw exclusive write, link or rename
+anywhere else under `scripts/lib/`.
+
 ## Four kinds of check, kept apart
 
 1. **Structural integrity** — `check-plugin.mjs`. Files, content, references, manifests.

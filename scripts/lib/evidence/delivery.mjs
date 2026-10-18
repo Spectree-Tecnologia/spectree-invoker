@@ -1,5 +1,5 @@
 // Delivery observations live outside the candidate. No caller-supplied green report is imported.
-import { existsSync, readFileSync, readdirSync, mkdirSync, writeFileSync, lstatSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, mkdirSync, lstatSync } from 'node:fs';
 import { randomUUID, createHash } from 'node:crypto';
 import { hostname } from 'node:os';
 import { performance } from 'node:perf_hooks';
@@ -13,6 +13,7 @@ import {
   supervisedLaunch,
   observeProcesses,
   inspectProcesses,
+  writeOnce,
 } from '../shared/index.mjs';
 import { verificationPlan } from './verification.mjs';
 import { deliveryContract, suiteVerdict } from './delivery-contract.mjs';
@@ -20,7 +21,7 @@ import { ledgerGate, deliveryLedger, DELIVERY_STATES } from './delivery-ledger.m
 
 const sha = v => createHash('sha256').update(typeof v === 'string' || Buffer.isBuffer(v) ? v : JSON.stringify(v)).digest('hex');
 const json = (root, path) => JSON.parse(readFileSync(inside(root, path), 'utf8'));
-const put = (root, path, value) => writeFileSync(inside(root, path), JSON.stringify(value, null, 2) + '\n', { flag: 'wx' });
+const put = (root, path, value) => writeOnce(inside(root, path), JSON.stringify(value, null, 2) + '\n');
 
 /** Discover by identity, including archive. Ambiguity is never resolved by choosing the last file. */
 export function deliveryPlan(root, changeId) {
@@ -125,7 +126,7 @@ export function runDelivery(root, changeId) {
           maxBuffer: 1024 * 1024, env: { ...env, SPECTREE_DELIVERY_PROBE: mode },
           process_ref: `${started.process_ref}/${suite.id}-probe-${mode}` });
         const text = p.stdout ?? '';
-        writeFileSync(inside(root, `${relative}/${suite.id}-probe-${mode}.tap`), text, { flag: 'wx' });
+        writeOnce(inside(root, `${relative}/${suite.id}-probe-${mode}.tap`), text);
         const verdict = suiteVerdict(text, p.status, { expected_tests: [suite.probe.test], scenarios: [] });
         probes.push({ mode, exit_code: p.status, output_sha256: sha(text), verdict, process: p.process });
         if (p.error || !p.process.quiescent || verdict.result !== (mode === 'pass' ? 'PASS' : 'FAIL'))
@@ -135,8 +136,8 @@ export function runDelivery(root, changeId) {
       const run = supervisedLaunch(suite.command, { cwd: root, encoding: 'utf8', timeout: suite.timeout_seconds * 1000,
         maxBuffer: 16 * 1024 * 1024, env, process_ref: `${started.process_ref}/${suite.id}-suite` });
       const output = run.stdout ?? '', stderr = run.stderr ?? '';
-      writeFileSync(inside(root, `${relative}/${suite.id}.tap`), output, { flag: 'wx' });
-      writeFileSync(inside(root, `${relative}/${suite.id}.stderr`), stderr, { flag: 'wx' });
+      writeOnce(inside(root, `${relative}/${suite.id}.tap`), output);
+      writeOnce(inside(root, `${relative}/${suite.id}.stderr`), stderr);
       const verdict = run.error || run.signal || run.status === null
         ? { result: 'INFRA_ERROR', reason: run.error?.message ?? `Process did not finish normally: ${run.signal}` }
         : suiteVerdict(output, run.status, suite);

@@ -52,7 +52,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: store, lifecycle e work/run-events/delivery-ledger gravam em .spectree cada um do seu jeito; a ordem lifecycle antes de change não está codificada num lugar só.
+- Decision: Entregue pela mudança persistencia-unica: scripts/lib/shared/persistence.mjs tem writeAtomic, writeOnce, publishOnce e withLock, e LOCK_ORDER (executor, lifecycle, change, deferred) é verificado, com recusa E_LOCK_ORDER. Todos os escritores de .spectree gravam por ali, e tests/persistence.test.mjs recusa um escritor fora da camada. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: Roadmap de modularização, tarefa 5 (fechamento como biblioteca)
 - Closure condition: Uma camada de persistência que codifica a ordem de lock, usada por todos os escritores de .spectree.
 

@@ -1,11 +1,12 @@
 // Synchronous facade; the independent supervisor owns the process boundary and watchdog.
-import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, openSync, closeSync, readSync, fstatSync } from 'node:fs';
+import { mkdirSync, readFileSync, existsSync, readdirSync, openSync, closeSync, readSync, fstatSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { launchSpec } from './launch.mjs';
+import { writeOnce } from './persistence.mjs';
 import { inside, refuse } from './guard.mjs';
 
 const lib = dirname(fileURLToPath(import.meta.url));
@@ -20,8 +21,8 @@ export function supervisedLaunch(command, options = {}) {
     file: spec.file, args: spec.args, verbatim: spec.options.windowsVerbatimArguments === true,
     cwd: root, timeout_ms: options.timeout ?? 300000, max_buffer: options.maxBuffer ?? 16 * 1024 * 1024,
     dir, platform: process.platform };
-  writeFileSync(join(dir, 'request.json'), JSON.stringify(request), { flag: 'wx' });
-  writeFileSync(join(dir, 'stdin'), options.input ?? '', { flag: 'wx' });
+  writeOnce(join(dir, 'request.json'), JSON.stringify(request));
+  writeOnce(join(dir, 'stdin'), options.input ?? '');
   const executable = process.platform === 'win32' ? powershell : process.execPath;
   const args = process.platform === 'win32'
     ? ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(lib, 'process-job.ps1'), join(dir, 'request.json')]

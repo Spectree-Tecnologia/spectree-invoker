@@ -1,10 +1,8 @@
 // Durable handoff for trusted local integrations. This is a mailbox, not an
 // agent scheduler or a process boundary for agents launched by another harness.
-import { readFileSync, writeFileSync, mkdirSync, linkSync, unlinkSync, existsSync, lstatSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { readFileSync, existsSync, lstatSync } from 'node:fs';
 import { identifier, bounded, references } from '../change/index.mjs';
-import { inside, refuse } from '../shared/index.mjs';
+import { inside, publishOnce, refuse } from '../shared/index.mjs';
 import { hash } from './context.mjs';
 
 const path = (root, id, name) => inside(root, `.spectree/bridge-mailbox/${identifier(id)}/${name}.json`);
@@ -13,13 +11,9 @@ function read(file) {
   try { return JSON.parse(readFileSync(file, 'utf8')); } catch { refuse('E_BRIDGE_RECORD', 'Incomplete mailbox record.'); }
 }
 function publish(file, doc) {
-  mkdirSync(dirname(file), { recursive: true });
-  const temp = `${file}.${randomUUID()}.tmp`;
-  writeFileSync(temp, JSON.stringify(doc) + '\n', { flag: 'wx' });
   // Publish complete bytes without replacing an existing terminal observation.
-  try { linkSync(temp, file); }
+  try { publishOnce(file, JSON.stringify(doc) + '\n'); }
   catch (e) { if (e.code === 'EEXIST') refuse('E_BRIDGE_CONFLICT', 'A record already exists; inspect it instead of replacing it.'); throw e; }
-  finally { unlinkSync(temp); }
 }
 export function createBridgeRequest(root, packet, timeoutSeconds = 240) {
   identifier(packet?.dispatch_id);

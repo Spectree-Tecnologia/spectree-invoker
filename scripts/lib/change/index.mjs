@@ -45,7 +45,7 @@ export {
   canDispatch,
   canTransition,
 } from './state-machine.mjs';
-export { SCHEMA_VERSION, Store, writeAtomic } from './store.mjs';
+export { SCHEMA_VERSION, Store } from './store.mjs';
 export {
   bounded,
   doctor,
