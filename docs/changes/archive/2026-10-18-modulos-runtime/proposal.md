@@ -1,7 +1,7 @@
 # Módulos do runtime com entrada publicada
 
-Tarefa 4 do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
-Fecha, em código, o D-004 do [ledger](../../DEFERRED.md).
+Tarefa 4 do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
+Fecha, em código, o D-004 do [ledger](../../../DEFERRED.md).
 
 **Mudança deltaless.** Nenhum comportamento observável do runtime, dos CLIs ou do instalador
 muda. Esta mudança não carrega delta em `specs/`. O critério de saída é a suíte existente verde,

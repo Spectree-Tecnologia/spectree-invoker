@@ -56,7 +56,7 @@
       "owner": "own_change",
       "status": "open",
       "impact": "defect",
-      "current_decision": "prepare-closure.mjs, state.mjs e post-merge.mjs carregam decisões de fechamento no corpo do CLI, o que obriga os testes a subir processos.",
+      "current_decision": "Parcial, pela mudança fechamento-biblioteca-prepare: prepare-closure.mjs é uma fachada fina sobre prepareClosure em scripts/lib/closure/prepare.mjs, com testes em processo. state.mjs e post-merge.mjs ainda carregam decisões de fechamento no corpo do CLI.",
       "reevaluation_trigger": "Roadmap de modularização, tarefa 5 (fechamento como biblioteca)",
       "closure_condition": "Os três CLIs como fachadas finas, cada fluxo de fechamento com teste em processo.",
       "opened_by_change": "adotar-fluxo-de-mudanca"
