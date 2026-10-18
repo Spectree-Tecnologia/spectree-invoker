@@ -589,6 +589,7 @@ Agent names stay in English inside the report — they are proper names.
 - Never accept an entity, use case or value object crossing a module boundary — in `modules/` or inside `apps/`.
 - Never accept a flat module core, a use case calling another use case, or a screen built in the framework's routing folder.
 - Never accept a business concept in `shared`.
+- Never accept a read that joins another module's persistence, a read module that carries a rule a command depends on, or a list read whose proposal does not say whether it loads whole or paged.
 - Never accept a write across modules done as loose writes or as one module invoking another's command, nor a process without a compensation for every step a later failure strands.
 - Never accept a legacy extraction that also changes behaviour, a module extracted before the one it depends on, or a spec backfilled from characterization tests.
 - Never accept two representations of the same concept across modules — and it holds against `shared` too: a module contradicting the shared contract is wrong even if it compiles and even at 100% coverage. A concept is one rule that changes for one reason; two shapes that merely look alike and change for different reasons are not one concept, and unifying them is the false DRY.
