@@ -10,17 +10,17 @@ import assert from 'node:assert/strict';
 import { spawnSync, spawn } from 'node:child_process';
 import { writeFileSync, readFileSync, mkdirSync, existsSync, symlinkSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { Store } from '../scripts/lib/store.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
 import {
   approvalsInForce, approvalCoversPreparation, approvalCoversTarget,
   buildReceipt, receiptCovers, receiptDigest, preparationDigest, emptyLifecycle,
   readLifecycle, updateLifecycle, beginOperation, advanceOperation, pendingOperation,
   lifecyclePath, currentPath, snapshotPath, receiptPath, PHASE, LIFECYCLE_VERSION,
-} from '../scripts/lib/lifecycle.mjs';
-import { buildManifest, validArchivePath, preparationCovers, compareArtifacts, resolveCommand } from '../scripts/lib/closure-prep.mjs';
-import { resolveCi, aggregate, TREATMENT } from '../scripts/lib/ci-policy.mjs';
-import { latestRun } from '../scripts/lib/gh.mjs';
-import { contentDigest } from '../scripts/lib/digest.mjs';
+} from '../scripts/lib/change/lifecycle.mjs';
+import { buildManifest, validArchivePath, preparationCovers, compareArtifacts, resolveCommand } from '../scripts/lib/closure/closure-prep.mjs';
+import { resolveCi, aggregate, TREATMENT } from '../scripts/lib/evidence/ci-policy.mjs';
+import { latestRun } from '../scripts/lib/shared/gh.mjs';
+import { contentDigest } from '../scripts/lib/shared/digest.mjs';
 import { gitRepo, cleanup, now, REPO, integrationApproval, recordIntegrationApproval } from './helpers.mjs';
 
 const snapshot = (over = {}) => buildManifest({

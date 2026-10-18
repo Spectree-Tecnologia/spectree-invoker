@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planNext } from '../scripts/lib/planner.mjs';
-import { canTransition } from '../scripts/lib/state-machine.mjs';
+import { planNext } from '../scripts/lib/change/planner.mjs';
+import { canTransition } from '../scripts/lib/change/state-machine.mjs';
 import { change, approval, evidence } from './helpers.mjs';
 const revision = 'a'.repeat(40);
 const ctx = (extra = {}) => ({ revision, contentDigest: 'content-a', contractDigest: 'contract-a',

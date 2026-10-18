@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, tempDir, cleanup, writeFiles } from './helpers.mjs';
-import { planAdoption, applyAdoption } from '../scripts/lib/adoption.mjs';
-import { Store } from '../scripts/lib/store.mjs';
-import { supervisedLaunch, inspectProcesses } from '../scripts/lib/process-supervisor.mjs';
-import { claudeEvents, agentCommand } from '../scripts/lib/agent-runner.mjs';
+import { planAdoption, applyAdoption } from '../scripts/lib/closure/adoption.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { supervisedLaunch, inspectProcesses } from '../scripts/lib/shared/process-supervisor.mjs';
+import { claudeEvents, agentCommand } from '../scripts/lib/execution/agent-runner.mjs';
 
 const request = { version: 1, project_id: 'legacy', change_id: 'next', scope: 'Implement the next reviewed feature',
   allowed_paths: ['src/'], refs: ['docs/changes/old/proposal.md'], adapter: 'claude-code', closure_mode: 'legacy' };

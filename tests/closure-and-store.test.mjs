@@ -5,12 +5,12 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { Store, writeAtomic } from '../scripts/lib/store.mjs';
+import { Store, writeAtomic } from '../scripts/lib/change/store.mjs';
 import {
   checkDeltaless, checkProposalDeltaContract, checkModifiedScenarioLoss,
   checkRemovals, applyOrder, evidenceStillValid, DELTA_OPS,
-} from '../scripts/lib/closure.mjs';
-import { KIND } from '../scripts/lib/diff.mjs';
+} from '../scripts/lib/closure/closure.mjs';
+import { KIND } from '../scripts/lib/evidence/diff.mjs';
 import { tempDir, cleanup, change, evidence, approval } from './helpers.mjs';
 
 const code = (fs) => fs.map((f) => f.code);

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, cleanup, writeFiles } from './helpers.mjs';
-import { runMutation, candidateFiles } from '../scripts/lib/mutation.mjs';
-import { resolveOnPath, launch } from '../scripts/lib/launch.mjs';
+import { runMutation, candidateFiles } from '../scripts/lib/evidence/mutation.mjs';
+import { resolveOnPath, launch } from '../scripts/lib/shared/launch.mjs';
 
 function fixture() {
   return gitRepo({ 'math.cjs': 'module.exports = (n) => n + 1;\n',

@@ -4,8 +4,8 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { gitRepo, tempDir, cleanup, REPO, stubGh } from './helpers.mjs';
-import { observePlanCi } from '../scripts/lib/planner-ci.mjs';
-import { Store } from '../scripts/lib/store.mjs';
+import { observePlanCi } from '../scripts/lib/change/planner-ci.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
 
 const inventory = (root, dir = root, out = {}) => {
   for (const name of readdirSync(dir)) {

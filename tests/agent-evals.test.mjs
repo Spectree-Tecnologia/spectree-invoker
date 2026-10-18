@@ -4,10 +4,10 @@ import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { tempDir, cleanup, writeFiles, gitRepo, REPO } from './helpers.mjs';
-import { scoreDecision, runEvaluations } from '../scripts/lib/agent-evals.mjs';
-import { runFlowEvaluation } from '../scripts/lib/flow-evals.mjs';
-import { readProject } from '../scripts/lib/console-reader.mjs';
-import { observeRuntime } from '../scripts/lib/console-observation.mjs';
+import { scoreDecision, runEvaluations } from '../scripts/lib/evaluation/agent-evals.mjs';
+import { runFlowEvaluation } from '../scripts/lib/evaluation/flow-evals.mjs';
+import { readProject } from '../scripts/lib/console/reader.mjs';
+import { observeRuntime } from '../scripts/lib/console/observation.mjs';
 
 test('evaluation scorer requires the observed decision and preserves negative and positive controls', () => {
   const expected = { classification: 'interrupted', action: 'reconcile', can_advance: false };
@@ -39,7 +39,7 @@ test('installed evolution entrypoints, generated profiles, runtime libraries and
     const run = (name, ...args) => spawnSync(process.execPath, [join(pkg, 'scripts', name), ...args], { cwd: r.root, encoding: 'utf8' });
     const list = run('evals.mjs'); assert.equal(list.status, 0, list.stderr); assert.equal(JSON.parse(list.stdout).cases.length, 5);
     assert.equal(JSON.parse(readFileSync(join(pkg, 'package.json'))).version, JSON.parse(readFileSync(join(REPO, 'package.json'))).version);
-    const context = spawnSync(process.execPath, ['--input-type=module', '-e', "import {phaseContext} from './.spectree/squad/scripts/lib/context.mjs';console.log(phaseContext('review').sources.length)"], { cwd: r.root, encoding: 'utf8' });
+    const context = spawnSync(process.execPath, ['--input-type=module', '-e', "import {phaseContext} from './.spectree/squad/scripts/lib/execution/context.mjs';console.log(phaseContext('review').sources.length)"], { cwd: r.root, encoding: 'utf8' });
     assert.equal(context.status, 0, context.stderr); assert.equal(context.stdout.trim(), '2');
     assert.match(run('tasks.mjs').stderr, /usage:/);
     assert.match(run('bridge.mjs').stderr, /usage:/);
@@ -47,7 +47,7 @@ test('installed evolution entrypoints, generated profiles, runtime libraries and
     assert.match(run('reports.mjs').stderr, /usage:/);
     assert.match(run('adopt.mjs').stderr, /usage:/);
     assert.deepEqual(JSON.parse(run('evals.mjs', '--suite', 'flow').stdout).cases, ['operational-flow']);
-    assert.match(readFileSync(join(pkg, 'scripts/lib/process-job.cs'), 'utf8'), /AssignProcessToJobObject/);
+    assert.match(readFileSync(join(pkg, 'scripts/lib/shared/process-job.cs'), 'utf8'), /AssignProcessToJobObject/);
     assert.equal(JSON.parse(readFileSync(join(pkg, 'docs/examples/claude-runner.json'))).kind, 'claude-code');
   } finally { cleanup(r.root); }
 });

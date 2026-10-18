@@ -8,7 +8,7 @@ but it never inherits the job of fixing the squad: the owner named here is the o
 **Owner:** this repository.
 **Status:** open, and it stays open — this is a standing constraint, not a task to close.
 
-`state.mjs run` and the TAP reader in `scripts/lib/tap.mjs` are the point where a command's exit
+`state.mjs run` and the TAP reader in `scripts/lib/shared/tap.mjs` are the point where a command's exit
 becomes a fact a gate will act on. Nine review rounds landed on this surface, and the pattern was
 consistent enough to be worth writing down: **each convenience added here opened the next hole.**
 

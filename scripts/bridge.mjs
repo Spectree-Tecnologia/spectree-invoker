@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { createBridgeRequest, inspectBridgeRequest, publishBridgeResult, waitBridgeResult } from './lib/bridge-mailbox.mjs';
+import { createBridgeRequest, inspectBridgeRequest, publishBridgeResult, waitBridgeResult } from './lib/execution/index.mjs';
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const [command, id, input, apply, ...rest] = process.argv.slice(2);
 try {

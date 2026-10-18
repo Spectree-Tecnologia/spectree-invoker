@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { verificationPlan, baselineVerdict, verificationCi } from '../scripts/lib/verification.mjs';
+import { verificationPlan, baselineVerdict, verificationCi } from '../scripts/lib/evidence/verification.mjs';
 
 const plan = () => ({ version: 1, changes_field_meaning: true,
   checks: [{ id: 'round-trip', kind: 'behavior', claim: 'Editing a label preserves the forecast',

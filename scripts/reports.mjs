@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { engineeringReport } from './lib/engineering-reports.mjs';
+import { engineeringReport } from './lib/evaluation/index.mjs';
 try {
   const [kind, file, ...extra] = process.argv.slice(2);
   if (!file || extra.length) throw Error('usage: reports.mjs diagnosis|review <report.json>');

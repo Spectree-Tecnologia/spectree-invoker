@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { diagnoseProject } from './lib/project-diagnostics.mjs';
-import { planReconciliation, applyReconciliation, resumeReconciliation } from './lib/reconciliation.mjs';
+import {
+  diagnoseProject,
+  planReconciliation,
+  applyReconciliation,
+  resumeReconciliation,
+} from './lib/closure/index.mjs';
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const [command, input, flag, output, ...extra] = process.argv.slice(2);
 const usage = 'usage: reconcile.mjs diagnose [change] | plan <request.json> [--output <file>] | apply <plan.json> --apply | resume <change> <operation> --apply';

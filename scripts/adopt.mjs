@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { planAdoption, applyAdoption } from './lib/adoption.mjs';
+import { planAdoption, applyAdoption } from './lib/closure/index.mjs';
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const [command, input, flag, output] = process.argv.slice(2);
 try {

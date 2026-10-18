@@ -1,8 +1,16 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { initTasks, taskStatus, runTask, verifyTasks, recoverTask, planTaskBudget, applyTaskBudget } from './lib/task-executor.mjs';
-import { preflightAgent } from './lib/agent-runner.mjs';
-import { hash } from './lib/context.mjs';
+import {
+  initTasks,
+  taskStatus,
+  runTask,
+  verifyTasks,
+  recoverTask,
+  planTaskBudget,
+  applyTaskBudget,
+  preflightAgent,
+  hash,
+} from './lib/execution/index.mjs';
 const [command, change, arg, ...rest] = process.argv.slice(2);
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const read = (p) => JSON.parse(readFileSync(p, 'utf8').replace(/^\uFEFF/, ''));

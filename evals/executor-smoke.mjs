@@ -4,9 +4,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { Store } from '../scripts/lib/store.mjs';
-import { contractDigest } from '../scripts/lib/digest.mjs';
-import { initTasks, runTask } from '../scripts/lib/task-executor.mjs';
+import { Store } from '../scripts/lib/change/index.mjs';
+import { contractDigest } from '../scripts/lib/shared/index.mjs';
+import { initTasks, runTask } from '../scripts/lib/execution/index.mjs';
 
 if (process.argv[2] !== '--apply' || process.argv.length !== 3) {
   console.log('Dry run. Use node evals/executor-smoke.mjs --apply to run one real agent in a synthetic temporary repository.');

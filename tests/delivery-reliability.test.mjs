@@ -4,11 +4,11 @@ import { spawnSync, spawn } from 'node:child_process';
 import { writeFileSync, readFileSync, mkdirSync, renameSync, unlinkSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, cleanup, change, writeFiles, REPO, approval } from './helpers.mjs';
-import { Store } from '../scripts/lib/store.mjs';
-import { deliveryContract, suiteVerdict } from '../scripts/lib/delivery-contract.mjs';
-import { deliveryGate, deliveryPlan, deliveryPreflight, runDelivery, deliveryMetrics, recoverDelivery } from '../scripts/lib/delivery.mjs';
-import { contractDigest } from '../scripts/lib/digest.mjs';
-import { ledgerView, ledgerGate } from '../scripts/lib/delivery-ledger.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { deliveryContract, suiteVerdict } from '../scripts/lib/evidence/delivery-contract.mjs';
+import { deliveryGate, deliveryPlan, deliveryPreflight, runDelivery, deliveryMetrics, recoverDelivery } from '../scripts/lib/evidence/delivery.mjs';
+import { contractDigest } from '../scripts/lib/shared/digest.mjs';
+import { ledgerView, ledgerGate } from '../scripts/lib/evidence/delivery-ledger.mjs';
 
 const command = [process.execPath, '--test', '--test-reporter=tap', 'suite.test.mjs'];
 const probe = [process.execPath, '--test', '--test-reporter=tap', 'probe.test.mjs'];

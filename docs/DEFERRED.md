@@ -34,7 +34,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: 46 libs soltas; agrupadas em capacidades, o grafo tem 4 ciclos que três movimentos removem. Adiado para a reorganização em módulos com entrada publicada.
+- Decision: Entregue pela mudança modulos-runtime: scripts/lib/ são sete módulos, cada um com index.mjs como entrada publicada, o grafo é acíclico e tests/module-graph.test.mjs falha em import profundo ou ciclo. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: Roadmap de modularização, tarefa 4 (módulos com entrada publicada)
 - Closure condition: Teste de fronteira que falha em import profundo entre módulos ou em ciclo no grafo.
 

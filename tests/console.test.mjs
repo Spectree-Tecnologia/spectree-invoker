@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, mkdirSync, symlinkSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { request } from 'node:http';
-import { readProject, pipeline } from '../scripts/lib/console-reader.mjs';
-import { startConsole } from '../scripts/lib/console-server.mjs';
-import { ORDER } from '../scripts/lib/state-machine.mjs';
+import { readProject, pipeline } from '../scripts/lib/console/reader.mjs';
+import { startConsole } from '../scripts/lib/console/server.mjs';
+import { ORDER } from '../scripts/lib/change/state-machine.mjs';
 import { tempDir, writeFiles, cleanup, change, evidence, approval } from './helpers.mjs';
 
 function fixture(t) { const root = tempDir('spectree-console-'); t.after(() => cleanup(root)); return root; }

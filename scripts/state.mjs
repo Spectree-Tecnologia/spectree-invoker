@@ -22,33 +22,56 @@
 //
 // Exit codes: 0 allowed/valid, 1 refused/invalid, 2 usage.
 
-import { git as gitIn } from './lib/shared/git.mjs';
-import { flags } from './lib/shared/cli.mjs';
+import {
+  git as gitIn,
+  flags,
+  contractDigest,
+  contentDigest,
+  gatedDigest,
+  launch,
+  executionContext,
+  observedIsolationSignal,
+  parseTap,
+  judgeFailingRun,
+  validate,
+} from './lib/shared/index.mjs';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { Store, SCHEMA_VERSION } from './lib/store.mjs';
-import { canTransition, ASSERTS_FAILURE } from './lib/state-machine.mjs';
-import { deliveryGate } from './lib/delivery.mjs';
-import { DELIVERY_STATES } from './lib/delivery-ledger.mjs';
-import { contractDigest, contentDigest, gatedDigest } from './lib/digest.mjs';
-import { launch } from './lib/launch.mjs';
-import { manifestPath, preparationCovers, approvalsInForce, readManifest } from './lib/closure-prep.mjs';
 import {
-  readLifecycle, readReceipt, receiptCovers, pendingOperation,
-  approvalCoversPreparation, updateLifecycle, withAuthority, integrationExpectation,
-} from './lib/lifecycle.mjs';
-import { executionContext, observedIsolationSignal } from './lib/harness.mjs';
-import { planNext, nextTarget } from './lib/planner.mjs';
-import { observePlanCi } from './lib/planner-ci.mjs';
-import { parseTap, judgeFailingRun } from './lib/tap.mjs';
-import { validate } from './lib/validate.mjs';
-import { pendingWork, doctor } from './lib/work.mjs';
-import { requireTasksComplete, taskStatus } from './lib/task-executor.mjs';
-import { diagnoseProject, selectClosureMode, closureStrategy } from './lib/project-diagnostics.mjs';
-import { POLICY_KIND, checkPolicyApproval } from './lib/scope-policy.mjs';
-import { coreModulesTouched } from './lib/core-domain.mjs';
+  Store,
+  SCHEMA_VERSION,
+  canTransition,
+  ASSERTS_FAILURE,
+  readLifecycle,
+  readReceipt,
+  receiptCovers,
+  pendingOperation,
+  approvalCoversPreparation,
+  updateLifecycle,
+  withAuthority,
+  integrationExpectation,
+  planNext,
+  nextTarget,
+  observePlanCi,
+  pendingWork,
+  doctor,
+  POLICY_KIND,
+  checkPolicyApproval,
+  coreModulesTouched,
+} from './lib/change/index.mjs';
+import { deliveryGate, DELIVERY_STATES } from './lib/evidence/index.mjs';
+import {
+  manifestPath,
+  preparationCovers,
+  approvalsInForce,
+  readManifest,
+  diagnoseProject,
+  selectClosureMode,
+  closureStrategy,
+} from './lib/closure/index.mjs';
+import { requireTasksComplete, taskStatus } from './lib/execution/index.mjs';
 
 // A gate is bound to what it authorises. Scope-class gates authorise the contract; the
 // gates that put code somewhere authorise the contract AND the code that will travel with it.

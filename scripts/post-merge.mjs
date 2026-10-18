@@ -19,25 +19,52 @@
 //
 // Exit codes: 0 confirmed (or planned), 1 refused, 2 usage.
 
-import { git as gitIn } from './lib/shared/git.mjs';
-import { flags } from './lib/shared/cli.mjs';
+import {
+  git as gitIn,
+  flags,
+  contractDigestAt,
+  contentDigestAt,
+  gatedDigest,
+  pullRequest,
+  runsForCommit,
+  latestRun,
+  runView,
+  repository,
+} from './lib/shared/index.mjs';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { Store, SCHEMA_VERSION } from './lib/store.mjs';
-import { contractDigestAt, contentDigestAt, gatedDigest } from './lib/digest.mjs';
-import { deliveryGate } from './lib/delivery.mjs';
-import { readDiff, classifyDiff } from './lib/diff.mjs';
-import { treatmentFor, aggregate, resolveCi } from './lib/ci-policy.mjs';
-import { preparationCovers, approvalsInForce, readManifest, compareArtifacts } from './lib/closure-prep.mjs';
-import { canTransition, ORDER } from './lib/state-machine.mjs';
-import { coreModulesTouched } from './lib/core-domain.mjs';
 import {
-  readLifecycle, pendingOperation, beginOperation, advanceOperation, completeOperation,
-  buildReceipt, writeReceipt, readReceipt, receiptCovers,
-  approvalCoversPreparation, approvalCoversTarget, newOperationId, updateLifecycle,
-  receiptDigest, integrationExpectation, PHASE,
-} from './lib/lifecycle.mjs';
-import { pullRequest, runsForCommit, latestRun, runView, repository } from './lib/gh.mjs';
+  Store,
+  SCHEMA_VERSION,
+  canTransition,
+  ORDER,
+  coreModulesTouched,
+  readLifecycle,
+  pendingOperation,
+  beginOperation,
+  advanceOperation,
+  completeOperation,
+  buildReceipt,
+  writeReceipt,
+  readReceipt,
+  receiptCovers,
+  approvalCoversPreparation,
+  approvalCoversTarget,
+  newOperationId,
+  updateLifecycle,
+  receiptDigest,
+  integrationExpectation,
+  PHASE,
+} from './lib/change/index.mjs';
+import {
+  deliveryGate,
+  readDiff,
+  classifyDiff,
+  treatmentFor,
+  aggregate,
+  resolveCi,
+} from './lib/evidence/index.mjs';
+import { preparationCovers, approvalsInForce, readManifest, compareArtifacts } from './lib/closure/index.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const argv = process.argv.slice(2);
@@ -56,7 +83,7 @@ const change = store.change(changeId) ?? die(`no such change: ${changeId}`, 1);
 const project = store.project();
 
 const started = Number(process.hrtime.bigint() / 1000000n);
-// `git_calls_here` counts the subprocesses THIS file spawns. The digest readers in `lib/digest.mjs`
+// `git_calls_here` counts the subprocesses THIS file spawns. The digest readers in `lib/shared/digest.mjs`
 // spawn their own and are not counted — naming the field for what it measures is the difference
 // between a metric and a number that looks like one.
 const metrics = { gh_calls: 0, git_calls_here: 0, log_bytes: 0 };
