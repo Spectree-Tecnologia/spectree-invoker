@@ -295,6 +295,9 @@ Declare the command once:
 node scripts/state.mjs init <project-id> -- npm run spec:merge
 ```
 
+Options of `init` (`--repository`, `--ci-workflow`, `--delivery`…) go before `--`. Everything
+after it is the command, argument by argument, and `init` reads none of it as its own option.
+
 Without it, `prepare-closure` refuses with `E_NO_CONSOLIDATION` and writes nothing. **Hand-editing
 `docs/specs/` is not the fallback** — a spec written by the agent that also approves it proves
 nothing. Such a project closes the legacy way, and says so out loud:
