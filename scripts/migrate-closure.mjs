@@ -20,12 +20,17 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { Store } from './lib/store.mjs';
-import { stamp } from './lib/shared/time.mjs';
 import {
-  readLifecycle, emptyLifecycle, lifecyclePath, currentPath, snapshotPath,
-  LIFECYCLE_VERSION, PREP_CONTRACT_VERSION,
-} from './lib/lifecycle.mjs';
+  Store,
+  readLifecycle,
+  emptyLifecycle,
+  lifecyclePath,
+  currentPath,
+  snapshotPath,
+  LIFECYCLE_VERSION,
+  PREP_CONTRACT_VERSION,
+} from './lib/change/index.mjs';
+import { stamp } from './lib/shared/index.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const argv = process.argv.slice(2);

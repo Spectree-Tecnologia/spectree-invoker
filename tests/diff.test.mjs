@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { classifyPath, classifyDiff, readDiff, normalisePath, outsideAllowedPaths, KIND } from '../scripts/lib/diff.mjs';
+import { classifyPath, classifyDiff, readDiff, normalisePath, outsideAllowedPaths, KIND } from '../scripts/lib/evidence/diff.mjs';
 import { gitRepo, commitAll, cleanup } from './helpers.mjs';
 
 test('a dependency manifest is never administrative', () => {

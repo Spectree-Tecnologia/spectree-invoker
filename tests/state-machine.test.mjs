@@ -5,7 +5,7 @@
 // The acceptance regressions for the same module live in acceptance-regressions.test.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canTransition, canDispatch, canDispatchWithCapabilities, ENTRY_REQUIREMENTS, ORDER, CODES } from '../scripts/lib/state-machine.mjs';
+import { canTransition, canDispatch, canDispatchWithCapabilities, ENTRY_REQUIREMENTS, ORDER, CODES } from '../scripts/lib/change/state-machine.mjs';
 import { change, evidence, approval } from './helpers.mjs';
 
 const REV = 'f'.repeat(40);

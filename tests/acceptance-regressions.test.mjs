@@ -7,8 +7,8 @@ import { execFileSync, spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, cpSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { canTransition, canDispatchWithCapabilities, legalTargets, ENTRY_REQUIREMENTS, CODES } from '../scripts/lib/state-machine.mjs';
-import { Store } from '../scripts/lib/store.mjs';
+import { canTransition, canDispatchWithCapabilities, legalTargets, ENTRY_REQUIREMENTS, CODES } from '../scripts/lib/change/state-machine.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
 import { tempDir, cleanup, change, evidence, approval, REPO } from './helpers.mjs';
 
 const REV = 'f'.repeat(40);
@@ -226,7 +226,7 @@ test('5e2. every module the installer ships resolves its imports inside the cons
     }
     assert.deepEqual(unresolved, [], 'every relative import of an installed module exists in the consumer');
     const lib = readdirSync(join(squad, 'scripts/lib'));
-    assert.deepEqual(lib.filter((f) => /^(presence|console)-/.test(f)), [], 'local UI libraries stay in the Invoker checkout');
+    assert.deepEqual(lib.filter((f) => /^(presence|console)(-|$)/.test(f)), [], 'local UI libraries stay in the Invoker checkout');
   } finally { cleanup(dir); }
 });
 
@@ -255,7 +255,7 @@ test('6. two concurrent processes race for the same state revision, and one is r
     // Sequential processes only prove that a stale revision is rejected. The lock is about
     // SIMULTANEOUS writers, so both children park on a barrier and are released together.
     // On Windows an absolute ESM specifier must be a file:// URL, so build one.
-    const storeUrl = pathToFileURL(join(REPO, 'scripts/lib/store.mjs')).href;
+    const storeUrl = pathToFileURL(join(REPO, 'scripts/lib/change/store.mjs')).href;
     const script = `
       import { Store } from ${JSON.stringify(storeUrl)};
       import { writeFileSync, existsSync } from 'node:fs';
@@ -337,7 +337,7 @@ test('7b. the drift test operates on a copy, not on the repository', () => {
 // --- second round, finding 8: the revision is not the content ----------------
 
 test('8. fresh evidence must match the content on disk, not only the revision', async () => {
-  const { contentDigest, contractDigest, OPERATIONAL } = await import('../scripts/lib/digest.mjs');
+  const { contentDigest, contractDigest, OPERATIONAL } = await import('../scripts/lib/shared/digest.mjs');
   const c = change({ state: 'implemented' });
   const qe = { role: 'quality_engineer', independent_of: ['full_stack_developer'] };
   const ctxOn = (contentDigest) => ({
@@ -372,7 +372,7 @@ test('8b. evidence that is not required to be fresh is unaffected by the content
 // --- second round, finding 9: progress is not scope --------------------------
 
 test('9. the contract digest covers the proposal and the delta, and nothing else', async () => {
-  const { contractDigest, CONTRACT } = await import('../scripts/lib/digest.mjs');
+  const { contractDigest, CONTRACT } = await import('../scripts/lib/shared/digest.mjs');
   assert.equal(CONTRACT('proposal.md'), true);
   assert.equal(CONTRACT('specs/account/spec.md'), true);
   assert.equal(CONTRACT('tasks.md'), false, 'ticking a checkbox is not a change of scope');
@@ -397,7 +397,7 @@ test('9. the contract digest covers the proposal and the delta, and nothing else
 });
 
 test('9b. the content digest ignores the squad\'s own records and notices everything else', async () => {
-  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const { contentDigest } = await import('../scripts/lib/shared/digest.mjs');
   const { gitRepo } = await import('./helpers.mjs');
   const repo = gitRepo({ 'src/app.js': 'export const a = 1;\n' });
   try {
@@ -422,7 +422,7 @@ test('9b. the content digest ignores the squad\'s own records and notices everyt
 });
 
 test('9c. content that cannot be established is refused, never read as unchanged', async () => {
-  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const { contentDigest } = await import('../scripts/lib/shared/digest.mjs');
   const dir = tempDir('spectree-nogit-');
   try {
     assert.throws(() => contentDigest(dir), (e) => e.code === 'E_CONTENT_UNAVAILABLE');
@@ -432,7 +432,7 @@ test('9c. content that cannot be established is refused, never read as unchanged
 // --- third round, finding 11: escaped paths hashed as a placeholder ----------
 
 test('11. an untracked path git would escape is still read, and its content still counts', async () => {
-  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const { contentDigest } = await import('../scripts/lib/shared/digest.mjs');
   const { gitRepo } = await import('./helpers.mjs');
   const repo = gitRepo({ 'seed.txt': 'seed\n' });
   try {
@@ -459,7 +459,7 @@ test('11. an untracked path git would escape is still read, and its content stil
 });
 
 test('11b. content that is present and cannot be read is refused, not hashed as a placeholder', async () => {
-  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const { contentDigest } = await import('../scripts/lib/shared/digest.mjs');
   const { gitRepo } = await import('./helpers.mjs');
   const repo = gitRepo({ 'seed.txt': 'seed\n' });
   try {
@@ -476,7 +476,7 @@ test('11b. content that is present and cannot be read is refused, not hashed as 
 });
 
 test('11c. a merge that keeps the tree keeps the content digest; one that changes it does not', async () => {
-  const { contentDigest } = await import('../scripts/lib/digest.mjs');
+  const { contentDigest } = await import('../scripts/lib/shared/digest.mjs');
   const { gitRepo } = await import('./helpers.mjs');
   const repo = gitRepo({ 'src/app.js': 'export const a = 1;\n' });
   const git = (...a) => execFileSync('git', a, { cwd: repo.root, encoding: 'utf8' });
@@ -501,7 +501,7 @@ test('11c. a merge that keeps the tree keeps the content digest; one that change
 // --- fourth round, finding 12: the launcher Windows actually has -------------
 
 test('12. a Windows launcher is resolved through PATH and PATHEXT, not assumed to be an exe', async () => {
-  const { resolveOnPath } = await import('../scripts/lib/launch.mjs');
+  const { resolveOnPath } = await import('../scripts/lib/shared/launch.mjs');
   const dir = tempDir('spectree-path-');
   try {
     writeFileSync(join(dir, 'npm.cmd'), '@echo off\n');
@@ -521,7 +521,7 @@ test('12. a Windows launcher is resolved through PATH and PATHEXT, not assumed t
 // --- fourth round, finding 13: inversion, and what a non-zero exit proves ----
 
 test('13. what a property means is not a flag', async () => {
-  const { ASSERTS_FAILURE, ENTRY_REQUIREMENTS } = await import('../scripts/lib/state-machine.mjs');
+  const { ASSERTS_FAILURE, ENTRY_REQUIREMENTS } = await import('../scripts/lib/change/state-machine.mjs');
   assert.deepEqual([...ASSERTS_FAILURE], ['pass1.tests_failing'],
     'one property, and it is the one whose delivery is a failing test');
   // The property that matters: nothing a gate requires to PASS may be satisfied by a failure.
@@ -535,7 +535,7 @@ test('13. what a property means is not a flag', async () => {
 // --- fifth round, finding 14: a substring is not a failing test --------------
 
 test('14. a plan, a numbered result and a matching count — not a substring', async () => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const NAME = 'Scenario: creation with a blank name';
   const judge = (text, exit = 1) => judgeFailingRun(parseTap(text), NAME, exit);
 
@@ -571,7 +571,7 @@ test('14. a plan, a numbered result and a matching count — not a substring', a
 // --- fifth round, finding 15: arguments that reach the command unchanged -----
 
 test('15. an empty argument survives, and one that cannot be carried is refused', async () => {
-  const { quoteForCmd, untransportable } = await import('../scripts/lib/launch.mjs');
+  const { quoteForCmd, untransportable } = await import('../scripts/lib/shared/launch.mjs');
 
   assert.equal(quoteForCmd(''), '""', 'an unquoted empty argument disappears entirely');
   assert.equal(quoteForCmd('plain'), 'plain');
@@ -592,7 +592,7 @@ test('15. an empty argument survives, and one that cannot be carried is refused'
 
 test('15b. arguments reach a .cmd shim byte for byte, or the run is refused', async (t) => {
   if (process.platform !== 'win32') return t.skip('cmd.exe transport is a Windows-only path');
-  const { launch } = await import('../scripts/lib/launch.mjs');
+  const { launch } = await import('../scripts/lib/shared/launch.mjs');
   const dir = tempDir('spectree-shim-');
   try {
     // A shim that forwards with %*, exactly as npm.cmd, npx.cmd and pnpm.cmd do.
@@ -618,7 +618,7 @@ test('15b. arguments reach a .cmd shim byte for byte, or the run is refused', as
 // --- sixth round, finding 16: a diagnostic is not a result ------------------
 
 test('16. a YAML diagnostic can say anything, and none of it is a result', async () => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const TARGET = 'Scenario: creation with a blank name';
   const judge = (lines, exit = 1) => judgeFailingRun(parseTap(lines.join('\n')), TARGET, exit);
 
@@ -644,7 +644,7 @@ test('16. a YAML diagnostic can say anything, and none of it is a result', async
 });
 
 test('16b. numbering and per-level plans are checked, not assumed', async () => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const TARGET = 'Scenario: creation with a blank name';
   const judge = (lines, exit = 1) => judgeFailingRun(parseTap(lines.join('\n')), TARGET, exit);
 
@@ -697,7 +697,7 @@ test('16b. numbering and per-level plans are checked, not assumed', async () => 
 // --- seventh round, finding 17: a group is a document, not an indent --------
 
 test('17. two sibling groups from a real node --test run are two documents', async (t) => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const TARGET = 'Scenario: creation with a blank name';
   const dir = tempDir('spectree-tap-real-');
   try {
@@ -737,7 +737,7 @@ ${out}`);
 });
 
 test('17b. a sibling group can never complete another group\'s plan', async () => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const TARGET = 'Scenario: creation with a blank name';
   // Two incomplete groups whose results, added together, look like one satisfied plan.
   const forged = [
@@ -755,7 +755,7 @@ test('17b. a sibling group can never complete another group\'s plan', async () =
 });
 
 test('17c. a result numbered outside the plan is refused', async () => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const TARGET = 'Scenario: creation with a blank name';
   const judge = (lines) => judgeFailingRun(parseTap(lines.join('\n')), TARGET, 1);
 
@@ -775,7 +775,7 @@ test('17c. a result numbered outside the plan is refused', async () => {
 // --- eighth round, finding 18: a complete subtest is not a complete run ------
 
 test('18. the top-level document must close, however tidy the subtests are', async () => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const TARGET = 'Scenario: creation with a blank name';
   const dir = tempDir('spectree-tap-cut-');
   try {
@@ -806,7 +806,7 @@ test('18. the top-level document must close, however tidy the subtests are', asy
 });
 
 test('18b. a subtest with no result in its parent is refused, counts or no counts', async () => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const TARGET = 'Scenario: creation with a blank name';
   const judge = (lines, exit = 1) => judgeFailingRun(parseTap(lines.join('\n')), TARGET, exit);
 
@@ -838,7 +838,7 @@ test('18b. a subtest with no result in its parent is refused, counts or no count
 // --- ninth round, finding 19: the middle group has to exist in time ---------
 
 test('19. describe > describe > it is accepted, with the middle group in the tree', async () => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const TARGET = 'Scenario: creation with a blank name';
   const dir = tempDir('spectree-tap-nested-');
   try {
@@ -880,7 +880,7 @@ test('19. describe > describe > it is accepted, with the middle group in the tre
 });
 
 test('19b. a marker cannot invent a group that never reports anything', async () => {
-  const { parseTap, judgeFailingRun } = await import('../scripts/lib/tap.mjs');
+  const { parseTap, judgeFailingRun } = await import('../scripts/lib/shared/tap.mjs');
   const TARGET = 'Scenario: creation with a blank name';
   // The announcement is there and the subtest never arrives: that is not a finished run.
   const r = judgeFailingRun(parseTap([

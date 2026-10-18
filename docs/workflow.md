@@ -450,7 +450,7 @@ a `classify` job, jobs gated on its output, and a `required` aggregate that runs
 aggregate**, not the individual jobs: a check that failed, was cancelled or never reported is
 not a pass, and `[skip ci]` is never the mechanism.
 
-The policy is reusable (`scripts/lib/ci-policy.mjs`) and this delivery changes **no consumer's
+The policy is reusable (`scripts/lib/evidence/ci-policy.mjs`) and this delivery changes **no consumer's
 workflow**.
 
 ## The trail, and what it is not

@@ -13,10 +13,10 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Store } from '../scripts/lib/store.mjs';
-import { contractDigest, contractDigestAt, contentDigest, contentDigestAt, gatedDigest } from '../scripts/lib/digest.mjs';
-import { buildManifest } from '../scripts/lib/closure-prep.mjs';
-import { emptyLifecycle, lifecyclePath, snapshotPath, currentPath } from '../scripts/lib/lifecycle.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { contractDigest, contractDigestAt, contentDigest, contentDigestAt, gatedDigest } from '../scripts/lib/shared/digest.mjs';
+import { buildManifest } from '../scripts/lib/closure/closure-prep.mjs';
+import { emptyLifecycle, lifecyclePath, snapshotPath, currentPath } from '../scripts/lib/change/lifecycle.mjs';
 import { gitRepo, tempDir, cleanup, now, REPO, stubGh, greenRun, integrationApproval, ciConfig, recordIntegrationApproval } from './helpers.mjs';
 
 /**
@@ -304,7 +304,7 @@ test('the fields asked of gh are fields gh has', () => {
   // `gh pr view --json merged` fails with "Unknown JSON field: merged". The state is MERGED and
   // mergedAt carries the moment; asking for a field that does not exist is not a smoke pending,
   // it is a contract that never worked.
-  const src = readFileSync(join(REPO, 'scripts/lib/gh.mjs'), 'utf8');
+  const src = readFileSync(join(REPO, 'scripts/lib/shared/gh.mjs'), 'utf8');
   const fields = /const want = fields \?\? \[([^\]]+)\]/.exec(src)[1];
   assert.doesNotMatch(fields, /'merged'/, 'there is no such field');
   for (const f of ['state', 'mergedAt', 'mergeCommit', 'baseRefName']) {
@@ -327,7 +327,7 @@ test('a confirmation asks by identity and downloads no logs', () => {
     assert.ok(typeof m.elapsed_ms === 'number');
 
     // And the queries themselves are scoped: repository, commit and workflow, server-side.
-    const src = readFileSync(join(REPO, 'scripts/lib/gh.mjs'), 'utf8');
+    const src = readFileSync(join(REPO, 'scripts/lib/shared/gh.mjs'), 'utf8');
     assert.match(src, /'--repo'/, 'which repository is not a thing to infer');
     assert.match(src, /'--commit'/, 'runs are asked for by commit, not filtered after the fact');
     assert.match(src, /'--workflow'/);

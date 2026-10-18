@@ -12,7 +12,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, tempDir, cleanup, REPO } from './helpers.mjs';
-import { detectHarness, isolationProbe, observedIsolationSignal, executionContext } from '../scripts/lib/harness.mjs';
+import { detectHarness, isolationProbe, observedIsolationSignal, executionContext } from '../scripts/lib/shared/harness.mjs';
 
 const capabilities = (env) => {
   const r = spawnSync(process.execPath, [join(REPO, 'scripts', 'capabilities.mjs'), '--json'],

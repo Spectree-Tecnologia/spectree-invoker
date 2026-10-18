@@ -18,7 +18,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { detectHarness, observedIsolationSignal } from './lib/harness.mjs';
+import { detectHarness, observedIsolationSignal } from './lib/shared/index.mjs';
 
 const pkgRoot = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'));
 const projectRoot = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();

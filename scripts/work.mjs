@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { doctor, startWork, finishWork, reconcileWork, workPacket } from './lib/work.mjs';
-import { diagnoseProject } from './lib/project-diagnostics.mjs';
+import { doctor, startWork, finishWork, reconcileWork, workPacket } from './lib/change/index.mjs';
+import { diagnoseProject } from './lib/closure/index.mjs';
 
 const [command, change, operation, ...rest] = process.argv.slice(2);
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();

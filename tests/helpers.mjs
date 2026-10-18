@@ -3,8 +3,8 @@
 
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import * as storeModule from '../scripts/lib/store.mjs';
-import * as lifecycleModule from '../scripts/lib/lifecycle.mjs';
+import * as storeModule from '../scripts/lib/change/store.mjs';
+import * as lifecycleModule from '../scripts/lib/change/lifecycle.mjs';
 import { REPO, tempDir, writeFiles, gitRepo, cleanup, now, preparationOf, stubGh, greenRun } from '../support/fixtures.mjs';
 
 export { REPO, tempDir, writeFiles, gitRepo, cleanup, now, preparationOf, stubGh, greenRun };

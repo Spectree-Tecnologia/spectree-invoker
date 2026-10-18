@@ -13,10 +13,9 @@
 //
 // Exit codes: 0 classified, 1 the comparison is unavailable, 2 usage.
 
-import { flags } from './lib/shared/cli.mjs';
+import { flags } from './lib/shared/index.mjs';
 import { appendFileSync } from 'node:fs';
-import { readDiff, classifyDiff } from './lib/diff.mjs';
-import { treatmentFor, REQUIRED_JOBS } from './lib/ci-policy.mjs';
+import { readDiff, classifyDiff, treatmentFor, REQUIRED_JOBS } from './lib/evidence/index.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const argv = process.argv.slice(2);

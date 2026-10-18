@@ -4,7 +4,7 @@ import { request } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { createSession, applyEvent } from '../presence/state.mjs';
 import { audioEnergy, createAudioPlayer } from '../presence/audio.mjs';
-import { startConsole } from '../scripts/lib/console-server.mjs';
+import { startConsole } from '../scripts/lib/console/server.mjs';
 import { startPresenceDemo } from '../presence/server/demo.mjs';
 
 function session() {

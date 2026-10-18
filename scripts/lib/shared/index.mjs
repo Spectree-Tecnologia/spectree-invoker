@@ -1,0 +1,22 @@
+// Infrastructure every module may use: CLI flags, git, digests, process launch and supervision,
+// TAP parsing, schema validation, harness declarations. It depends on no other module.
+// This is the published entry: other modules and the CLIs import only from here.
+
+export { flags } from './cli.mjs';
+export {
+  contentDigest,
+  contentDigestAt,
+  contractDigest,
+  contractDigestAt,
+  gatedDigest,
+  normalisedHashes,
+} from './digest.mjs';
+export { latestRun, prChecks, pullRequest, repository, runView, runsForCommit } from './gh.mjs';
+export { git } from './git.mjs';
+export { inside, refuse } from './guard.mjs';
+export { detectHarness, executionContext, observedIsolationSignal } from './harness.mjs';
+export { launch, launchSpec, resolveOnPath } from './launch.mjs';
+export { inspectProcesses, observeProcesses, supervisedLaunch } from './process-supervisor.mjs';
+export { judgeFailingRun, judgeMutationRun, judgePassingRun, parseTap } from './tap.mjs';
+export { stamp } from './time.mjs';
+export { assertValid, validate } from './validate.mjs';

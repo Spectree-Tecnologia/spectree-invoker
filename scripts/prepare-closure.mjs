@@ -17,26 +17,50 @@
 //
 // Exit codes: 0 prepared (or already prepared), 1 refused, 2 usage.
 
-import { flags } from './lib/shared/cli.mjs';
+import { flags, contractDigest, contentDigest, launch } from './lib/shared/index.mjs';
 import { existsSync, mkdirSync, renameSync, readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
-import { Store, SCHEMA_VERSION, writeAtomic } from './lib/store.mjs';
-import { closureDeliveryPreflight } from './lib/delivery.mjs';
-import { contractDigest, contentDigest } from './lib/digest.mjs';
-import { readDiff, classifyDiff, outsideAllowedPaths } from './lib/diff.mjs';
-import { checkProposalDeltaContract } from './lib/closure.mjs';
-import { ORDER } from './lib/state-machine.mjs';
-import { launch } from './lib/launch.mjs';
 import {
-  PREP_CONTRACT_VERSION, manifestPath, snapshotPath, consolidationCommand, resolveCommand,
-  commandDigest, artifactsUnder, buildManifest, comparePreparation, recordedArchive,
-  readManifest, validArchivePath, approvalsInForce, preparationDigest,
-} from './lib/closure-prep.mjs';
+  Store,
+  SCHEMA_VERSION,
+  writeAtomic,
+  ORDER,
+  readLifecycle,
+  updateLifecycle,
+  beginOperation,
+  advanceOperation,
+  completeOperation,
+  abandonOperation,
+  pendingOperation,
+  newPreparationId,
+  newOperationId,
+  PHASE,
+  RESUMABLE,
+} from './lib/change/index.mjs';
 import {
-  readLifecycle, updateLifecycle, beginOperation, advanceOperation, completeOperation,
-  abandonOperation, pendingOperation, newPreparationId, newOperationId, PHASE, RESUMABLE,
-} from './lib/lifecycle.mjs';
+  closureDeliveryPreflight,
+  readDiff,
+  classifyDiff,
+  outsideAllowedPaths,
+} from './lib/evidence/index.mjs';
+import {
+  checkProposalDeltaContract,
+  PREP_CONTRACT_VERSION,
+  manifestPath,
+  snapshotPath,
+  consolidationCommand,
+  resolveCommand,
+  commandDigest,
+  artifactsUnder,
+  buildManifest,
+  comparePreparation,
+  recordedArchive,
+  readManifest,
+  validArchivePath,
+  approvalsInForce,
+  preparationDigest,
+} from './lib/closure/index.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const argv = process.argv.slice(2);

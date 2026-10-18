@@ -2,7 +2,7 @@
 // Read-only, exact run/attempt. Native gh authentication; no model API or log downloads.
 // node bench/observe-run.mjs --repo owner/name --run 123 --attempt 1 [--human-events file.json]
 import { readFileSync } from 'node:fs';
-import { launch } from '../scripts/lib/launch.mjs';
+import { launch } from '../scripts/lib/shared/index.mjs';
 import { runTiming, humanTiming } from './lib/timing.mjs';
 
 export function collectRun({ repository, runId, attempt, human }, request) {

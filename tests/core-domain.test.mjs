@@ -3,9 +3,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canTransition, requirementsFor, ENTRY_REQUIREMENTS, CODES } from '../scripts/lib/state-machine.mjs';
-import { coreModules, coreModulesTouched } from '../scripts/lib/core-domain.mjs';
-import { planNext } from '../scripts/lib/planner.mjs';
+import { canTransition, requirementsFor, ENTRY_REQUIREMENTS, CODES } from '../scripts/lib/change/state-machine.mjs';
+import { coreModules, coreModulesTouched } from '../scripts/lib/change/core-domain.mjs';
+import { planNext } from '../scripts/lib/change/planner.mjs';
 import { tempDir, writeFiles, cleanup, change, evidence, approval } from './helpers.mjs';
 
 const REV = 'f'.repeat(40);

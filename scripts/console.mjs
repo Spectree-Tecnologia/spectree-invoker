@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { startConsole } from './lib/console-server.mjs';
+import { startConsole } from './lib/console/index.mjs';
 
 const args = process.argv.slice(2);
 const roots = []; let port = 0, demo = false;

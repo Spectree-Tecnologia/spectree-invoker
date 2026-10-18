@@ -12,7 +12,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, tempDir, cleanup, REPO, now, preparationOf, lifecycleOf, stubGh, greenRun } from './helpers.mjs';
-import { Store } from '../scripts/lib/store.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
 
 /** A consumer project with the squad installed, exactly as a user would have it. */
 function consumer() {

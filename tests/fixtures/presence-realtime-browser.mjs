@@ -1,7 +1,7 @@
 // Manual opt-in only. Real WebRTC + Realtime + Codex in an empty canary, synthetic input.
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { presenceAssets } from '../../scripts/lib/console-server.mjs';
+import { presenceAssets } from '../../scripts/lib/console/server.mjs';
 import { createPresenceSession } from '../../presence/server/session.mjs';
 import { createPresenceRealtime } from '../../presence/server/realtime.mjs';
 const short = process.argv.includes('--short');

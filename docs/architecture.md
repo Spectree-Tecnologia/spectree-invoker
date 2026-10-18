@@ -62,13 +62,36 @@ pull request.
 | `post-merge.mjs` | did the approved integration actually land with the required CI? |
 | `migrate-closure.mjs` | what explicit migration does a historical closure record require? |
 
-`lib/lifecycle.mjs` owns durable approval authority, immutable preparation identity, operation
+`lib/change/lifecycle.mjs` owns durable approval authority, immutable preparation identity, operation
 phases/recovery and receipt bindings. `state-machine.mjs` makes pure decisions; the CLIs apply
 them under the lifecycle/change write boundaries. Preparation occurs before integration approval;
 confirmation writes operational records, not a second closure commit.
 
 `bench/` observes performance outside this authority path. Its synthetic approvals and GitHub
 fixtures never leave disposable consumers; timing reports are not evidence satisfying any gate.
+
+## The runtime's own modules
+
+`scripts/lib/` is seven modules, one folder each. A module's `index.mjs` is its published entry:
+another module, a CLI, Presence or the benchmark imports only from there, and the files beside it
+reach each other directly. The graph runs one way:
+
+```
+shared <- change <- evidence, execution <- closure <- console, evaluation
+```
+
+| Module | What it holds |
+|---|---|
+| `shared` | CLI flags, git, digests, process launch and supervision, TAP parsing, schema validation, harness declarations |
+| `change` | the change store and state machine, scope policy, planner, operation checkpoints, run events, the closure control (`lifecycle.mjs`) and the core-domain line |
+| `evidence` | verification plans, mutation probes, diff classification, CI policy, the delivery contract and ledger |
+| `execution` | phase context, the task executor, agent runners, the bridge mailbox |
+| `closure` | preparation, closure, reconciliation, adoption, diagnostics |
+| `evaluation` | agent and flow evaluations, engineering reports |
+| `console` | the local Console server, an application nothing in the runtime imports |
+
+`tests/module-graph.test.mjs` fails on a deep import between modules, on an index that re-exports
+another module, and on a cycle. Tests themselves import files directly: they are white-box.
 
 ## Four kinds of check, kept apart
 

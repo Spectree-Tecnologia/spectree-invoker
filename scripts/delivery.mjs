@@ -1,7 +1,14 @@
 #!/usr/bin/env node
-import { deliveryPlan, deliveryPreflight, runDelivery, deliveryGate, deliveryMetrics, recoverDelivery } from './lib/delivery.mjs';
+import {
+  deliveryPlan,
+  deliveryPreflight,
+  runDelivery,
+  deliveryGate,
+  deliveryMetrics,
+  recoverDelivery,
+  ledgerView,
+} from './lib/evidence/index.mjs';
 import { readFileSync } from 'node:fs';
-import { ledgerView } from './lib/delivery-ledger.mjs';
 const [command, id, ...extra] = process.argv.slice(2);
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 try {

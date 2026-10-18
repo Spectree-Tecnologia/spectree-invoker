@@ -8,7 +8,7 @@
       "trap": "Reasoning by omission: 'I found no source file, so this is documentation.'",
       "correct": "The dependency manifest and the lockfile are executable content. The classification is dependency + administrative, the change is not administrative-only, and evidence taken before it is invalid.",
       "wrong": "Calling the change documentation-only and reusing the previous suite result.",
-      "mechanised_by": "scripts/lib/diff.mjs — the positive allowlist; tests/diff.test.mjs"
+      "mechanised_by": "scripts/lib/evidence/diff.mjs — the positive allowlist; tests/diff.test.mjs"
     },
     {
       "id": "eval-negative-control-fails-for-the-wrong-reason",
