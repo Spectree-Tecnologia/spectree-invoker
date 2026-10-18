@@ -2,7 +2,7 @@
 // Never accesses a physical microphone. --live permits one paid transcription.
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { presenceAssets } from '../../scripts/lib/console-server.mjs';
+import { presenceAssets } from '../../scripts/lib/console/server.mjs';
 import { createOpenAiAudio, createPresenceVoice } from '../../presence/server/voice.mjs';
 import { wavDuration } from '../../presence/voice-format.mjs';
 

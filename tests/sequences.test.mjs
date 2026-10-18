@@ -13,9 +13,9 @@ import assert from 'node:assert/strict';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { Store } from '../scripts/lib/store.mjs';
-import { contractDigest, contentDigest, gatedDigest } from '../scripts/lib/digest.mjs';
-import { currentPath, lifecyclePath, snapshotPath, readLifecycle, receiptPath, pendingOperation, preparationDigest } from '../scripts/lib/lifecycle.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { contractDigest, contentDigest, gatedDigest } from '../scripts/lib/shared/digest.mjs';
+import { currentPath, lifecyclePath, snapshotPath, readLifecycle, receiptPath, pendingOperation, preparationDigest } from '../scripts/lib/change/lifecycle.mjs';
 import {
   gitRepo, cleanup, tempDir, now, REPO, integrationApproval, recordIntegrationApproval, ciConfig, stubGh, greenRun, preparationOf,
 } from './helpers.mjs';

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { verificationPlan, baselineVerdict, verificationCi } from './lib/verification.mjs';
-import { Store } from './lib/store.mjs';
-import { contentDigestAt } from './lib/digest.mjs';
+import { verificationPlan, baselineVerdict, verificationCi } from './lib/evidence/index.mjs';
+import { Store } from './lib/change/index.mjs';
+import { contentDigestAt } from './lib/shared/index.mjs';
 const [command, file, extra] = process.argv.slice(2);
 try {
   const read = (f) => JSON.parse(readFileSync(f, 'utf8'));

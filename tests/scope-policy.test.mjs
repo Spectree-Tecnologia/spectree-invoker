@@ -8,8 +8,8 @@ import { spawnSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { REPO, tempDir, writeFiles, cleanup, approval, change, now } from './helpers.mjs';
-import { Store } from '../scripts/lib/store.mjs';
-import { checkPolicyApproval } from '../scripts/lib/scope-policy.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { checkPolicyApproval } from '../scripts/lib/change/scope-policy.mjs';
 
 const ROADMAP = '# Roadmap\n\n1. `billing-retry` — retry failed charges · policy: scope\n2. `billing-refund` — refunds, after retry\n';
 

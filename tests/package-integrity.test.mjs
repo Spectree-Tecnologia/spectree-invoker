@@ -36,7 +36,7 @@ test('the real package passes its own integrity check', () => {
 });
 
 test('reliability entrypoints and their libraries are required package content', () => {
-  for (const file of ['scripts/work.mjs', 'scripts/lib/mutation.mjs']) {
+  for (const file of ['scripts/work.mjs', 'scripts/lib/evidence/mutation.mjs']) {
     const dir = pkgCopy();
     try {
       rmSync(join(dir, file));
@@ -197,7 +197,7 @@ test('both adapters render every required role from the same protocol body', asy
 });
 
 test('the state contract reads the same in both adapters', async () => {
-  const { Store } = await import('../scripts/lib/store.mjs');
+  const { Store } = await import('../scripts/lib/change/store.mjs');
   const { change } = await import('./helpers.mjs');
   const dir = tempDir();
   try {

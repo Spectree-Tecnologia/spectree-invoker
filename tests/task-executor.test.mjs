@@ -4,13 +4,13 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { gitRepo, cleanup, writeFiles, change, approval, REPO } from './helpers.mjs';
-import { Store } from '../scripts/lib/store.mjs';
-import { contractDigest } from '../scripts/lib/digest.mjs';
-import { snapshot, pendingWork, reconcileWork } from '../scripts/lib/work.mjs';
-import { initTasks, taskStatus, runTask, recoverTask, verifyTasks, validatePlan, planTaskBudget, applyTaskBudget } from '../scripts/lib/task-executor.mjs';
-import { codexEvents, preflightAgent, runAgent } from '../scripts/lib/agent-runner.mjs';
-import { phaseContext, contextPacket, hash } from '../scripts/lib/context.mjs';
-import { engineeringReport } from '../scripts/lib/engineering-reports.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { contractDigest } from '../scripts/lib/shared/digest.mjs';
+import { snapshot, pendingWork, reconcileWork } from '../scripts/lib/change/work.mjs';
+import { initTasks, taskStatus, runTask, recoverTask, verifyTasks, validatePlan, planTaskBudget, applyTaskBudget } from '../scripts/lib/execution/task-executor.mjs';
+import { codexEvents, preflightAgent, runAgent } from '../scripts/lib/execution/agent-runner.mjs';
+import { phaseContext, contextPacket, hash } from '../scripts/lib/execution/context.mjs';
+import { engineeringReport } from '../scripts/lib/evaluation/engineering-reports.mjs';
 
 function fixture() {
   const r = gitRepo({ 'src/value.cjs': 'module.exports = { a: 0, b: 0 };\n', 'spec.md': 'Scenario A returns 1. Scenario B returns 2.\n',

@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { tempDir, cleanup, writeFiles, REPO } from './helpers.mjs';
-import { createBridgeRequest, inspectBridgeRequest, publishBridgeResult, waitBridgeResult } from '../scripts/lib/bridge-mailbox.mjs';
-import { parseTap, judgePassingRun } from '../scripts/lib/tap.mjs';
+import { createBridgeRequest, inspectBridgeRequest, publishBridgeResult, waitBridgeResult } from '../scripts/lib/execution/bridge-mailbox.mjs';
+import { parseTap, judgePassingRun } from '../scripts/lib/shared/tap.mjs';
 
 test('durable mailbox can receive an agent final from a new process; duplicates and changed evidence fail closed', async () => {
   const root = tempDir();

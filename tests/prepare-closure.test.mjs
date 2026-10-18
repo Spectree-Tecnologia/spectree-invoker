@@ -10,11 +10,11 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, readFileSync, readdirSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { Store } from '../scripts/lib/store.mjs';
-import { contentDigest, contractDigest, gatedDigest } from '../scripts/lib/digest.mjs';
-import { buildManifest } from '../scripts/lib/closure-prep.mjs';
-import { emptyLifecycle, lifecyclePath } from '../scripts/lib/lifecycle.mjs';
-import { classifyPath, KIND } from '../scripts/lib/diff.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { contentDigest, contractDigest, gatedDigest } from '../scripts/lib/shared/digest.mjs';
+import { buildManifest } from '../scripts/lib/closure/closure-prep.mjs';
+import { emptyLifecycle, lifecyclePath } from '../scripts/lib/change/lifecycle.mjs';
+import { classifyPath, KIND } from '../scripts/lib/evidence/diff.mjs';
 import { gitRepo, cleanup, now, REPO, integrationApproval, recordIntegrationApproval, lifecycleOf, preparationOf } from './helpers.mjs';
 
 /** A change at `implemented`, whose consolidation command leaves a mark when it runs. */

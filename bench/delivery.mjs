@@ -18,12 +18,11 @@
 // The counts it prints — pull requests, pushes to main — are what the procedure PRODUCES. How many
 // CI runs those become is a fact about a real repository, and this does not infer it.
 
-import { flags } from '../scripts/lib/shared/cli.mjs';
+import { flags, contentDigest } from '../scripts/lib/shared/index.mjs';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { gitRepo, tempDir, cleanup, REPO, now, preparationOf, stubGh, greenRun } from '../support/fixtures.mjs';
-import { contentDigest } from '../scripts/lib/digest.mjs';
 
 const argv = process.argv.slice(2);
 const opt = flags(argv).value;

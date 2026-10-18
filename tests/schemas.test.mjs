@@ -1,7 +1,7 @@
 // §15.1 valid and invalid documents · §15.16 approval scope · §15.13 empty required set
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validate } from '../scripts/lib/validate.mjs';
+import { validate } from '../scripts/lib/shared/validate.mjs';
 import { change, evidence, approval } from './helpers.mjs';
 
 const codes = (r) => r.errors.map((e) => e.code);

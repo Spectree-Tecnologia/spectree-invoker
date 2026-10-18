@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { evaluationCases, runEvaluations } from './lib/agent-evals.mjs';
-import { runFlowEvaluation } from './lib/flow-evals.mjs';
+import { evaluationCases, runEvaluations, runFlowEvaluation } from './lib/evaluation/index.mjs';
 try {
   const args = process.argv.slice(2); const opts = {};
   for (let i = 0; i < args.length; i++) {

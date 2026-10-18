@@ -4,14 +4,14 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, rmdirSync } from 'n
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { gitRepo, cleanup, change, approval, REPO, writeFiles } from './helpers.mjs';
-import { Store } from '../scripts/lib/store.mjs';
-import { diagnoseProject, selectClosureMode } from '../scripts/lib/project-diagnostics.mjs';
-import { planReconciliation, applyReconciliation, resumeReconciliation } from '../scripts/lib/reconciliation.mjs';
-import { planAdoption } from '../scripts/lib/adoption.mjs';
-import { readLifecycle, withAuthority } from '../scripts/lib/lifecycle.mjs';
-import { startConsole } from '../scripts/lib/console-server.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { diagnoseProject, selectClosureMode } from '../scripts/lib/closure/project-diagnostics.mjs';
+import { planReconciliation, applyReconciliation, resumeReconciliation } from '../scripts/lib/closure/reconciliation.mjs';
+import { planAdoption } from '../scripts/lib/closure/adoption.mjs';
+import { readLifecycle, withAuthority } from '../scripts/lib/change/lifecycle.mjs';
+import { startConsole } from '../scripts/lib/console/server.mjs';
 import { runtimePanel } from '../console/runtime.mjs';
-import { observeRuntime } from '../scripts/lib/console-observation.mjs';
+import { observeRuntime } from '../scripts/lib/console/observation.mjs';
 
 test('prepared selection requires a usable declaration, and never executes it', () => {
   assert.throws(() => selectClosureMode({ closure: { consolidate: [''] } }, 'prepared'), { code: 'E_CLOSURE_MECHANISM' });

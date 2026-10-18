@@ -7,13 +7,13 @@
 // IMMUTABLE base_revision, and reports findings. Errors exit 1; review items exit 0
 // and are listed, because they need a reader, not a matcher.
 
-import { flags } from './lib/shared/cli.mjs';
+import { flags } from './lib/shared/index.mjs';
 import { existsSync } from 'node:fs';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { Store } from './lib/store.mjs';
-import { readDiff, classifyDiff, outsideAllowedPaths } from './lib/diff.mjs';
-import { checkDeltaless, checkProposalDeltaContract } from './lib/closure.mjs';
+import { Store } from './lib/change/index.mjs';
+import { readDiff, classifyDiff, outsideAllowedPaths } from './lib/evidence/index.mjs';
+import { checkDeltaless, checkProposalDeltaContract } from './lib/closure/index.mjs';
 
 const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const argv = process.argv.slice(2);

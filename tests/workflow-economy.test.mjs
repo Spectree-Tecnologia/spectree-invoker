@@ -10,10 +10,10 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { classifyDiff, classifyPath, KIND } from '../scripts/lib/diff.mjs';
-import { treatmentFor, aggregate, TREATMENT, REQUIRED_CHECKS, REQUIRED_JOBS } from '../scripts/lib/ci-policy.mjs';
-import { comparePreparation, preparationCovers, buildManifest, consolidationCommand } from '../scripts/lib/closure-prep.mjs';
-import { Store } from '../scripts/lib/store.mjs';
+import { classifyDiff, classifyPath, KIND } from '../scripts/lib/evidence/diff.mjs';
+import { treatmentFor, aggregate, TREATMENT, REQUIRED_CHECKS, REQUIRED_JOBS } from '../scripts/lib/evidence/ci-policy.mjs';
+import { comparePreparation, preparationCovers, buildManifest, consolidationCommand } from '../scripts/lib/closure/closure-prep.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
 import { gitRepo, commitAll, tempDir, cleanup, change, REPO } from './helpers.mjs';
 
 const file = (path, status = 'M') => ({ status, path });
@@ -249,7 +249,7 @@ test('the installed consumer gets the closure and CI tooling, not just the state
     execFileSync(process.execPath, [join(REPO, 'scripts/install-codex.mjs'), dir, '--apply'], { encoding: 'utf8' });
     for (const f of [
       'state.mjs', 'prepare-closure.mjs', 'post-merge.mjs', 'ci-treatment.mjs',
-      'lib/ci-policy.mjs', 'lib/closure-prep.mjs', 'lib/gh.mjs',
+      'lib/evidence/ci-policy.mjs', 'lib/closure/closure-prep.mjs', 'lib/shared/gh.mjs',
     ]) {
       assert.ok(existsSync(join(dir, '.spectree/squad/scripts', f)), `${f} travels with the squad`);
     }

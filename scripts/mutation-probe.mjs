@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { runMutation } from './lib/mutation.mjs';
+import { runMutation } from './lib/evidence/index.mjs';
 const [file, ...flags] = process.argv.slice(2);
 try {
   if (!file || flags.some((f) => f !== '--apply')) throw Error('usage: mutation-probe.mjs <plan.json> [--apply]');

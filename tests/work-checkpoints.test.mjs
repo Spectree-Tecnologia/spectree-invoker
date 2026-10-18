@@ -4,8 +4,8 @@ import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { gitRepo, cleanup, writeFiles, change, REPO } from './helpers.mjs';
-import { Store } from '../scripts/lib/store.mjs';
-import { doctor, startWork, finishWork, reconcileWork, pendingWork, workPacket, outcome } from '../scripts/lib/work.mjs';
+import { Store } from '../scripts/lib/change/store.mjs';
+import { doctor, startWork, finishWork, reconcileWork, pendingWork, workPacket, outcome } from '../scripts/lib/change/work.mjs';
 
 const options = { phase: 'prepare_closure', task: 'tasks.md#T5', next: 'Inspect the archive and consolidated spec.', refs: ['seed.txt'] };
 test('doctor detects an empty structured store with existing artifacts without writing or inventing closure', () => {

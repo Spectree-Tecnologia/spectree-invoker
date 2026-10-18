@@ -27,9 +27,9 @@ const offenders = (files, forbidden) => files.flatMap((path) =>
   specifiers(readFileSync(join(REPO, path), 'utf8')).filter((s) => forbidden.test(s)).map((s) => `${path} -> ${s}`));
 
 // The runtime: every script and library except the two UIs' own entries and modules.
-const UI_ENTRY = /^scripts[\\/](presence[\w-]*|console)\.mjs$|^scripts[\\/]lib[\\/]console-/;
+const UI_ENTRY = /^scripts[\\/](presence[\w-]*|console)\.mjs$|^scripts[\\/]lib[\\/]console[\\/]/;
 const runtime = [...sources('scripts')].filter((p) => !UI_ENTRY.test(p));
-const RUNTIME_FORBIDDEN = /(^|[\\/])presence[\\/]|presence-[\w-]+\.mjs$|console-[\w-]+\.mjs$|^(ws|three)(\/|$)/;
+const RUNTIME_FORBIDDEN = /(^|[\\/])presence[\\/]|presence-[\w-]+\.mjs$|console-[\w-]+\.mjs$|(^|[\\/])console[\\/]|^(ws|three)(\/|$)/;
 const PRESENCE_FORBIDDEN = /console-[\w-]+\.mjs$|(^|[\\/])console[\\/]/;
 const BENCH_FORBIDDEN = /(^|[\\/])tests[\\/]/;
 
@@ -39,13 +39,14 @@ test('the guards recognise the imports they keep out', () => {
   assert.ok(RUNTIME_FORBIDDEN.test('../../presence/voice-format.mjs'));
   assert.ok(RUNTIME_FORBIDDEN.test('./presence-server.mjs'));
   assert.ok(RUNTIME_FORBIDDEN.test('./console-reader.mjs'));
+  assert.ok(RUNTIME_FORBIDDEN.test('../console/index.mjs'));
   assert.ok(RUNTIME_FORBIDDEN.test('ws'));
   assert.ok(RUNTIME_FORBIDDEN.test('three'));
   assert.ok(!RUNTIME_FORBIDDEN.test('./shared/guard.mjs'), 'the runtime importing itself is not a crossing');
-  assert.ok(PRESENCE_FORBIDDEN.test('../../scripts/lib/console-server.mjs'));
-  assert.ok(!PRESENCE_FORBIDDEN.test('../../scripts/lib/launch.mjs'), 'Presence reaching the runtime is the allowed direction');
+  assert.ok(PRESENCE_FORBIDDEN.test('../../scripts/lib/console/server.mjs'));
+  assert.ok(!PRESENCE_FORBIDDEN.test('../../scripts/lib/shared/launch.mjs'), 'Presence reaching the runtime is the allowed direction');
   assert.ok(BENCH_FORBIDDEN.test('../tests/helpers.mjs'));
-  assert.ok(UI_ENTRY.test('scripts/presence-voice-canary.mjs') && !UI_ENTRY.test('scripts/state.mjs'));
+  assert.ok(UI_ENTRY.test('scripts/presence-voice-canary.mjs') && UI_ENTRY.test('scripts/lib/console/server.mjs') && !UI_ENTRY.test('scripts/state.mjs'));
 });
 
 test('the runtime imports neither Presence, nor the Console, nor their dependencies', () => {

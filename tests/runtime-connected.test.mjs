@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { hostname } from 'node:os';
 import { tempDir, cleanup, writeFiles, gitRepo, change } from './helpers.mjs';
-import { appendRunEvent, runEvents, agentMetrics } from '../scripts/lib/run-events.mjs';
-import { readProject } from '../scripts/lib/console-reader.mjs';
-import { observeRuntime } from '../scripts/lib/console-observation.mjs';
-import { observeProcesses } from '../scripts/lib/process-supervisor.mjs';
-import { startConsole } from '../scripts/lib/console-server.mjs';
+import { appendRunEvent, runEvents, agentMetrics } from '../scripts/lib/change/run-events.mjs';
+import { readProject } from '../scripts/lib/console/reader.mjs';
+import { observeRuntime } from '../scripts/lib/console/observation.mjs';
+import { observeProcesses } from '../scripts/lib/shared/process-supervisor.mjs';
+import { startConsole } from '../scripts/lib/console/server.mjs';
 import { installConsole } from '../scripts/install-console.mjs';
 import { runtimePanel } from '../console/runtime.mjs';
 
