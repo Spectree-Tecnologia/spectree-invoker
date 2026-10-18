@@ -43,7 +43,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Parcial, pela mudança fechamento-biblioteca-prepare: prepare-closure.mjs é uma fachada fina sobre prepareClosure em scripts/lib/closure/prepare.mjs, com testes em processo. state.mjs e post-merge.mjs ainda carregam decisões de fechamento no corpo do CLI.
+- Decision: Parcial: prepare-closure.mjs (mudança fechamento-biblioteca-prepare) e state.mjs (fechamento-biblioteca-state) são fachadas finas sobre prepareClosure e stateCommand em scripts/lib/closure/, com testes em processo. post-merge.mjs ainda carrega decisões de fechamento no corpo do CLI.
 - Due: Roadmap de modularização, tarefa 5 (fechamento como biblioteca)
 - Closure condition: Os três CLIs como fachadas finas, cada fluxo de fechamento com teste em processo.
 
@@ -88,7 +88,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Em init, as flags globais são lidas no argv inteiro, inclusive no comando de consolidação depois de --. Um comando que carregue --ci-workflow ou --repository seria lido como opção do init. Mudar isso muda o que o init aceita, então fica fora desta mudança deltaless.
+- Decision: Entregue pela mudança fechamento-biblioteca-state: init lê flags só antes de --, e tests/state-library.test.mjs prova que uma flag dentro do comando de consolidação é ignorada. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: Roadmap de modularização, tarefa 5 (state.mjs vira um handler por comando)
 - Closure condition: init lê flags só antes de --, com teste que prova que uma flag dentro do comando de consolidação é ignorada.
 

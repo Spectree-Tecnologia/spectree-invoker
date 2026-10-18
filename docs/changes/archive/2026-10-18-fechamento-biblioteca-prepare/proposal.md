@@ -1,7 +1,7 @@
 # Preparação do fechamento como biblioteca
 
-Tarefa 5a do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
-Avança o D-005 do [ledger](../../DEFERRED.md), na parte do `prepare-closure.mjs`. O `state.mjs`
+Tarefa 5a do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
+Avança o D-005 do [ledger](../../../DEFERRED.md), na parte do `prepare-closure.mjs`. O `state.mjs`
 (com o D-010) e o `post-merge.mjs` vêm em mudanças próprias, uma por PR.
 
 **Mudança deltaless.** Nenhum comportamento observável do CLI muda: mesmos argumentos, mesma
