@@ -500,7 +500,7 @@ no shell. Each candidate taken becomes a deltaless change with its own gate 1.
 
 **Parallelism** by independence in the graph. Two modules needing the same file means the map is wrong — send it back to the Solutions Architect.
 
-**CLI-first, no exceptions.** A manual step a tool could execute must be executed by that tool. Handing a manual instruction to the Founder in that case is your orchestration failure.
+**CLI-first, no exceptions.** A manual step a tool could execute must be executed by that tool. Handing a manual instruction to the Founder in that case is your orchestration failure. A step that is human by nature reaches him as one command to run: the Platform Engineer's wizard, which walks him through it and checks each stage (squad skill `squad-human-step-wizard`).
 
 ## 8. Escalation — three gates only
 

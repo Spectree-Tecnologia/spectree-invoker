@@ -187,7 +187,7 @@ test('5d. installing over an existing AGENTS.md preserves it, appends once, and 
 
     assert.ok(existsSync(join(dir, '.codex/agents/quality_engineer.toml')), 'specialists land in .codex/agents');
     assert.ok(existsSync(join(dir, '.agents/skills/spectree-invoker/SKILL.md')), 'the skill lands in .agents/skills');
-    for (const name of ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan']) {
+    for (const name of ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan', 'squad-human-step-wizard']) {
       assert.ok(existsSync(join(dir, `.agents/skills/${name}/SKILL.md`)), `the squad skill ${name} lands beside it`);
     }
     assert.ok(existsSync(join(dir, '.spectree/squad/scripts/state.mjs')), 'the scripts travel with it');
@@ -1141,7 +1141,7 @@ test('21d8. the squad ships its own method as skills, on both harnesses, and the
   // The plugin shipped no skill for its roles: the method lived only in text loaded on every turn.
   // A squad skill describes how the squad works, so it exists before any project's module 1.
   const manifest = JSON.parse(readFileSync(join(REPO, 'protocol/manifest.json'), 'utf8'));
-  assert.deepEqual(manifest.skills, ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan'], 'the manifest declares the squad skills');
+  assert.deepEqual(manifest.skills, ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan', 'squad-human-step-wizard'], 'the manifest declares the squad skills');
   for (const name of manifest.skills) {
     for (const f of [`skills/${name}/SKILL.md`, `adapters/codex/dist/skills/${name}/SKILL.md`]) {
       const body = readFileSync(join(REPO, f), 'utf8');
@@ -1219,6 +1219,29 @@ test('21d12. the Architect slices tasks by Scenario and scans for shallow code, 
   assert.match(readFileSync(join(REPO, 'agents/solutions-architect.md'), 'utf8'), /^tools: .*\bSkill\b/m, 'on Claude Code the Architect may load a skill');
   for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
     assert.match(readFileSync(join(REPO, f), 'utf8'), /\*\*A deepening scan is dispatched, not a standing chore\.\*\*/, `${f}: the Invoker decides when a scan runs`);
+  }
+});
+
+test('21d13. a human step reaches the Founder as a checked wizard, and every PR declares its merge danger', () => {
+  // CLI-first said what to do when a tool can do the step and nothing about a step only a person can do,
+  // which came back as a numbered list he followed by hand and reported on; and no PR said whether it could be undone.
+  for (const f of ['skills/squad-human-step-wizard/SKILL.md', 'adapters/codex/dist/skills/squad-human-step-wizard/SKILL.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /## First, prove it is human/, `${f}: a step a tool could do is not his`);
+    assert.match(body, /\*\*Every stage ends with a check, not a question\.\*\*/, `${f}: a stage proves itself`);
+    assert.match(body, /It is never a command argument/, `${f}: a secret never travels as an argument`);
+    assert.match(body, /only runs when its gate 3 is already on record/, `${f}: the wizard never replaces the gate`);
+    assert.match(body, /Never run the wizard yourself/, `${f}: the agent traces it, the Founder runs it`);
+  }
+  for (const f of ['agents/platform-engineer.md', 'adapters/codex/dist/agents/platform_engineer.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /Load the squad skill `squad-human-step-wizard`/, `${f}: the human step points at the wizard`);
+    assert.match(body, /\*\*Every PR declares its merge danger\.\*\*/, `${f}: the PR says whether it can be undone`);
+    assert.match(body, /A one-way door names the gate 3 that authorised it/, `${f}: a one-way door carries its gate`);
+  }
+  assert.match(readFileSync(join(REPO, 'agents/platform-engineer.md'), 'utf8'), /^tools: .*\bSkill\b/m, 'on Claude Code the Platform Engineer may load a skill');
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /A step that is human by nature reaches him as one command to run/, `${f}: the Invoker hands over a command, not a list`);
   }
 });
 
