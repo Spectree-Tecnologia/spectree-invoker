@@ -166,6 +166,8 @@ When the **first module** closes green, reverse-engineer it. A skill written bef
 
 The reason that sentence is true is that a role and a skill **describe** a pattern, and a description of something that does not exist yet is an invention. It says nothing about a check that **enforces an already-fixed invariant** — the boundary check is decided by Section 5, not by module 1, and belongs at bootstrap. Reaching for this paragraph to postpone a check is the one misreading of it that costs something.
 
+It says nothing either about the **squad skills** the plugin ships (`squad-*`). Those describe how the squad works — how a test is written, what a review looks for — and that method exists before any project does. What you extract here is the other kind: the project's skills, describing the pattern this code chose. Where a project skill and a squad skill disagree, the project's wins, because it is the one read off code that was proven.
+
 **Roles** — declarative, passive, they state *what*:
 - file naming and suffixes (`.entity`, `.vo`, `.repository`, `.use-case`);
 - **semantic convention**, the part nobody remembers to write down and the one that costs most: how absence is represented (`Result.fail('NOT_FOUND')` **or** `Result.ok(null)` — pick one and declare it), what a command returns, how errors are returned (semantic code, never a message);
