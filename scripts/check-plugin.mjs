@@ -110,6 +110,22 @@ for (const file of has('commands') ? readdirSync(join(root, 'commands')).filter(
   else if (!fm.description) fail(`commands/${file}`, 'frontmatter missing "description"');
 }
 
+// --- 4b. the squad's method skills, on every harness ----------------------------
+// Declared in the manifest, sourced once in protocol/skills/, rendered by each adapter. A skill a
+// card points at and no harness ships is a pointer to nothing.
+for (const name of manifest?.skills ?? []) {
+  if (!has(`protocol/skills/${name}.md`)) fail(`protocol/skills/${name}.md`, 'declared squad skill has no source');
+  for (const id of adapters) {
+    const dir = readJson(`adapters/${id}/adapter.json`)?.targets?.skills_dir;
+    if (!dir) { fail(`adapters/${id}/adapter.json`, 'targets.skills_dir missing; the squad skills ship nowhere'); continue; }
+    const f = `${dir}/${name}/SKILL.md`;
+    if (!has(f)) { fail(f, 'squad skill not rendered for this harness'); continue; }
+    const fm = frontmatter(join(root, f));
+    if (!fm?.description) fail(f, 'frontmatter missing "description"');
+    if (fm?.name !== name) fail(f, `frontmatter name "${fm?.name}" does not match "${name}"`);
+  }
+}
+
 // --- 5. Codex entrypoint and specialists -------------------------------------
 if (adapters.includes('codex')) {
   const a = readJson('adapters/codex/adapter.json');

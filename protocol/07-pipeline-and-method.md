@@ -204,7 +204,7 @@ Two rules make the loop worth its cost. **Facts are the squad's job; decisions a
 - **roles** — declarative conventions: naming, suffixes, and above all **semantic convention** (how absence is represented, how errors are returned, what a command returns). It is the role, not the skill, that keeps modules of the same project from diverging;
 - **skills** — the procedure, pointing at the project's own files.
 
-A skill points at the project, it does not carry the answer. Specific beats generic, and the specificity shows up in the name.
+A skill points at the project, it does not carry the answer. Specific beats generic, and the specificity shows up in the name. These are the **project's** skills; the squad's own method skills ship with the plugin under `squad-*`, describe how the squad works rather than any project's pattern, and lose to a project skill wherever the two disagree.
 
 **And a role is maintained, not written once.** Every change closure re-verifies the roles it touched, and where a role and the shipped code disagree the **code wins**. `docs/specs/` is defended against rot by the delta rule; roles have no such defence and are the artifact that actually binds the Developers — a drifted role is worse than none, because the next Developer either obeys a rule the project does not have or discounts the file entirely.
 

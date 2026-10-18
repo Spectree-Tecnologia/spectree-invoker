@@ -53,6 +53,20 @@ export function renderAdapter(adapterId) {
       content: GENERATED_MD(`protocol/runtime/${phase}.md${role ? ' + protocol/roles/full-stack-developer.md' : ''}`) + read(`protocol/runtime/${phase}.md`) + role });
   }
 
+  // The squad's own method skills: the same body on every harness, loaded by a role when its
+  // phase reaches them. They describe how the squad works, never a project's pattern.
+  for (const name of manifest.skills ?? []) {
+    const src = `protocol/skills/${name}.md`;
+    const text = read(src);
+    const end = text.startsWith('---\n') ? text.indexOf('\n---\n', 4) : -1;
+    if (end === -1) throw new Error(`${src}: no frontmatter block`);
+    const fm = text.slice(0, end + 5);
+    if (!new RegExp(`^name: ${name}$`, 'm').test(fm)) throw new Error(`${src}: frontmatter name is not "${name}"`);
+    if (!/^description: \S/m.test(fm)) throw new Error(`${src}: frontmatter has no description`);
+    const body = render(text.slice(end + 5), coreTokens, src);
+    out.push({ path: `${a.targets.skills_dir}/${name}/SKILL.md`, content: fm + '\n' + GENERATED_MD(src) + body.replace(/^\n+/, '') });
+  }
+
   if (adapterId === 'claude-code') {
     out.push({ path: a.targets.core, content: GENERATED_MD('protocol/ + adapters/claude-code/') + core });
     for (const role of manifest.roles) {

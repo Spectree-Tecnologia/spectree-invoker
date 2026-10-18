@@ -187,6 +187,9 @@ test('5d. installing over an existing AGENTS.md preserves it, appends once, and 
 
     assert.ok(existsSync(join(dir, '.codex/agents/quality_engineer.toml')), 'specialists land in .codex/agents');
     assert.ok(existsSync(join(dir, '.agents/skills/spectree-invoker/SKILL.md')), 'the skill lands in .agents/skills');
+    for (const name of ['squad-test-quality', 'squad-code-smells']) {
+      assert.ok(existsSync(join(dir, `.agents/skills/${name}/SKILL.md`)), `the squad skill ${name} lands beside it`);
+    }
     assert.ok(existsSync(join(dir, '.spectree/squad/scripts/state.mjs')), 'the scripts travel with it');
     assert.ok(existsSync(join(dir, '.spectree/squad/schemas/change.schema.json')), 'and so do the schemas they need');
 
@@ -1132,6 +1135,39 @@ test('21d6. the project keeps its language and its technical decisions', () => {
   }
   assert.match(readFileSync(join(REPO, 'agents/platform-engineer.md'), 'utf8'), /recorded in `docs\/DECISIONS\.md`/,
     'the Platform Engineer reads the stack from the artifact');
+});
+
+test('21d8. the squad ships its own method as skills, on both harnesses, and the roles point at them', () => {
+  // The plugin shipped no skill for its roles: the method lived only in text loaded on every turn.
+  // A squad skill describes how the squad works, so it exists before any project's module 1.
+  const manifest = JSON.parse(readFileSync(join(REPO, 'protocol/manifest.json'), 'utf8'));
+  assert.deepEqual(manifest.skills, ['squad-test-quality', 'squad-code-smells'], 'the manifest declares the squad skills');
+  for (const name of manifest.skills) {
+    for (const f of [`skills/${name}/SKILL.md`, `adapters/codex/dist/skills/${name}/SKILL.md`]) {
+      const body = readFileSync(join(REPO, f), 'utf8');
+      assert.match(body, new RegExp(`^---\\nname: ${name}\\ndescription: \\S`), `${f}: frontmatter names the skill and says when to load it`);
+      assert.match(body, /Matt Pocock/, `${f}: the adaptation keeps its attribution`);
+    }
+  }
+  const quality = readFileSync(join(REPO, 'skills/squad-test-quality/SKILL.md'), 'utf8');
+  assert.match(quality, /\*\*Tautological\*\*/, 'test quality names the tautological test');
+  assert.match(quality, /Your own module's classes are never mocked/, 'and where faking stops');
+  const smells = readFileSync(join(REPO, 'skills/squad-code-smells/SKILL.md'), 'utf8');
+  assert.equal((smells.match(/^- \*\*[A-Z][a-z]+( [a-z]+)?\*\* — /gm) ?? []).length, 12, 'the baseline carries twelve smells');
+  assert.match(smells, /never a blocker/, 'and none of them blocks');
+  for (const f of ['agents/quality-engineer.md', 'adapters/codex/dist/agents/quality_engineer.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /Load the squad skill `squad-test-quality` before writing the first test/, `${f}: pass 1 points at test quality`);
+    assert.match(body, /load the squad skill `squad-code-smells`/, `${f}: the standards axis points at the baseline`);
+  }
+  for (const f of ['agents/full-stack-developer.md', 'adapters/codex/dist/agents/full_stack_developer.toml']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /Load the squad skill `squad-test-quality`/, `${f}: the Developer points at test quality`);
+  }
+  for (const r of ['quality-engineer', 'full-stack-developer']) {
+    assert.match(readFileSync(join(REPO, `agents/${r}.md`), 'utf8'), /^tools: .*\bSkill\b/m, `${r}: on Claude Code the card may load a skill`);
+  }
+  assert.match(readFileSync(join(REPO, 'agents/platform-engineer.md'), 'utf8'), /It says nothing either about the \*\*squad skills\*\*/,
+    'the module-1 rule is about project skills, and says so');
 });
 
 test('21d7. a fact the interview owes from outside is dispatched, not asked', () => {

@@ -25,6 +25,10 @@
     "integration-engineer",
     "typesafe-engineer"
   ],
+  "skills": [
+    "squad-test-quality",
+    "squad-code-smells"
+  ],
   "tokens": {
     "CARDS_LOCATION": "Where an adapter keeps the specialist cards, phrased to read inside a sentence.",
     "TOOL_SURFACE": "The tool surface the harness exposes beyond the CLI, phrased as a trailing clause or empty.",
