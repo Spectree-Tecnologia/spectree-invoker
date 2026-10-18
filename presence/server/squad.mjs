@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createPresenceSession } from './presence-session.mjs';
-import { PRESENCE_ROLES, presenceRoleIds, presenceRole, validateSquadContext, validateSquadResult, squadTool } from './presence-roles.mjs';
+import { createPresenceSession } from './session.mjs';
+import { PRESENCE_ROLES, presenceRoleIds, presenceRole, validateSquadContext, validateSquadResult, squadTool } from './roles.mjs';
 
 const fail = code => Object.assign(new Error(code), { code });
 const id = value => typeof value === 'string' && /^[a-zA-Z0-9-]{8,80}$/.test(value);

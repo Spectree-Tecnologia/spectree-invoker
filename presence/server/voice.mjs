@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { wavDuration, speechParts } from '../../presence/voice-format.mjs';
+import { wavDuration, speechParts } from '../voice-format.mjs';
 
 const fail = code => Object.assign(new Error(code), { code });
 async function readBounded(response, max) {

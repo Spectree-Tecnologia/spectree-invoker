@@ -22,7 +22,7 @@ import { flags } from '../scripts/lib/shared/cli.mjs';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
-import { gitRepo, tempDir, cleanup, REPO, now, preparationOf, stubGh, greenRun } from '../tests/helpers.mjs';
+import { gitRepo, tempDir, cleanup, REPO, now, preparationOf, stubGh, greenRun } from '../support/fixtures.mjs';
 import { contentDigest } from '../scripts/lib/digest.mjs';
 
 const argv = process.argv.slice(2);

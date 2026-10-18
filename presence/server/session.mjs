@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createCodexRpc, rpcError } from './presence-rpc.mjs';
-import { specialistInstructions } from './presence-roles.mjs';
+import { createCodexRpc, rpcError } from './rpc.mjs';
+import { specialistInstructions } from './roles.mjs';
 
 const busy = new Set(['connecting', 'running', 'interrupting']);
 const terminal = new Set(['completed', 'interrupted', 'failed']);

@@ -2,8 +2,8 @@
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { presenceAssets } from '../../scripts/lib/console-server.mjs';
-import { createPresenceSession } from '../../scripts/lib/presence-session.mjs';
-import { createPresenceRealtime } from '../../scripts/lib/presence-realtime.mjs';
+import { createPresenceSession } from '../../presence/server/session.mjs';
+import { createPresenceRealtime } from '../../presence/server/realtime.mjs';
 const short = process.argv.includes('--short');
 if (!['--live', '--live --short'].includes(process.argv.slice(2).join(' ')) || !process.env.OPENAI_API_KEY) throw new Error('Opt-in required: node --env-file=.env tests/fixtures/presence-realtime-browser.mjs --live [--short]');
 const session = createPresenceSession({ voice: true });

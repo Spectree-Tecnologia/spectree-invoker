@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { createPresenceSession } from '../scripts/lib/presence-session.mjs';
-import { createPresenceSquad } from '../scripts/lib/presence-squad.mjs';
-import { PRESENCE_ROLES, presenceRoleIds } from '../scripts/lib/presence-roles.mjs';
-import { startPresence } from '../scripts/lib/presence-server.mjs';
+import { createPresenceSession } from '../presence/server/session.mjs';
+import { createPresenceSquad } from '../presence/server/squad.mjs';
+import { PRESENCE_ROLES, presenceRoleIds } from '../presence/server/roles.mjs';
+import { startPresence } from '../presence/server/server.mjs';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const result = role => ({ recommendation: `Consultation by ${role}.`, assumptions: ['Synthetic context only.'],

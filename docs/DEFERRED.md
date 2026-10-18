@@ -16,7 +16,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Presence traz three e ws para o package.json raiz e lib/presence-* importa código de browser e console-server. Adiado até a P4.1 integrar.
+- Decision: Entregue pela mudança fronteira-presence: presence/ é o workspace @spectree/presence com three e ws, as bibliotecas de servidor estão em presence/server/ e não importam a Console, e tests/app-boundaries.test.mjs trava a volta. Continua aberto só porque fechar exige evidência observada, que este repositório ainda não registra (D-009).
 - Due: Roadmap de modularização, tarefa 3 (fronteira do Presence)
 - Closure condition: package.json raiz sem dependências e um teste que falha se o runtime importar presence/, presence-* ou console-*.
 
@@ -25,7 +25,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Helpers de fixture viraram API compartilhada sem declaração. Vai junto com a fronteira do Presence.
+- Decision: Entregue pela mudança fronteira-presence: as fixtures que o bench usa estão em support/fixtures.mjs, e tests/app-boundaries.test.mjs falha se bench/ importar tests/. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: Roadmap de modularização, tarefa 3 (fronteira do Presence)
 - Closure condition: Nenhum arquivo de bench/ importa de tests/.
 
