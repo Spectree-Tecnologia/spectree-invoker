@@ -43,7 +43,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Parcial: prepare-closure.mjs (mudança fechamento-biblioteca-prepare) e state.mjs (fechamento-biblioteca-state) são fachadas finas sobre prepareClosure e stateCommand em scripts/lib/closure/, com testes em processo. post-merge.mjs ainda carrega decisões de fechamento no corpo do CLI.
+- Decision: Entregue pelas mudanças fechamento-biblioteca-prepare, fechamento-biblioteca-state e fechamento-biblioteca-post-merge: os três CLIs são fachadas finas sobre prepareClosure, stateCommand e confirmMerge em scripts/lib/closure/, cada um com testes em processo. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: Roadmap de modularização, tarefa 5 (fechamento como biblioteca)
 - Closure condition: Os três CLIs como fachadas finas, cada fluxo de fechamento com teste em processo.
 

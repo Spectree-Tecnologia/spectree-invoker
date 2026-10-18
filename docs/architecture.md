@@ -96,7 +96,8 @@ another module, and on a cycle. Tests themselves import files directly: they are
 A CLI is a thin command line over a module function. `prepare-closure.mjs` hands `root` and `argv`
 to `prepareClosure` (`closure/prepare.mjs`) and turns the returned code into the exit code, so
 every preparation flow can be tested in the same process. `state.mjs` does the same through
-`stateCommand` (`closure/state.mjs`), one function per command; `post-merge.mjs` follows.
+`stateCommand` (`closure/state.mjs`), one function per command, and `post-merge.mjs` through
+`confirmMerge` (`closure/post-merge.mjs`).
 
 ## Four kinds of check, kept apart
 

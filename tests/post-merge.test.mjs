@@ -18,6 +18,7 @@ import { contractDigest, contractDigestAt, contentDigest, contentDigestAt, gated
 import { buildManifest } from '../scripts/lib/closure/closure-prep.mjs';
 import { emptyLifecycle, lifecyclePath, snapshotPath, currentPath } from '../scripts/lib/change/lifecycle.mjs';
 import { gitRepo, tempDir, cleanup, now, REPO, stubGh, greenRun, integrationApproval, ciConfig, recordIntegrationApproval } from './helpers.mjs';
+import { confirmMerge } from '../scripts/lib/closure/index.mjs';
 
 /**
  * A change that reached `integration_approved`, with a merge on `main` and an approval bound to
@@ -172,11 +173,22 @@ function fixture({
     });
     return { code: r.status, out: (r.stdout ?? '').trim(), err: (r.stderr ?? '').trim() };
   };
+  /** The same confirmation, called in this process: the project root is NOT this process's cwd. */
+  const confirm = (...args) => {
+    const out = [];
+    const err = [];
+    const path = process.env.PATH;
+    process.env.PATH = shim.path(path);
+    try {
+      const code = confirmMerge({ root: repo.root, argv: args, out: (x) => out.push(x), err: (x) => err.push(x) });
+      return { code, out: out.join('\n'), err: err.join('\n') };
+    } finally { process.env.PATH = path; }
+  };
   const stateNow = () => new Store(repo.root).change('c1').state;
   /** Replace the runs (and their jobs) the transport reports for this merge. */
   const setRuns = (runs, jobs) => shim.set({ repo: 'fixture/repo', pr, runs, jobs: jobs ?? {} });
   const drop = () => { cleanup(repo.root); cleanup(join(shim.dir, '..')); };
-  return { ...repo, store, post, stateNow, setRuns, candidate, merge, base, manifest, green, drop };
+  return { ...repo, store, post, confirm, stateNow, setRuns, candidate, merge, base, manifest, green, drop };
 }
 
 test('a merge that landed different content does not close the change, however good the checkout looks', () => {
@@ -426,4 +438,46 @@ test('a file the repository stores with CRLF digests the same in the checkout an
     assert.equal(contentDigest(repo.root).digest, contentDigestAt(repo.root, 'HEAD').digest);
     assert.equal(contractDigest(repo.root, change).digest, contractDigestAt(repo.root, 'HEAD', change).digest);
   } finally { cleanup(repo.root); }
+});
+
+test('in process: usage errors are answered with exit 2, not exited', () => {
+  const f = fixture();
+  try {
+    const none = f.confirm();
+    assert.equal(none.code, 2);
+    assert.match(none.err, /^usage: post-merge\.mjs/);
+    const noPr = f.confirm('c1');
+    assert.equal(noPr.code, 2);
+    assert.match(noPr.err, /^--pr <number> is required/);
+    assert.equal(f.confirm('nope', '--pr', '999').code, 1);
+  } finally { f.drop(); }
+});
+
+test('in process: the approved merge plans, closes, and confirms again without moving', () => {
+  const f = fixture();
+  try {
+    const dry = f.confirm('c1', '--pr', '999', '--json');
+    assert.equal(dry.code, 0, dry.err);
+    assert.equal(JSON.parse(dry.out).closed, false);
+    assert.equal(f.stateNow(), 'integration_approved');
+
+    const closed = f.confirm('c1', '--pr', '999', '--apply');
+    assert.equal(closed.code, 0, closed.err);
+    assert.match(closed.out, /closed c1\. PR #999/);
+    assert.equal(f.stateNow(), 'closed');
+
+    const again = f.confirm('c1', '--pr', '999', '--apply', '--json');
+    assert.equal(again.code, 0, again.err);
+    assert.equal(JSON.parse(again.out).closed, true);
+  } finally { f.drop(); }
+});
+
+test('in process: a merge that landed different content is refused with exit 1', () => {
+  const f = fixture({ mergeDiffers: true });
+  try {
+    const r = f.confirm('c1', '--pr', '999', '--apply');
+    assert.equal(r.code, 1);
+    assert.match(r.err, /^post-merge REFUSED for c1/);
+    assert.equal(f.stateNow(), 'integration_approved');
+  } finally { f.drop(); }
 });
