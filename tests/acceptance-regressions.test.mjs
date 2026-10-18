@@ -187,7 +187,7 @@ test('5d. installing over an existing AGENTS.md preserves it, appends once, and 
 
     assert.ok(existsSync(join(dir, '.codex/agents/quality_engineer.toml')), 'specialists land in .codex/agents');
     assert.ok(existsSync(join(dir, '.agents/skills/spectree-invoker/SKILL.md')), 'the skill lands in .agents/skills');
-    for (const name of ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro']) {
+    for (const name of ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan']) {
       assert.ok(existsSync(join(dir, `.agents/skills/${name}/SKILL.md`)), `the squad skill ${name} lands beside it`);
     }
     assert.ok(existsSync(join(dir, '.spectree/squad/scripts/state.mjs')), 'the scripts travel with it');
@@ -1141,7 +1141,7 @@ test('21d8. the squad ships its own method as skills, on both harnesses, and the
   // The plugin shipped no skill for its roles: the method lived only in text loaded on every turn.
   // A squad skill describes how the squad works, so it exists before any project's module 1.
   const manifest = JSON.parse(readFileSync(join(REPO, 'protocol/manifest.json'), 'utf8'));
-  assert.deepEqual(manifest.skills, ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro'], 'the manifest declares the squad skills');
+  assert.deepEqual(manifest.skills, ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan'], 'the manifest declares the squad skills');
   for (const name of manifest.skills) {
     for (const f of [`skills/${name}/SKILL.md`, `adapters/codex/dist/skills/${name}/SKILL.md`]) {
       const body = readFileSync(join(REPO, f), 'utf8');
@@ -1190,6 +1190,35 @@ test('21d11. a closed change is followed by a retro that records findings and fi
   for (const f of ['agents/platform-engineer.md', 'adapters/codex/dist/agents/platform_engineer.toml']) {
     assert.match(readFileSync(join(REPO, f), 'utf8'), /Record them in `docs\/DEFERRED\.md` on the next branch you cut, before any other write on it/,
       `${f}: the findings enter through a branch, never straight to the default branch`);
+  }
+});
+
+test('21d12. the Architect slices tasks by Scenario and scans for shallow code, with a skill for each', () => {
+  // tasks.md registered dependencies but nothing said how to cut a change, and nothing in the
+  // pipeline ever asked whether a module's code had grown harder to change.
+  for (const f of ['skills/squad-task-slicing/SKILL.md', 'adapters/codex/dist/skills/squad-task-slicing/SKILL.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /## A task is a set of `Scenario`s, never a set of files/, `${f}: a task is cut vertically`);
+    assert.match(body, /\*\*it is its own deltaless change, sequenced ahead of this one\*\*/, `${f}: a preparatory refactor is its own change`);
+    assert.match(body, /1\. \*\*Expand\.\*\*[\s\S]*2\. \*\*Migrate, in batches\.\*\*[\s\S]*3\. \*\*Contract\.\*\*/, `${f}: a wide refactor is expand–contract`);
+    assert.match(body, /\*\*The contract that drops a column or table is destructive, and that is gate 3\*\*/, `${f}: the destructive step keeps its gate`);
+  }
+  for (const f of ['skills/squad-deepening-scan/SKILL.md', 'adapters/codex/dist/skills/squad-deepening-scan/SKILL.md']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /a \*\*module\*\* is a business capability \(Section 5\), and that meaning does not change here/, `${f}: the borrowed vocabulary does not redefine module`);
+    assert.match(body, /\*\*deletion test\*\*/, `${f}: a suspect is put to the deletion test`);
+    assert.match(body, /\*\*A boundary violation is not a candidate\.\*\*/, `${f}: an invariant stays a finding with a check`);
+    assert.match(body, /Strength: <Strong \| Worth exploring \| Speculative>/, `${f}: each candidate carries its strength`);
+    assert.match(body, /\*\*A candidate taken becomes a deltaless change\*\*/, `${f}: a candidate passes its own gate 1`);
+  }
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    const body = readFileSync(join(REPO, f), 'utf8');
+    assert.match(body, /Load the squad skill `squad-task-slicing` before writing `tasks\.md`/, `${f}: tasks.md points at slicing`);
+    assert.match(body, /Load the squad skill `squad-deepening-scan`/, `${f}: the scan points at its skill`);
+  }
+  assert.match(readFileSync(join(REPO, 'agents/solutions-architect.md'), 'utf8'), /^tools: .*\bSkill\b/m, 'on Claude Code the Architect may load a skill');
+  for (const f of ['CLAUDE.md', 'adapters/codex/dist/SQUAD.md']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /\*\*A deepening scan is dispatched, not a standing chore\.\*\*/, `${f}: the Invoker decides when a scan runs`);
   }
 });
 
