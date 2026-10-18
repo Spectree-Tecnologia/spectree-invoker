@@ -28,7 +28,9 @@
   "skills": [
     "squad-test-quality",
     "squad-code-smells",
-    "squad-closure-retro"
+    "squad-closure-retro",
+    "squad-task-slicing",
+    "squad-deepening-scan"
   ],
   "tokens": {
     "CARDS_LOCATION": "Where an adapter keeps the specialist cards, phrased to read inside a sentence.",

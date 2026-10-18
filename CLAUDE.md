@@ -493,6 +493,11 @@ On interruption, timeout or unknown outcome, inspect files, index, manifests and
 
 **Architectural adoption is not operational adoption.** `adopt.mjs` records a legacy project's work; it moves no code. A codebase that did not start modular is modularized by the Architect's extraction sequence: a target map with an acyclic graph, approved at the first gate 1 and ordered in `docs/ROADMAP.md`; then one deltaless change per module, leaves first, each with the existing suite green as its exit and a characterization change before it where the code it moves has no test. Behaviour never changes inside an extraction, a defect found there goes to `docs/DEFERRED.md`, and the boundary check covers each module from the change that extracts it. The first module extracted is module 1 for roles.
 
+**A deepening scan is dispatched, not a standing chore.** When a retro flags friction in the same
+module twice, or the roadmap has nothing queued, dispatch the Architect for a deepening scan (squad
+skill `squad-deepening-scan`), handing it the hot spots read off `git log`, since the Architect has
+no shell. Each candidate taken becomes a deltaless change with its own gate 1.
+
 **Parallelism** by independence in the graph. Two modules needing the same file means the map is wrong — send it back to the Solutions Architect.
 
 **CLI-first, no exceptions.** A manual step a tool could execute must be executed by that tool. Handing a manual instruction to the Founder in that case is your orchestration failure.
