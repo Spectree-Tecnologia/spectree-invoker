@@ -4,9 +4,9 @@ import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { join } from 'node:path';
 import { request as httpRequest } from 'node:http';
-import { createPresenceSession } from '../scripts/lib/presence-session.mjs';
-import { createCodexRpc } from '../scripts/lib/presence-rpc.mjs';
-import { startPresence } from '../scripts/lib/presence-server.mjs';
+import { createPresenceSession } from '../presence/server/session.mjs';
+import { createCodexRpc } from '../presence/server/rpc.mjs';
+import { startPresence } from '../presence/server/server.mjs';
 import { createPresenceClient } from '../presence/client.mjs';
 
 function fixture(overrides = {}) {

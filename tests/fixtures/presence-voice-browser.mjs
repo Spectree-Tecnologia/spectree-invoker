@@ -1,5 +1,5 @@
 // Manual browser fixture: synthetic tone and scripted text, no Codex/API/microphone.
-import { startPresence } from '../../scripts/lib/presence-server.mjs';
+import { startPresence } from '../../presence/server/server.mjs';
 let revision = 1, counter = 0, timer;
 const state = { version: 1, origin: 'codex', sessionId: 'synthetic-browser', status: 'ready', error: null,
   model: 'CANÁRIO SINTÉTICO — sem Codex/API', speaker: null, canInterrupt: false, messages: [] };

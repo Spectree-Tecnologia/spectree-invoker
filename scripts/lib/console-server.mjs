@@ -16,10 +16,9 @@ const assets = new Map([
 const assetRoot = fileURLToPath(new URL('../../console/', import.meta.url));
 const runtimeVersion = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
 
-export async function startConsole({ roots = [], demo = false, port = 0, presence = false } = {}) {
-  if (presence && (roots.length || demo)) throw new Error('Presence P1 não abre projetos nem dados da Console.');
+export async function startConsole({ roots = [], demo = false, port = 0 } = {}) {
   if (demo && roots.length) throw new Error('Use --demo ou --project, separadamente.');
-  if (!presence && !demo && !roots.length) throw new Error('Informe ao menos um --project ou use --demo.');
+  if (!demo && !roots.length) throw new Error('Informe ao menos um --project ou use --demo.');
   if (roots.length > 12) throw new Error('Máximo de 12 projetos por sessão.');
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Porta inválida.');
   const projects = [...new Set(roots.map(r => realpathSync(resolve(r))))].map((root, i) => {
@@ -28,7 +27,7 @@ export async function startConsole({ roots = [], demo = false, port = 0, presenc
   });
   const token = randomBytes(32).toString('hex');
   // Only immutable package assets are served, never a path supplied by the browser.
-  const files = presence ? presenceAssets() : new Map([...assets].map(([url, [name, type]]) => [url, { type, body: readFileSync(resolve(assetRoot, name)) }]));
+  const files = new Map([...assets].map(([url, [name, type]]) => [url, { type, body: readFileSync(resolve(assetRoot, name)) }]));
   let origin;
   let cache, cachedAt = 0;
   let inspecting = false;
@@ -36,15 +35,13 @@ export async function startConsole({ roots = [], demo = false, port = 0, presenc
     const send = (code, body, type = 'application/json; charset=utf-8') => {
       res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'no-referrer', 'Cross-Origin-Resource-Policy': 'same-origin',
-        ...(presence ? { 'Permissions-Policy': 'microphone=(), camera=()' } : {}),
-        'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'" + (presence ? "; media-src 'self'" : '') });
+        'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'" });
       res.end(body);
     };
     if (req.headers.host !== new URL(origin).host || (req.headers.origin && req.headers.origin !== origin) ||
         (req.headers['sec-fetch-site'] && !['same-origin', 'none'].includes(req.headers['sec-fetch-site']))) return send(403, '{"error":"E_ORIGIN"}');
     if (req.method !== 'GET') return send(405, '{"error":"E_READ_ONLY"}');
     if (files.has(req.url)) { const { body, type } = files.get(req.url); return send(200, body, type); }
-    if (presence) return send(404, '{"error":"E_NOT_FOUND"}');
     let url;
     try { url = new URL(req.url, origin); } catch { return send(400, '{"error":"E_URL"}'); }
     if (req.url !== '/api/snapshot' && url.pathname !== '/api/observation') return send(404, '{"error":"E_NOT_FOUND"}');
@@ -75,21 +72,5 @@ export async function startConsole({ roots = [], demo = false, port = 0, presenc
   server.requestTimeout = 10000; server.headersTimeout = 10000;
   await new Promise((ok, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', ok); });
   origin = `http://127.0.0.1:${server.address().port}`;
-  return { server, origin, token, url: presence ? `${origin}/presence/` : `${origin}/#session=${token}` };
-}
-
-// Fixed package resources only. No generic file serving or consumer paths.
-export function presenceAssets(live = false) {
-  const files = new Map();
-  const add = (route, relative, type) => files.set(route, { type, body: readFileSync(new URL(relative, import.meta.url)) });
-  add('/presence/', live ? '../../presence/live.html' : '../../presence/index.html', 'text/html; charset=utf-8');
-  if (live) {
-    for (const name of ['live', 'client', 'voice', 'voice-format', 'voice-capture', 'voice-player', 'voice-worklet', 'realtime']) add(`/presence/${name}.mjs`, `../../presence/${name}.mjs`, 'text/javascript; charset=utf-8');
-    add('/presence/live.css', '../../presence/live.css', 'text/css; charset=utf-8');
-  }
-  add('/presence/style.css', '../../presence/style.css', 'text/css; charset=utf-8');
-  for (const name of ['app', 'state', 'audio', 'renderer', 'renderer-core', 'lifecycle']) add(`/presence/${name}.mjs`, `../../presence/${name}.mjs`, 'text/javascript; charset=utf-8');
-  for (const name of ['invoker-intro', 'architect', 'invoker-return']) add(`/presence/audio/${name}.mp3`, `../../presence/audio/${name}.mp3`, 'audio/mpeg');
-  for (const name of ['three.module.js', 'three.core.js']) add(`/presence/vendor/${name}`, `../../node_modules/three/build/${name}`, 'text/javascript; charset=utf-8');
-  return files;
+  return { server, origin, token, url: `${origin}/#session=${token}` };
 }

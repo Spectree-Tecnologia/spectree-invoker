@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { encodeWav, wavDuration, speechParts } from '../presence/voice-format.mjs';
-import { createPresenceVoice, createOpenAiAudio } from '../scripts/lib/presence-voice.mjs';
+import { createPresenceVoice, createOpenAiAudio } from '../presence/server/voice.mjs';
 import { createVoiceController, voiceErrorMessage } from '../presence/voice.mjs';
 import { createVoicePlayer } from '../presence/voice-player.mjs';
 import { createVoiceCapture } from '../presence/voice-capture.mjs';
-import { startPresence } from '../scripts/lib/presence-server.mjs';
+import { startPresence } from '../presence/server/server.mjs';
 import { request as httpRequest } from 'node:http';
 
 const wav = () => Buffer.from(encodeWav(new Float32Array(16000).fill(.2), 16000));

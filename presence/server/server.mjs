@@ -1,10 +1,10 @@
 import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
-import { presenceAssets } from './console-server.mjs';
-import { createPresenceSession } from './presence-session.mjs';
-import { createPresenceVoice, createOpenAiAudio } from './presence-voice.mjs';
-import { createPresenceRealtime } from './presence-realtime.mjs';
-import { createPresenceSquad } from './presence-squad.mjs';
+import { presenceAssets } from './assets.mjs';
+import { createPresenceSession } from './session.mjs';
+import { createPresenceVoice, createOpenAiAudio } from './voice.mjs';
+import { createPresenceRealtime } from './realtime.mjs';
+import { createPresenceSquad } from './squad.mjs';
 
 export async function startPresence({ port = 0, session, voice = false, budgetUsd = 0, audioProvider, realtime = false, realtimeFactory = createPresenceRealtime,
   squad = false, specialistSessionFactory, typesafeEnabled = false } = {}) {

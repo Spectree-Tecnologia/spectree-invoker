@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { createPresenceRealtime, realtimeSessionConfig } from '../scripts/lib/presence-realtime.mjs';
+import { createPresenceRealtime, realtimeSessionConfig } from '../presence/server/realtime.mjs';
 import { createRealtimeConversation } from '../presence/realtime.mjs';
-import { startPresence } from '../scripts/lib/presence-server.mjs';
+import { startPresence } from '../presence/server/server.mjs';
 
 const startInput = () => ({ action: 'start', sessionId: 'session', requestId: crypto.randomUUID(), sdp: 'v=0\r\nsynthetic' });
 const settle = () => new Promise(resolve => setTimeout(resolve, 5));
