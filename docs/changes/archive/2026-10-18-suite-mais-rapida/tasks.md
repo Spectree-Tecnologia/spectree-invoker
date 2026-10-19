@@ -6,6 +6,6 @@
 - [x] Dividir `cli-cycle`, `sequences` e `task-executor` por assunto, com a fixture em módulo próprio.
 - [x] Configuração do repositório de teste num só arquivo e 8 arquivos em paralelo.
 - [x] Arquivar a mudança da tarefa 5d e atualizar ROADMAP e ledger (D-007).
-- [ ] Suíte, build e integridade verdes no CI do PR.
+- [x] Suíte, build e integridade verdes no CI do PR (#74, `21dd78b`).
 
 Uma marca nesta lista não é prova; a evidência está no PR.

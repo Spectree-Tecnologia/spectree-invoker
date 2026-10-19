@@ -1,7 +1,7 @@
 # Suíte mais rápida
 
-Tarefa 6 do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
-Avança o D-007 do [ledger](../../DEFERRED.md), sem fechá-lo: a suíte caiu de 71 s para 43 s
+Tarefa 6 do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
+Avança o D-007 do [ledger](../../../DEFERRED.md), sem fechá-lo: a suíte caiu de 71 s para 43 s
 nesta máquina, e a meta é 30 s.
 
 **Mudança deltaless.** Nenhum comportamento observável muda. Esta mudança não carrega delta em
