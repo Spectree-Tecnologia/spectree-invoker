@@ -61,9 +61,9 @@
 - Status: open
 - Owner: own_change
 - Impact: ceiling
-- Decision: A mudança suite-mais-rapida levou npm test de 71 s para 43 s numa VM de 4 vCPU: digest com 5 chamadas ao git em vez de 9, CLIs de fechamento no próprio processo nos testes, os três arquivos mais longos divididos e 8 arquivos em paralelo. O resto é espera por git e node em testes de ponta a ponta; a meta de 30 s aguarda decisão do Gilson.
+- Decision: A mudança suite-mais-rapida (PR #74) levou npm test de 71 s para 43 s numa VM de 4 vCPU: digest com 5 chamadas ao git em vez de 9, CLIs de fechamento no próprio processo nos testes, os três arquivos mais longos divididos e 8 arquivos em paralelo. Em 2026-10-19 o Gilson aceitou 43 s como o novo teto, no lugar da meta de 30 s. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: Roadmap de modularização, tarefa 6 (suíte mais rápida)
-- Closure condition: npm test abaixo de 30 s sem perder nenhum cenário.
+- Closure condition: npm test em até 43 s numa VM de 4 vCPU, sem perder nenhum cenário, com evidência observada registrada.
 
 ## D-008 — Protocolo caro de carregar
 
@@ -91,4 +91,13 @@
 - Decision: Entregue pela mudança fechamento-biblioteca-state: init lê flags só antes de --, e tests/state-library.test.mjs prova que uma flag dentro do comando de consolidação é ignorada. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: Roadmap de modularização, tarefa 5 (state.mjs vira um handler por comando)
 - Closure condition: init lê flags só antes de --, com teste que prova que uma flag dentro do comando de consolidação é ignorada.
+
+## D-011 — Console recusa argumentos com erro sem código
+
+- Status: open
+- Owner: own_change
+- Impact: defect
+- Decision: Visto pela mudança papeis-do-repositorio: as checagens de argumento em scripts/lib/console/server.mjs lançam Error sem code, e o papel docs/roles/refusals.md pede refuse(code, message). Fica fora porque a tarefa 7 só descreve o código; corrigir é uma mudança de comportamento da Console.
+- Due: A próxima mudança que tocar scripts/lib/console/
+- Closure condition: Toda recusa de argumento da Console sai por refuse com um código E_, com teste que afirma o código.
 

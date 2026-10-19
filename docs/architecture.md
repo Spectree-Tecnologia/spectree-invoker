@@ -106,6 +106,9 @@ change, deferral ledger, and `withLock` refuses a lock requested out of that ord
 (`E_LOCK_ORDER`). `tests/persistence.test.mjs` fails on a raw exclusive write, link or rename
 anywhere else under `scripts/lib/`.
 
+The conventions this code follows, and the file that is the example of each, are written as
+[roles](roles/README.md). They bind whoever edits `scripts/lib/`.
+
 ## Four kinds of check, kept apart
 
 1. **Structural integrity** — `check-plugin.mjs`. Files, content, references, manifests.

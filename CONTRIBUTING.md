@@ -12,5 +12,6 @@ Contribuições são bem-vindas. Todo código entra por pull request e só é in
 ## Regras do repositório
 
 - `protocol/` é a única fonte autoritativa. `CLAUDE.md`, `agents/*.md`, `adapters/codex/dist/` e a skill do Codex são **gerados**: edite o protocolo e rode `npm run build`. O CI recusa drift.
+- Quem edita `scripts/lib/` segue os [papéis do repositório](docs/roles/README.md): como uma recusa é devolvida, o que significa uma resposta ausente, como `.spectree/` é gravado e onde o código mora.
 - Não inclua segredos, tokens ou dados de clientes. O push protection do GitHub bloqueia segredos conhecidos.
 - Workflows de PRs de contribuidores externos só rodam após aprovação do mantenedor.

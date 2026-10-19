@@ -80,9 +80,9 @@
       "owner": "own_change",
       "status": "open",
       "impact": "ceiling",
-      "current_decision": "A mudança suite-mais-rapida levou npm test de 71 s para 43 s numa VM de 4 vCPU: digest com 5 chamadas ao git em vez de 9, CLIs de fechamento no próprio processo nos testes, os três arquivos mais longos divididos e 8 arquivos em paralelo. O resto é espera por git e node em testes de ponta a ponta; a meta de 30 s aguarda decisão do Gilson.",
+      "current_decision": "A mudança suite-mais-rapida (PR #74) levou npm test de 71 s para 43 s numa VM de 4 vCPU: digest com 5 chamadas ao git em vez de 9, CLIs de fechamento no próprio processo nos testes, os três arquivos mais longos divididos e 8 arquivos em paralelo. Em 2026-10-19 o Gilson aceitou 43 s como o novo teto, no lugar da meta de 30 s. Continua aberto só porque fechar exige evidência observada (D-009).",
       "reevaluation_trigger": "Roadmap de modularização, tarefa 6 (suíte mais rápida)",
-      "closure_condition": "npm test abaixo de 30 s sem perder nenhum cenário.",
+      "closure_condition": "npm test em até 43 s numa VM de 4 vCPU, sem perder nenhum cenário, com evidência observada registrada.",
       "opened_by_change": "adotar-fluxo-de-mudanca"
     },
     {
@@ -120,6 +120,18 @@
       "reevaluation_trigger": "Roadmap de modularização, tarefa 5 (state.mjs vira um handler por comando)",
       "closure_condition": "init lê flags só antes de --, com teste que prova que uma flag dentro do comando de consolidação é ignorada.",
       "opened_by_change": "nucleo-shared-cli"
+    },
+    {
+      "schema_version": "1.0.0",
+      "stable_id": 11,
+      "title": "Console recusa argumentos com erro sem código",
+      "owner": "own_change",
+      "status": "open",
+      "impact": "defect",
+      "current_decision": "Visto pela mudança papeis-do-repositorio: as checagens de argumento em scripts/lib/console/server.mjs lançam Error sem code, e o papel docs/roles/refusals.md pede refuse(code, message). Fica fora porque a tarefa 7 só descreve o código; corrigir é uma mudança de comportamento da Console.",
+      "reevaluation_trigger": "A próxima mudança que tocar scripts/lib/console/",
+      "closure_condition": "Toda recusa de argumento da Console sai por refuse com um código E_, com teste que afirma o código.",
+      "opened_by_change": "papeis-do-repositorio"
     }
   ]
 }
