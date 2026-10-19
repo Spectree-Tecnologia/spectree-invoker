@@ -2,7 +2,10 @@
 // project, needs a credential, touches the network, or depends on anything outside this repository.
 
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { format, inspect } from 'node:util';
 import * as storeModule from '../scripts/lib/change/store.mjs';
 import * as lifecycleModule from '../scripts/lib/change/lifecycle.mjs';
 import { REPO, tempDir, writeFiles, gitRepo, cleanup, now, preparationOf, stubGh, greenRun } from '../support/fixtures.mjs';
@@ -143,3 +146,46 @@ export function recordIntegrationApproval(root, changeId, doc) {
   writeFileSync(f, `${JSON.stringify(next, null, 2)}\n`);
   return doc;
 }
+
+/**
+ * The library function behind each closure CLI. The CLI is a thin facade — it hands the project
+ * root and argv to this function and turns the returned code into the exit code — so calling the
+ * function answers with the same code and the same text, without paying for a process.
+ */
+const FACADES = { 'state.mjs': 'stateCommand', 'prepare-closure.mjs': 'prepareClosure', 'post-merge.mjs': 'confirmMerge' };
+const load = createRequire(import.meta.url);
+
+/**
+ * Run a closure CLI — the repository's own or an installed copy — as `{ code, out, err }`.
+ *
+ * In process when nothing about the process is under test. As a real process when `env` loads a
+ * shim through NODE_OPTIONS (a clock, a crash, a barrier), since only a new process can load one,
+ * for any script that is not one of the three facades, and when `spawn` asks for the process.
+ * `env` is applied for the call only. tests/closure-facades.test.mjs holds the two ways equal.
+ */
+export function closureCli(script, argv, { cwd, env = {}, spawn = false } = {}) {
+  const name = FACADES[basename(script)];
+  if (spawn || !name || env.NODE_OPTIONS !== undefined) {
+    const r = spawnSync(process.execPath, [script, ...argv], { cwd, encoding: 'utf8', env: { ...process.env, ...env } });
+    return answer(r.status, r.stdout ?? '', r.stderr ?? '');
+  }
+  const fn = load(join(dirname(script), 'lib', 'closure', 'index.mjs'))[name];
+  const out = []; const err = [];
+  const saved = Object.fromEntries(Object.keys(env).map((k) => [k, process.env[k]]));
+  Object.assign(process.env, env);
+  let code;
+  try {
+    code = fn({ root: process.env.SPECTREE_PROJECT_ROOT ?? cwd, argv, out: (s) => out.push(format(s)), err: (s) => err.push(format(s)) });
+  } catch (e) {
+    // What node does with an uncaught throw: the error, with its code, on stderr; exit code 1.
+    code = 1; err.push(inspect(e));
+  } finally {
+    for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
+  const text = (lines) => lines.map((l) => `${l}\n`).join('');
+  return answer(code ?? 0, text(out), text(err));
+}
+
+/** Both spellings the suite reads: trimmed `code/out/err`, and spawnSync's `status/stdout/stderr`. */
+const answer = (status, stdout, stderr) => ({ code: status, out: stdout.trim(), err: stderr.trim(), status, stdout, stderr });
+

@@ -1,7 +1,7 @@
 # Uma camada de persistência só, com a ordem de lock
 
-Tarefa 5d do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
-Entrega em código o D-006 do [ledger](../../DEFERRED.md), a última parte da tarefa 5.
+Tarefa 5d do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
+Entrega em código o D-006 do [ledger](../../../DEFERRED.md), a última parte da tarefa 5.
 
 **Mudança deltaless.** Nenhum comportamento observável muda: mesmos registros em `.spectree/`,
 mesmos códigos de recusa. Esta mudança não carrega delta em `specs/`. O critério de saída é a

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { gitRepo, tempDir, cleanup, REPO, now, stubGh, greenRun } from './helpers.mjs';
+import { gitRepo, tempDir, cleanup, REPO, now, stubGh, greenRun, closureCli } from './helpers.mjs';
 
 test('installed adoption, interrupted mode reconciliation and legacy closure retain durable authority', () => {
   const repo = gitRepo({ 'app.mjs': 'export const x = 1;\n', '.gitignore': '.spectree/\n' });
@@ -12,9 +12,8 @@ test('installed adoption, interrupted mode reconciliation and legacy closure ret
     execFileSync(process.execPath, [join(REPO, 'scripts/install-codex.mjs'), repo.root, '--apply']);
     repo.git(['add', '-A']); repo.git(['commit', '-qm', 'install']);
     const gh = stubGh(scratch, {});
-    const cli = (script, ...args) => spawnSync(process.execPath,
-      [join(repo.root, '.spectree/squad/scripts', script), ...args],
-      { cwd: repo.root, encoding: 'utf8', env: { ...process.env, PATH: gh.path() } });
+    const cli = (script, ...args) => closureCli(join(repo.root, '.spectree/squad/scripts', script), args,
+      { cwd: repo.root, env: { PATH: gh.path() } });
     const state = (...args) => cli('state.mjs', ...args);
     const ok = (r) => { assert.equal(r.status, 0, `${r.stderr}\n${r.stdout}`); return r.stdout.trim(); };
     const record = (id, gate) => {

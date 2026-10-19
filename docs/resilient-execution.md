@@ -139,8 +139,8 @@ autenticação de agente ou recuperação de uma resposta nunca persistida.
 
 ## Verificação
 
-`task-executor.test.mjs` cobre revisão obsoleta, limites, decisão vinculada,
-preservação do histórico, retry revisado, preflight e classificação.
+`task-executor.test.mjs` e `task-executor-agents.test.mjs` cobrem revisão obsoleta, limites,
+decisão vinculada, preservação do histórico, retry revisado, preflight e classificação.
 `resilient-transport.test.mjs` cobre publicação por outro processo, duplicatas,
 evidência alterada, resposta tardia e asserção versus infraestrutura. A suíte
 existente mantém os testes de dependências, reparo, gates, supervisão e instalação.
