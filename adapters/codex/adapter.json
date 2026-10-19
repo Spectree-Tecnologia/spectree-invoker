@@ -12,7 +12,8 @@
   },
   "tokens": {
     "CARDS_LOCATION": "`.codex/agents/`",
-    "TOOL_SURFACE": ""
+    "TOOL_SURFACE": "",
+    "RATIONALE_LOCATION": "`.spectree/squad/docs/protocol-rationale.md`"
   },
   "targets": {
     "core": "adapters/codex/dist/SQUAD.md",

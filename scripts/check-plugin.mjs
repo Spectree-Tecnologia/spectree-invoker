@@ -210,6 +210,30 @@ if (has('CLAUDE.md')) {
   }
 }
 
+// --- 8b. the rendered core carries every rule, within its size ceiling ------
+// The rules were separated from their rationale to keep the core small enough to load on every
+// session. What keeps that from losing a rule is this inventory, read off the protocol before the
+// separation: a core that drops one fails here, and so does a core that grows past the ceiling.
+const inventory = readJson('protocol/rules.json');
+if (inventory) {
+  const norm = (t) => t.replace(/\s+/g, ' ').trim();
+  if (!Array.isArray(inventory.rules) || inventory.rules.length === 0) fail('protocol/rules.json', 'the rule inventory is empty');
+  if (!has(inventory.rationale ?? '')) fail(inventory.rationale ?? 'protocol/rules.json', 'the protocol rationale is missing');
+  for (const id of adapters) {
+    const core = readJson(`adapters/${id}/adapter.json`)?.targets?.core;
+    if (!core || !has(core)) continue;
+    const raw = read(core);
+    const text = norm(raw);
+    if (Buffer.byteLength(raw) > inventory.core_ceiling_bytes) {
+      fail(core, `is ${Buffer.byteLength(raw)} bytes, over the ${inventory.core_ceiling_bytes}-byte ceiling in protocol/rules.json`);
+    }
+    if (!raw.includes('protocol-rationale.md')) fail(core, 'does not point at the protocol rationale');
+    for (const r of inventory.rules ?? []) {
+      if (!text.includes(norm(r.text))) fail(core, `dropped the rule "${r.text}" (Section ${Number(r.section)})`);
+    }
+  }
+}
+
 // --- 9. the required test set is not empty -----------------------------------
 const testFiles = has('tests') ? readdirSync(join(root, 'tests')).filter((f) => /\.test\.mjs$/.test(f)) : [];
 if (testFiles.length === 0) fail('tests/', 'no test file — an empty suite is not a passing suite');

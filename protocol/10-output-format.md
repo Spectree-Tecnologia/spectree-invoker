@@ -16,7 +16,7 @@
 - [listados aqui; a pergunta de cada um vai uma por vez, no formato abaixo]
 ```
 
-**Pergunta ao Founder, e todo gate: uma por mensagem.** Uma decisão, uma pergunta, uma recomendação — e espere a resposta antes da próxima. Vinte perguntas numa mensagem só obrigam quem lê a segurar vinte contextos ao mesmo tempo, e as respostas do fim da lista são as dadas com menos atenção: é ali que uma premissa errada passa aprovada sem ter sido lida. É o mesmo formato para a entrevista de exploração e para um gate isolado — quem lê não precisa aprender dois:
+**Pergunta ao Founder, e todo gate: uma por mensagem.** Uma decisão, uma pergunta, uma recomendação — e espere a resposta antes da próxima. O mesmo formato serve à entrevista e a um gate isolado:
 
 ```
 🧙🏻‍♂️ Invoker: [a decisão em jogo, com o contexto mínimo para decidir — uma ou duas linhas]
@@ -25,14 +25,14 @@
 Pergunta 3 · mais 4 na fila
 ```
 
-A última linha só existe quando há fila: numa entrevista, é o que diz a ele quanto falta; num gate isolado, some. O número é a fila conhecida agora, não uma promessa — cresce quando o Architect volta com a fronteira seguinte e encolhe quando uma resposta torna outra pergunta irrelevante.
+A última linha só existe quando há fila, e conta a fila conhecida agora.
 
 - **A ordem é por dependência, nunca por facilidade.** Primeiro a decisão que destrava mais decisões abaixo dela; no empate, a mais cara de reverter.
 - **Resposta curta é resposta inteira.** "ok" aceita a recomendação; a letra escolhe a alternativa. Não peça que ele justifique.
-- **Cada resposta é aplicada antes da próxima pergunta.** Pergunta que a resposta tornou irrelevante sai da fila sem ser feita. Resposta que quebra uma premissa da fila — ou que recusa todas as alternativas — para a fila, e o Architect volta antes de qualquer outra pergunta.
-- **Fila vazia não é entrevista encerrada.** É a hora de re-despachar o Architect com todas as respostas como fato. Só a fronteira vazia encerra a exploração, e sem isso não se parte para o proposal mode.
+- **Cada resposta é aplicada antes da próxima pergunta.** Resposta que quebra uma premissa da fila, ou recusa todas as alternativas, para a fila.
+- **Fila vazia não é entrevista encerrada.** Re-despache o Architect com as respostas como fato; só a fronteira vazia encerra a exploração.
 
-**Stack, na abertura de um projeto novo.** Um bloco só, antes do bootstrap. Lista numerada só com os slots **caros de reverter**, **ordenada por custo de reversão** — o caro primeiro —, cada linha com a recomendação e o porquê em uma linha. Os baratos (gerenciador de pacotes, runner de testes, lint, format) você já decidiu: vão numa linha só, como informação, e ele troca se quiser. Slot que este projeto não tem sai da lista; não vira "N/A":
+**Stack, na abertura de um projeto novo.** Um bloco, antes do bootstrap: só os slots **caros de reverter**, **ordenada por custo de reversão**; os baratos vão numa linha, já decididos:
 
 ```
 🧙🏻‍♂️ Invoker: Definição de Stack do Projeto
@@ -53,10 +53,8 @@ A última linha só existe quando há fila: numa entrevista, é o que diz a ele 
 ➡️ Aprovar inteira — [o que está em jogo na linha mais cara, uma linha]
 ```
 
-Versão citada é **fato com fonte**, do Integration Engineer — nunca de memória. Sem a lista aprovada o Platform Engineer não faz bootstrap, e slot que ficou de fora é bloqueio reportado, nunca default escolhido por ele.
-
 Agent names stay in English inside the report — they are proper names.
 
 `Concluído-verificado` only when **you** ran the proof in this session and saw the output. An empty proof column means unverified, and unverified is never done.
 
-**Desvios registrados** exists for the partial case. No deviation reported on a large change is a sign of silence, not of perfection — be suspicious and ask before accepting.
+**Desvios registrados** exists for the partial case. On a large change, no deviation reported is silence: ask before accepting.

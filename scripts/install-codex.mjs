@@ -90,7 +90,7 @@ for (const m of RUNTIME_MODULES) {
 for (const f of readdirSync(join(pkg, 'schemas'))) {
   planCopy(join(pkg, 'schemas', f), join(squadRoot, 'schemas', f), 'schema');
 }
-for (const f of ['reliability.md', 'evolution.md', 'operational-adoption.md', 'resilient-execution.md', 'guided-reconciliation.md', 'delivery-reliability.md', 'examples/delivery-verification.json', 'examples/reporter-probe.mjs', 'examples/verification.json', 'examples/consumer-ci.yml', 'examples/task-plan.json', 'examples/codex-runner.json', 'examples/claude-runner.json', 'examples/adoption-request.json']) {
+for (const f of ['protocol-rationale.md', 'reliability.md', 'evolution.md', 'operational-adoption.md', 'resilient-execution.md', 'guided-reconciliation.md', 'delivery-reliability.md', 'examples/delivery-verification.json', 'examples/reporter-probe.mjs', 'examples/verification.json', 'examples/consumer-ci.yml', 'examples/task-plan.json', 'examples/codex-runner.json', 'examples/claude-runner.json', 'examples/adoption-request.json']) {
   planCopy(join(pkg, 'docs', f), join(squadRoot, 'docs', f), 'reliability guide or example; never applied to the consumer');
 }
 planCopy(join(pkg, 'package.json'), join(squadRoot, 'package.json'), 'runtime package identity');

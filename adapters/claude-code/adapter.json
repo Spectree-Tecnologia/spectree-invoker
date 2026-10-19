@@ -23,7 +23,8 @@
   },
   "tokens": {
     "CARDS_LOCATION": "the plugin's `agents/`",
-    "TOOL_SURFACE": " and MCP servers"
+    "TOOL_SURFACE": " and MCP servers",
+    "RATIONALE_LOCATION": "the plugin's `docs/protocol-rationale.md`"
   },
   "targets": {
     "core": "CLAUDE.md",

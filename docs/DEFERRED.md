@@ -68,11 +68,11 @@
 ## D-008 — Protocolo caro de carregar
 
 - Status: open
-- Owner: founder
+- Owner: own_change
 - Impact: ceiling
-- Decision: CLAUDE.md gerado tem 77 KB, boa parte justificativa histórica. Separar regra de justificativa depende de decisão de produto.
-- Due: Decisão do Founder sobre quanto do porquê fica no contexto (roadmap de modularização, tarefa 8)
-- Closure condition: CLAUDE.md com tamanho-alvo decidido e a mesma cobertura de regras, conferida por check-plugin.
+- Decision: Em 2026-10-19 o Gilson escolheu separar regra de justificativa com alvo de 45 KB. A mudança tamanho-do-protocolo levou o CLAUDE.md de 86 KB para menos de 45 KB: as regras ficam no protocolo, o porquê foi para docs/protocol-rationale.md, lido sob demanda, e check-plugin falha se o núcleo renderizado perder uma das regras de protocol/rules.json ou passar de 46.080 bytes. Continua aberto só porque fechar exige evidência observada (D-009).
+- Due: Roadmap de modularização, tarefa 8 (tamanho do protocolo)
+- Closure condition: CLAUDE.md em até 45 KB com a mesma cobertura de regras, conferida por check-plugin, com evidência observada registrada.
 
 ## D-009 — O ledger deste repositório não consegue fechar item
 
