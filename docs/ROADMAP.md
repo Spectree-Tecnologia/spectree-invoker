@@ -70,10 +70,13 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 5 | Fechamento como biblioteca: três CLIs e a persistência | Concluída: 5a `prepare-closure` (PR #67 / v1.34.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-prepare/proposal.md)), 5b `state.mjs` (PR #69 / v1.36.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-state/proposal.md)), 5c `post-merge.mjs` (PR #71 / v1.38.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-post-merge/proposal.md)) e 5d, a camada única de persistência com a ordem de lock (PR #73 / v1.40.0, [proposta](changes/archive/2026-10-18-persistencia-unica/proposal.md)) | D-005, D-006, D-010 |
 | 6 | Suíte mais rápida | Integrada, PR #74 / v1.41.0: de 71 s para 43 s, aceito pelo Founder como novo teto em 2026-10-19, [proposta](changes/archive/2026-10-18-suite-mais-rapida/proposal.md) | D-007 |
 | 7 | Papéis deste repositório, extraídos do código | Integrada, PR #75 / v1.42.0, [proposta](changes/archive/2026-10-19-papeis-do-repositorio/proposal.md) | D-011 (registrado) |
-| 8 | Tamanho do protocolo | Em andamento: Founder escolheu separar regra de justificativa, alvo de 45 KB (2026-10-19), [proposta](changes/tamanho-do-protocolo/proposal.md) | D-008 |
+| 8 | Tamanho do protocolo | Integrada, PR #76 / v1.43.0: `CLAUDE.md` de 86 KB para 45 KB, regra separada da justificativa, [proposta](changes/archive/2026-10-22-tamanho-do-protocolo/proposal.md) | D-008 |
+| 9 | Tamanho dos cards do Solutions Architect e do Platform Engineer | Em andamento: Founder pediu o mesmo corte nos dois cards (2026-10-22), [proposta](changes/tamanho-dos-cards/proposal.md) | — |
 
 ## Histórico de decisões
 
+- **2026-10-22:** Founder pediu a tarefa 9, o mesmo corte de regra e justificativa nos cards
+  do Solutions Architect e do Platform Engineer.
 - **2026-10-17:** Founder aprovou a sequência de modularização do repositório
   (tarefas 1 a 8 acima). A tarefa 1 arquiva as mudanças integradas e cria o ledger
   de adiamentos.

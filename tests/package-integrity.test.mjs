@@ -144,6 +144,20 @@ test('a rendered core over its size ceiling, or without its rationale, fails', (
   } finally { cleanup(dir); }
 });
 
+test('a rendered card that drops a rule, or grows past its ceiling, fails on each harness', () => {
+  const dir = pkgCopy();
+  try {
+    const sa = join(dir, 'adapters/codex/dist/agents/solutions_architect.toml');
+    writeFileSync(sa, readFileSync(sa, 'utf8').replace('**Extract leaves first.**', ''));
+    const pe = join(dir, 'agents/platform-engineer.md');
+    writeFileSync(pe, readFileSync(pe, 'utf8') + '\n' + 'x'.repeat(22528));
+    const r = check(dir);
+    assert.equal(r.code, 1);
+    assert.match(r.out, /solutions_architect\.toml: dropped the rule "Extract leaves first\." \(Modularizing a legacy codebase\)/);
+    assert.match(r.out, /platform-engineer\.md: is \d+ bytes, over the 22528-byte ceiling/);
+  } finally { cleanup(dir); }
+});
+
 test('an invalid manifest fails', () => {
   const dir = pkgCopy();
   try {
