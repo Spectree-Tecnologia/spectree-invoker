@@ -69,8 +69,8 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 4 | Módulos com entrada publicada e grafo acíclico | Integrada, PR #66 / v1.32.0, [proposta](changes/archive/2026-10-18-modulos-runtime/proposal.md) | D-004 |
 | 5 | Fechamento como biblioteca: três CLIs e a persistência | Concluída: 5a `prepare-closure` (PR #67 / v1.34.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-prepare/proposal.md)), 5b `state.mjs` (PR #69 / v1.36.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-state/proposal.md)), 5c `post-merge.mjs` (PR #71 / v1.38.0, [proposta](changes/archive/2026-10-18-fechamento-biblioteca-post-merge/proposal.md)) e 5d, a camada única de persistência com a ordem de lock (PR #73 / v1.40.0, [proposta](changes/archive/2026-10-18-persistencia-unica/proposal.md)) | D-005, D-006, D-010 |
 | 6 | Suíte mais rápida | Integrada, PR #74 / v1.41.0: de 71 s para 43 s, aceito pelo Founder como novo teto em 2026-10-19, [proposta](changes/archive/2026-10-18-suite-mais-rapida/proposal.md) | D-007 |
-| 7 | Papéis deste repositório, extraídos do código | Em andamento, [proposta](changes/papeis-do-repositorio/proposal.md) | D-011 (registrado) |
-| 8 | Tamanho do protocolo | Aguarda decisão de produto do Founder | D-008 |
+| 7 | Papéis deste repositório, extraídos do código | Integrada, PR #75 / v1.42.0, [proposta](changes/archive/2026-10-19-papeis-do-repositorio/proposal.md) | D-011 (registrado) |
+| 8 | Tamanho do protocolo | Em andamento: Founder escolheu separar regra de justificativa, alvo de 45 KB (2026-10-19), [proposta](changes/tamanho-do-protocolo/proposal.md) | D-008 |
 
 ## Histórico de decisões
 

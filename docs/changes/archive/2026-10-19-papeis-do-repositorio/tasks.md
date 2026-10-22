@@ -6,6 +6,6 @@
 - [x] Apontar para os papéis em `CONTRIBUTING.md` e `docs/architecture.md`.
 - [x] Registrar a divergência da Console como D-011.
 - [x] Arquivar a mudança da tarefa 6 e atualizar ROADMAP e ledger (D-007).
-- [ ] Suíte, build e integridade verdes no CI do PR.
+- [x] Suíte, build e integridade verdes no CI do PR (#75, `b368701`).
 
 Uma marca nesta lista não é prova; a evidência está no PR.

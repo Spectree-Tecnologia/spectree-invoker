@@ -1,6 +1,6 @@
 # Papéis deste repositório
 
-Tarefa 7 do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
+Tarefa 7 do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
 
 **Mudança deltaless.** Nenhum comportamento observável muda. Esta mudança não carrega delta em
 `specs/`, não edita código de runtime e não muda nenhum teste existente. O critério de saída é a

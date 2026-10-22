@@ -1,0 +1,703 @@
+{
+  "description": "Every rule the rendered core must carry, one entry per rule, by its lead phrase or its refusal line. The list was read off the protocol before rule and rationale were separated (task 8 of the modularization roadmap, 2026-10-19); check-plugin fails when a rendered core drops one. Removing a rule means removing its entry here, in the same change.",
+  "core_ceiling_bytes": 46080,
+  "rationale": "docs/protocol-rationale.md",
+  "rules": [
+    {
+      "section": "02",
+      "text": "External design tooling — `impeccable`, optional."
+    },
+    {
+      "section": "02",
+      "text": "And a borrowed check earns nothing until it has been seen rejecting."
+    },
+    {
+      "section": "03",
+      "text": "You do:"
+    },
+    {
+      "section": "03",
+      "text": "You also do:"
+    },
+    {
+      "section": "03",
+      "text": "Closure has a scope, and it is the change's."
+    },
+    {
+      "section": "03",
+      "text": "And you do not push maintenance onto the Founder."
+    },
+    {
+      "section": "03",
+      "text": "You do not:"
+    },
+    {
+      "section": "04",
+      "text": "One voice."
+    },
+    {
+      "section": "04",
+      "text": "Scale is instantiation."
+    },
+    {
+      "section": "04",
+      "text": "The TypeSafe Engineer is the one type added after the first five, and it passed that test on blast radius."
+    },
+    {
+      "section": "04",
+      "text": "Security is the case where that test gets argued, so it is settled here."
+    },
+    {
+      "section": "04",
+      "text": "Two deliberate mergers, so you don't undo them by accident:"
+    },
+    {
+      "section": "04",
+      "text": "What the table above promises, and what actually enforces it."
+    },
+    {
+      "section": "04",
+      "text": "Universal guardrails"
+    },
+    {
+      "section": "04",
+      "text": "never address the Founder"
+    },
+    {
+      "section": "04",
+      "text": "record deviations"
+    },
+    {
+      "section": "04",
+      "text": "never declare completion without proof run through a tool;"
+    },
+    {
+      "section": "04",
+      "text": "never perform an irreversible production operation without a gate;"
+    },
+    {
+      "section": "04",
+      "text": "never decide anything outside your own mission's exit criterion;"
+    },
+    {
+      "section": "05",
+      "text": "A module is a business capability, never a layer."
+    },
+    {
+      "section": "05",
+      "text": "5.1 — Two surfaces."
+    },
+    {
+      "section": "05",
+      "text": "5.2 — The boundary has two halves, and the manifest defends only one."
+    },
+    {
+      "section": "05",
+      "text": "5.3 — Declared, acyclic graph."
+    },
+    {
+      "section": "05",
+      "text": "5.4 — Technology depends on business."
+    },
+    {
+      "section": "05",
+      "text": "the transaction boundary is a domain decision."
+    },
+    {
+      "section": "05",
+      "text": "5.5 — Queries cross; commands cross only to read."
+    },
+    {
+      "section": "05",
+      "text": "A write that has to happen in several modules does not bend this rule — it becomes a process."
+    },
+    {
+      "section": "05",
+      "text": "5.6 — `shared` is infrastructure, never business."
+    },
+    {
+      "section": "05",
+      "text": "5.7 — Inside the module, the aggregate is the folder."
+    },
+    {
+      "section": "05",
+      "text": "Three consequences that get built wrong when nobody says them out loud:"
+    },
+    {
+      "section": "05",
+      "text": "A rule lives once, in the model."
+    },
+    {
+      "section": "05",
+      "text": "A rule that fits neither a value object nor an entity is a domain service"
+    },
+    {
+      "section": "05",
+      "text": "A command goes through a use case; a query does not."
+    },
+    {
+      "section": "05",
+      "text": "5.8 — The route layer is thin."
+    },
+    {
+      "section": "06",
+      "text": "`DEFERRED.md` is the ledger of what a change saw and deliberately did not do"
+    },
+    {
+      "section": "06",
+      "text": "`ROADMAP.md` records sequencing the Founder has already approved"
+    },
+    {
+      "section": "06",
+      "text": "`DOMAIN.md` is the project's memory of the business"
+    },
+    {
+      "section": "06",
+      "text": "`DECISIONS.md` is the project's memory of how it is built"
+    },
+    {
+      "section": "06",
+      "text": "A spec domain is a module, always 1:1."
+    },
+    {
+      "section": "06",
+      "text": "The change carries the delta."
+    },
+    {
+      "section": "06",
+      "text": "`RENAMED` exists because a rename has no other honest spelling."
+    },
+    {
+      "section": "06",
+      "text": "`proposal.md` names the modules that will carry a delta, and that list is a contract."
+    },
+    {
+      "section": "06",
+      "text": "A `MODIFIED` block carries the whole Requirement as it will read afterwards, every kept `Scenario` included — never only the part that changed."
+    },
+    {
+      "section": "06",
+      "text": "That same comparison is the only thing that catches two changes colliding."
+    },
+    {
+      "section": "06",
+      "text": "A change that changes no behaviour carries no delta, and that is a valid change."
+    },
+    {
+      "section": "06",
+      "text": "And it says so out loud: `proposal.md` declares the change deltaless, in as many words."
+    },
+    {
+      "section": "06",
+      "text": "GIVEN"
+    },
+    {
+      "section": "06",
+      "text": "WHEN"
+    },
+    {
+      "section": "06",
+      "text": "THEN"
+    },
+    {
+      "section": "06",
+      "text": "RFC 2119"
+    },
+    {
+      "section": "06",
+      "text": "Observability test"
+    },
+    {
+      "section": "06",
+      "text": "Errors are codes, not messages."
+    },
+    {
+      "section": "06",
+      "text": "A `Requirement` states what is true, never what changed."
+    },
+    {
+      "section": "06",
+      "text": "These rules were written to be counted, so count them."
+    },
+    {
+      "section": "06",
+      "text": "Every `Scenario` is a test"
+    },
+    {
+      "section": "06",
+      "text": "Content boundary, in the delta AND at merge"
+    },
+    {
+      "section": "06",
+      "text": "Per-module vocabulary"
+    },
+    {
+      "section": "06",
+      "text": "No backfilling."
+    },
+    {
+      "section": "06",
+      "text": "Size"
+    },
+    {
+      "section": "07",
+      "text": "Delivery reliability profile."
+    },
+    {
+      "section": "07",
+      "text": "Preparing the closure before the merge is not declaring the integration before it happens."
+    },
+    {
+      "section": "07",
+      "text": "the state is not touched."
+    },
+    {
+      "section": "07",
+      "text": "it happens before pass 2 and before CI"
+    },
+    {
+      "section": "07",
+      "text": "Diagnose adoption before choosing closure."
+    },
+    {
+      "section": "07",
+      "text": "Correct a mistaken mode through the reviewed reconciliation CLI, never by editing state JSON."
+    },
+    {
+      "section": "07",
+      "text": "A preparation has an identity, and an integration approval names it."
+    },
+    {
+      "section": "07",
+      "text": "One identity names one document."
+    },
+    {
+      "section": "07",
+      "text": "An approved record is frozen, on every path."
+    },
+    {
+      "section": "07",
+      "text": "The post-merge phase is a confirmation, and it is finite."
+    },
+    {
+      "section": "07",
+      "text": "The retro comes after `closed`, never inside the confirmation."
+    },
+    {
+      "section": "07",
+      "text": "And it produces a receipt, which `integrated` and `closed` require."
+    },
+    {
+      "section": "07",
+      "text": "whole document"
+    },
+    {
+      "section": "07",
+      "text": "A write that stopped part way is a state, not a silence — and every state named has a command that acts on it."
+    },
+    {
+      "section": "07",
+      "text": "And a decision is applied against the world it was computed in."
+    },
+    {
+      "section": "07",
+      "text": "A state transition writes inside that same boundary"
+    },
+    {
+      "section": "07",
+      "text": "A recovery is bound to what the interrupted command actually ran against, and to what it produced."
+    },
+    {
+      "section": "07",
+      "text": "And a green never becomes a commit."
+    },
+    {
+      "section": "07",
+      "text": "Step 4 precedes every write, including the Quality Engineer's."
+    },
+    {
+      "section": "07",
+      "text": "Explore before proposing."
+    },
+    {
+      "section": "07",
+      "text": "Exploration is a loop, not one shot — and the Founder answers one question at a time."
+    },
+    {
+      "section": "07",
+      "text": "Opening a new project: the stack round comes before bootstrap."
+    },
+    {
+      "section": "07",
+      "text": "A slot that surfaces after the table was approved is yours to close, and the cost of reversal decides how."
+    },
+    {
+      "section": "07",
+      "text": "Roles and skills are born from module 1, not from bootstrap."
+    },
+    {
+      "section": "07",
+      "text": "roles"
+    },
+    {
+      "section": "07",
+      "text": "skills"
+    },
+    {
+      "section": "07",
+      "text": "And a role is maintained, not written once."
+    },
+    {
+      "section": "07",
+      "text": "But module 1 cannot wait for its own roles, and pretending otherwise is how it diverges from itself."
+    },
+    {
+      "section": "07",
+      "text": "Mandatory reading in every dispatch"
+    },
+    {
+      "section": "07",
+      "text": "Pass 2 also audits the scope, not only the `Scenario`s."
+    },
+    {
+      "section": "07",
+      "text": "Quality Engineer pass 1 is the change's mechanical validation."
+    },
+    {
+      "section": "07",
+      "text": "On a deltaless change, pass 1 is skipped — and nothing else is."
+    },
+    {
+      "section": "07",
+      "text": "Green baseline before the first Developer, and it names the revision it was taken at."
+    },
+    {
+      "section": "07",
+      "text": "A test this change wrote red on purpose."
+    },
+    {
+      "section": "07",
+      "text": "A failure that never reached the assertion."
+    },
+    {
+      "section": "07",
+      "text": "A `Scenario` already satisfied at the baseline."
+    },
+    {
+      "section": "07",
+      "text": "A rule that is new or changed carries a discriminating test."
+    },
+    {
+      "section": "07",
+      "text": "Loop ceiling, and retries in a clean window."
+    },
+    {
+      "section": "07",
+      "text": "Dispatch contract:"
+    },
+    {
+      "section": "07",
+      "text": "Compact context."
+    },
+    {
+      "section": "07",
+      "text": "Durable operation boundaries."
+    },
+    {
+      "section": "07",
+      "text": "Verification design before execution."
+    },
+    {
+      "section": "07",
+      "text": "The core domain owes a killed mutation."
+    },
+    {
+      "section": "07",
+      "text": "Mutation probes operate on disposable copies only."
+    },
+    {
+      "section": "07",
+      "text": "Baseline identity and CI independence."
+    },
+    {
+      "section": "07",
+      "text": "A \"done\" annotation authorises nothing."
+    },
+    {
+      "section": "07",
+      "text": "Resume without the conversation."
+    },
+    {
+      "section": "07",
+      "text": "Handoff verification."
+    },
+    {
+      "section": "07",
+      "text": "A green that exists because someone re-ran a red is not an approval — it is a finding."
+    },
+    {
+      "section": "07",
+      "text": "Quality Engineer isolation."
+    },
+    {
+      "section": "07",
+      "text": "Bounded implementation executor."
+    },
+    {
+      "section": "07",
+      "text": "Resilient execution."
+    },
+    {
+      "section": "07",
+      "text": "Connected observations."
+    },
+    {
+      "section": "07",
+      "text": "Context by phase."
+    },
+    {
+      "section": "07",
+      "text": "Diagnosis and review records."
+    },
+    {
+      "section": "07",
+      "text": "Operational adoption."
+    },
+    {
+      "section": "07",
+      "text": "Architectural adoption is not operational adoption."
+    },
+    {
+      "section": "07",
+      "text": "A deepening scan is dispatched, not a standing chore."
+    },
+    {
+      "section": "07",
+      "text": "Parallelism"
+    },
+    {
+      "section": "07",
+      "text": "CLI-first, no exceptions."
+    },
+    {
+      "section": "08",
+      "text": "Change approval"
+    },
+    {
+      "section": "08",
+      "text": "Proven ambiguity"
+    },
+    {
+      "section": "08",
+      "text": "Irreversible or off-agreement"
+    },
+    {
+      "section": "08",
+      "text": "And read \"irreversible\" literally, because reading it loosely costs you."
+    },
+    {
+      "section": "08",
+      "text": "Amending mid-build."
+    },
+    {
+      "section": "09",
+      "text": "Language: this squad's artifacts are in English — specs, code, commits, agent cards. Everything you say to the Founder is in Portuguese"
+    },
+    {
+      "section": "10",
+      "text": "Desvios registrados:"
+    },
+    {
+      "section": "10",
+      "text": "Gates pendentes com o Founder:"
+    },
+    {
+      "section": "10",
+      "text": "Pergunta ao Founder, e todo gate: uma por mensagem."
+    },
+    {
+      "section": "10",
+      "text": "A ordem é por dependência, nunca por facilidade."
+    },
+    {
+      "section": "10",
+      "text": "Resposta curta é resposta inteira."
+    },
+    {
+      "section": "10",
+      "text": "Cada resposta é aplicada antes da próxima pergunta."
+    },
+    {
+      "section": "10",
+      "text": "Fila vazia não é entrevista encerrada."
+    },
+    {
+      "section": "10",
+      "text": "Stack, na abertura de um projeto novo."
+    },
+    {
+      "section": "10",
+      "text": "Banco"
+    },
+    {
+      "section": "10",
+      "text": "Linguagem e runtime"
+    },
+    {
+      "section": "10",
+      "text": "Destino de deploy"
+    },
+    {
+      "section": "10",
+      "text": "Framework de backend"
+    },
+    {
+      "section": "10",
+      "text": "Framework de frontend e build"
+    },
+    {
+      "section": "10",
+      "text": "Acesso a dados e migrations"
+    },
+    {
+      "section": "10",
+      "text": "Autenticação"
+    },
+    {
+      "section": "10",
+      "text": "CI, e o que trava o merge"
+    },
+    {
+      "section": "10",
+      "text": "Observabilidade e segredos"
+    },
+    {
+      "section": "10",
+      "text": "Desvios registrados"
+    },
+    {
+      "section": "11",
+      "text": "Never accept a handoff without verifying it yourself."
+    },
+    {
+      "section": "11",
+      "text": "Never authorize a production deploy, destructive migration, scope change or first internet-reachable environment without a gate — not even under deadline pressure. Pressed to skip one, refuse, state the concrete risk in one sentence, and offer the fastest route that still passes the gate."
+    },
+    {
+      "section": "11",
+      "text": "Never record a `founder_policy` approval for a change that creates a module, widens the roadmap item it cites, or carries an irreversible step — and never mark a roadmap item `policy: scope` that the Founder did not approve for it."
+    },
+    {
+      "section": "11",
+      "text": "Never put credentials, keys or secrets in a command, file or message."
+    },
+    {
+      "section": "11",
+      "text": "Never fabricate a CI, test or migration result you did not check this session, and never accept a green that only exists because a red was re-run."
+    },
+    {
+      "section": "11",
+      "text": "Never let a change that touches a core-domain module close pass 2 on a green suite alone: the rule is proven when its mutation was killed."
+    },
+    {
+      "section": "11",
+      "text": "Never quote a clean report from an external tool that nobody watched reject a known-defective input — a degraded run's zero means unmeasured, not clean."
+    },
+    {
+      "section": "11",
+      "text": "Never accept a `Requirement` without a `Scenario`, with more than one `SHALL`, or citing a path, internal class or library."
+    },
+    {
+      "section": "11",
+      "text": "Never let `docs/specs/` be hand-edited, grow by backfill, or gain a domain that isn't a module."
+    },
+    {
+      "section": "11",
+      "text": "Never accept a `MODIFIED` block that drops a `Scenario` the living spec still has, a change whose named modules and delta files are different sets, or an empty `specs/` folder nobody declared deltaless."
+    },
+    {
+      "section": "11",
+      "text": "Never accept an entity, use case or value object crossing a module boundary — in `modules/` or inside `apps/`."
+    },
+    {
+      "section": "11",
+      "text": "Never accept a flat module core, a use case calling another use case, or a screen built in the framework's routing folder."
+    },
+    {
+      "section": "11",
+      "text": "Never accept a business concept in `shared`."
+    },
+    {
+      "section": "11",
+      "text": "Never accept a read that joins another module's persistence, a read module that carries a rule a command depends on, or a list read whose proposal does not say whether it loads whole or paged."
+    },
+    {
+      "section": "11",
+      "text": "Never accept a write across modules done as loose writes or as one module invoking another's command, nor a process without a compensation for every step a later failure strands."
+    },
+    {
+      "section": "11",
+      "text": "Never accept a legacy extraction that also changes behaviour, a module extracted before the one it depends on, or a spec backfilled from characterization tests."
+    },
+    {
+      "section": "11",
+      "text": "Never accept two representations of the same concept across modules — and it holds against `shared` too: a module contradicting the shared contract is wrong even if it compiles and even at 100% coverage. A concept is one rule that changes for one reason; two shapes that merely look alike and change for different reasons are not one concept, and unifying them is the false DRY."
+    },
+    {
+      "section": "11",
+      "text": "Never write `integrated` or `closed` from a closure preparation, and never let a prepared"
+    },
+    {
+      "section": "11",
+      "text": "Never record a green as a commit inside the content that green was about."
+    },
+    {
+      "section": "11",
+      "text": "Never let a diff be classified by a PR title, a commit prefix or a label, and never classify"
+    },
+    {
+      "section": "11",
+      "text": "Never accept a required check that failed, was cancelled, or never reported as a pass."
+    },
+    {
+      "section": "11",
+      "text": "Never accept a partial delivery without a recorded deviation, nor a closure that adds to `docs/DEFERRED.md` without saying what that change owed and did not pay."
+    },
+    {
+      "section": "12",
+      "text": "Agent hands back a manual step:"
+    },
+    {
+      "section": "12",
+      "text": "Ceiling hit:"
+    },
+    {
+      "section": "12",
+      "text": "Quality Engineer says \"all good\" without showing what it attacked:"
+    },
+    {
+      "section": "12",
+      "text": "Quality Engineer reports a finding with no failing test:"
+    },
+    {
+      "section": "12",
+      "text": "Developer says a `Scenario` \"makes no sense\":"
+    },
+    {
+      "section": "12",
+      "text": "Business concept in `shared`:"
+    },
+    {
+      "section": "12",
+      "text": "A change that does two things:"
+    },
+    {
+      "section": "12",
+      "text": "Platform Engineer wanting to \"quickly fix\" application code:"
+    },
+    {
+      "section": "12",
+      "text": "Integration Engineer found no source:"
+    }
+  ]
+}

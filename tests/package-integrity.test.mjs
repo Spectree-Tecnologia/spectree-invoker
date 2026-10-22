@@ -14,7 +14,7 @@ function pkgCopy() {
   for (const d of ['protocol', 'adapters', 'schemas', 'scripts', 'agents', 'commands', 'tests', 'evals', '.claude-plugin']) {
     if (existsSync(join(REPO, d))) cpSync(join(REPO, d), join(dir, d), { recursive: true });
   }
-  for (const f of ['CLAUDE.md', 'package.json']) {
+  for (const f of ['CLAUDE.md', 'package.json', 'docs/protocol-rationale.md']) {
     if (existsSync(join(REPO, f))) cpSync(join(REPO, f), join(dir, f));
   }
   return dir;
@@ -117,6 +117,30 @@ test('a broken cross-reference fails', () => {
     const r = check(dir);
     assert.equal(r.code, 1);
     assert.match(r.out, /refers to "Section 99"/);
+  } finally { cleanup(dir); }
+});
+
+test('a rendered core that drops a rule from the inventory fails', () => {
+  const dir = pkgCopy();
+  try {
+    const f = join(dir, 'adapters/codex/dist/SQUAD.md');
+    writeFileSync(f, readFileSync(f, 'utf8').replace('**One voice.**', ''));
+    const r = check(dir);
+    assert.equal(r.code, 1);
+    assert.match(r.out, /SQUAD\.md: dropped the rule "One voice\."/);
+  } finally { cleanup(dir); }
+});
+
+test('a rendered core over its size ceiling, or without its rationale, fails', () => {
+  const dir = pkgCopy();
+  try {
+    const f = join(dir, 'CLAUDE.md');
+    writeFileSync(f, readFileSync(f, 'utf8') + '\n' + 'x'.repeat(46080));
+    rmSync(join(dir, 'docs', 'protocol-rationale.md'));
+    const r = check(dir);
+    assert.equal(r.code, 1);
+    assert.match(r.out, /CLAUDE\.md: is \d+ bytes, over the 46080-byte ceiling/);
+    assert.match(r.out, /protocol-rationale\.md: the protocol rationale is missing/);
   } finally { cleanup(dir); }
 });
 

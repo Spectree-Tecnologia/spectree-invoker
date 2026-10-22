@@ -34,6 +34,11 @@ SQUAD.md into `.spectree/squad/`, and appends a pointer to its existing AGENTS.m
 `node scripts/build.mjs` writes them; `--check` fails when any is stale; CI runs `--check` on
 every pull request. There is no second hand-maintained copy of the rules anywhere.
 
+**Rules here, reasons elsewhere.** The rendered core carries the rules and is loaded on every
+session; the reason behind each rule is in `docs/protocol-rationale.md`, read on demand.
+`protocol/rules.json` lists every rule the core must carry, and `check-plugin.mjs` fails when a
+rendered core drops one, grows past the ceiling in that file, or stops pointing at the rationale.
+
 **Determinism.** The output is a pure function of `protocol/` and each `adapter.json`. No
 timestamps, no host paths, no filesystem ordering. Running the build twice writes nothing the
 second time.
