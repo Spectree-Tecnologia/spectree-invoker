@@ -38,6 +38,8 @@ every pull request. There is no second hand-maintained copy of the rules anywher
 session; the reason behind each rule is in `docs/protocol-rationale.md`, read on demand.
 `protocol/rules.json` lists every rule the core must carry, and `check-plugin.mjs` fails when a
 rendered core drops one, grows past the ceiling in that file, or stops pointing at the rationale.
+The Solutions Architect and Platform Engineer cards follow the same rule, with their own lists and
+ceilings in the same file, checked in the card each adapter ships.
 
 **Determinism.** The output is a pure function of `protocol/` and each `adapter.json`. No
 timestamps, no host paths, no filesystem ordering. Running the build twice writes nothing the

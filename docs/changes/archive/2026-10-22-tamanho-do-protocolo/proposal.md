@@ -1,7 +1,7 @@
 # Tamanho do protocolo
 
-Tarefa 8 do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
-Resolve o D-008 do [ledger](../../DEFERRED.md), com a decisão do Gilson de 2026-10-19: separar
+Tarefa 8 do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura).
+Resolve o D-008 do [ledger](../../../DEFERRED.md), com a decisão do Gilson de 2026-10-19: separar
 regra de justificativa, com alvo de 45 KB.
 
 **Mudança deltaless.** Nenhum comportamento do runtime muda e esta mudança não carrega delta em

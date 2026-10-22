@@ -232,6 +232,26 @@ if (inventory) {
       if (!text.includes(norm(r.text))) fail(core, `dropped the rule "${r.text}" (Section ${Number(r.section)})`);
     }
   }
+  // The two longest cards went through the same separation, and are held to it the same way, in
+  // the file each adapter actually ships.
+  for (const [role, card] of Object.entries(inventory.cards ?? {})) {
+    for (const id of adapters) {
+      const targets = readJson(`adapters/${id}/adapter.json`)?.targets ?? {};
+      const rel = targets.roles_dir
+        ? `${targets.roles_dir}/${role}${targets.role_ext}`
+        : targets.agents_dir && `${targets.agents_dir}/${readJson(`adapters/${id}/roles/${role}.json`)?.name}.toml`;
+      if (!rel || !has(rel)) continue;
+      const raw = read(rel);
+      const text = norm(raw);
+      if (Buffer.byteLength(raw) > card.ceiling_bytes) {
+        fail(rel, `is ${Buffer.byteLength(raw)} bytes, over the ${card.ceiling_bytes}-byte ceiling in protocol/rules.json`);
+      }
+      if (!raw.includes('protocol-rationale.md')) fail(rel, 'does not point at the protocol rationale');
+      for (const r of card.rules ?? []) {
+        if (!text.includes(norm(r.text))) fail(rel, `dropped the rule "${r.text}" (${r.section})`);
+      }
+    }
+  }
 }
 
 // --- 9. the required test set is not empty -----------------------------------
