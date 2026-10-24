@@ -14,6 +14,7 @@ lugar; cada correção entra por uma mudança própria.
   `categoria · área · padrão`, que é o que agrupa recorrências entre retros.
 - **O que não é pago vira adiamento:** o achado que fica para depois entra em
   [`DEFERRED.md`](../DEFERRED.md) com dono e gatilho, e a retro cita o `D-NNN`.
+- **Num projeto com mudanças estruturadas,** a retro é registrada com `state.mjs run <change> retro.recorded --role invoker -- node <squad>/scripts/retro.mjs check <change> <arquivo>`; até lá o planner aponta `record_retro` e `state.mjs open` recusa com `E_RETRO_PENDING`. Neste repositório, que ainda não abre mudanças com `state.mjs` (D-009), quem cobra é `tests/repo-changes.test.mjs`.
 - **Comece pelo medido:** `node scripts/retro.mjs collect <pr> --apply` lê o PR, os runs de CI de
   cada commit, os commits e o archive do merge e a seção **Atrito**, grava em `.spectree/retros/` e
   aponta as assinaturas conhecidas que casaram. Uma assinatura que casou é candidata; quem julga é a retro.

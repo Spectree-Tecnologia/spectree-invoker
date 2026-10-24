@@ -49,6 +49,7 @@ Each finding is one line:
 <severity> · <category> · <evidence: file or record> · <what happened> · <proposed fix> · owner: <Platform Engineer | Architect | Invoker | change of its own | squad>
 ```
 
+- **The retro itself is a file, and the runtime holds it to that.** Write it to `docs/retros/<date>-<change>.md` with a line `Change: \`<change>\`` and a section `## What was read`, then record it: `state.mjs run <change> retro.recorded --role invoker -- node <squad>/scripts/retro.mjs check <change> <file>`. Until that run passes, `state.mjs plan` answers `record_retro` for the closed change and `state.mjs open` refuses the next one with `E_RETRO_PENDING`. Only a person waives it, with `--retro-waived "<reason>"`, and the reason stays on the change that opened.
 - **Recording.** The Platform Engineer records the project's findings in `docs/DEFERRED.md` on the next branch he cuts, before any other write on it, each with a stable number and its owner. They are never committed straight to the default branch, because that is gate 3.
 - **Reporting.** They reach the Founder under **Desvios registrados** in the next status report, one line each. Squad findings are marked as such.
 - **An empty retro is a result.** Say so in one line, naming what was read. A change that produced no record of a single refused handoff, red run or extra attempt is either clean or unrecorded. Check which before saying "clean".

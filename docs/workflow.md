@@ -434,6 +434,25 @@ an investigation into an auxiliary tool, or an opportunistic fix. A real failure
 closure and produces an impediment — a short confirmation that hides one is worse than a long
 one. Deploy stays a separate decision and a separate gate.
 
+## After `closed`: the retro is owed
+
+A closed change is not the end of the work: it owes its retro, and the runtime keeps the debt
+visible instead of trusting someone to remember it.
+
+```bash
+node scripts/retro.mjs collect <pr> --apply                     # measured signals -> .spectree/retros/
+# write docs/retros/<date>-<change>.md: "Change: `<change>`" and "## What was read"
+node scripts/state.mjs run <change> retro.recorded --role invoker -- \
+  node scripts/retro.mjs check <change> docs/retros/<date>-<change>.md
+```
+
+Until `retro.recorded` is an observed PASS, `state.mjs plan` answers `record_retro` for the closed
+change (and, with nothing open, plans that change by itself), and `state.mjs open` refuses the next
+change with `E_RETRO_PENDING`. The check observes a file that names its change and says what was
+read; the judgement inside it stays the Invoker's. Only a person skips it, with
+`--retro-waived "<reason>"` on the change that opens, and that change keeps the waiver and the
+names of the changes it covers.
+
 ## CI proportional to what changed
 
 `scripts/ci-treatment.mjs` classifies the **whole candidate against its base** — never the last

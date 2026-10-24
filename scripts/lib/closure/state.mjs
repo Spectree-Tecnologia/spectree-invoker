@@ -24,6 +24,8 @@ import {
   Store,
   SCHEMA_VERSION,
   canTransition,
+  pendingRetros,
+  RETRO_PENDING,
   ASSERTS_FAILURE,
   readLifecycle,
   readReceipt,
@@ -222,9 +224,13 @@ function run({ root, argv, print, warn }) {
   function recommendation(changeId, { observeCi = false, pr = null, snapshot = null } = {}) {
     try {
       const open = snapshot?.open ?? (store.present ? store.changes().filter((c) => c.state !== 'closed') : []);
-      if (!changeId && open.length !== 1) return { ...planNext(null), choices: open.map((c) => c.change_id) };
+      // With nothing open, a closed change that owes its retro is the work there is.
+      const owed = store.present ? pendingRetros(store.changes(), (id) => store.evidence(id)) : [];
+      if (!changeId && !open.length && owed.length) changeId = owed[0];
+      else if (!changeId && open.length !== 1) return { ...planNext(null), choices: open.map((c) => c.change_id) };
       const change = snapshot?.change ?? store.change(changeId ?? open[0].change_id);
       if (!change) return { ...planNext(null), code: 'E_CHANGE_MISSING' };
+      if (change.state === 'closed') return planNext(change, { retroRecorded: !owed.includes(change.change_id) });
       const cc = snapshot?.cc ?? closureContext(change.change_id);
       // Recovery and corrupt authority take precedence even when Git/content cannot be read.
       const pending = cc.pending ?? pendingWork(root, change.change_id);
@@ -443,6 +449,17 @@ function run({ root, argv, print, warn }) {
 
   function openCommand() {
     const id = argv[1] ?? die('usage: state.mjs open <change-id> ...');
+    // A closed change owes its retro before the next one opens: what it taught is read while the
+    // trail is fresh, or it is not read. A person may waive it, and the waiver and its reason stay
+    // on the change that opened over it.
+    const owed = store.present ? pendingRetros(store.changes(), (c) => store.evidence(c)) : [];
+    const waiver = flags(argv, { emptyIsValue: true }).value('retro-waived');
+    if (owed.length && waiver === undefined) {
+      die(`${RETRO_PENDING}: ${owed.join(', ')} closed without a recorded retro. Load the squad skill squad-closure-retro, ` +
+          'record it with `state.mjs run <change> retro.recorded --role invoker -- node <squad>/scripts/retro.mjs check <change> <retro.md>`, ' +
+          'or open with --retro-waived "<reason>".', 1);
+    }
+    if (waiver !== undefined && !String(waiver).trim()) die('--retro-waived needs a reason: a waiver nobody can read is not a decision');
     const g = gitSituation();
     const change = {
       schema_version: SCHEMA_VERSION,
@@ -460,6 +477,7 @@ function run({ root, argv, print, warn }) {
       ...(flag('modules') ? { modules_named: flag('modules').split(',').map((m) => m.trim()).filter(Boolean) } : {}),
       closure_mode: selectClosureMode(store.project(), flag('closure-mode')),
       ...(has('deltaless') ? { deltaless: true } : {}),
+      ...(owed.length ? { retro_waiver: { changes: owed, reason: String(waiver).trim() } } : {}),
     };
     const saved = store.putChange(change, { event: { type: 'opened', state: 'draft' } });
     print(`opened ${saved.change_id} at base ${saved.base_revision.slice(0, 8)} (state_revision ${saved.state_revision})`);

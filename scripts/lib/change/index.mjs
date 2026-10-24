@@ -36,6 +36,7 @@ export {
 } from './lifecycle.mjs';
 export { observePlanCi } from './planner-ci.mjs';
 export { nextTarget, planNext } from './planner.mjs';
+export { RETRO_PENDING, RETRO_PROPERTY, pendingRetros, retroRecorded } from './retro-gate.mjs';
 export { agentMetrics, appendRunEvent, runEvents, validRunEvent } from './run-events.mjs';
 export { POLICY_KIND, checkPolicyApproval } from './scope-policy.mjs';
 export {
