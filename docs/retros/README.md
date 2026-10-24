@@ -29,7 +29,7 @@ lugar; cada correção entra por uma mudança própria.
 | R-001 | `tool-economy · release · identificador-sequencial-disputado` | 15 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 |
 | R-002 | `automated-checks · docs · fechamento-depois-do-merge` | 12 | Pago na tarefa 11 |
 | R-003 | `information-access · retro · rastro-apagado` | todos os PRs | Curto prazo pago na tarefa 11; longo prazo é o D-009 |
-| R-004 | `automated-checks · protocol · teto-sem-folga` | 2 | Aberto, [D-013](../DEFERRED.md); a segunda ocorrência pede mudança própria |
+| R-004 | `automated-checks · protocol · teto-sem-folga` | 3 | Aberto, [D-013](../DEFERRED.md); a segunda ocorrência pede mudança própria |
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 | R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |
@@ -38,6 +38,7 @@ lugar; cada correção entra por uma mudança própria.
 
 ## Retros
 
+- [2026-10-24 — `checagens-por-relatorio` (#84)](2026-10-24-checagens-por-relatorio.md)
 - [2026-10-24 — `seguranca-resposta` (#83)](2026-10-24-seguranca-resposta.md)
 - [2026-10-24 — `retro-gatilho` (#82)](2026-10-24-retro-gatilho.md)
 - [2026-10-24 — `seguranca-ci` (#81)](2026-10-24-seguranca-ci.md)

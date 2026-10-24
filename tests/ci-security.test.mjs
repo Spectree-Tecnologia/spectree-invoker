@@ -4,30 +4,19 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { REPO } from './helpers.mjs';
+import { REPO, tempDir, cleanup } from './helpers.mjs';
+import { satisfiesFloor } from '../scripts/lib/shared/index.mjs';
 
 const read = (rel) => readFileSync(join(REPO, rel), 'utf8');
 
 // --- the runtime floor -------------------------------------------------------------------------
 
-// Only the two comparator forms `engines` uses here: `^x.y.z` and `>=x.y.z`, joined by `||`.
-const parse = (v) => v.replace(/^v/, '').split('.').map(Number);
-const atLeast = (a, b) => {
-  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];
-  return true;
-};
-function satisfies(version, range) {
-  const v = parse(version);
-  return range.split('||').map((r) => r.trim()).some((r) => {
-    const caret = r.match(/^\^(\d+\.\d+\.\d+)$/);
-    if (caret) { const f = parse(caret[1]); return v[0] === f[0] && atLeast(v, f); }
-    const min = r.match(/^>=(\d+\.\d+\.\d+)$/);
-    if (min) return atLeast(v, parse(min[1]));
-    throw new Error(`unsupported comparator "${r}"`);
-  });
-}
+// The floor is read with the same function the installed scripts use, so the test and the
+// runtime cannot disagree about what the range means.
+const satisfies = satisfiesFloor;
 
 // Node.js security release of 2026-10-21: CVE-2026-111497 (Brotli RCE), the TLS hostname bypasses
 // and the eMudhra chain rejection are fixed in 22.23.4, 24.22.1 and 26.12.1. 20.x gets no fix.
@@ -39,6 +28,42 @@ test('the engines floor admits only runtimes carrying the 2026-10-21 fixes', () 
   const { engines } = JSON.parse(read('package.json'));
   for (const v of UNPATCHED) assert.equal(satisfies(v, engines.node), false, `${v} is refused`);
   for (const v of PATCHED) assert.equal(satisfies(v, engines.node), true, `${v} is accepted`);
+});
+
+test('a range the floor reader does not understand is unknown, never satisfied', () => {
+  assert.equal(satisfiesFloor('22.23.4', '~22.23.4'), null);
+  assert.equal(satisfiesFloor('22.23.4', '^22.23.4 || 24.x'), null, 'one unknown comparator spoils the whole range');
+  assert.equal(satisfiesFloor('nightly', '>=22.0.0'), null);
+  assert.equal(satisfiesFloor('22.23.4', ''), null);
+});
+
+// D-015: npm enforces the floor only for whoever installs this package. A consumer runs the
+// installed scripts on its own Node, so the capability report has to say when that Node is below.
+test('an installed consumer reports a runtime below the floor, and a runtime that meets it', () => {
+  const dir = tempDir('spectree-floor-');
+  try {
+    const install = spawnSync(process.execPath, [join(REPO, 'scripts/install-codex.mjs'), dir, '--apply'], { encoding: 'utf8' });
+    assert.equal(install.status, 0, install.stderr);
+    const squad = join(dir, '.spectree/squad');
+    const report = () => {
+      const r = spawnSync(process.execPath, [join(squad, 'scripts/capabilities.mjs'), '--json'], { cwd: dir, encoding: 'utf8' });
+      assert.equal(r.status, 0, r.stderr);
+      return JSON.parse(r.stdout).facts.find((f) => f.name === 'runtime.floor');
+    };
+    assert.deepEqual([report().value, report().confidence], ['met', 'VERIFIED'], 'this suite runs on a runtime at the floor');
+
+    const pkgFile = join(squad, 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgFile, 'utf8'));
+    pkg.engines.node = `>=${Number(process.versions.node.split('.')[0]) + 1}.0.0`;
+    writeFileSync(pkgFile, JSON.stringify(pkg));
+    const below = report();
+    assert.equal(below.value, 'BELOW FLOOR');
+    assert.match(below.note, /Upgrade Node/);
+
+    delete pkg.engines;
+    writeFileSync(pkgFile, JSON.stringify(pkg));
+    assert.deepEqual([report().value, report().confidence], ['unknown', 'UNKNOWN'], 'no floor is unknown, never met');
+  } finally { cleanup(dir); }
 });
 
 test('npm refuses to install on a runtime below the floor instead of warning', () => {

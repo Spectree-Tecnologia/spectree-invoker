@@ -133,7 +133,7 @@
 - Status: open
 - Owner: own_change
 - Impact: ceiling
-- Decision: Visto na tarefa 12: o piso de engines e o engine-strict valem para quem instala este repositório, mas os scripts que o instalador entrega rodam no Node do consumidor, e capabilities.mjs só relata a versão. Um consumidor em Node 22.22.0 roda a Presence com o decodificador Brotli vulnerável sem aviso. Fica fora porque muda o comportamento do runtime instalado e merece mudança própria.
+- Decision: Visto na tarefa 12: o piso de engines e o engine-strict valem para quem instala este repositório, mas os scripts que o instalador entrega rodam no Node do consumidor, e capabilities.mjs só relata a versão. Um consumidor em Node 22.22.0 roda a Presence com o decodificador Brotli vulnerável sem aviso. Fica fora porque muda o comportamento do runtime instalado e merece mudança própria. Entregue pela mudança seguranca-piso-consumidor (v1.52.0): satisfiesFloor no shared e o fato runtime.floor no capabilities.mjs, provados num consumidor instalado. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: A próxima release de segurança do Node, ou a próxima mudança que tocar capabilities.mjs
 - Closure condition: capabilities.mjs compara a versão do Node com um piso declarado num lugar só e relata o runtime abaixo dele como degradado, com teste.
 
