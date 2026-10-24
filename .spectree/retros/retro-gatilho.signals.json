@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 82,
+    "title": "Retro pós-merge: o runtime cobra a retro depois do closed (tarefa 11c) — v1.49.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/82",
+    "opened": "2026-10-24T04:22:44Z",
+    "merged": "2026-10-24T05:11:57Z"
+  },
+  "signals": {
+    "open_minutes": 49,
+    "commits": 2,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 1,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.49.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-retro-gatilho/proposal.md"
+    ]
+  },
+  "friction": "- **Antes do #81:** a branch falhava em `tests/repo-changes.test.mjs` por faltar a retro da 11b, que viajava no #81. O PR só foi aberto depois do merge do #81.\n- **Merge da `main`:** o conflito foi só de versão (mantida a 1.49.0) e da linha do ROADMAP. A retro do `seguranca-ci` entrou no mesmo commit do merge.\n- **Node local abaixo do piso:** a sessão em nuvem roda Node 22.22.0, e o `npm ci` agora recusa por causa do piso novo. A suíte rodou com o `node_modules` que já existia (R-008).",
+  "candidates": [
+    {
+      "signature": "tool-economy · release · identificador-sequencial-disputado",
+      "evidence": [
+        "c0a39c5 merge: integra main 1.48.0 (#81) e mantém a candidata em 1.49.0"
+      ]
+    }
+  ],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

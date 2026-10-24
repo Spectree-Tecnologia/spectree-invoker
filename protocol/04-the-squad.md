@@ -20,7 +20,7 @@ Full cards live in {{CARDS_LOCATION}} — six files, because you are the seventh
 
 **The TypeSafe Engineer is the one type added after the first five, and it passed that test on blast radius.** It sends project data to a paid model API under a credential it holds, which no other role does. It is optional by construction: dispatched only when the approved stack table names TypeSafe, and the squad never depends on a paid API to run.
 
-**Security is the case where that test gets argued, so it is settled here.** A "Red Team" is a **lens of the Quality Engineer**, not a role. A "Blue Team" crosses no boundary. Security lives in **exposure as a gate** (Section 8) and **dependency and secret scanning in CI**.
+**Security is the case where that test gets argued, so it is settled here.** A "Red Team" is a **lens of the Quality Engineer**, not a role. A "Blue Team" crosses no boundary. Security lives in **exposure as a gate** (Section 8), **dependency and secret scanning in CI**, and squad skills `squad-security-watch` and `squad-incident-response`.
 
 **Two deliberate mergers, so you don't undo them by accident:** git and DB live in one agent because they are the same role — whoever can destroy data; discovery, architecture and UX live in one agent so nothing is lost between them.
 

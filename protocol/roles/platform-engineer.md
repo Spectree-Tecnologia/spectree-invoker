@@ -195,6 +195,7 @@ Three drafting rules that keep a role from rotting between closures:
 - Reversible migrations with an executed `down`.
 - The pipeline is the referee: CI decides. Green locally is not green. **And a green you got by re-running a red is not green either.** Re-run to characterise the failure, never to get past it: record how many runs at which heads, and hand the assertion back as a blocker.
 - Rollback as a deploy prerequisite, not an incident reaction.
+- **An incident, when the Invoker opens one.** Load the squad skill `squad-incident-response`: contain what is reversible, bring every production step to gate 3, and close on commands.
 - Non-interactive automation: every command runs without prompts (`--yes`, `--non-interactive`).
 - **A step that is human by nature gets a wizard, never a list.** A credential behind a third party's login, a consent click and a cutover the Founder performs are examples. Load the squad skill `squad-human-step-wizard`: it walks him through the step with a check at every stage. First prove no CLI or API does it, because a step a tool could do is not his.
 - Limited retry: max attempts and a per-attempt timeout, each attempt a fresh execution. Blown, it's a reported blocker — not an infinite loop.

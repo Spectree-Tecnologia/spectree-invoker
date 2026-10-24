@@ -187,7 +187,7 @@ test('5d. installing over an existing AGENTS.md preserves it, appends once, and 
 
     assert.ok(existsSync(join(dir, '.codex/agents/quality_engineer.toml')), 'specialists land in .codex/agents');
     assert.ok(existsSync(join(dir, '.agents/skills/spectree-invoker/SKILL.md')), 'the skill lands in .agents/skills');
-    for (const name of ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan', 'squad-human-step-wizard']) {
+    for (const name of ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan', 'squad-human-step-wizard', 'squad-security-watch', 'squad-incident-response']) {
       assert.ok(existsSync(join(dir, `.agents/skills/${name}/SKILL.md`)), `the squad skill ${name} lands beside it`);
     }
     assert.ok(existsSync(join(dir, '.spectree/squad/scripts/state.mjs')), 'the scripts travel with it');
@@ -1141,12 +1141,13 @@ test('21d8. the squad ships its own method as skills, on both harnesses, and the
   // The plugin shipped no skill for its roles: the method lived only in text loaded on every turn.
   // A squad skill describes how the squad works, so it exists before any project's module 1.
   const manifest = JSON.parse(readFileSync(join(REPO, 'protocol/manifest.json'), 'utf8'));
-  assert.deepEqual(manifest.skills, ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan', 'squad-human-step-wizard'], 'the manifest declares the squad skills');
+  assert.deepEqual(manifest.skills, ['squad-test-quality', 'squad-code-smells', 'squad-closure-retro', 'squad-task-slicing', 'squad-deepening-scan', 'squad-human-step-wizard', 'squad-security-watch', 'squad-incident-response'], 'the manifest declares the squad skills');
   for (const name of manifest.skills) {
     for (const f of [`skills/${name}/SKILL.md`, `adapters/codex/dist/skills/${name}/SKILL.md`]) {
       const body = readFileSync(join(REPO, f), 'utf8');
       assert.match(body, new RegExp(`^---\\nname: ${name}\\ndescription: \\S`), `${f}: frontmatter names the skill and says when to load it`);
-      assert.match(body, /Matt Pocock/, `${f}: the adaptation keeps its attribution`);
+      // An adaptation keeps its attribution; the two security skills were written here and have none to keep.
+      if (!['squad-security-watch', 'squad-incident-response'].includes(name)) assert.match(body, /Matt Pocock/, `${f}: the adaptation keeps its attribution`);
     }
   }
   const quality = readFileSync(join(REPO, 'skills/squad-test-quality/SKILL.md'), 'utf8');

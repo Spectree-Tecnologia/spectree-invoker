@@ -117,3 +117,42 @@ test('the daily watch re-audits main without a push', () => {
   assert.match(text, /schedule:\n\s+- cron: /);
   assert.ok(gates(text).audit);
 });
+
+// --- the blue team as a process ------------------------------------------------------------------
+// Not a role (Section 4): the defence splits along the boundaries the squad already has. These pin
+// the promises each skill makes and the cards that load it, so neither can quietly drop one.
+
+const skill = (name) => read(`skills/${name}/SKILL.md`);
+
+test('the security watch turns advisories into cited verdicts, and never rounds unknown down', () => {
+  const body = skill('squad-security-watch');
+  assert.match(body, /Verdict: +affected \| not affected \| unknown/);
+  assert.match(body, /never rounded down to `not affected`/);
+  assert.match(body, /CISA KEV/, 'exploitation is read from the catalogue, not from a headline');
+  assert.match(body, /seen reporting a known-defective input/, 'a clean report has to have been able to fail');
+  assert.match(body, /Never runs an exploit/);
+});
+
+test('incident response keeps every production step at gate 3, and silencing a tool is never a fix', () => {
+  const body = skill('squad-incident-response');
+  for (const p of ['P1', 'P2', 'P3']) assert.match(body, new RegExp(`\\*\\*${p}\\*\\*`));
+  const gate3 = body.slice(body.indexOf('**Gate 3'), body.indexOf('## 3.'));
+  for (const step of ['production', 'credential that production uses', 'default branch', 'outside the project']) {
+    assert.ok(gate3.includes(step), `"${step}" is a gate 3 step`);
+  }
+  assert.match(body, /Never disable a check, lower an audit level or allowlist an advisory/);
+  assert.match(body, /closes on commands/);
+});
+
+test('each role that owns a part of the defence points at its skill, on both harnesses', () => {
+  const pointers = {
+    'integration-engineer': ['agents/integration-engineer.md', 'adapters/codex/dist/agents/integration_engineer.toml', 'squad-security-watch'],
+    'platform-engineer': ['agents/platform-engineer.md', 'adapters/codex/dist/agents/platform_engineer.toml', 'squad-incident-response'],
+    'quality-engineer': ['agents/quality-engineer.md', 'adapters/codex/dist/agents/quality_engineer.toml', 'squad-incident-response'],
+  };
+  for (const [claude, codex, name] of Object.values(pointers)) {
+    for (const f of [claude, codex]) assert.match(read(f), new RegExp(`Load the squad skill \`${name}\``), `${f} loads ${name}`);
+  }
+  assert.match(read('agents/quality-engineer.md'), /\*\*Red team, when the change answers a security advisory\.\*\*/);
+  assert.match(read('CLAUDE.md'), /A "Blue Team" crosses no boundary\. Security lives in .*`squad-security-watch` and `squad-incident-response`/);
+});

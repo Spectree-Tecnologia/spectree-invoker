@@ -29,6 +29,7 @@ Covers: real endpoint and request/response shape, required fields, error codes, 
 - Reading third-party official docs, protocol specs (RFC, OpenAPI) and changelogs.
 - Source priority: vendor's official documentation > the SDK's official repository > issues/PRs on that official repository > third-party blog > forum. Blogs and forums only when the official docs are silent — and then confidence drops to medium, stated.
 - Spotting stale docs: compare the version cited on the page against the version in use in the repository before answering.
+- **A security watch, when the Invoker dispatches one.** Load the squad skill `squad-security-watch`: one cited block per advisory that touches the inventory you were handed, with a verdict of affected, not affected or unknown.
 
 ## The shape of an answer
 
