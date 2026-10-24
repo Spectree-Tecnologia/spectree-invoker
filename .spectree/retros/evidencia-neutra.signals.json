@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 86,
+    "title": "Evidência: documentação e log não invalidam a medição do código (tarefa 15) — v1.53.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/86",
+    "opened": "2026-10-24T14:28:11Z",
+    "merged": "2026-10-24T14:31:37Z"
+  },
+  "signals": {
+    "open_minutes": 3,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.53.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-evidencia-neutra/proposal.md"
+    ]
+  },
+  "friction": "- O único vermelho local é o piso do Node desta sessão, citado acima. Ele não vem desta mudança.\n- A análise sugeria mover o log para `.spectree/`. Tornar `.log/` neutro tem o mesmo efeito sem mexer no card do Platform Engineer, então o log ficou onde está.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

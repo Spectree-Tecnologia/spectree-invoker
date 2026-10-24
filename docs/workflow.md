@@ -169,7 +169,8 @@ in force. It stops being authority, not history.
 **An archived folder is not proof**: the folder says a move happened; only the
 manifest says what was true when it happened.
 
-`integration_approved` requires a preparation that covers the candidate. A fix after preparation
+`pass2_complete` and `integration_approved` require a preparation that covers the candidate, so pass 2
+attacks what will be integrated and a late document never pays for a second attack. A fix after preparation
 invalidates it, and so does a Requirement added afterwards — the same rule that already
 invalidates a QA pass, for the same reason.
 
