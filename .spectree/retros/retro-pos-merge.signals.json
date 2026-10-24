@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 79,
+    "title": "Retro pós-merge: fechamento no próprio PR e primeira retro registrada (tarefa 11) — v1.46.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/79",
+    "opened": "2026-10-24T01:27:26Z",
+    "merged": "2026-10-24T01:33:53Z"
+  },
+  "signals": {
+    "open_minutes": 6,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.46.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-pass1-superficie/proposal.md",
+      "docs/changes/archive/2026-10-24-retro-pos-merge/proposal.md"
+    ]
+  },
+  "friction": "Nenhum red local. Uma correção antes do push: a contagem do R-002 no relatório do piloto foi corrigida de 9 para 12, depois de conferir o diff de cada merge.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

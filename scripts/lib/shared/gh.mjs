@@ -54,6 +54,15 @@ export function pullRequest(number, { cwd, repo, fields } = {}) {
 }
 
 /**
+ * One PR as the REST API returns it, for the readers that need what `gh pr view` asks GraphQL for:
+ * its body, when it opened and the commit it merged as. REST because some harnesses refuse
+ * GraphQL, and a reader that only works in one of them is not a reader.
+ */
+export function pullRequestRecord(number, { cwd, repo }) {
+  return jsonOrThrow(run(['api', `repos/${repo}/pulls/${Number(number)}`], cwd), `pr ${number}`);
+}
+
+/**
  * The REQUIRED checks of a pull request, as GitHub itself decides what is required.
  *
  * `gh pr checks` exits non-zero when a check is pending or failing, and that exit code is not an
