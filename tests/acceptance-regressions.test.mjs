@@ -344,7 +344,7 @@ test('8. fresh evidence must match the content on disk, not only the revision', 
   const c = change({ state: 'implemented' });
   const qe = { role: 'quality_engineer', independent_of: ['full_stack_developer'] };
   const ctxOn = (contentDigest) => ({
-    approvals: [scopeApproval()], revision: REV, scopeDigests: scopeOk, contentDigest,
+    approvals: [scopeApproval()], revision: REV, scopeDigests: scopeOk, contentDigest, closure: { ok: true },
   });
 
   const measured = evidence({ property: 'pass2.attack', revision: REV, change_id: 'c1', executor: qe, fingerprint: 'CONTENT-A' });

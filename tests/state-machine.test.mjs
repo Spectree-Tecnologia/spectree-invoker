@@ -190,6 +190,20 @@ test('integrating needs the closure prepared on the branch, not after the merge'
   assert.equal(canTransition(legacy, 'integration_approved', ctx({ ...full, closure: undefined })).ok, true);
 });
 
+test('pass 2 is recorded only over a prepared closure, so a late document never pays for a second attack', () => {
+  const attack = evidence({ evidence_id: 'e-qa', property: 'pass2.attack', revision: REV, change_id: 'c1',
+    executor: { role: 'quality_engineer', independent_of: ['full_stack_developer'] } });
+  const c = change({ state: 'implemented' });
+  const unprepared = canTransition(c, 'pass2_complete', ctx({ evidence: [attack], closure: undefined }));
+  assert.equal(unprepared.code, CODES.CLOSURE_NOT_PREPARED);
+  const stale = canTransition(c, 'pass2_complete', ctx({ evidence: [attack],
+    closure: { ok: false, code: 'E_PREP_STALE', message: 'the candidate changed after the closure was prepared' } }));
+  assert.equal(stale.code, CODES.CLOSURE_NOT_PREPARED);
+  assert.equal(canTransition(c, 'pass2_complete', ctx({ evidence: [attack] })).ok, true);
+  assert.equal(canTransition(change({ state: 'implemented', closure_mode: 'legacy' }), 'pass2_complete',
+    ctx({ evidence: [attack], closure: undefined })).ok, true, 'legacy closure is exempt by name');
+});
+
 test('the machine performs nothing: it only answers', () => {
   const c = change({ state: 'integration_approved' });
   const before = JSON.stringify(c);

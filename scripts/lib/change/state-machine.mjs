@@ -386,7 +386,10 @@ export function canTransition(change, to, ctx = {}) {
     if (!receipt.ok) return deny(receipt.code ?? CODES.INTEGRATION_NOT_OBSERVED, receipt.message);
   }
 
-  if (to === 'integration_approved' && change.closure_mode !== 'legacy') {
+  // Pass 2 attacks the candidate that will be integrated, so the closure is prepared first: a
+  // path, a DEFERRED line or a consolidated spec that arrives after the attack moves the content
+  // it measured, and the attack is paid twice. The SYND C3a ran its second pass 2 for a README.
+  if (['pass2_complete', 'integration_approved'].includes(to) && change.closure_mode !== 'legacy') {
     if (!closure) {
       return deny(CODES.CLOSURE_NOT_PREPARED,
         'no closure preparation was checked for this candidate; run `prepare-closure.mjs` on the branch, ' +

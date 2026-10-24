@@ -99,6 +99,7 @@ test('an uncommitted edit invalidates the evidence: the revision is not the cont
   const c = consumer();
   try {
     upToImplemented(c);
+    assert.equal(prepare(c, ['--apply']).code, 0, 'pass 2 attacks the prepared candidate');
     const rev = c.git(['rev-parse', 'HEAD']).trim();
     assert.equal(c.run('pass2.attack', { role: 'quality_engineer', independentOf: 'full_stack_developer' }).code, 0);
     assert.equal(c.cli('can', 'c1', 'pass2_complete').code, 0, 'the run measured the content on disk');
