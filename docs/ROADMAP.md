@@ -1,6 +1,6 @@
 # Roadmap do Spectree Invoker
 
-Atualizado em 2026-10-17. Este documento registra a ordem aprovada e seus motivos.
+Atualizado em 2026-10-24. Este documento registra a ordem aprovada e seus motivos.
 O escopo e os critérios de cada entrega pertencem à respectiva proposta de mudança;
 esta sequência não representa funcionalidades já disponíveis nem compromissos de data.
 
@@ -72,10 +72,13 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 7 | Papéis deste repositório, extraídos do código | Integrada, PR #75 / v1.42.0, [proposta](changes/archive/2026-10-19-papeis-do-repositorio/proposal.md) | D-011 (registrado) |
 | 8 | Tamanho do protocolo | Integrada, PR #76 / v1.43.0: `CLAUDE.md` de 86 KB para 45 KB, regra separada da justificativa, [proposta](changes/archive/2026-10-22-tamanho-do-protocolo/proposal.md) | D-008 |
 | 9 | Tamanho dos cards do Solutions Architect e do Platform Engineer | Integrada, PR #77 / v1.44.0: Architect de 47 KB para 34 KB, Platform Engineer de 30 KB para 21 KB, [proposta](changes/archive/2026-10-22-tamanho-dos-cards/proposal.md) | — |
-| 10 | Pass 1 com superfície e red provado na asserção | Em andamento: Founder autorizou em 2026-10-24, depois da leitura do sindy-agent, [proposta](changes/pass1-superficie/proposal.md) | — |
+| 10 | Pass 1 com superfície e red provado na asserção | Integrada, PR #78 / v1.45.0, [proposta](changes/archive/2026-10-24-pass1-superficie/proposal.md) | — |
+| 11 | Retro pós-merge: fechamento no próprio PR e primeira retro registrada | Integrada, PR #79 / v1.46.0: piloto em lote do #58 ao #78, [retros](retros/README.md), [proposta](changes/archive/2026-10-24-retro-pos-merge/proposal.md) | D-012, D-013 (registrados) |
 
 ## Histórico de decisões
 
+- **2026-10-24:** Founder autorizou a tarefa 11, a primeira entrega da retro pós-merge:
+  o fechamento passa a viajar no próprio PR, e as retros ficam em `docs/retros/`.
 - **2026-10-24:** Founder autorizou a tarefa 10: oficializar o passo de superfície antes da pass 1,
   registrar a pass 1 inteira numa execução só e aceitar só red que chegou à asserção.
 - **2026-10-22:** Founder pediu a tarefa 9, o mesmo corte de regra e justificativa nos cards

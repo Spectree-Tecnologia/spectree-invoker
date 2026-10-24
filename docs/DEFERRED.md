@@ -101,3 +101,21 @@
 - Due: A próxima mudança que tocar scripts/lib/console/
 - Closure condition: Toda recusa de argumento da Console sai por refuse com um código E_, com teste que afirma o código.
 
+## D-012 — Versão e número de teste reservados pelo PR, disputados entre branches paralelas
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: Visto pela retro em lote do #58 ao #78 (R-001, docs/retros/2026-10-24-lote-58-78.md): 13 heads extras no CI entre o #58 e o #73, todos 'integra main e sobe a candidata' ou id de teste renumerado; 1.33.0 reservada e nunca publicada. Fica fora porque, com uma thread por vez desde o #74, o custo é zero, e a forma de calcular a versão no merge é decisão do Founder.
+- Due: Duas threads com PR aberto ao mesmo tempo contra main
+- Closure condition: Nenhum PR reserva número de versão ou id sequencial de teste: a versão é calculada no merge e um teste recusa id duplicado.
+
+## D-013 — Tetos de bytes sem folga no núcleo e no card do Architect
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: Visto pela retro do #78 (R-004, docs/retros/2026-10-24-pass1-superficie.md): CLAUDE.md com 45.934 de 46.080 bytes e o card do Solutions Architect com 34.012 de 34.816. A próxima regra nova no núcleo derruba o check-plugin no meio da change. Fica fora porque é risco medido, sem incidente, e não muda nada do que esta mudança entrega.
+- Due: A próxima mudança que acrescentar regra a protocol/rules.json
+- Closure condition: check-plugin avisa quando a folga de um teto cai abaixo de 2%, e a proposta que acrescenta regra declara o orçamento de bytes.
+
