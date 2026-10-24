@@ -42,6 +42,25 @@ so they belong in the candidate that gets reviewed and merged. Nothing about the
 Preparation comes **before** pass 2 and CI, because a candidate that is validated and then
 edited is not the candidate that was validated.
 
+## Amending ownership mid-build
+
+```bash
+node scripts/state.mjs amend-paths <change-id> --add <path>[,<path>] --reason "<why>"
+```
+
+The paths cut at `open` are a guess made before anyone wrote, and the build is where it turns
+out one file short. **An amendment is recorded, never improvised**: `allowed_paths` grows, and a
+`paths_amended` event with the paths, their modules and the reason goes on the trail. A path
+already owned is a no-op.
+
+It stops for a person in one case only: **the new path falls in a module the change does not
+name** (`modules_named`, or, where the proposal recorded none, the modules its paths already
+own). That is a wider scope, so the refusal is `E_AMEND_NEW_MODULE`, and the route is the
+Architect amending the proposal and gate 1 again. Operational state and instructions are never
+owned, and after `integration_approved` ownership is frozen with the content (`E_AMEND_STATE`).
+Where the change has no contractual file on disk, its paths are part of the scope digest, and the
+command says the scope approval no longer covers it.
+
 ## Preparing
 
 ```bash

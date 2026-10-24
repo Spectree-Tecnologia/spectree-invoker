@@ -44,6 +44,7 @@ import {
   POLICY_KIND,
   checkPolicyApproval,
   coreModulesTouched,
+  planPathAmendment,
 } from '../change/index.mjs';
 import { deliveryGate, DELIVERY_STATES, neutralPaths } from '../evidence/index.mjs';
 import { manifestPath, preparationCovers, approvalsInForce, readManifest } from './closure-prep.mjs';
@@ -498,6 +499,30 @@ function run({ root, argv, print, warn }) {
     print(`opened ${saved.change_id} at base ${saved.base_revision.slice(0, 8)} (state_revision ${saved.state_revision})`);
   }
 
+  function amendPathsCommand() {
+    const id = argv[1] && !argv[1].startsWith('--') ? argv[1] : die('usage: state.mjs amend-paths <change-id> --add <path>[,<path>] --reason "<why>"');
+    const change = store.change(id) ?? die(`no such change: ${id}`, 1);
+    const paths = (flag('add', '') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    const reason = flag('reason');
+    const plan = planPathAmendment(change, paths, reason);
+    if (!plan.ok) die(`REFUSED amend-paths ${id}\n  ${plan.code}: ${plan.message}`, 1);
+    if (!plan.added.length) { print(`nothing to amend: ${plan.already.join(', ')} already owned by ${id}`); return; }
+    // With no contractual file on disk the scope digest is the change's own declaration, paths
+    // included: the amendment then moves it, and the scope approval stops covering the change.
+    // Said here, at the write, rather than discovered at the next transition.
+    const before = contractDigest(root, change);
+    const next = { ...change, allowed_paths: [...change.allowed_paths, ...plan.added] };
+    const saved = store.putChange(next, {
+      expected: change.state_revision,
+      event: { type: 'paths_amended', state: change.state, added: plan.added, modules: plan.modules, reason: String(reason).trim() },
+    });
+    print(`amended ${id}: now owns ${saved.allowed_paths.join(', ')} (state_revision ${saved.state_revision})`);
+    if (contractDigest(root, saved).digest !== before.digest) {
+      warn('  this change has no contractual file on disk, so its paths are part of its scope digest:');
+      warn('  the scope approval no longer covers it. Re-digest and record a new one before the next transition.');
+    }
+  }
+
   function digestCommand() {
     const id = argv[1] ?? die('usage: state.mjs digest <change-id> [--gate scope|integration]');
     const change = store.change(id) ?? die(`no such change: ${id}`, 1);
@@ -931,7 +956,7 @@ function run({ root, argv, print, warn }) {
   }
 
   function usage() {
-    die(`usage: state.mjs <init|resume|plan|open|digest|can|transition|run|record-evidence|record-approval|defer|trail|validate>`);
+    die(`usage: state.mjs <init|resume|plan|open|amend-paths|digest|can|transition|run|record-evidence|record-approval|defer|trail|validate>`);
   }
 
   const COMMANDS = {
@@ -939,6 +964,7 @@ function run({ root, argv, print, warn }) {
     'init': initCommand,
     'resume': resumeCommand,
     'open': openCommand,
+    'amend-paths': amendPathsCommand,
     'digest': digestCommand,
     'can': transitionCommand,
     'transition': transitionCommand,
