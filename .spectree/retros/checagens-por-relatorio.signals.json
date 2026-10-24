@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 84,
+    "title": "Verificação: checagens julgadas de um relatório único e CI barata no consumidor (tarefa 13) — v1.51.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/84",
+    "opened": "2026-10-24T14:01:13Z",
+    "merged": "2026-10-24T14:04:34Z"
+  },
+  "signals": {
+    "open_minutes": 3,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.51.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-checagens-por-relatorio/proposal.md"
+    ]
+  },
+  "friction": "- Com a regra nova, o `CLAUDE.md` foi para 46.178 bytes e o `check-plugin` recusou. Ela coube depois de cortar 142 bytes de redação repetida do §7 e do §12, e a folga ficou em 44 bytes. É a segunda ocorrência do R-004, registrada no D-013.\n- O primeiro teste do CLI instalado veio com um TAP vazio, porque o `node --test` aninhado herdou `NODE_TEST_CONTEXT`. Corrigido no próprio teste, do mesmo jeito que o resto da suíte já faz.\n- A branch foi recortada sobre o #83 antes do merge dele e depois avançou em fast-forward para a `main`.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

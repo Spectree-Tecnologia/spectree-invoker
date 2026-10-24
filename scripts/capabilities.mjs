@@ -18,7 +18,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { detectHarness, observedIsolationSignal } from './lib/shared/index.mjs';
+import { detectHarness, observedIsolationSignal, satisfiesFloor } from './lib/shared/index.mjs';
 
 const pkgRoot = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'));
 const projectRoot = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
@@ -76,6 +76,17 @@ add('project_root.has_space', /\s/.test(projectRoot) ? 'yes' : 'no', V);
 const node = tryRun(process.execPath, ['-v']);
 add('shell', node ? 'available' : 'unavailable', node ? V : U, node ? 'a child process ran and returned' : 'could not spawn a child process');
 add('runtime', `node ${process.versions.node}`, V);
+// The floor is the package's own `engines.node`, raised when a Node.js release fixes a security
+// flaw the squad is exposed to (2026-10-21: Brotli RCE, TLS hostname bypasses, the eMudhra keys).
+// npm enforces it only on install; the scripts run on whatever Node the consumer has.
+const floor = (readJson(join(pkgRoot, 'package.json')) ?? {}).engines?.node;
+const meets = floor ? satisfiesFloor(process.versions.node, floor) : null;
+add('runtime.floor',
+  meets === true ? 'met' : meets === false ? 'BELOW FLOOR' : 'unknown',
+  meets === null ? U : V,
+  meets === false ? `node ${process.versions.node} does not satisfy engines "${floor}", the releases carrying the security fixes this package requires. Upgrade Node before running the squad.`
+    : meets === null ? (floor ? `engines "${floor}" uses a comparator this does not understand` : 'no engines.node in the package; no floor to compare against')
+    : `engines "${floor}"`);
 add('platform', `${process.platform}/${process.arch}`, V);
 
 // --- git ---------------------------------------------------------------------
@@ -226,4 +237,8 @@ if (mode !== 'delegating-with-isolation') {
   console.log('        session transcript on disk; its prompt is written by the Invoker; it is the same model as the');
   console.log('        builder. Dispatch it as a named agent, never a fork, and keep the builder\'s reasoning out of');
   console.log('        the prompt — the prompt stays in the session record and can be audited.');
+}
+if (meets === false) {
+  console.log(`\n  NOTE  node ${process.versions.node} is below this package's floor (${floor}). The squad runs on it, but`);
+  console.log('        without the security fixes the floor exists for. Upgrade Node before trusting this session.');
 }

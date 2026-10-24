@@ -17,6 +17,7 @@ export { inside, refuse } from './guard.mjs';
 export { detectHarness, executionContext, observedIsolationSignal } from './harness.mjs';
 export { launch, launchSpec, resolveOnPath } from './launch.mjs';
 export { LOCK_ORDER, lockOwnerIsGone, publishOnce, withLock, writeAtomic, writeOnce } from './persistence.mjs';
+export { satisfiesFloor } from './runtime.mjs';
 export { inspectProcesses, observeProcesses, supervisedLaunch } from './process-supervisor.mjs';
 export { judgeFailingRun, judgeMutationRun, judgeNamedPasses, judgePass1Run, judgePassingRun, parseTap } from './tap.mjs';
 export { stamp } from './time.mjs';
