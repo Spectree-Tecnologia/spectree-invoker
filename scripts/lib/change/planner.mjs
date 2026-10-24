@@ -1,5 +1,6 @@
 // Read-only advice over the SAME gate decision used by can/transition. Never authority.
 import { canTransition, legalTargets, requirementsFor } from './state-machine.mjs';
+import { RETRO_PROPERTY } from './retro-gate.mjs';
 
 export function nextTarget(change) {
   return change.state === 'baselined' && change.deltaless ? 'implemented'
@@ -18,7 +19,14 @@ export function planNext(change, ctx = {}, { isolationSignal = null, ci = null, 
   if (ctx.authority?.ok === false) return answer('repair_authority', 'invoker', 'blocked', ctx.authority.message, { code: ctx.authority.code });
   if (ctx.pendingOperation) return answer('recover_operation', 'platform_engineer', 'blocked', ctx.pendingOperation.recovery,
     { code: 'E_OPERATION_PENDING', operation: ctx.pendingOperation, requires_human_decision: Boolean(ctx.pendingOperation.uncertain) });
-  if (change.state === 'closed') return answer('none', 'invoker', 'complete', 'This change is closed; no new work is inferred.');
+  if (change.state === 'closed' && ctx.retroRecorded === false) return answer('record_retro', 'invoker', 'ready',
+    'This change is closed and owes its retro. Collect the merge, write the retro, and record it; no new change opens over it.',
+    { code: 'E_RETRO_PENDING', property: RETRO_PROPERTY, skill: 'squad-closure-retro',
+      command: ['retro.mjs', 'collect', '<pr>', '--apply'],
+      record: ['state.mjs', 'run', change.change_id, RETRO_PROPERTY, '--role', 'invoker', '--', 'node', '<squad>/scripts/retro.mjs', 'check', change.change_id, '<retro.md>'] });
+  if (change.state === 'closed') return answer('none', 'invoker', 'complete', ctx.retroRecorded
+    ? 'This change is closed and its retro is recorded or waived; no new work is inferred.'
+    : 'This change is closed; no new work is inferred.');
   if (ctx.closureStrategyProblem) return answer('diagnose_closure_strategy', 'platform_engineer', 'blocked',
     'Prepared closure is recorded without a consolidation mechanism. Inspect the project before proposing an explicit configuration correction.',
     { code: 'E_CLOSURE_MECHANISM', command: ['reconcile.mjs', 'diagnose', change.change_id], command_mode: 'read-only' });

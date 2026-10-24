@@ -105,3 +105,16 @@ test('the Atrito section is read up to the next heading or the footer', () => {
   assert.deepEqual(frictionSection('## Atrito\n\nDois reds locais.\n\n---\n_footer_'), { status: 'present', text: 'Dois reds locais.' });
   assert.equal(frictionSection('## Atrito\nNenhum.').text, 'Nenhum.');
 });
+
+test('what retro.recorded observes: the retro exists, names its change and says what it read', () => {
+  const r = gitRepo({ 'docs/retros/ok.md': 'Change: `c1`\n\n## O que foi lido\n\nO PR.\n', 'docs/retros/bare.md': 'Change: `c1`\n' });
+  try {
+    const check = (...argv) => { const errors = []; const code = retroCommand({ root: r.root, argv: ['check', ...argv], out: () => {}, err: (s) => errors.push(s) }); return { code, err: errors[0] ?? '' }; };
+    assert.equal(check('c1', 'docs/retros/ok.md').code, 0);
+    assert.match(check('c2', 'docs/retros/ok.md').err, /^E_RETRO_INCOMPLETE:/);
+    assert.match(check('c1', 'docs/retros/bare.md').err, /^E_RETRO_INCOMPLETE:/);
+    assert.match(check('c1', 'docs/retros/none.md').err, /^E_RETRO_MISSING:/);
+    assert.match(check('c1', '../outside.md').err, /^E_WORK_PATH:/);
+    assert.equal(check('c1').code, 2);
+  } finally { cleanup(r.root); }
+});

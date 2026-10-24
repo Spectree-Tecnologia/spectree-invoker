@@ -26,6 +26,16 @@
     "fingerprint": { "type": "string", "minLength": 8, "maxLength": 128 },
 
     "deltaless": { "type": "boolean" },
+    "retro_waiver": {
+      "type": "object",
+      "required": ["changes", "reason"],
+      "properties": {
+        "changes": { "type": "array", "minItems": 1, "items": { "$ref": "spectree/common#/definitions/id" } },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false,
+      "description": "Closed changes this one opened over without a recorded retro, and the person's reason. A waiver is kept, never inferred."
+    },
     "closure_mode": {
       "enum": ["prepared", "legacy"],
       "description": "How this change closes. \"prepared\" (the default) consolidates specs and archives on the branch before the merge, so integration authorises a finished candidate. \"legacy\" is the older flow for a consumer that offers no consolidation mechanism, and it is an explicit statement, never a silent fallback."

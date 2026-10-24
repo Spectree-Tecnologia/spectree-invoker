@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 81,
+    "title": "Segurança: audit e secret scan na CI, vigilância diária e piso do Node (tarefa 12) — v1.48.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/81",
+    "opened": "2026-10-24T03:24:51Z",
+    "merged": "2026-10-24T04:19:19Z"
+  },
+  "signals": {
+    "open_minutes": 54,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.48.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-seguranca-ci/proposal.md"
+    ]
+  },
+  "friction": "- Cortei a mudança sobre o head do #80 antes do merge dele, com a v1.48.0 reservada por coordenação. Depois do merge, reapliquei sobre `d8869ac` sem conflito.\n- Este é o gatilho do D-012 (duas threads com PR aberto ao mesmo tempo), registrado na retro do #80.\n- Ficou de fora o Dependabot: os PRs dele não sobem a versão, e o job `tag` falharia no merge. A vigilância diária cobre o mesmo risco.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

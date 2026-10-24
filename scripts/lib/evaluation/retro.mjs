@@ -5,8 +5,9 @@
 //
 // It reads only. Nothing here comments, merges or writes outside `.spectree/retros/`.
 
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { flags, git, publishOnce, pullRequestRecord, refuse, runsForCommit } from '../shared/index.mjs';
+import { flags, git, inside, publishOnce, pullRequestRecord, refuse, runsForCommit } from '../shared/index.mjs';
 
 // A commit that only brings the base in and moves the candidate's version or test id: the
 // signature of identifiers reserved by a PR and lost to a sibling that merged first (R-001).
@@ -101,13 +102,33 @@ function readMerge(root, sha, read) {
 }
 
 /**
- * `retro.mjs collect <pr> [--repo owner/name] [--apply]`. Returns the exit code: 0 collected,
- * 1 refused, 2 usage. `source` replaces the GitHub reads in a test.
+ * What `retro.recorded` checks: the retro is a file in the project that names its change on a
+ * `Change:` line and says what was read. The judgement inside it is the Invoker's; this only
+ * refuses a retro that does not exist, names another change, or never said what it read.
+ */
+export function retroDocument(root, changeId, rel) {
+  const file = inside(root, rel);
+  if (!existsSync(file)) refuse('E_RETRO_MISSING', `${rel} does not exist.`);
+  const text = readFileSync(file, 'utf8');
+  if (!text.includes(`Change: \`${changeId}\``)) refuse('E_RETRO_INCOMPLETE', `${rel} has no line "Change: \`${changeId}\`".`);
+  if (!/^##\s+(O que foi lido|What was read)\s*$/m.test(text)) refuse('E_RETRO_INCOMPLETE', `${rel} does not say what was read; an empty retro still names what it read.`);
+  return { ok: true, change_id: changeId, path: rel.replaceAll('\\', '/') };
+}
+
+/**
+ * `retro.mjs collect <pr> [--repo owner/name] [--apply]` and `retro.mjs check <change-id> <retro.md>`.
+ * Returns the exit code: 0 collected or checked, 1 refused, 2 usage. `source` replaces the GitHub reads in a test.
  */
 export function retroCommand({ root, argv, out = (s) => console.log(s), err = (s) => console.error(s), source }) {
   const [command, number] = argv;
+  const usage = 'usage: retro.mjs collect <pr> [--repo owner/name] [--apply] | retro.mjs check <change-id> <retro.md>';
+  if (command === 'check') {
+    if (!argv[1] || !argv[2] || argv.length > 3) { err(usage); return 2; }
+    try { out(JSON.stringify(retroDocument(root, argv[1], argv[2]))); return 0; }
+    catch (e) { err(`${e.code ?? 'E_RETRO'}: ${e.message}`); return 1; }
+  }
   if (command !== 'collect' || !/^\d+$/.test(number ?? '')) {
-    err('usage: retro.mjs collect <pr> [--repo owner/name] [--apply]');
+    err(usage);
     return 2;
   }
   try {
