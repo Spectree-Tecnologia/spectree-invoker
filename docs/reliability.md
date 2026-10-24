@@ -112,6 +112,13 @@ diagnóstico não suportado retorna `INFRA_ERROR`; mutação sobrevivente retorn
 O comando imprime JSON e retorna código 1 para ambos. `PASS` indica discriminação pelo teste,
 não aprovação do change nem observação de todo o produto.
 
+Várias mutações vão num plano só, em lote: `mutations` lista cada uma com `id`, `target`,
+`before`, `after` e `test_name`, ao lado de um único `command`, `setup_command` e
+`timeout_seconds`. O lote usa uma cópia, um setup e uma baseline em que todos os testes nomeados
+passam. Cada mutante é aplicado à cópia intacta, roda e é revertido antes do próximo.
+`mutant_command` pode trazer `{test_name}`, para o mutante rodar só o teste que deve matá-lo. Um
+sobrevivente reprova o lote e é nomeado. Um mutante inconclusivo nunca conta como morto.
+
 A cópia evita alterações acidentais da mutação no checkout; **não é sandbox de segurança**.
 Use somente comandos confiáveis, sem serviços de produção. Código executado ainda tem as
 permissões do usuário e pode acessar rede ou caminhos absolutos. Um encerramento forçado do

@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 87,
+    "title": "Fechamento: o pass 2 só é registrado sobre o fechamento preparado (tarefa 16) — v1.54.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/87",
+    "opened": "2026-10-24T14:34:51Z",
+    "merged": "2026-10-24T14:36:05Z"
+  },
+  "signals": {
+    "open_minutes": 1,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.54.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-congelamento-antes-do-pass2/proposal.md"
+    ]
+  },
+  "friction": "- Dois testes chegavam a `pass2_complete` sem preparar o fechamento. Agora eles preparam antes, que é a ordem que o pipeline já pedia.\n- A análise sugeria um `state.mjs freeze` próprio. Não criei, porque o dry-run do `prepare-closure.mjs` já faz esse papel; faltava só a recusa no gate.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

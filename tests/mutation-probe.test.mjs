@@ -98,3 +98,40 @@ test('Windows shims resolve from the command cwd and supplied environment', () =
     }
   } finally { cleanup(r.root); }
 });
+
+// A batch shares one copy, one setup and one baseline. The SYND C3a pass 2 ran 75 mutations as 75
+// copies, 75 setups and 150 suites.
+const batch = (mutations, extra = {}) => ({ command: plan().command, timeout_seconds: 10, mutations, ...extra });
+const m = (id, after, before = 'n + 1') => ({ id, target: 'math.cjs', before, after, test_name: 'preserves value' });
+test('a batch kills each mutant over one baseline, reverting the copy between mutants', () => {
+  const r = fixture();
+  try {
+    const before = readFileSync(join(r.root, 'math.cjs'), 'utf8');
+    // The second mutant reads the fragment the first one replaced: it only applies if the copy was reverted.
+    const result = runMutation(r.root, batch([m('plus-two', 'n + 2'), m('minus-one', 'n - 1')]), { apply: true });
+    assert.equal(result.result, 'PASS', result.reason);
+    assert.equal(result.baseline.result, 'PASS');
+    assert.deepEqual(result.mutations.map((x) => [x.id, x.result]), [['plus-two', 'PASS'], ['minus-one', 'PASS']]);
+    assert.equal(readFileSync(join(r.root, 'math.cjs'), 'utf8'), before);
+  } finally { cleanup(r.root); }
+});
+test('one survivor fails the batch and is named; a mutant command may run only the killing test', () => {
+  const r = fixture();
+  try {
+    const survived = runMutation(r.root, batch([m('plus-two', 'n + 2'), m('commuted', '1 + n')]), { apply: true });
+    assert.equal(survived.result, 'FAIL'); assert.match(survived.reason, /1 of 2 mutation\(s\) survived: commuted/);
+    const narrowed = batch([m('plus-two', 'n + 2')], {
+      mutant_command: [process.execPath, '--test', '--test-reporter=tap', '--test-name-pattern={test_name}', 'math.test.cjs'] });
+    assert.equal(runMutation(r.root, narrowed, { apply: true }).result, 'PASS');
+  } finally { cleanup(r.root); }
+});
+test('a batch refuses repeated ids, unknown fields and an empty list before copying anything', () => {
+  const r = fixture();
+  try {
+    assert.throws(() => runMutation(r.root, batch([m('a', 'n + 2'), m('a', 'n - 1')])), { code: 'E_MUTATION_PLAN' });
+    assert.throws(() => runMutation(r.root, batch([{ ...m('a', 'n + 2'), extra: 1 }])), { code: 'E_MUTATION_PLAN' });
+    assert.throws(() => runMutation(r.root, batch([])), { code: 'E_MUTATION_PLAN' });
+    assert.throws(() => runMutation(r.root, { ...batch([m('a', 'n + 2')]), target: 'math.cjs' }), { code: 'E_MUTATION_PLAN' });
+    assert.throws(() => runMutation(r.root, batch([m('a', 'n + 2', 'absent')])), { code: 'E_MUTATION_MATCH' });
+  } finally { cleanup(r.root); }
+});
