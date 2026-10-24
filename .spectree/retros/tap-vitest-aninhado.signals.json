@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 89,
+    "title": "TAP: lê o TAP aninhado do Vitest 5 como árvore (tarefa 18) — v1.56.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/89",
+    "opened": "2026-10-24T14:44:56Z",
+    "merged": "2026-10-24T18:34:51Z"
+  },
+  "signals": {
+    "open_minutes": 230,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.56.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-tap-vitest-aninhado/proposal.md"
+    ]
+  },
+  "friction": "- A análise previa só tirar o sufixo das linhas de grupo. A saída real mostrou que a ordem dos vereditos era o problema de verdade.\n- O único vermelho local é o do piso do Node desta sessão.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
