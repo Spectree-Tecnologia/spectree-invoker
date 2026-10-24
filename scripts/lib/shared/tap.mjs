@@ -41,7 +41,7 @@ export function parseTap(text) {
   let diagnosticFor = null;
 
   const open = (indent, line) => {
-    const g = { indent, line, plan: null, planFrom: null, results: [], parentResult: null, awaiting: null };
+    const g = { indent, line, plan: null, planFrom: null, results: [], parentResult: null, awaiting: null, opening: null };
     groups.push(g);
     return g;
   };
@@ -57,12 +57,19 @@ export function parseTap(text) {
     while (stack.length > 1 && indent < top().indent) {
       const closed = stack.pop();
       const parent = top();
+      if (closed.parentResult) continue; // announced by its parent's result, Vitest's shape
       if (parent.awaiting) {
         problems.push(`the group starting at line ${parent.awaiting.line} closed without a result in its parent`);
       }
       parent.awaiting = closed;
     }
-    if (indent > top().indent) stack.push(open(indent, lineNo));
+    if (indent > top().indent) {
+      const announcing = top().opening;
+      top().opening = null;
+      const g = open(indent, lineNo);
+      if (announcing) g.parentResult = announcing;
+      stack.push(g);
+    } else top().opening = null;
     return top();
   };
 
@@ -128,9 +135,14 @@ export function parseTap(text) {
     const rest = NUMBERED.exec(res[3] ?? '');
     const owed = top().awaiting;
     top().awaiting = null;
+    // Vitest prints a group's verdict BEFORE its children and wraps them in braces
+    // (`not ok 1 - account # time=1.00ms {` ... `}`): that result announces the next, deeper
+    // group instead of closing the last one. The brace and the timing are not part of the name.
+    const raw3 = rest[2] ?? '';
+    const opens = /\{\s*$/.test(raw3);
     // Vitest appends its timing to the description (`ok 1 - name # time=1.20ms`). It is not
     // part of the name, and left on it no exact match against a Scenario can ever succeed.
-    const label = (rest[2] ?? '').replace(/\s*#\s*time=[\d.]+\s*m?s\s*$/i, '');
+    const label = raw3.replace(/\s*\{\s*$/, '').replace(/\s*#\s*time=[\d.]+\s*m?s\s*$/i, '');
     const directive = /#\s*(TODO|SKIP)\b/i.exec(label)?.[1]?.toUpperCase() ?? null;
     const entry = {
       ok: !res[2],
@@ -142,6 +154,10 @@ export function parseTap(text) {
     };
     top().results.push(entry);
     if (owed) owed.parentResult = entry;
+    if (opens) {
+      if (owed) problems.push(`the result at line ${i + 1} both closes a subtest and opens one`);
+      top().opening = entry;
+    }
   }
 
   // Anything still open at the end never closed, and never got its result either.

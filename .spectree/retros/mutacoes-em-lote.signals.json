@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 88,
+    "title": "Mutação: lote com uma cópia, um setup e uma baseline (tarefa 17) — v1.55.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/88",
+    "opened": "2026-10-24T14:39:54Z",
+    "merged": "2026-10-24T14:41:17Z"
+  },
+  "signals": {
+    "open_minutes": 1,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.55.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-mutacoes-em-lote/proposal.md"
+    ]
+  },
+  "friction": "- O único vermelho local é o do piso do Node desta sessão.\n- Lotes em paralelo ficaram fora: dependem de cada consumidor isolar recursos por namespace.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

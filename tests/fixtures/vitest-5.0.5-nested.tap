@@ -1,0 +1,23 @@
+TAP version 13
+1..1
+not ok 1 - a.test.mjs # time=12.22ms {
+    1..2
+    not ok 1 - account # time=10.70ms {
+        1..2
+        not ok 1 - name # time=10.32ms {
+            1..2
+            ok 1 - rejects a blank name # time=2.38ms
+            not ok 2 - fails on purpose # time=7.40ms
+                ---
+                error:
+                    name: "AssertionError"
+                    message: "expected 1 to be 2 // Object.is equality"
+                at: "/project/a.test.mjs:5:46"
+                actual: "1"
+                expected: "2"
+                ...
+        }
+        ok 2 - later # SKIP
+    }
+    ok 2 - top level # time=0.30ms
+}

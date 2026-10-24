@@ -82,7 +82,8 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 14 | Piso do Node nos projetos consumidores | Integrada, PR #85 / v1.52.0: `capabilities.mjs` relata `runtime.floor`, [proposta](changes/archive/2026-10-24-seguranca-piso-consumidor/proposal.md) | D-015 (entregue) |
 | 15 | Documentação e log não invalidam a medição do código | Integrada, PR #86 / v1.53.0: `code_fingerprint` e `evidence.neutral_paths`, `.log/` neutro por padrão, [proposta](changes/archive/2026-10-24-evidencia-neutra/proposal.md) | — |
 | 16 | Pass 2 só sobre o fechamento preparado | Integrada, PR #87 / v1.54.0: `pass2_complete` exige a preparação do fechamento que cobre o candidato, [proposta](changes/archive/2026-10-24-congelamento-antes-do-pass2/proposal.md) | — |
-| 17 | Mutações em lote | Integrada, v1.55.0: um plano com `mutations` usa uma cópia, um setup e uma baseline, [proposta](changes/archive/2026-10-24-mutacoes-em-lote/proposal.md) | — |
+| 17 | Mutações em lote | Integrada, PR #88 / v1.55.0: um plano com `mutations` usa uma cópia, um setup e uma baseline, [proposta](changes/archive/2026-10-24-mutacoes-em-lote/proposal.md) | — |
+| 18 | TAP aninhado do Vitest | Integrada, v1.56.0: resultado de grupo antes dos filhos, com chaves e tempo, lido como árvore, [proposta](changes/archive/2026-10-24-tap-vitest-aninhado/proposal.md) | — |
 
 ## Histórico de decisões
 

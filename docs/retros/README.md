@@ -33,11 +33,12 @@ lugar; cada correção entra por uma mudança própria.
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 | R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |
-| R-008 | `information-access · ambiente · node-abaixo-do-piso` | 3 | Aberto: ambiente das sessões, com o Founder |
+| R-008 | `information-access · ambiente · node-abaixo-do-piso` | 4 | Aberto: ambiente das sessões, com o Founder |
 | R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única; frases explicativas seguem sem inventário |
 
 ## Retros
 
+- [2026-10-24 — `mutacoes-em-lote` (#88)](2026-10-24-mutacoes-em-lote.md)
 - [2026-10-24 — `congelamento-antes-do-pass2` (#87)](2026-10-24-congelamento-antes-do-pass2.md)
 - [2026-10-24 — `evidencia-neutra` (#86)](2026-10-24-evidencia-neutra.md)
 - [2026-10-24 — `seguranca-piso-consumidor` (#85)](2026-10-24-seguranca-piso-consumidor.md)
