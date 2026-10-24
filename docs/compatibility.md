@@ -47,7 +47,7 @@ a rendered file is not a harness that loaded it.
 | GitHub queries | — | every call is scoped by `--repo`, and runs by `--commit`/`--event`/`--workflow`. A full page of runs from other commits is reported as incomplete, never as "it did not run"; an older green attempt does not speak for the failing re-run that replaced it; a required job that is `skipped` is a refusal; an empty required set is `E_CHECK_SET_EMPTY` |
 | Git representation | — | a symlink in the measured surface and an index with unmerged paths are refused by name rather than hashed; the executable bit is part of the content; a commit and the work tree that produced it digest the same |
 
-`engines` declares `node >= 20.11.0`; 24.17.0 and 22.23.2 were actually exercised.
+`engines` declares `node ^22.23.4 || ^24.22.1 || >=26.12.1`, the releases carrying the Node.js security fixes of 2026-10-21, and `.npmrc` makes npm refuse anything below it. 22.23.4 was exercised for v1.48.0.
 
 The suite is **258 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
 

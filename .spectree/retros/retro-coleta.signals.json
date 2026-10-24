@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 80,
+    "title": "Retro pós-merge: coleta medida com retro.mjs collect (tarefa 11b) — v1.47.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/80",
+    "opened": "2026-10-24T01:42:17Z",
+    "merged": "2026-10-24T03:20:32Z"
+  },
+  "signals": {
+    "open_minutes": 98,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.47.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-retro-coleta/proposal.md"
+    ]
+  },
+  "friction": "Nenhum red local. Uma decisão no caminho: o PR passou a ser lido pela API REST e não por `gh pr view`, depois que o harness em nuvem recusou GraphQL.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

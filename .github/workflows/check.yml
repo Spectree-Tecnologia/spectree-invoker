@@ -18,6 +18,11 @@ concurrency:
     }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Read-only by default. The workflow token is the credential a hijacked step would steal first, so
+# every job starts with nothing to write and the one job that publishes asks for it by name.
+permissions:
+  contents: read
+
 jobs:
   # What this candidate has earned, from the FULL diff against the base — never from the last
   # commit, the PR title, the commit prefix or a label. A log commit on top of a code change
@@ -28,9 +33,10 @@ jobs:
       treatment: ${{ steps.decide.outputs.treatment }}
       checks: ${{ steps.decide.outputs.checks }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
       - id: decide
         run: |
           set -u
@@ -62,13 +68,38 @@ jobs:
     needs: classify
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Full history, because the secret scan below reads every commit, not the last one.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          node-version: 22
+          fetch-depth: 0
+          persist-credentials: false
+      # The newest 22.x, never a cached older one: `.npmrc` sets engine-strict, so `npm ci` refuses
+      # a runtime below the patched floor in `engines` instead of testing on it.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+          check-latest: true
           cache: npm
       - name: local Presence renderer dependency
         run: npm ci --ignore-scripts --no-audit --no-fund
+
+      # Security gates. Both were first seen rejecting a known-defective input: the audit a lockfile
+      # with lodash 4.17.4, the scan a commit carrying a GitHub token.
+      - name: dependency audit
+        run: npm audit --audit-level=high
+
+      - name: secret scan over the whole history
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -eu
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --no-banner --redact .
 
       # Generated files must match protocol/. A hand edit to CLAUDE.md, a card,
       # AGENTS.md or a Codex specialist fails here — that is the point.
@@ -146,7 +177,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      # The one checkout that keeps its credential: this job pushes the tag.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
       - name: tag the version in plugin.json
