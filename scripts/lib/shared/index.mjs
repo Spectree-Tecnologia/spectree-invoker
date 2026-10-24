@@ -18,6 +18,6 @@ export { detectHarness, executionContext, observedIsolationSignal } from './harn
 export { launch, launchSpec, resolveOnPath } from './launch.mjs';
 export { LOCK_ORDER, lockOwnerIsGone, publishOnce, withLock, writeAtomic, writeOnce } from './persistence.mjs';
 export { inspectProcesses, observeProcesses, supervisedLaunch } from './process-supervisor.mjs';
-export { judgeFailingRun, judgeMutationRun, judgePassingRun, parseTap } from './tap.mjs';
+export { judgeFailingRun, judgeMutationRun, judgePass1Run, judgePassingRun, parseTap } from './tap.mjs';
 export { stamp } from './time.mjs';
 export { assertValid, validate } from './validate.mjs';

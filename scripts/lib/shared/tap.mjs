@@ -37,6 +37,7 @@ export function parseTap(text) {
   const problems = [];
   let bailout = null;
   let yamlAt = null;
+  let error = null;
   let diagnosticFor = null;
 
   const open = (indent, line) => {
@@ -70,16 +71,24 @@ export function parseTap(text) {
 
     if (yamlAt !== null) {
       const close = YAML_CLOSE.exec(raw);
-      if (close && close[1].length === yamlAt) { yamlAt = null; diagnosticFor = null; }
-      else if (diagnosticFor && indentOf(raw) === yamlAt) {
+      if (close && close[1].length === yamlAt) { yamlAt = null; diagnosticFor = null; error = null; }
+      else if (diagnosticFor) {
+        // node --test writes `code:` and `name:` at the block's own indentation. Vitest nests
+        // them one level down, under `error:`. Only those two places are read: a field deeper
+        // in anything else is part of a compared value, and an object under test may well
+        // carry a `name`.
+        const indent = indentOf(raw);
+        if (indent === yamlAt) error = /^\s*error:\s*$/.test(raw) ? { child: null } : null;
+        else if (error) error.child ??= indent;
         const field = /^\s*(code|name):\s*['"]?([\w]+)['"]?\s*$/.exec(raw);
-        if (field) diagnosticFor.diagnostic[field[1]] = field[2];
+        if (field && (indent === yamlAt || indent === error?.child)) diagnosticFor.diagnostic[field[1]] = field[2];
       }
       continue; // a diagnostic can say anything, including "not ok 1 - something else"
     }
     const yaml = YAML_OPEN.exec(raw);
     if (yaml) {
       yamlAt = yaml[1].length;
+      error = null;
       diagnosticFor = top().results.at(-1) ?? null;
       continue;
     }
@@ -119,7 +128,9 @@ export function parseTap(text) {
     const rest = NUMBERED.exec(res[3] ?? '');
     const owed = top().awaiting;
     top().awaiting = null;
-    const label = rest[2] ?? '';
+    // Vitest appends its timing to the description (`ok 1 - name # time=1.20ms`). It is not
+    // part of the name, and left on it no exact match against a Scenario can ever succeed.
+    const label = (rest[2] ?? '').replace(/\s*#\s*time=[\d.]+\s*m?s\s*$/i, '');
     const directive = /#\s*(TODO|SKIP)\b/i.exec(label)?.[1]?.toUpperCase() ?? null;
     const entry = {
       ok: !res[2],
@@ -230,6 +241,47 @@ export function judgeFailingRun(tap, expected, exitCode) {
   if (only.ok) return { result: 'FAIL', reason: `"${expected}" ran and passed; pass 1 delivers a failing test`, matched: null };
   if (exitCode === 0) return fail('the run reported a failure and still exited 0: the two disagree, and neither can be trusted');
   return { result: 'PASS', reason: `"${only.name}" ran and failed`, matched: { ok: only.ok, number: only.number, name: only.name } };
+}
+
+const assertion = (d) => d.code === 'ERR_ASSERTION' || d.name === 'AssertionError';
+
+/**
+ * Pass 1 in one run: every test in `failing` ran and failed AT ITS ASSERTION, and every test in
+ * `passing` (a preserved regression) ran and passed. A failing test whose diagnostic names
+ * something other than an assertion — a TypeError from a missing export, a module that did not
+ * resolve — never reached the line that states the Scenario, so it proves nothing about it.
+ * A runner that writes no diagnostic at all cannot say why, and is taken at its word.
+ * @returns {{ result: 'PASS'|'FAIL'|'INFRA_ERROR', reason: string, matched: object|null, failing?: object[], passing?: object[] }}
+ */
+export function judgePass1Run(tap, { failing = [], passing = [] } = {}, exitCode) {
+  if (!failing.length) return fail('pass 1 names no test it expects to fail, and a pass 1 with nothing red validates nothing');
+  const names = [...failing, ...passing];
+  if (new Set(names).size !== names.length) return fail('a test is named twice in the expectation, so it cannot be both red and green');
+  const results = tap.groups.flatMap((g) => g.results);
+  const red = [];
+  for (const name of failing) {
+    const verdict = judgeFailingRun(tap, name, exitCode);
+    if (verdict.result !== 'PASS') return verdict;
+    const { diagnostic } = results.find((r) => r.name === name);
+    if ((diagnostic.code || diagnostic.name) && !assertion(diagnostic)) {
+      return fail(`"${name}" failed with ${diagnostic.name ?? diagnostic.code} before reaching its assertion; ` +
+        'a red that never reached the line stating the Scenario proves nothing about it — stub the surface and write it again');
+    }
+    red.push(verdict.matched);
+  }
+  const green = [];
+  for (const name of passing) {
+    const named = results.filter((r) => r.name === name);
+    if (named.length !== 1) return fail(`the preserved regression "${name}" must run exactly once, and it ran ${named.length} time(s)`);
+    const [only] = named;
+    if (only.directive) return fail(`the preserved regression "${name}" was ${only.directive}, and a test that did not run proves nothing`);
+    if (!only.ok) return { result: 'FAIL', reason: `the preserved regression "${name}" failed; pass 1 never breaks working behaviour`, matched: null };
+    green.push({ ok: true, number: only.number, name: only.name });
+  }
+  const reason = failing.length === 1 && !passing.length
+    ? `"${red[0].name}" ran and failed`
+    : `${red.length} test(s) ran and failed at their assertion; ${green.length} preserved regression(s) stayed green`;
+  return { result: 'PASS', reason, matched: red[0], failing: red, passing: green };
 }
 
 /** Positive control for a mutation: a complete green run containing the exact target test. */

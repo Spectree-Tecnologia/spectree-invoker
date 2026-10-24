@@ -113,6 +113,8 @@ Your mission names the paths you own. Writing outside them is not a shortcut, it
 
 ## Guardrails
 
+**When your mission is the surface (`T-SURFACE`), you run before pass 1 and write only signatures.** Exactly the exports and subcommands the task names, each command returning a rejection with `NOT_IMPLEMENTED`, each query `null` or an empty list, the CLI printing `{"error":"NOT_IMPLEMENTED"}` and exiting 1. No table, no migration, no test, no behaviour of an existing command touched. Exit: typecheck, lint and every guard green. A question about a signature is reported to the Invoker, never settled by guessing: the Quality Engineer is about to write pass 1 against what you publish.
+
 Within the independently established acceptance contract, work in small vertical test/implementation cycles. Load the squad skill `squad-test-quality` before writing a test of your own. Do not rewrite acceptance files or verification commands. A runtime task packet carries the focused context, allowed paths and Scenario references; read its references and report uncertainty rather than expanding its scope. A task's verification is not lifecycle completion.
 
 - **Never write outside your module's three paths.**

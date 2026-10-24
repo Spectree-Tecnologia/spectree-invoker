@@ -128,7 +128,8 @@ run exercised — and only one command produces it:
 
 ```bash
 node scripts/state.mjs run <change-id> <property> --role <role> [--independent-of a,b] \
-  [--expect-failing <test name> [--report]] [--id <evidence-id>] -- <command> [args...]
+  [--expect-failing <test name> | --expect-from <file.json>] [--report] [--id <evidence-id>] \
+  -- <command> [args...]
 ```
 
 It measures the content, runs the command, measures again, and records the result together with
@@ -149,6 +150,35 @@ on stdout or into the report this run allocates. The runner then reads structure
 | the named test absent, or `# SKIP` | `INFRA_ERROR` |
 | the named test reported `ok` | `FAIL` |
 | a failure reported alongside exit 0 | `INFRA_ERROR` |
+| the named test failed with a diagnostic that is not an assertion (`TypeError`, a module that did not resolve) | `INFRA_ERROR` |
+| a preserved regression listed in `--expect-from` reported `not ok` | `FAIL` |
+
+A failing test's YAML diagnostic decides whether it reached its assertion: `code: ERR_ASSERTION`
+or `name: AssertionError`, read at the block's own level (`node --test`) or directly under
+`error:` (Vitest). Any other error name means the test stopped before the line that states the
+`Scenario`, and that red proves nothing about it. A runner that writes no diagnostic cannot say
+why it failed, and its `not ok` is taken as written. The usual cause of a non-assertion red is
+code that does not exist yet; the fix is the surface stub before pass 1 (protocol §7.2), not a
+different test.
+
+**The whole of pass 1 in one run.** `--expect-from <file.json>`, a path inside the project,
+replaces `--expect-failing` with a list:
+
+```json
+{ "failing": ["<exact test name>", "..."], "passing": ["<exact name of a preserved regression>"] }
+```
+
+Every `failing` test must run and fail at its assertion, and every `passing` test must run and
+pass, in the same completed run. The evidence records both lists under `expected_tests`, so the
+claim "each `Scenario` is red" is the runner's observation and not only the Quality Engineer's
+report.
+
+**Vitest.** `vitest run --reporter=tap-flat` prints one flat document on stdout, with names
+`<file> > <describe> > <it>`; read it from stdout, without `--report`. Vitest appends
+` # time=1.20ms` to each name; the parser drops that suffix, so the name you pass is the one
+without it.
+Avoid `--outputFile` with `--report`: on Windows it was observed writing no report at all, which
+is `INFRA_ERROR` every time.
 
 This replaced a substring search, which `const ACCOUNT_NAME_REQUIRED = ;` satisfied: the syntax
 error printed the identifier, no test ran, and the gate opened. A stack trace, an echoed source
@@ -195,7 +225,7 @@ own, and a report the command did not write is `INFRA_ERROR` however red it is. 
 path of your own was how a genuinely failing run from yesterday could stand in for a command
 that crashed on startup today.
 
-No other property accepts `--expect-failing` or `--report`. A command that failed is not
+No other property accepts `--expect-failing`, `--expect-from` or `--report`. A command that failed is not
 evidence that it succeeded, and there is no flag that makes it one.
 
 The launcher is resolved the way the platform resolves it. On Windows `npm`, `npx` and `pnpm`

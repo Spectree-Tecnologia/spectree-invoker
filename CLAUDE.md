@@ -260,7 +260,9 @@ The reason behind each rule below, and the incident that produced it, is in the 
 
 **Baseline identity and CI independence.** Before `baselined`, run `verification.mjs baseline <change> <local|ci>` at the base revision and declare the environment in `tasks.md`. A red and a green at the same base are instability, never a choice of the green. CI has independent audit and functional jobs under an always-running required aggregate, checked with `verification.mjs ci <plan> <results>`.
 
-**Quality Engineer pass 1 is the change's mechanical validation.** Every `Scenario` maps to a test; new behavior fails on the intended assertion, preserved behavior stays green; an untestable `Scenario` is gate 2. No Developer starts before it.
+**Quality Engineer pass 1 is the change's mechanical validation.** Every `Scenario` maps to a test; new behavior fails on the intended assertion, preserved behavior stays green; an untestable `Scenario` is gate 2. No Developer starts before it but the surface's.
+
+**A `Scenario` that calls what does not exist yet gets a surface first.** One Developer, an ordinary dispatch, writes only the published exports and signatures, bodies returning `NOT_IMPLEMENTED`, no table, no test; exit: typecheck, lint and guards green. Pass 1 runs on it with `--expect-from`, every red at its assertion.
 
 **On a deltaless change, pass 1 is skipped — and nothing else is.**
 

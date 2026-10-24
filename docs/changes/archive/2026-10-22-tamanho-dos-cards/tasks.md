@@ -6,6 +6,6 @@
 - [x] Guardar o texto anterior dos dois cards em `docs/protocol-rationale.md`.
 - [x] `check-plugin` recusa card com regra perdida, acima do teto ou sem justificativa, com o teste.
 - [x] Arquivar a mudança da tarefa 8 e atualizar o ROADMAP.
-- [ ] Suíte, build e integridade verdes no CI do PR.
+- [x] Suíte, build e integridade verdes no CI do PR (#77, `fee78eb`).
 
 Uma marca nesta lista não é prova; a evidência está no PR.
