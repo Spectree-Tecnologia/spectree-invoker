@@ -45,6 +45,7 @@ export {
   ORDER,
   canDispatch,
   canTransition,
+  measuredOn,
 } from './state-machine.mjs';
 export { SCHEMA_VERSION, Store } from './store.mjs';
 export {

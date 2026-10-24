@@ -56,6 +56,26 @@ o acompanhamento funciona, mas a aplicação dos gates continua dependente do pr
 a adoção explícita do estado estruturado. Os journals nativos de fechamento continuam sendo
 a autoridade para recuperar preparação e confirmação. Checkpoints não dão aprovação.
 
+## Documentação e log não invalidam a medição do código
+
+Uma evidência registrada por `state.mjs run` guarda o `fingerprint` do conteúdo inteiro e o
+`code_fingerprint`, o mesmo conteúdo sem os caminhos neutros. Se depois só um caminho neutro
+mudou, a evidência é **levada adiante**: o gate aceita, avisa `carried forward` com os ids e o
+`resume` a lista com `carried_forward: true`. Uma execução no conteúdo atual tem precedência; um
+vermelho nele vence um verde levado adiante. As aprovações continuam presas ao conteúdo inteiro.
+
+Por padrão só `.log/` é neutro, porque o Platform Engineer escreve nele a cada ação. O projeto
+declara outros em `.spectree/project.json`:
+
+```json
+{ "evidence": { "neutral_paths": [".log/", "docs/DEFERRED.md", "docs/ROADMAP.md", "README.md"] } }
+```
+
+Um caminho só é neutro se também for documentação para o classificador de diff
+(`docs/**/*.md` fora de `docs/specs/`, `README.md`, `CHANGELOG.md`, `LICENSE`, `.log/*.log`):
+declarar `src/` não neutraliza nada. Declare só o que nenhum teste lê. A lista entra na
+evidência, e mudar a lista depois deixa de levar adiante as evidências antigas.
+
 ## Mutação fora do checkout
 
 Um plano é JSON com `target`, `before`, `after`, `test_name`, `command` (array argv),

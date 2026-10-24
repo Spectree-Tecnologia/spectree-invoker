@@ -61,6 +61,7 @@ import {
   treatmentFor,
   aggregate,
   resolveCi,
+  neutralPaths,
 } from '../evidence/index.mjs';
 import { preparationCovers, approvalsInForce, readManifest, compareArtifacts } from './closure-prep.mjs';
 
@@ -157,8 +158,11 @@ function run({ root, argv, out, err }) {
   // checkout answers the one nobody asked.
   const legacyMode = change.closure_mode === 'legacy';
   let contract = null, landed = null, gated = null, authorising = null;
-  if (mergeOid) {
-    try { landed = contentDigestAt(root, mergeOid); }
+  let neutrality = null;
+  try { neutrality = neutralPaths(store.project()?.evidence?.neutral_paths); }
+  catch (e) { step('the evidence-neutral paths are readable', false, `${e.code}: ${e.message}`); }
+  if (mergeOid && neutrality) {
+    try { landed = contentDigestAt(root, mergeOid, { neutral: neutrality.neutral }); }
     catch (e) { step('the merge is readable here', false, `${e.code}: ${e.message}`); }
   }
   if (landed) {
@@ -362,6 +366,7 @@ function run({ root, argv, out, err }) {
     approvals: authority.inForce,
     authority,
     revision: landed?.revision, contentDigest: landed?.digest, contractDigest: contract?.digest,
+    codeDigest: landed?.code_digest, neutralPaths: neutrality?.list,
     closure: closureVerdict,
     receipt: receiptCovers(receipt, {
       ...expectation,

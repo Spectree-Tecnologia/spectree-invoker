@@ -166,11 +166,23 @@ const refuse = (code, message, detail) => ({ ok: false, code, message, ...(detai
  * @param {object}   [ctx.scopeDigests]    { [gate]: digest } the digest each gate must match
  * @param {number}   [ctx.expectedStateRevision]
  */
+/**
+ * Was this run measured on the content now? `exact` when its fingerprint is the content's;
+ * `carried` when only evidence-neutral paths moved since — same code digest, under the same
+ * declared list, because a list widened afterwards would excuse an edit the run never knew of.
+ */
+export function measuredOn(e, { contentDigest, codeDigest, neutralPaths } = {}) {
+  if (e.fingerprint && e.fingerprint === contentDigest) return 'exact';
+  if (e.code_fingerprint && codeDigest && e.code_fingerprint === codeDigest &&
+      JSON.stringify(e.neutral_paths ?? null) === JSON.stringify(neutralPaths ?? null)) return 'carried';
+  return null;
+}
+
 export function canTransition(change, to, ctx = {}) {
   let refusalDetail;
   const deny = (code, message, detail = refusalDetail) => refuse(code, message, detail);
   const {
-    evidence = [], approvals = [], revision, contentDigest, contractDigest, closure,
+    evidence = [], approvals = [], revision, contentDigest, codeDigest, neutralPaths, contractDigest, closure,
     scopeDigests = {}, expectedStateRevision,
     authority, receipt, preparation, pendingOperation, coreModules,
   } = ctx;
@@ -278,6 +290,7 @@ export function canTransition(change, to, ctx = {}) {
   }
 
   refusalDetail = undefined;
+  const carried = [];
   for (const want of need.evidence ?? []) {
     refusalDetail = { property: want.property };
     const matching = evidence.filter((e) => e.property === want.property && !e.superseded_by);
@@ -295,7 +308,10 @@ export function canTransition(change, to, ctx = {}) {
     // that cannot compute one.
     let fresh = observed;
     if (want.fresh && contentDigest) {
-      fresh = fresh.filter((e) => e.fingerprint === contentDigest);
+      const on = { contentDigest, codeDigest, neutralPaths };
+      fresh = fresh.filter((e) => measuredOn(e, on));
+      // Exact runs first: a carried one only stands where nothing measured the content as it is.
+      if (fresh.some((e) => measuredOn(e, on) === 'exact')) fresh = fresh.filter((e) => measuredOn(e, on) === 'exact');
       if (fresh.length === 0) {
         const unpinned = observed.some((e) => !e.fingerprint);
         return deny(CODES.CONTENT_CHANGED,
@@ -348,6 +364,9 @@ export function canTransition(change, to, ctx = {}) {
           "a review that saw the builder's reasoning is not the independent pass this step assumes");
       }
     }
+    if (want.fresh && contentDigest && bound.every((e) => measuredOn(e, { contentDigest, codeDigest, neutralPaths }) === 'carried')) {
+      carried.push({ property: want.property, evidence_ids: bound.map((e) => e.evidence_id), neutral_paths: neutralPaths });
+    }
   }
 
   refusalDetail = undefined;
@@ -378,7 +397,7 @@ export function canTransition(change, to, ctx = {}) {
     }
   }
 
-  return { ok: true, from: change.state, to };
+  return { ok: true, from: change.state, to, ...(carried.length ? { carried_forward: carried } : {}) };
 }
 
 /** Attempt budget. The key is the budget, not the mission's wording. */

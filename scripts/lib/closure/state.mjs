@@ -24,6 +24,7 @@ import {
   Store,
   SCHEMA_VERSION,
   canTransition,
+  measuredOn,
   pendingRetros,
   RETRO_PENDING,
   ASSERTS_FAILURE,
@@ -44,7 +45,7 @@ import {
   checkPolicyApproval,
   coreModulesTouched,
 } from '../change/index.mjs';
-import { deliveryGate, DELIVERY_STATES } from '../evidence/index.mjs';
+import { deliveryGate, DELIVERY_STATES, neutralPaths } from '../evidence/index.mjs';
 import { manifestPath, preparationCovers, approvalsInForce, readManifest } from './closure-prep.mjs';
 import { diagnoseProject, selectClosureMode, closureStrategy } from './project-diagnostics.mjs';
 import { requireTasksComplete, taskStatus } from '../execution/index.mjs';
@@ -88,6 +89,15 @@ function run({ root, argv, print, warn }) {
     catch { return fallback; }
   }
 
+  /**
+   * The paths a measurement survives an edit to: `evidence.neutral_paths` in the project, the
+   * platform log by default. Read on every call, so the list a run recorded can be compared.
+   */
+  function neutrality() {
+    try { return neutralPaths(store.project()?.evidence?.neutral_paths); }
+    catch (e) { die(`${e.code}: ${e.message}`, 1); }
+  }
+
   function gitSituation() {
     return {
       available: git(['rev-parse', '--is-inside-work-tree']) === 'true',
@@ -105,7 +115,8 @@ function run({ root, argv, print, warn }) {
   function digests(change, { soft = false } = {}) {
     const contract = contractDigest(root, change, { artifactsDir: flag('artifacts') });
     let content;
-    try { content = contentDigest(root); }
+    const { list, neutral } = neutrality();
+    try { content = { ...contentDigest(root, { neutral }), neutral_paths: list }; }
     catch (e) { if (soft) throw e; die(`${e.code}: ${e.message}`, 1); }
     const gated = gatedDigest(contract.digest, content.digest);
     return {
@@ -194,6 +205,8 @@ function run({ root, argv, print, warn }) {
         pendingOperation: cc.pending ?? pendingWork(root, change.change_id),
         revision: g.revision,
         contentDigest: d.content.digest,
+        codeDigest: d.content.code_digest,
+        neutralPaths: d.content.neutral_paths,
         contractDigest: d.contract.digest,
         closure: closureVerdict(change, d, cc),
         // The merge is OBSERVED by post-merge.mjs, never asserted here — and the receipt is checked
@@ -275,6 +288,7 @@ function run({ root, argv, print, warn }) {
     let here = null, d = null, planningError = null;
     try { if (change) { d = digests(change, { soft: true }); here = d.content.digest; } }
     catch (e) { planningError = e; }
+    const on = { contentDigest: here, codeDigest: d?.content.code_digest, neutralPaths: d?.content.neutral_paths };
 
     const out = {
       project: project ? { project_id: project.project_id, protocol_version: project.protocol_version } : null,
@@ -323,11 +337,12 @@ function run({ root, argv, print, warn }) {
       // fallback for evidence carrying no fingerprint, and it is the weaker claim -- saying
       // otherwise is how resume kept presenting runs from before an uncommitted edit as current.
       evidence_valid_here: change
-        ? live.filter((e) => (e.fingerprint ? e.fingerprint === here : !g.revision || e.revision === g.revision))
-            .map((e) => ({ property: e.property, result: e.result, source: e.source_kind, pinned: Boolean(e.fingerprint) }))
+        ? live.filter((e) => (e.fingerprint ? measuredOn(e, on) : !g.revision || e.revision === g.revision))
+            .map((e) => ({ property: e.property, result: e.result, source: e.source_kind, pinned: Boolean(e.fingerprint),
+              ...(e.fingerprint && measuredOn(e, on) === 'carried' ? { carried_forward: true } : {}) }))
         : [],
       evidence_stale: change
-        ? live.filter((e) => (e.fingerprint ? e.fingerprint !== here : g.revision && e.revision !== g.revision))
+        ? live.filter((e) => (e.fingerprint ? !measuredOn(e, on) : g.revision && e.revision !== g.revision))
             .map((e) => ({
               property: e.property,
               observed_at: e.revision.slice(0, 8),
@@ -520,6 +535,9 @@ function run({ root, argv, print, warn }) {
       try { requireTasksComplete(root, id); }
       catch (e) { die(`${e.code}: ${e.message}`, 1); }
     }
+    for (const c of verdict.carried_forward ?? []) {
+      warn(`  carried forward: "${c.property}" (${c.evidence_ids.join(', ')}) — only evidence-neutral paths (${c.neutral_paths.join(', ')}) moved since that run`);
+    }
     if (cmd === 'can') { print(`allowed ${change.state} -> ${to}`); return; }
 
     const next = { ...change, state: to, evaluated_revision: g.revision ?? change.evaluated_revision };
@@ -639,7 +657,8 @@ function run({ root, argv, print, warn }) {
     }
 
     let before;
-    try { before = { content: contentDigest(root), contract: contractDigest(root, change, { artifactsDir: opt('artifacts') }) }; }
+    const { list: neutralList, neutral } = neutrality();
+    try { before = { content: contentDigest(root, { neutral }), contract: contractDigest(root, change, { artifactsDir: opt('artifacts') }) }; }
     catch (e) { die(`${e.code}: ${e.message}`, 1); }
     let r;
     try { r = launch(cmd, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }); }
@@ -696,6 +715,8 @@ function run({ root, argv, print, warn }) {
       source_kind: 'observed_execution',
       revision: before.content.revision,
       fingerprint: before.content.digest,
+      code_fingerprint: before.content.code_digest,
+      neutral_paths: neutralList,
       contract_digest: before.contract.digest,
       environment: { os: process.platform, runtime: `node ${process.versions.node}`,
         ci: process.env.CI === 'true' || process.env.CI === '1' || process.env.GITHUB_ACTIONS === 'true' },
