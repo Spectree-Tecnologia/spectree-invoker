@@ -176,7 +176,7 @@ const REQUIRED_SCHEMAS = ['common.json', 'change.schema.json', 'dispatch.schema.
 for (const f of ['scripts/bridge.mjs', 'scripts/lib/execution/bridge-mailbox.mjs', 'docs/resilient-execution.md', 'scripts/delivery.mjs', 'scripts/lib/evidence/delivery.mjs', 'scripts/lib/evidence/delivery-contract.mjs', 'scripts/lib/evidence/delivery-ledger.mjs', 'docs/delivery-reliability.md']) {
   if (!has(f)) fail(f, 'required resilient execution artifact missing');
 }
-for (const f of ['tasks.mjs', 'reports.mjs', 'evals.mjs', 'adopt.mjs', 'lib/closure/adoption.mjs', 'lib/evaluation/flow-evals.mjs', 'lib/shared/process-supervisor.mjs', 'lib/shared/process-worker.mjs', 'lib/shared/process-job.ps1', 'lib/shared/process-job.cs', 'lib/execution/context.mjs', 'lib/execution/agent-runner.mjs', 'lib/execution/task-executor.mjs', 'lib/evaluation/engineering-reports.mjs', 'lib/evaluation/agent-evals.mjs']) {
+for (const f of ['tasks.mjs', 'reports.mjs', 'retro.mjs', 'lib/evaluation/retro.mjs', 'evals.mjs', 'adopt.mjs', 'lib/closure/adoption.mjs', 'lib/evaluation/flow-evals.mjs', 'lib/shared/process-supervisor.mjs', 'lib/shared/process-worker.mjs', 'lib/shared/process-job.ps1', 'lib/shared/process-job.cs', 'lib/execution/context.mjs', 'lib/execution/agent-runner.mjs', 'lib/execution/task-executor.mjs', 'lib/evaluation/engineering-reports.mjs', 'lib/evaluation/agent-evals.mjs']) {
   if (!has(`scripts/${f}`)) fail(`scripts/${f}`, 'required evolution command or library missing');
 }
 for (const id of ['codex', 'claude-code']) for (const phase of ['core', 'implement', 'diagnose', 'review']) {

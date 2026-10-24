@@ -14,8 +14,11 @@ lugar; cada correção entra por uma mudança própria.
   `categoria · área · padrão`, que é o que agrupa recorrências entre retros.
 - **O que não é pago vira adiamento:** o achado que fica para depois entra em
   [`DEFERRED.md`](../DEFERRED.md) com dono e gatilho, e a retro cita o `D-NNN`.
+- **Comece pelo medido:** `node scripts/retro.mjs collect <pr> --apply` lê o PR, os runs de CI de
+  cada commit, os commits e o archive do merge e a seção **Atrito**, grava em `.spectree/retros/` e
+  aponta as assinaturas conhecidas que casaram. Uma assinatura que casou é candidata; quem julga é a retro.
 - **Modo legado:** enquanto as mudanças deste repo não forem abertas com `state.mjs` (D-009),
-  o rastro vem do GitHub (PRs, runs do CI, commits do merge) e da seção **Atrito** do PR.
+  esse é todo o rastro; a seção Atrito é a única fonte do que não chega ao GitHub.
 - **Retro vazia é resultado:** diga em uma linha o que foi lido.
 
 ## Achados
@@ -26,8 +29,11 @@ lugar; cada correção entra por uma mudança própria.
 | R-002 | `automated-checks · docs · fechamento-depois-do-merge` | 12 | Pago na tarefa 11 |
 | R-003 | `information-access · retro · rastro-apagado` | todos os PRs | Curto prazo pago na tarefa 11; longo prazo é o D-009 |
 | R-004 | `automated-checks · protocol · teto-sem-folga` | 1 | Aberto, [D-013](../DEFERRED.md) |
+| R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
+| R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 
 ## Retros
 
+- [2026-10-24 — `retro-pos-merge` (#79)](2026-10-24-retro-pos-merge.md)
 - [2026-10-24 — lote do #58 ao #78](2026-10-24-lote-58-78.md)
 - [2026-10-24 — `pass1-superficie` (#78)](2026-10-24-pass1-superficie.md)

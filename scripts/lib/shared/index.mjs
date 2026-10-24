@@ -11,7 +11,7 @@ export {
   gatedDigest,
   normalisedHashes,
 } from './digest.mjs';
-export { latestRun, prChecks, pullRequest, repository, runView, runsForCommit } from './gh.mjs';
+export { latestRun, prChecks, pullRequest, pullRequestRecord, repository, runView, runsForCommit } from './gh.mjs';
 export { git } from './git.mjs';
 export { inside, refuse } from './guard.mjs';
 export { detectHarness, executionContext, observedIsolationSignal } from './harness.mjs';

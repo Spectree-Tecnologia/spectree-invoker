@@ -21,6 +21,8 @@ A closure confirms and archives; on its own it learns nothing. The same mistake 
 
 Read the change's trail, not your memory of the session: the work checkpoints and their reconciliations, `.spectree/runs/<change>/`, the diagnosis and review records, every refused handoff, the attempts each task spent and any ceiling hit, every red CI run with its head, the Quality Engineer's findings, any gate 2, and the deviations recorded. **A candidate without a record behind it is not a finding.**
 
+Start from what was measured: `retro.mjs collect <pr> --apply` reads the merged PR, its CI runs per commit, the merge's commits and archive, and the PR's **Atrito** section, and records them in `.spectree/retros/` with the known finding signatures they match. A matched signature is a candidate for you to judge, never a finding by itself, and an empty match is not a clean change.
+
 ## What to look for
 
 Each category says what to look for, then what to propose.
