@@ -115,7 +115,7 @@
 - Status: open
 - Owner: own_change
 - Impact: ceiling
-- Decision: Visto pela retro do #78 (R-004, docs/retros/2026-10-24-pass1-superficie.md): CLAUDE.md com 45.934 de 46.080 bytes e o card do Solutions Architect com 34.012 de 34.816. A próxima regra nova no núcleo derruba o check-plugin no meio da change. Fica fora porque é risco medido, sem incidente, e não muda nada do que esta mudança entrega. Atualizado pela mudança seguranca-resposta: a Seção 4 ganhou 68 bytes para citar as skills de segurança, e o CLAUDE.md está com 46.002 de 46.080 bytes (78 de folga).
+- Decision: Visto pela retro do #78 (R-004, docs/retros/2026-10-24-pass1-superficie.md): CLAUDE.md com 45.934 de 46.080 bytes e o card do Solutions Architect com 34.012 de 34.816. A próxima regra nova no núcleo derruba o check-plugin no meio da change. Fica fora porque é risco medido, sem incidente, e não muda nada do que esta mudança entrega. Atualizado pela mudança seguranca-resposta: a Seção 4 ganhou 68 bytes para citar as skills de segurança, e o CLAUDE.md está com 46.002 de 46.080 bytes (78 de folga). O gatilho disparou na mudança checagens-por-relatorio: a regra da suíte única levou o CLAUDE.md a 46.178 bytes e derrubou o check-plugin; ela coube cortando 142 bytes de redação repetida do §7 e do §12, e o núcleo terminou com 46.036 (44 de folga). Segunda ocorrência do R-004, então a próxima regra nova paga o teto ou o corte numa mudança deltaless própria.
 - Due: A próxima mudança que acrescentar regra a protocol/rules.json
 - Closure condition: check-plugin avisa quando a folga de um teto cai abaixo de 2%, e a proposta que acrescenta regra declara o orçamento de bytes.
 

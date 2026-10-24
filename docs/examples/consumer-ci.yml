@@ -1,7 +1,16 @@
 # Consumer blueprint. Adapt the runtime and commands; requires package-lock.json.
 # Configure `required` as a required branch check. Do not install automatically.
 name: Consumer checks
-on: [push, pull_request]
+# A pull request and its merge into main. A push to a working branch with an open PR would run
+# the same commit twice.
+on:
+  pull_request:
+  push:
+    branches: [main]
+# A newer push makes the older run obsolete; cancel it instead of paying for both.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -39,6 +48,10 @@ jobs:
           "$RUNNER_TEMP/gitleaks" git --no-banner --redact .
   tests:
     runs-on: ubuntu-latest
+    env:
+      # One per run. Put it in the test database or schema name (app_test_$SPECTREE_TEST_NAMESPACE);
+      # a fixed name like app_test is shared by every run that overlaps.
+      SPECTREE_TEST_NAMESPACE: ci_${{ github.run_id }}_${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -48,7 +61,17 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm test
+      # The whole suite ONCE, as TAP. Every check that names its tests is judged from this one
+      # report; never re-run the suite per check or per Requirement. Archived changes get no step
+      # of their own: their tests are already in the suite.
+      - run: npm test -- --test-reporter=tap --test-reporter-destination=suite.tap --test-reporter=spec --test-reporter-destination=stdout
+      - name: judge the open changes' checks from that report
+        run: |
+          set -eu
+          for plan in docs/changes/*/verification.json; do
+            [ -e "$plan" ] || continue
+            node .spectree/squad/scripts/verification.mjs checks "$plan" suite.tap
+          done
   required:
     if: ${{ always() }}
     needs: [audit, secrets, tests]

@@ -1,26 +1,72 @@
 {
   "version": 1,
   "changes_field_meaning": true,
-  "checks": [{
-    "id": "preserve-forecast",
-    "kind": "behavior",
-    "claim": "Editing a label preserves the persisted forecast amount",
-    "scenario_refs": ["amounts/Editing a label preserves forecast"],
-    "command": ["node", "--test", "--test-reporter=tap", "tests/amount-round-trip.test.cjs"],
-    "counterexample": "Initialize the editor from effective amount instead of forecast",
-    "expected_failure": "Persisted forecast differs after saving only the label"
-  }],
+  "checks": [
+    {
+      "id": "preserve-forecast",
+      "kind": "behavior",
+      "claim": "Editing a label preserves the persisted forecast amount",
+      "scenario_refs": [
+        "amounts/Editing a label preserves forecast"
+      ],
+      "command": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "tests/amount-round-trip.test.cjs"
+      ],
+      "counterexample": "Initialize the editor from effective amount instead of forecast",
+      "expected_failure": "Persisted forecast differs after saving only the label"
+    },
+    {
+      "id": "reject-negative-forecast",
+      "kind": "behavior",
+      "claim": "A negative forecast amount is refused",
+      "scenario_refs": [
+        "amounts/Negative forecast is refused"
+      ],
+      "tests": [
+        "refuses a negative forecast with INVALID_AMOUNT"
+      ],
+      "counterexample": "Accept any number as a forecast",
+      "expected_failure": "Saving -10 as forecast succeeds instead of returning INVALID_AMOUNT"
+    }
+  ],
   "round_trip": {
     "check_id": "preserve-forecast",
     "invariant": "Forecast amount is unchanged after saving a different field",
-    "scenario_refs": ["amounts/Editing a label preserves forecast"],
-    "steps": ["create", "read", "edit_other_field", "save", "reread"]
+    "scenario_refs": [
+      "amounts/Editing a label preserves forecast"
+    ],
+    "steps": [
+      "create",
+      "read",
+      "edit_other_field",
+      "save",
+      "reread"
+    ]
   },
   "ci": {
     "jobs": [
-      { "id": "audit", "kind": "audit", "required": true, "needs": [] },
-      { "id": "tests", "kind": "functional", "required": true, "needs": [] }
+      {
+        "id": "audit",
+        "kind": "audit",
+        "required": true,
+        "needs": []
+      },
+      {
+        "id": "tests",
+        "kind": "functional",
+        "required": true,
+        "needs": []
+      }
     ],
-    "aggregate": { "always": true, "needs": ["audit", "tests"] }
+    "aggregate": {
+      "always": true,
+      "needs": [
+        "audit",
+        "tests"
+      ]
+    }
   }
 }

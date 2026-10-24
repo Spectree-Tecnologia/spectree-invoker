@@ -77,10 +77,13 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 11b | Retro pós-merge: coleta medida com `retro.mjs collect` | Integrada, PR #80 / v1.47.0, [proposta](changes/archive/2026-10-24-retro-coleta/proposal.md) | — |
 | 12 | Gates de segurança na CI e piso do Node | Integrada, v1.48.0: audit e secret scan obrigatórios, vigilância diária, Node ≥ 22.23.4, [proposta](changes/archive/2026-10-24-seguranca-ci/proposal.md) | D-014, D-015 (registrados) |
 | 11c | Retro pós-merge: o runtime cobra a retro depois do `closed` | Integrada, PR #82 / v1.49.0, [proposta](changes/archive/2026-10-24-retro-gatilho/proposal.md) | — |
-| 12b | Vigilância de avisos e resposta a incidentes | Integrada, v1.50.0: skills `squad-security-watch` e `squad-incident-response`, lente red team do Quality Engineer, [proposta](changes/archive/2026-10-24-seguranca-resposta/proposal.md) | D-014 (entregue, aberto até o primeiro caso real) |
+| 12b | Vigilância de avisos e resposta a incidentes | Integrada, PR #83 / v1.50.0: skills `squad-security-watch` e `squad-incident-response`, lente red team do Quality Engineer, [proposta](changes/archive/2026-10-24-seguranca-resposta/proposal.md) | D-014 (entregue, aberto até o primeiro caso real) |
+| 13 | Checagens julgadas de um relatório único e CI barata no consumidor | Integrada, v1.51.0: `verification.mjs checks`, regra da suíte única de volta ao §7, `consumer-ci.yml` só em PR e main, com cancelamento e namespace, [proposta](changes/archive/2026-10-24-checagens-por-relatorio/proposal.md) | — |
 
 ## Histórico de decisões
 
+- **2026-10-24:** Founder autorizou a tarefa 13, itens 1 e 2 da análise do custo de verificação
+  do SYND C3a: checagens julgadas de uma execução da suíte e template de CI barato no consumidor.
 - **2026-10-24:** Founder autorizou a tarefa 12b: o blue team continua sendo processo, com a
   vigilância de avisos no Integration Engineer e a resposta a incidentes no Platform Engineer.
 - **2026-10-24:** Founder autorizou a tarefa 11c: o planner aponta a retro depois do `closed`
