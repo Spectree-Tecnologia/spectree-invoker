@@ -26,15 +26,19 @@ lugar; cada correção entra por uma mudança própria.
 
 | Id | Assinatura | Ocorrências | Situação |
 |---|---|---|---|
-| R-001 | `tool-economy · release · identificador-sequencial-disputado` | 13 | Aberto, [D-012](../DEFERRED.md) |
+| R-001 | `tool-economy · release · identificador-sequencial-disputado` | 14 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 |
 | R-002 | `automated-checks · docs · fechamento-depois-do-merge` | 12 | Pago na tarefa 11 |
 | R-003 | `information-access · retro · rastro-apagado` | todos os PRs | Curto prazo pago na tarefa 11; longo prazo é o D-009 |
 | R-004 | `automated-checks · protocol · teto-sem-folga` | 1 | Aberto, [D-013](../DEFERRED.md) |
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
+| R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |
+| R-008 | `information-access · ambiente · node-abaixo-do-piso` | 1 | Aberto: ambiente das sessões, com o Founder |
 
 ## Retros
 
+- [2026-10-24 — `seguranca-ci` (#81)](2026-10-24-seguranca-ci.md)
+- [2026-10-24 — `retro-coleta` (#80)](2026-10-24-retro-coleta.md)
 - [2026-10-24 — `retro-pos-merge` (#79)](2026-10-24-retro-pos-merge.md)
 - [2026-10-24 — lote do #58 ao #78](2026-10-24-lote-58-78.md)
 - [2026-10-24 — `pass1-superficie` (#78)](2026-10-24-pass1-superficie.md)

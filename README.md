@@ -5,7 +5,7 @@
 [![CI](https://github.com/Spectree-Tecnologia/spectree-invoker/actions/workflows/check.yml/badge.svg?branch=main)](https://github.com/Spectree-Tecnologia/spectree-invoker/actions/workflows/check.yml)
 [![Versão](https://img.shields.io/github/v/tag/Spectree-Tecnologia/spectree-invoker?sort=semver&label=vers%C3%A3o)](https://github.com/Spectree-Tecnologia/spectree-invoker/tags)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
-![Node.js ≥ 20.11](https://img.shields.io/badge/node-%E2%89%A5%2020.11-339933?logo=node.js&logoColor=white)
+![Node.js ≥ 22.23.4](https://img.shields.io/badge/node-%E2%89%A5%2022.23.4-339933?logo=node.js&logoColor=white)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-D97757)
 ![OpenAI Codex](https://img.shields.io/badge/OpenAI%20Codex-skill%20%2B%20agentes-412991)
 
@@ -103,7 +103,7 @@ O ciclo completo, com cada regra e o porquê dela, está em [docs/workflow.md](d
 
 ## Início rápido
 
-**Requisitos:** Node.js ≥ 20.11 e Git. Para a confirmação pós-merge, a [GitHub CLI](https://cli.github.com/) (`gh`) autenticada.
+**Requisitos:** Node.js 22.23.4+, 24.22.1+ ou 26.12.1+ (as versões com as correções de segurança de 2026-10-21) e Git. Para a confirmação pós-merge, a [GitHub CLI](https://cli.github.com/) (`gh`) autenticada.
 
 ### Claude Code
 
