@@ -7,6 +7,6 @@
 - [x] Regra da superfície em §7.2, inventário, cards do Architect, Developer e QE, justificativa.
 - [x] Testes: `tests/pass1-red-reason.test.mjs`.
 - [x] Arquivar a mudança da tarefa 9 e atualizar o ROADMAP.
-- [ ] Suíte, build e integridade verdes no CI do PR.
+- [x] Suíte, build e integridade verdes no CI do PR (#78, `3538813`).
 
 Uma marca nesta lista não é prova; a evidência está no PR.

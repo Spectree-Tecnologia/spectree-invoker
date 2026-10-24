@@ -1,6 +1,6 @@
 # Pass 1 com superfície e red provado na asserção
 
-Tarefa 10 do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura),
+Tarefa 10 do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura),
 autorizada pelo Gilson em 2026-10-24, depois da avaliação da regra "o Quality Engineer escreve
 os testes, que precisam falhar antes da implementação começar" contra a metodologia do curso e
 contra o que o squad fez no `sindy-agent` (changes 1 e 2, leitura apenas).
