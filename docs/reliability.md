@@ -134,8 +134,17 @@ O Architect escreve `verification.json` ao lado de `tasks.md`. Veja
 node <squad>/scripts/verification.mjs plan docs/changes/c1/verification.json
 node <squad>/scripts/verification.mjs checks docs/changes/c1/verification.json suite.tap
 node <squad>/scripts/verification.mjs baseline c1 local
+node <squad>/scripts/verification.mjs baseline c1 ci --from-run 123456789
 node <squad>/scripts/verification.mjs ci docs/changes/c1/verification.json job-results.json
 ```
+
+Com `--from-run <id>`, a baseline de CI vem de uma rodada que o projeto já pagou, em vez de
+outra execução. A rodada é lida pela API REST e precisa ser o workflow declarado em
+`ci.required_runs.full` (com o mesmo evento), estar concluída, ter o head igual à revisão base e
+ter todos os jobs declarados com resultado. Vermelha, ela vira uma baseline vermelha, que é dívida
+anterior. Cancelada, pulada, incompleta ou em outro commit, ela não grava nada. A evidência sai
+com `source_kind: observed_ci_run` e vale só como `suite.baseline`. `record-evidence` recusa um
+documento importado que se declare assim.
 
 Cada check comportamental declara o Scenario, o contraexemplo e a falha esperada. Inventários
 continuam úteis, mas não substituem checks comportamentais. Mudança no significado de um

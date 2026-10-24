@@ -1,5 +1,5 @@
 // Validate the design of checks. A valid plan is NOT evidence that its commands ran.
-import { aggregate } from './ci-policy.mjs';
+import { aggregate, resolveCi } from './ci-policy.mjs';
 import { deliveryContract } from './delivery-contract.mjs';
 import { parseTap, judgeNamedPasses } from '../shared/index.mjs';
 
@@ -86,11 +86,48 @@ export function verificationChecks(plan, report) {
     meaning: 'Read from one suite report. It is evidence of that run only; a command check still needs its own execution.', checks };
 }
 
+// A CI run the project already paid for is an observation of the base, read from GitHub by its
+// identity. It is the one other way a baseline is observed; it speaks for no other property.
+const BASELINE_SOURCES = ['observed_execution', 'observed_ci_run'];
+
+/**
+ * Judge one existing workflow run as the CI baseline of a change, and say what to record.
+ *
+ * It has to be the run the project declared (`ci.required_runs.full`), finished green, on exactly
+ * the base revision, with every declared job green: a run on another commit measured other code,
+ * and a skipped job is a job that did not say anything.
+ */
+export function ciRunBaseline(run, { project, changeId, revision, fingerprint, at }) {
+  const no = (code, message) => ({ ok: false, code, message });
+  const policy = resolveCi(project, 'full');
+  if (!policy.ok) return no(policy.code, policy.message);
+  if (!run || run.status !== 'completed') return no('E_RUN_NOT_COMPLETE', `run ${run?.databaseId ?? '?'} is ${run?.status ?? 'unreadable'}: a run still going is not a baseline`);
+  const workflowOk = policy.workflowId ? String(run.workflowDatabaseId) === String(policy.workflowId)
+    : run.workflowName === policy.workflow || run.name === policy.workflow;
+  if (!workflowOk) return no('E_RUN_WORKFLOW', `run ${run.databaseId} is workflow "${run.workflowName}", and the project declares "${policy.workflow}"`);
+  if (policy.event && run.event && run.event !== policy.event) return no('E_RUN_WORKFLOW', `run ${run.databaseId} ran on "${run.event}", and the project declares "${policy.event}"`);
+  if (run.headSha !== revision) return no('E_RUN_REVISION', `run ${run.databaseId} measured ${String(run.headSha).slice(0, 8)}, not the base revision ${revision.slice(0, 8)}`);
+  const jobs = Array.isArray(run.jobs) ? run.jobs : [];
+  const observed = Object.fromEntries(policy.jobs.map((j) => [j, jobs.find((x) => x.name === j)?.conclusion]));
+  // A red base is a fact to record, the pre-existing debt the protocol stops on. A run that was
+  // cancelled, skipped or never reported a declared job measured nothing, and records nothing.
+  const missing = policy.jobs.filter((j) => observed[j] === undefined || observed[j] === null);
+  if (missing.length) return no('E_RUN_JOBS', `run ${run.databaseId} never reported ${missing.join(', ')}`);
+  const unsettled = [['run', run.conclusion], ...Object.entries(observed)].filter(([, c]) => !['success', 'failure'].includes(c));
+  if (unsettled.length) return no('E_RUN_INCONCLUSIVE', `run ${run.databaseId}: ${unsettled.map(([n, c]) => `${n} = ${c}`).join('; ')}, which is neither a pass nor a failure`);
+  const result = run.conclusion === 'success' && aggregate('full', observed, policy.jobs).ok ? 'PASS' : 'FAIL';
+  return { ok: true, result, jobs: observed, evidence: {
+    evidence_id: `ev-ci-${run.databaseId}-${run.attempt ?? 1}`, change_id: changeId, property: 'suite.baseline',
+    check: `GitHub Actions run ${run.databaseId} (attempt ${run.attempt ?? 1}) of "${policy.workflow}": ${policy.jobs.join(', ')}`,
+    executor: { role: 'platform_engineer' }, source_kind: 'observed_ci_run', revision, fingerprint,
+    environment: { ci: true, run_ref: run.url ?? String(run.databaseId) }, timestamp: at, result } };
+}
+
 /** A green in another environment does not explain a red, nor erase it. */
 export function baselineVerdict(evidence, { revision, fingerprint, environment }) {
   if (!revision || !fingerprint || !['local', 'ci'].includes(environment)) return { ok: false, code: 'E_BASELINE_IDENTITY' };
   const observed = evidence.filter((e) => e.property === 'suite.baseline' && !e.superseded_by &&
-    e.source_kind === 'observed_execution' && e.revision === revision && e.fingerprint === fingerprint);
+    BASELINE_SOURCES.includes(e.source_kind) && e.revision === revision && e.fingerprint === fingerprint);
   const selected = observed.filter((e) => environment === 'ci' ? e.environment?.ci === true : e.environment?.ci === false);
   const bad = selected.filter((e) => e.result !== 'PASS');
   return { ok: selected.length > 0 && !bad.length,

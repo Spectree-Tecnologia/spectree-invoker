@@ -23,8 +23,8 @@
     },
 
     "source_kind": {
-      "description": "How the squad came to believe this. An agent's report is not an observed run.",
-      "enum": ["agent_report", "observed_execution", "external_reference", "legacy_record"]
+      "description": "How the squad came to believe this. An agent's report is not an observed run. observed_ci_run is an existing CI run read from GitHub by its identity, and it counts only as a baseline.",
+      "enum": ["agent_report", "observed_execution", "observed_ci_run", "external_reference", "legacy_record"]
     },
 
     "role": {

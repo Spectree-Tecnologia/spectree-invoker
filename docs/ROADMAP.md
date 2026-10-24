@@ -84,7 +84,8 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 16 | Pass 2 só sobre o fechamento preparado | Integrada, PR #87 / v1.54.0: `pass2_complete` exige a preparação do fechamento que cobre o candidato, [proposta](changes/archive/2026-10-24-congelamento-antes-do-pass2/proposal.md) | — |
 | 17 | Mutações em lote | Integrada, PR #88 / v1.55.0: um plano com `mutations` usa uma cópia, um setup e uma baseline, [proposta](changes/archive/2026-10-24-mutacoes-em-lote/proposal.md) | — |
 | 18 | TAP aninhado do Vitest | Integrada, PR #89 / v1.56.0: resultado de grupo antes dos filhos, com chaves e tempo, lido como árvore, [proposta](changes/archive/2026-10-24-tap-vitest-aninhado/proposal.md) | — |
-| 19 | Emenda de caminhos | Integrada, v1.57.0: `state.mjs amend-paths` amplia a posse com motivo na trilha e recusa módulo não nomeado, [proposta](changes/archive/2026-10-24-emenda-caminhos/proposal.md) | — |
+| 19 | Emenda de caminhos | Integrada, PR #90 / v1.57.0: `state.mjs amend-paths` amplia a posse com motivo na trilha e recusa módulo não nomeado, [proposta](changes/archive/2026-10-24-emenda-caminhos/proposal.md) | — |
+| 20 | Baseline a partir de uma rodada de CI | Integrada, v1.58.0: `verification.mjs baseline <change> ci --from-run <id>` lê a rodada existente como `observed_ci_run`, [proposta](changes/archive/2026-10-24-baseline-rodada-ci/proposal.md) | — |
 
 ## Histórico de decisões
 
