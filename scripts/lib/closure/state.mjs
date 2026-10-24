@@ -13,7 +13,7 @@ import {
   executionContext,
   observedIsolationSignal,
   parseTap,
-  judgeFailingRun,
+  judgePass1Run,
   validate,
 } from '../shared/index.mjs';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
@@ -565,14 +565,33 @@ function run({ root, argv, print, warn }) {
     }
     const assertsFailure = ASSERTS_FAILURE.has(property);
     const expectFailing = opt('expect-failing');
-    if (assertsFailure && !expectFailing) {
+    const expectFrom = opt('expect-from');
+    if (assertsFailure && !expectFailing && !expectFrom) {
       die(`"${property}" is satisfied only by a named test that ran and failed. Pass --expect-failing "<test name>" ` +
+          '(or --expect-from <file.json> listing every red test and every preserved regression) ' +
           'and let the command emit TAP (or point --report at the TAP it writes).');
     }
-    if (!assertsFailure && expectFailing) {
-      die(`--expect-failing is not available for "${property}": it asserts success, and a command that failed ` +
+    if (!assertsFailure && (expectFailing || expectFrom)) {
+      die(`--${expectFailing ? 'expect-failing' : 'expect-from'} is not available for "${property}": it asserts success, and a command that failed ` +
           'is not evidence that it succeeded.');
     }
+    if (expectFailing && expectFrom) die('--expect-failing and --expect-from name the same thing; pass one of them.');
+    // The whole of pass 1 in one run: `failing` are the Scenarios this change makes red,
+    // `passing` the preserved regressions that must stay green beside them.
+    let expected = { failing: expectFailing ? [expectFailing] : [], passing: [] };
+    if (expectFrom) {
+      let doc;
+      try { doc = JSON.parse(readFileSync(join(root, expectFrom), 'utf8')); }
+      catch (e) { die(`cannot read the expectation in ${expectFrom}: ${e.message}`); }
+      const names = (x) => x === undefined || (Array.isArray(x) && x.every((n) => typeof n === 'string' && n.trim()));
+      if (!doc || !Array.isArray(doc.failing) || !doc.failing.length || !names(doc.failing) || !names(doc.passing)) {
+        die(`${expectFrom} must be {"failing": ["<exact test name>", ...], "passing": [...]}, with at least one failing test.`);
+      }
+      expected = { failing: doc.failing, passing: doc.passing ?? [] };
+    }
+    const expectation = expected.failing.length === 1 && !expected.passing.length
+      ? `"${expected.failing[0]}"`
+      : `${expected.failing.length} test(s) from ${expectFrom}`;
 
     // `--report` reads the TAP the command WRITES, and the destination is this run's own: a
     // fresh path, outside the work tree, that did not exist a moment ago. Pointing at a path
@@ -631,7 +650,7 @@ function run({ root, argv, print, warn }) {
       }
       tapVerdict = report === null
         ? { result: 'INFRA_ERROR', reason: 'the command wrote no report at the path it was given, so it produced no results to read', matched: null }
-        : judgeFailingRun(parseTap(report), expectFailing, r.status);
+        : judgePass1Run(parseTap(report), expected, r.status);
     }
     if (reportDir) rmSync(reportDir, { recursive: true, force: true });
 
@@ -645,7 +664,7 @@ function run({ root, argv, print, warn }) {
       evidence_id: opt('id') ?? `ev-${randomUUID().slice(0, 8)}`,
       change_id: id,
       property,
-      check: cmd.join(' ') + (assertsFailure ? `  (expecting "${expectFailing}" to run and fail)` : ''),
+      check: cmd.join(' ') + (assertsFailure ? `  (expecting ${expectation} to run and fail)` : ''),
       // `independent_of` is what the CALLER typed; `context` is what was measured while the
       // command ran. They are stored side by side because they are different kinds of claim, and
       // only one of them was observed. Where two records assert independence and carry the same
@@ -668,9 +687,14 @@ function run({ root, argv, print, warn }) {
       ...(assertsFailure
         ? { negative_control: {
             input: cmd.join(' '),
-            expected_signal: `the test "${expectFailing}" reported as failing in a completed run`,
-            ...(tapVerdict?.matched ? { observed_signal: `not ok - ${tapVerdict.matched.name}` } : {}),
-          } }
+            expected_signal: expected.passing.length
+              ? `${expected.failing.length} named test(s) failing at their assertion and ${expected.passing.length} preserved regression(s) passing, in one completed run`
+              : expected.failing.length === 1
+                ? `the test "${expected.failing[0]}" reported as failing in a completed run`
+                : `${expected.failing.length} named test(s) failing at their assertion, in one completed run`,
+            ...(tapVerdict?.matched ? { observed_signal: (tapVerdict.failing ?? [tapVerdict.matched]).map((m) => `not ok - ${m.name}`).join('\n') } : {}),
+          },
+          ...(expectFrom ? { expected_tests: { from: expectFrom, failing: expected.failing, passing: expected.passing } } : {}) }
         : {}),
       ...(moved
         ? { limitations: [movedContract && !movedContent

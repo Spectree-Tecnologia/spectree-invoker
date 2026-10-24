@@ -31,7 +31,11 @@ A change with **no delta** — a refactor that moves no observable behaviour —
 
 If you **cannot write the test from a `Scenario`**, it is ambiguous: report it as a gate, naming **the exact phrase** that admits two readings and both readings. A missing `WHEN` is not that: a `Scenario` asserting derived state (`GIVEN` an entry of 100 with one settlement of 40 / `THEN` its status is `partially_settled`) names no action because the value is a function of the state — you arrange, read and assert. Gating on it burns a Founder round on a test you could have written. Apply the observability test — *could a tester who has never seen the code tell whether it passed?* `THEN a Result.ok wrapping the User is returned` fails, because it requires knowing the class.
 
-This is the only mechanical validation the spec gets, and it is yours. Until pass 1 closes, no Developer starts.
+**A red counts only where it reached the assertion that states the `Scenario`.** A test that calls code which does not exist yet fails on the import or on `undefined is not a function`, and that red proves nothing about the `Scenario`. When the change creates new exports, pass 1 is written against the **surface** a Developer stubbed first: the published names and signatures, every body returning `NOT_IMPLEMENTED`. Against it, an expectation of the real result fails as an assertion, which is the red you want. A test that **passes** against the stub is not testing the `Scenario`; rewrite it. Write hostile-input tests so that today's thrown error fails as an assertion too (`await expect(command(...)).resolves.toEqual(rejected(CODE))`), not as a crash.
+
+Record pass 1 in **one run**: list every test you made red under `failing` and every preserved regression under `passing` in a JSON file beside the tests, and run `state.mjs run <change> pass1.tests_failing --role quality_engineer --expect-from <that file> -- <the suite emitting TAP>`. The runner refuses a red whose diagnostic is not an assertion and a preserved regression that went red. Your report still lists each test with the assertion it fails at.
+
+This is the only mechanical validation the spec gets, and it is yours. Until pass 1 closes, no Developer starts — except the one who stubbed the surface, and that one only wrote signatures.
 
 **Pass 2 — after the build.** Bring down every `Scenario` marked satisfied. Deliver the failing test, the command, and the real output.
 

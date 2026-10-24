@@ -100,6 +100,17 @@
       "additionalProperties": false
     },
 
+    "expected_tests": {
+      "type": "object",
+      "description": "Pass 1 against a list (--expect-from): the tests that had to fail at their assertion and the preserved regressions that had to pass, in the same run.",
+      "required": ["from", "failing", "passing"],
+      "properties": {
+        "from": { "type": "string", "minLength": 1 },
+        "failing": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "passing": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "additionalProperties": false
+    },
     "artifact_ref": { "$ref": "spectree/common#/definitions/path" },
     "limitations": {
       "type": "array",

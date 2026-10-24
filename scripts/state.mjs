@@ -12,7 +12,7 @@
 //   node scripts/state.mjs transition <change-id> <to-state> --expect <state_revision>
 //   node scripts/state.mjs transition <change-id> blocked --reason "<why>"
 //   node scripts/state.mjs run <change-id> <property> --role <r> [--independent-of a,b]
-//                                [--expect-failing <test name> [--report]]
+//                                [--expect-failing <test name> | --expect-from <file.json>] [--report]
 //                                [--id <e>] -- <command> [args...]   ({report} is substituted)
 //   node scripts/state.mjs record-evidence <file.json>
 //   node scripts/state.mjs record-approval <file.json>

@@ -1,6 +1,6 @@
 # Tamanho dos cards
 
-Tarefa 9 do [ciclo de modularização do repositório](../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura),
+Tarefa 9 do [ciclo de modularização do repositório](../../../ROADMAP.md#ciclo--o-repositório-seguindo-a-própria-arquitetura),
 pedida pelo Gilson em 2026-10-22: o mesmo corte de regra e justificativa da tarefa 8, aplicado aos
 dois cards mais longos.
 

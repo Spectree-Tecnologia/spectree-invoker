@@ -71,10 +71,13 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 6 | Suíte mais rápida | Integrada, PR #74 / v1.41.0: de 71 s para 43 s, aceito pelo Founder como novo teto em 2026-10-19, [proposta](changes/archive/2026-10-18-suite-mais-rapida/proposal.md) | D-007 |
 | 7 | Papéis deste repositório, extraídos do código | Integrada, PR #75 / v1.42.0, [proposta](changes/archive/2026-10-19-papeis-do-repositorio/proposal.md) | D-011 (registrado) |
 | 8 | Tamanho do protocolo | Integrada, PR #76 / v1.43.0: `CLAUDE.md` de 86 KB para 45 KB, regra separada da justificativa, [proposta](changes/archive/2026-10-22-tamanho-do-protocolo/proposal.md) | D-008 |
-| 9 | Tamanho dos cards do Solutions Architect e do Platform Engineer | Em andamento: Founder pediu o mesmo corte nos dois cards (2026-10-22), [proposta](changes/tamanho-dos-cards/proposal.md) | — |
+| 9 | Tamanho dos cards do Solutions Architect e do Platform Engineer | Integrada, PR #77 / v1.44.0: Architect de 47 KB para 34 KB, Platform Engineer de 30 KB para 21 KB, [proposta](changes/archive/2026-10-22-tamanho-dos-cards/proposal.md) | — |
+| 10 | Pass 1 com superfície e red provado na asserção | Em andamento: Founder autorizou em 2026-10-24, depois da leitura do sindy-agent, [proposta](changes/pass1-superficie/proposal.md) | — |
 
 ## Histórico de decisões
 
+- **2026-10-24:** Founder autorizou a tarefa 10: oficializar o passo de superfície antes da pass 1,
+  registrar a pass 1 inteira numa execução só e aceitar só red que chegou à asserção.
 - **2026-10-22:** Founder pediu a tarefa 9, o mesmo corte de regra e justificativa nos cards
   do Solutions Architect e do Platform Engineer.
 - **2026-10-17:** Founder aprovou a sequência de modularização do repositório

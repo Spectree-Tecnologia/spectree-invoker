@@ -365,6 +365,10 @@
     },
     {
       "section": "07",
+      "text": "A `Scenario` that calls what does not exist yet gets a surface first."
+    },
+    {
+      "section": "07",
       "text": "On a deltaless change, pass 1 is skipped — and nothing else is."
     },
     {
