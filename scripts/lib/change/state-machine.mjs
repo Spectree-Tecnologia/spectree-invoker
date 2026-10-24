@@ -296,7 +296,10 @@ export function canTransition(change, to, ctx = {}) {
     const matching = evidence.filter((e) => e.property === want.property && !e.superseded_by);
     if (matching.length === 0) return deny(CODES.MISSING_EVIDENCE, `no evidence for "${want.property}"`);
 
-    const observed = want.observed !== false ? matching.filter((e) => e.source_kind === 'observed_execution') : matching;
+    // A CI run read by its identity observes the base, and nothing else: it speaks for the baseline.
+    const observedHere = (e) => e.source_kind === 'observed_execution' ||
+      (want.property === 'suite.baseline' && e.source_kind === 'observed_ci_run');
+    const observed = want.observed !== false ? matching.filter(observedHere) : matching;
     if (observed.length === 0) {
       return deny(CODES.SELF_REPORT_ONLY,
         `"${want.property}" is only an agent report; entering "${to}" needs an observed execution`);

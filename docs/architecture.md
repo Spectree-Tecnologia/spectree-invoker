@@ -143,8 +143,9 @@ append-only JSONL beside it. Resume reads the first and never replays the second
 ## Evidence, and what a green is worth
 
 Six results, and only two are verdicts: `PASS`, `FAIL`, `EXPECTED_REJECTION`, `INFRA_ERROR`,
-`NOT_RUN`, `INCONCLUSIVE`. Four sources: `agent_report`, `observed_execution`,
-`external_reference`, `legacy_record`.
+`NOT_RUN`, `INCONCLUSIVE`. Five sources: `agent_report`, `observed_execution`,
+`observed_ci_run` (an existing CI run read from GitHub by its identity, which counts only as a
+baseline), `external_reference`, `legacy_record`.
 
 The rules the state machine enforces from those two lists:
 

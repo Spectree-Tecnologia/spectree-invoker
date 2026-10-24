@@ -795,6 +795,10 @@ function run({ root, argv, print, warn }) {
                 `or produce the evidence with \`state.mjs run\`.`, 1);
           }
         }
+        if (doc.source_kind === 'observed_ci_run') {
+          die('observed_ci_run is written by `verification.mjs baseline <change> ci --from-run <id>`, which reads the run from GitHub. ' +
+              'An imported document cannot claim that read.', 1);
+        }
         store.putEvidence(doc);
         print(`recorded evidence ${doc.evidence_id}: ${doc.property} = ${doc.result}`);
         warn('  imported, not observed here: this satisfies only gates that do not require fresh evidence');

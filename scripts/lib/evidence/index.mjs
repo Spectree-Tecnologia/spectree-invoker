@@ -15,4 +15,4 @@ export {
 } from './delivery.mjs';
 export { DEFAULT_NEUTRAL_PATHS, KIND, classifyDiff, neutralPaths, outsideAllowedPaths, readDiff } from './diff.mjs';
 export { runMutation } from './mutation.mjs';
-export { baselineVerdict, verificationChecks, verificationCi, verificationPlan } from './verification.mjs';
+export { baselineVerdict, ciRunBaseline, verificationChecks, verificationCi, verificationPlan } from './verification.mjs';
