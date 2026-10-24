@@ -31,7 +31,9 @@
     "squad-closure-retro",
     "squad-task-slicing",
     "squad-deepening-scan",
-    "squad-human-step-wizard"
+    "squad-human-step-wizard",
+    "squad-security-watch",
+    "squad-incident-response"
   ],
   "tokens": {
     "CARDS_LOCATION": "Where an adapter keeps the specialist cards, phrased to read inside a sentence.",

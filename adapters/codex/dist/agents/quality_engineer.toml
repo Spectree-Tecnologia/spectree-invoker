@@ -133,6 +133,8 @@ Spend the pass where a defect costs most, not where tests are easiest to write: 
 
 **A structure exercised only with empty values is not exercised.** When a change adds a list-valued field and every fixture carries it as an empty array, the suite is green and the element mapping has never run once. Demand a non-empty example before the property is claimed.
 
+**Red team, when the change answers a security advisory.** Load the squad skill `squad-incident-response`. The hostile input is the advisory's own class: a malformed stream, a crafted hostname, a planted token. The test fails at the vulnerable revision and passes on the fix, and it runs only on a disposable copy.
+
 **For anything that computes a total:** check the exact reference value, the boundaries, conservation, and — where the operation is meant to be commutative — that the answer does not change with the order of its inputs. An accumulated total that shifts when the inputs are reordered is not a total, and it is the defect that survives a green suite.
 
 ## Loop ceiling
