@@ -246,9 +246,13 @@ export function contractDigestAt(root, revision, change) {
  * An unavailable comparison is unknown, never "nothing changed" — so every failure here
  * throws. A file that is present and cannot be read is the sharpest case: hashing a
  * placeholder in its place would give two different versions of it the same digest.
- * @returns {{ digest: string, revision: string, tree: string, dirty: boolean }}
+ *
+ * With `neutral`, it also returns `code_digest`: the same content less the paths that predicate
+ * names. A run whose code digest matches now still describes the code now, and is carried forward
+ * across an edit to those paths; an approval still binds the whole `digest`.
+ * @returns {{ digest: string, revision: string, tree: string, dirty: boolean, code_digest?: string }}
  */
-export function contentDigest(root) {
+export function contentDigest(root, { neutral } = {}) {
   const git = (args, input) => gitIn(root, args, { input });
   const exclude = OPERATIONAL.map((p) => `:(exclude)${p}`);
   let revision, tree, paths, index, indexModes, dirty, modified;
@@ -316,15 +320,16 @@ export function contentDigest(root) {
   const byPath = new Map(present.map((p, i) => [p, blobs[i]]));
 
   const h = createHash('sha256');
+  const code = neutral ? createHash('sha256') : null;
   // A path that is not on disk is simply not part of the content. Recording it as deleted made
   // the digest change again the moment the deletion was committed and the path left the index —
   // the same content, two answers, and evidence invalidated for nothing.
   for (const rel of present) {
-    h.update(rel, 'utf8'); h.update('\0');
-    h.update(modeOf(root, rel, indexModes), 'utf8'); h.update('\0');
-    h.update(byPath.get(rel), 'utf8'); h.update('\0');
+    const entry = [rel, modeOf(root, rel, indexModes), byPath.get(rel)];
+    for (const x of entry) { h.update(x, 'utf8'); h.update('\0'); }
+    if (code && !neutral(rel)) for (const x of entry) { code.update(x, 'utf8'); code.update('\0'); }
   }
-  return { digest: sha(h), revision, tree, dirty };
+  return { digest: sha(h), revision, tree, dirty, ...(code ? { code_digest: sha(code) } : {}) };
 }
 
 /** The mode git records: the index for a tracked file, the filesystem for one it has not seen. */
@@ -344,7 +349,7 @@ function modeOf(root, rel, indexModes) {
  *
  * @returns {{ digest: string, revision: string, tree: string }}
  */
-export function contentDigestAt(root, revision) {
+export function contentDigestAt(root, revision, { neutral } = {}) {
   const git = (args) => gitIn(root, args);
   let resolved, tree, entries;
   try {
@@ -360,17 +365,17 @@ export function contentDigestAt(root, revision) {
   }
 
   const h = createHash('sha256');
+  const code = neutral ? createHash('sha256') : null;
   for (const e of entries.filter((x) => !excluded(x.path)).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))) {
     // A submodule (`commit`) or a symlink is not a file whose bytes this can compare. Refusing
     // is the honest answer: unknown is never equivalence.
     if (e.type !== 'blob') {
       throw unavailable(`"${e.path}" in ${revision} is a ${e.type}, and this comparison only speaks about files`);
     }
-    h.update(e.path, 'utf8'); h.update('\0');
-    h.update(e.mode, 'utf8'); h.update('\0');
-    h.update(e.blob, 'utf8'); h.update('\0');
+    for (const x of [e.path, e.mode, e.blob]) { h.update(x, 'utf8'); h.update('\0'); }
+    if (code && !neutral(e.path)) for (const x of [e.path, e.mode, e.blob]) { code.update(x, 'utf8'); code.update('\0'); }
   }
-  return { digest: sha(h), revision: resolved, tree };
+  return { digest: sha(h), revision: resolved, tree, ...(code ? { code_digest: sha(code) } : {}) };
 }
 
 /** What an integration-class gate authorises: the contract AND the code it will carry. */

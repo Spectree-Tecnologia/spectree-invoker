@@ -13,6 +13,6 @@ export {
   recoverDelivery,
   runDelivery,
 } from './delivery.mjs';
-export { KIND, classifyDiff, outsideAllowedPaths, readDiff } from './diff.mjs';
+export { DEFAULT_NEUTRAL_PATHS, KIND, classifyDiff, neutralPaths, outsideAllowedPaths, readDiff } from './diff.mjs';
 export { runMutation } from './mutation.mjs';
 export { baselineVerdict, verificationChecks, verificationCi, verificationPlan } from './verification.mjs';

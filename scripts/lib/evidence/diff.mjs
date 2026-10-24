@@ -174,3 +174,18 @@ export function outsideAllowedPaths(entries, allowed) {
   }
   return bad;
 }
+
+/**
+ * Paths whose edits leave a measurement standing: a project's declared prefixes or files, and of
+ * those only what is documentation by the allowlist above. A declared `src/` neutralises nothing.
+ * The platform log is neutral unless the project says otherwise: it is written on every action.
+ */
+export const DEFAULT_NEUTRAL_PATHS = ['.log/'];
+export function neutralPaths(declared = DEFAULT_NEUTRAL_PATHS) {
+  if (!Array.isArray(declared) || !declared.every((x) => typeof x === 'string' && x.trim())) {
+    const e = new Error('evidence.neutral_paths must be a list of paths'); e.code = 'E_NEUTRAL_PATHS'; throw e;
+  }
+  const list = [...new Set(declared.map((d) => (d.endsWith('/') ? `${normalisePath(d)}/` : normalisePath(d))))].sort();
+  const matches = (p) => list.some((d) => (d.endsWith('/') ? p.startsWith(d) : p === d));
+  return { list, neutral: (p) => matches(p) && classifyPath(p) === KIND.ADMINISTRATIVE };
+}

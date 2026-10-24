@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 85,
+    "title": "Segurança: piso do Node nos projetos consumidores (tarefa 14) — v1.52.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/85",
+    "opened": "2026-10-24T14:09:15Z",
+    "merged": "2026-10-24T14:11:18Z"
+  },
+  "signals": {
+    "open_minutes": 2,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.52.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-seguranca-piso-consumidor/proposal.md"
+    ]
+  },
+  "friction": "- A branch esperou o #84, que trazia a retro da 12b, para não duplicá-la. Depois disso, o rebase teve conflito só de versão e da linha do ROADMAP.\n- Um red local: o benchmark recusou medir com o índice ainda em conflito no meio do rebase (`E_CONTENT_UNAVAILABLE`). Passou depois de concluir o rebase. Não é defeito: é a guarda funcionando.\n- Fora deste PR: o Founder configurou o script de ambiente das sessões em nuvem com o Node 22.23.4 (R-008). O script foi validado num container; falta confirmar numa sessão nova.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
