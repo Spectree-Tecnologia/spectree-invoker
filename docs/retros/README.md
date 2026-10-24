@@ -34,6 +34,7 @@ lugar; cada correção entra por uma mudança própria.
 
 ## Retros
 
+- [2026-10-24 — `retro-coleta` (#80)](2026-10-24-retro-coleta.md)
 - [2026-10-24 — `retro-pos-merge` (#79)](2026-10-24-retro-pos-merge.md)
 - [2026-10-24 — lote do #58 ao #78](2026-10-24-lote-58-78.md)
 - [2026-10-24 — `pass1-superficie` (#78)](2026-10-24-pass1-superficie.md)

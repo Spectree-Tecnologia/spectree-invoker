@@ -10,7 +10,7 @@ npm run console -- --project C:\projetos\a --project C:\projetos\b --port 4319
 npm run console -- --demo
 ```
 
-Abra o endereço impresso no terminal. O fragmento contém uma credencial temporária da sessão; não compartilhe esse endereço. Ctrl+C encerra o servidor. Nenhuma instalação é necessária além do Node >=20.11 já exigido pelo Invoker.
+Abra o endereço impresso no terminal. O fragmento contém uma credencial temporária da sessão; não compartilhe esse endereço. Ctrl+C encerra o servidor. Nenhuma instalação é necessária além do Node já exigido pelo Invoker (22.23.4+, 24.22.1+ ou 26.12.1+).
 
 Para instalar um launcher independente da pasta do terminal e da branch, veja [Runtime Conectado](runtime-connected.md).
 

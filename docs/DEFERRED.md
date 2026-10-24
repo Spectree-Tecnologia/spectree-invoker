@@ -119,3 +119,21 @@
 - Due: A próxima mudança que acrescentar regra a protocol/rules.json
 - Closure condition: check-plugin avisa quando a folga de um teto cai abaixo de 2%, e a proposta que acrescenta regra declara o orçamento de bytes.
 
+## D-014 — Blue team como processo: vigilância de avisos, playbook de incidente e lente red team
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: Visto no estudo das CVEs de 2026-10-21 (PHP2Shell explorado em massa minutos após a divulgação; RCE Brotli no Node com PoC público). A tarefa 12 pagou os gates de CI e a vigilância diária do lockfile; falta o que olha além do lockfile: uma squad skill do Integration Engineer que cruza avisos citados (OSV, NVD, CISA KEV, fornecedores) com o inventário do projeto, um playbook de incidente do Platform Engineer com o que é decisão do Invoker e o que é gate 3, e a lente red team do Quality Engineer com insumo hostil da classe da CVE. Fica fora porque cada parte é uma mudança de protocolo com autorização própria.
+- Due: A próxima mudança autorizada da frente de segurança, ou o primeiro aviso que afete um projeto Spectree
+- Closure condition: As duas squad skills existem com um caso real de cada, e o card do Quality Engineer cita a lente red team com um teste que falha no insumo hostil.
+
+## D-015 — Piso de runtime não é verificado nos projetos consumidores
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: Visto na tarefa 12: o piso de engines e o engine-strict valem para quem instala este repositório, mas os scripts que o instalador entrega rodam no Node do consumidor, e capabilities.mjs só relata a versão. Um consumidor em Node 22.22.0 roda a Presence com o decodificador Brotli vulnerável sem aviso. Fica fora porque muda o comportamento do runtime instalado e merece mudança própria.
+- Due: A próxima release de segurança do Node, ou a próxima mudança que tocar capabilities.mjs
+- Closure condition: capabilities.mjs compara a versão do Node com um piso declarado num lugar só e relata o runtime abaixo dele como degradado, com teste.
+

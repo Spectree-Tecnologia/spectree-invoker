@@ -75,9 +75,12 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 10 | Pass 1 com superfície e red provado na asserção | Integrada, PR #78 / v1.45.0, [proposta](changes/archive/2026-10-24-pass1-superficie/proposal.md) | — |
 | 11 | Retro pós-merge: fechamento no próprio PR e primeira retro registrada | Integrada, PR #79 / v1.46.0: piloto em lote do #58 ao #78, [retros](retros/README.md), [proposta](changes/archive/2026-10-24-retro-pos-merge/proposal.md) | D-012, D-013 (registrados) |
 | 11b | Retro pós-merge: coleta medida com `retro.mjs collect` | Integrada, PR #80 / v1.47.0, [proposta](changes/archive/2026-10-24-retro-coleta/proposal.md) | — |
+| 12 | Gates de segurança na CI e piso do Node | Integrada, v1.48.0: audit e secret scan obrigatórios, vigilância diária, Node ≥ 22.23.4, [proposta](changes/archive/2026-10-24-seguranca-ci/proposal.md) | D-014, D-015 (registrados) |
 
 ## Histórico de decisões
 
+- **2026-10-24:** Founder autorizou a tarefa 12, a primeira entrega da frente de segurança:
+  audit e secret scan na CI deste repositório e piso do Node nas versões corrigidas em 2026-10-21.
 - **2026-10-24:** Founder autorizou a tarefa 11b: a coleta da retro sai de um comando,
   `retro.mjs collect`, e não de leitura manual.
 - **2026-10-24:** Founder autorizou a tarefa 11, a primeira entrega da retro pós-merge:
