@@ -1,10 +1,14 @@
 // Validate the design of checks. A valid plan is NOT evidence that its commands ran.
 import { aggregate } from './ci-policy.mjs';
 import { deliveryContract } from './delivery-contract.mjs';
+import { parseTap, judgeNamedPasses } from '../shared/index.mjs';
 
 const argv = (x) => Array.isArray(x) && x.length > 0 && x.every((v) => typeof v === 'string' && v.trim());
 const nonempty = (x) => typeof x === 'string' && x.trim().length > 0;
 const list = (x) => Array.isArray(x) && x.length > 0 && x.every(nonempty);
+// A check is run by its own command, or read by exact test name from the one suite report.
+const runnable = (c) => (c.command === undefined) !== (c.tests === undefined) &&
+  (c.command !== undefined ? argv(c.command) : list(c.tests) && new Set(c.tests).size === c.tests.length);
 export function verificationPlan(plan) {
   const errors = [];
   const problem = (code, message) => errors.push({ code, message });
@@ -15,7 +19,7 @@ export function verificationPlan(plan) {
   for (const c of Array.isArray(plan.checks) ? plan.checks : []) {
     if (!c || !nonempty(c.id) || ids.has(c.id)) { problem('E_CHECK_ID', 'Every check needs a unique ID.'); continue; }
     ids.add(c.id);
-    if (!['behavior', 'inventory'].includes(c.kind) || !nonempty(c.claim) || !argv(c.command)) problem('E_CHECK_CONTRACT', `${c.id}: kind, claim and argv command are required.`);
+    if (!['behavior', 'inventory'].includes(c.kind) || !nonempty(c.claim) || !runnable(c)) problem('E_CHECK_CONTRACT', `${c.id}: kind, claim and exactly one of an argv command or unique test names are required.`);
     if (c.kind === 'behavior' && (!nonempty(c.counterexample) || !nonempty(c.expected_failure))) problem('E_CHECK_DISCRIMINATION', `${c.id}: name the defective input and the specific failure it must cause.`);
     if (c.kind === 'behavior' && !list(c.scenario_refs)) problem('E_CHECK_SCENARIOS', `${c.id}: name the scenarios or invariant this behavior check exercises.`);
   }
@@ -60,6 +64,26 @@ export function verificationPlan(plan) {
   if (plan.delivery !== undefined) errors.push(...deliveryContract(plan).errors);
   return { ok: errors.length === 0, advisory: true, authorizes_execution: false,
     meaning: 'Plan consistency only; commands and negative controls still require execution.', errors };
+}
+
+/**
+ * Every check that names tests, judged from ONE suite report. A command check is not run here and
+ * says so; a report that is not a complete TAP document judges nothing.
+ */
+export function verificationChecks(plan, report) {
+  const valid = verificationPlan(plan);
+  if (!valid.ok) return { ok: false, code: 'E_CHECK_PLAN', errors: valid.errors };
+  const tap = parseTap(report);
+  const checks = plan.checks.map((c) => {
+    if (!c.tests) return { id: c.id, result: 'NOT_EVALUATED', reason: 'runs its own command; this report does not judge it' };
+    const verdict = judgeNamedPasses(tap, c.tests);
+    return { id: c.id, result: verdict.result, reason: verdict.reason, tests: verdict.tests };
+  });
+  const judged = checks.filter((c) => c.result !== 'NOT_EVALUATED');
+  return { ok: judged.length > 0 && judged.every((c) => c.result === 'PASS'),
+    code: !judged.length ? 'E_CHECK_NONE' : judged.some((c) => c.result === 'INFRA_ERROR') ? 'E_CHECK_REPORT'
+      : judged.some((c) => c.result !== 'PASS') ? 'E_CHECK_FAILED' : null,
+    meaning: 'Read from one suite report. It is evidence of that run only; a command check still needs its own execution.', checks };
 }
 
 /** A green in another environment does not explain a red, nor erase it. */

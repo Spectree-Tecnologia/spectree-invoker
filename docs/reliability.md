@@ -105,6 +105,7 @@ O Architect escreve `verification.json` ao lado de `tasks.md`. Veja
 
 ```text
 node <squad>/scripts/verification.mjs plan docs/changes/c1/verification.json
+node <squad>/scripts/verification.mjs checks docs/changes/c1/verification.json suite.tap
 node <squad>/scripts/verification.mjs baseline c1 local
 node <squad>/scripts/verification.mjs ci docs/changes/c1/verification.json job-results.json
 ```
@@ -114,6 +115,14 @@ continuam úteis, mas não substituem checks comportamentais. Mudança no signif
 campo exige criar, ler, editar outro campo, salvar e reler, preservando o invariante declarado.
 QA precisa executar esse fluxo; validar o JSON não prova que ele foi testado.
 
+Um check traz `command` (argv próprio) ou `tests` (nomes exatos de testes), nunca os dois.
+Prefira `tests`: a suíte roda uma vez com reporter TAP e `checks` julga todos a partir desse
+relatório. Cada nome precisa aparecer uma única vez entre os testes que rodaram, passar e não
+ter `SKIP` ou `TODO`; o veredito de um grupo (`describe`) não conta como teste. Um relatório
+incompleto ou com `Bail out!` não julga nada (`INFRA_ERROR`). Checks com `command` aparecem como
+`NOT_EVALUATED` e continuam exigindo execução própria. Nunca rode a suíte uma vez por check ou
+por Requirement: no SYND C3a, esse laço levou 28 min de um job de 30, contra 72 s da suíte.
+
 O baseline consulta evidência `suite.baseline` observada no commit base e no fingerprint exatos.
 Declare `local` ou `ci` em `tasks.md`; o campo `environment.ci` da evidência precisa ser booleano.
 Resultado vermelho não supersedido e verde no mesmo ambiente/base continuam instabilidade.
@@ -121,7 +130,10 @@ Resultados não resolvidos de outro ambiente aparecem no diagnóstico; verde no 
 a causa de vermelho local. Históricos sem identidade suficiente exigem observação nova.
 
 [O exemplo de CI](examples/consumer-ci.yml) separa audit e testes em jobs obrigatórios e
-agrega seus resultados mesmo quando um falha. Ajuste os comandos ao projeto e configure
+agrega seus resultados mesmo quando um falha. Ele roda em pull request e no push da main,
+cancela a rodada anterior do mesmo ref, roda a suíte uma vez, julga os checks das changes
+abertas a partir desse relatório e entrega `SPECTREE_TEST_NAMESPACE` por rodada para o nome do
+banco de teste. Changes arquivadas não ganham passo próprio. Ajuste os comandos ao projeto e configure
 `required` como check obrigatório da branch. O validador recusa dependência direta ou indireta
 de testes em audit, ciclos, jobs ausentes e agregação incompleta. O arquivo de resultados
 é um objeto como `{"audit":"success","tests":"success"}`, obtido do CI real. Resultados

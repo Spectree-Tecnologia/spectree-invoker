@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 83,
+    "title": "Segurança: vigilância de avisos e resposta a incidentes (tarefa 12b) — v1.50.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/83",
+    "opened": "2026-10-24T13:49:17Z",
+    "merged": "2026-10-24T13:52:23Z"
+  },
+  "signals": {
+    "open_minutes": 3,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.50.0",
+    "archived": [
+      "docs/changes/archive/2026-10-24-seguranca-resposta/proposal.md"
+    ]
+  },
+  "friction": "- Esta mudança começou pela retro devida da 11c, como cobra `tests/repo-changes.test.mjs`. A branch foi recortada da `main` e só carregava histórico já integrado do #81, então o push foi forçado.\n- O núcleo cresceu 68 bytes para citar as skills: `CLAUDE.md` tem 46.002 de 46.080 bytes. Registrado no D-013.\n- Nenhum red local.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

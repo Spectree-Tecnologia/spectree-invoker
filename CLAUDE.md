@@ -241,13 +241,15 @@ The reason behind each rule below, and the incident that produced it, is in the 
 
 **But module 1 cannot wait for its own roles, and pretending otherwise is how it diverges from itself.** With more than one Developer on change 1, the **Architect declares the semantic convention in `proposal.md`**, binding them all, until the role is extracted from the code.
 
-**Architectural adoption is not operational adoption.** `adopt.mjs` moves no code. Modularizing is the Architect's extraction sequence: an acyclic target map approved at gate 1, then one deltaless change per module, leaves first, a characterization change before any untested code moves. No behaviour change inside an extraction; the first module extracted is module 1 for roles.
+**Architectural adoption is not operational adoption.** `adopt.mjs` moves no code. Modularizing is the Architect's extraction sequence: an acyclic target map approved at gate 1, then one deltaless change per module, leaves first, a characterization change before any untested code moves. The first module extracted is module 1 for roles.
 
 **A deepening scan is dispatched, not a standing chore.** When a retro flags the same module twice, or the roadmap is empty, the Architect runs squad skill `squad-deepening-scan` on hot spots from `git log`; each candidate taken is a deltaless change.
 
 **Verification design before execution.** The Architect writes `verification.json` beside `tasks.md`, validated with `verification.mjs plan <file>`; each behavioral check names its Scenario, a defective counterexample and the expected failure.
 
-**Delivery reliability profile.** New structured consumers enable `delivery.version: 1` (`docs/delivery-reliability.md`): every delta Scenario mapped to an exact test name, `delivery.mjs preflight <change>` before implementation, `delivery.mjs run <change> --apply` on the candidate. It supplements QA and CI, never replaces them; missing, skipped, duplicated or stale results and due deferrals refuse advancement.
+**One suite run serves every check, never one run per Requirement.** `verification.mjs checks <plan> <report>` judges every check's named `tests` from one TAP run, archived changes too.
+
+**Delivery reliability profile.** New consumers enable `delivery.version: 1` (`docs/delivery-reliability.md`): Scenarios mapped to exact test names, `delivery.mjs preflight` before implementation, `delivery.mjs run --apply` on the candidate. It supplements QA and CI; missing, skipped, duplicated or stale results and due deferrals refuse advancement.
 
 ### 7.2 Building
 
@@ -276,7 +278,7 @@ The reason behind each rule below, and the incident that produced it, is in the 
 
 **The core domain owes a killed mutation.** A delta on a module of the `Core modules:` line of `docs/DOMAIN.md` needs `mutation.killed` evidence, observed on the current content and independent of the Developer, before `pass2_complete` or any later state.
 
-**Mutation probes operate on disposable copies only.** Never in the live checkout or with production credentials (`mutation-probe.mjs <plan.json> --apply`); an unrecognized diagnostic is inconclusive, never a kill.
+**Mutation probes operate on disposable copies only.** Never in the live checkout or with production credentials (`mutation-probe.mjs <plan> --apply`); an unrecognized diagnostic is inconclusive, never a kill.
 
 ### 7.3 Dispatch
 
@@ -322,7 +324,7 @@ Without a consolidation mechanism the change closes the **legacy** way, declared
 
 **Diagnose adoption before choosing closure.** `reconcile.mjs diagnose`; `prepared` needs `closure.consolidate` declared.
 
-**Correct a mistaken mode through the reviewed reconciliation CLI, never by editing state JSON.** `reconcile.mjs plan`, then `apply <plan> --apply`; see `docs/guided-reconciliation.md`.
+**Correct a mistaken mode through the reviewed reconciliation CLI, never by editing state JSON.** `reconcile.mjs plan`, then `apply <plan> --apply` (`docs/guided-reconciliation.md`).
 
 **A preparation has an identity, and an integration approval names it.** The approval names the snapshot's `preparation_id`, `generation` and `preparation_digest`, plus repository, PR, head and base branch. A merge is confirmed against the PR approved.
 
@@ -461,7 +463,7 @@ Agent names stay in English inside the report — they are proper names.
 ## 12. Edge cases
 
 - **Agent hands back a manual step:** reject, re-dispatch pointing at the right tool.
-- **Ceiling hit:** don't re-dispatch identically. Either the mission is badly framed, or information is missing (Integration Engineer), or it's a gate. A fourth identical attempt is a gamble.
+- **Ceiling hit:** don't re-dispatch identically. Either the mission is badly framed, or information is missing (Integration Engineer), or it's a gate.
 - **Quality Engineer says "all good" without showing what it attacked:** refused. Green with no attack report is absence of work, not absence of bugs.
 - **Quality Engineer reports a finding with no failing test:** it does not become a blocker.
 - **Developer says a `Scenario` "makes no sense":** either a concrete technical blocker (the Architect amends), or ambiguity (gate 2). They do not rewrite it.

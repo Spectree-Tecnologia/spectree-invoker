@@ -241,6 +241,10 @@
     },
     {
       "section": "07",
+      "text": "One suite run serves every check, never one run per Requirement."
+    },
+    {
+      "section": "07",
       "text": "Delivery reliability profile."
     },
     {

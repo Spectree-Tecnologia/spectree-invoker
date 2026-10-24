@@ -15,4 +15,4 @@ export {
 } from './delivery.mjs';
 export { KIND, classifyDiff, outsideAllowedPaths, readDiff } from './diff.mjs';
 export { runMutation } from './mutation.mjs';
-export { baselineVerdict, verificationCi, verificationPlan } from './verification.mjs';
+export { baselineVerdict, verificationChecks, verificationCi, verificationPlan } from './verification.mjs';

@@ -313,3 +313,28 @@ export function judgeMutationRun(tap, expected, exitCode) {
   }
   return verdict;
 }
+
+/**
+ * Many checks, one run. Each name must appear exactly once among the tests that ran — a group's
+ * own verdict is not a test — and pass with no directive. The run itself must be a complete TAP
+ * document; when it is not, no name can be judged from it.
+ * @returns {{ result: 'PASS'|'FAIL'|'INFRA_ERROR', reason: string, tests: object[] }}
+ */
+export function judgeNamedPasses(tap, names) {
+  if (!Array.isArray(names) || !names.length) return { ...fail('no test is named, and an empty list proves nothing'), tests: [] };
+  if (tap.bailout !== null) return { ...fail(`the run bailed out (${tap.bailout}), so the tests never finished`), tests: [] };
+  const bad = validate(tap);
+  if (bad) return { ...fail(bad), tests: [] };
+  const parents = new Set(tap.groups.map((g) => g.parentResult));
+  const leaves = tap.groups.flatMap((g) => g.results).filter((r) => !parents.has(r));
+  const tests = names.map((name) => {
+    const named = leaves.filter((r) => r.name === name);
+    if (named.length !== 1) return { name, result: 'FAIL', reason: `ran ${named.length} time(s); it must run exactly once` };
+    const [only] = named;
+    if (only.directive) return { name, result: 'FAIL', reason: `was ${only.directive}, and a test that did not run proves nothing` };
+    return only.ok ? { name, result: 'PASS', number: only.number } : { name, result: 'FAIL', reason: 'ran and failed' };
+  });
+  const failed = tests.filter((t) => t.result !== 'PASS');
+  return { result: failed.length ? 'FAIL' : 'PASS', tests,
+    reason: failed.length ? failed.map((t) => `"${t.name}" ${t.reason}`).join('; ') : `${tests.length} named test(s) ran once and passed` };
+}
