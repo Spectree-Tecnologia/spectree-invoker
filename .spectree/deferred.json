@@ -252,6 +252,18 @@
       "current_decision": "A mudança executor-pos-fechamento abre repair e verify só enquanto a change está em implemented, onde chegam os achados do pass 2. Um CI vermelho depois de pass2_complete ainda volta ao Developer por despacho direto, sem o orçamento e a trilha do executor. Fica fora porque nenhum projeto relatou o caso e a volta de estado que ele pede é decisão de protocolo.",
       "reevaluation_trigger": "Um projeto consumidor registra uma correção feita fora do executor depois de pass2_complete",
       "closure_condition": "A correção pedida depois de pass2_complete passa por tasks.mjs repair, com o estado e a evidência do pass 2 invalidados de forma explícita, visto num teste."
+    },
+    {
+      "schema_version": "1.0.0",
+      "owner": "own_change",
+      "status": "open",
+      "opened_by_change": "contraexemplo-concorrente",
+      "stable_id": 22,
+      "title": "Regra de unicidade ou de contador fora da lista concorrente",
+      "impact": "ceiling",
+      "current_decision": "A mudança contraexemplo-concorrente cobra um check concorrente para cada regra declarada em concurrent_invariants. Não prova que o Architect declarou todas, nem que o teste nomeado corre duas escritas em paralelo: a classificação é leitura, e a lente de concorrência do pass 2 segue como rede. Fica fora porque nenhum check determinístico separa uma regra de unicidade pelo texto do Scenario sem falsos positivos.",
+      "reevaluation_trigger": "Um pass 2 de projeto consumidor acha uma corrida numa regra de unicidade ou de contador ausente de concurrent_invariants, ou um check concorrente cujo teste roda as escritas em série",
+      "closure_condition": "Um check determinístico ou um passo do pass 1 recusa o caso do incidente, visto rejeitando-o."
     }
   ]
 }

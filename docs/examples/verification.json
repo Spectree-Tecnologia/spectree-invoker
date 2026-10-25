@@ -30,6 +30,23 @@
       ],
       "counterexample": "Accept any number as a forecast",
       "expected_failure": "Saving -10 as forecast succeeds instead of returning INVALID_AMOUNT"
+    },
+    {
+      "id": "unique-account-email-race",
+      "kind": "behavior",
+      "claim": "Two concurrent sign-ups with the same email create one account",
+      "scenario_refs": [
+        "accounts/A second account with a taken email is refused"
+      ],
+      "command": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "tests/account-email-race.test.cjs"
+      ],
+      "counterexample": "Check the email is free, then insert, with no unique constraint between the two",
+      "counterexample_kind": "concurrent",
+      "expected_failure": "Both racing sign-ups succeed and two accounts share the email instead of one EMAIL_TAKEN"
     }
   ],
   "round_trip": {
@@ -46,6 +63,16 @@
       "reread"
     ]
   },
+  "concurrent_invariants": [
+    {
+      "kind": "uniqueness",
+      "invariant": "At most one account holds a given email",
+      "scenario_refs": [
+        "accounts/A second account with a taken email is refused"
+      ],
+      "check_id": "unique-account-email-race"
+    }
+  ],
   "ci": {
     "jobs": [
       {

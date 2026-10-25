@@ -2,6 +2,7 @@
   "version": 1,
   "change": "registry-foundation",
   "changes_field_meaning": false,
+  "concurrent_invariants": [],
   "checks": [{
     "id": "registry-name",
     "kind": "behavior",

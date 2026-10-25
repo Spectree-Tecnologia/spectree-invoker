@@ -9,7 +9,11 @@ const list = (x) => Array.isArray(x) && x.length > 0 && x.every(nonempty);
 // A check is run by its own command, or read by exact test name from the one suite report.
 const runnable = (c) => (c.command === undefined) !== (c.tests === undefined) &&
   (c.command !== undefined ? argv(c.command) : list(c.tests) && new Set(c.tests).size === c.tests.length);
-export function verificationPlan(plan) {
+const CONCURRENT_KINDS = ['uniqueness', 'counter'];
+// `design` is the Architect's gate on a plan being written: a uniqueness or counter rule is attacked
+// by two concurrent writes from the plan on, and the plan says explicitly which rules those are.
+// Plans already run or archived keep their meaning; an absent declaration is only refused there.
+export function verificationPlan(plan, { design = false } = {}) {
   const errors = [];
   const problem = (code, message) => errors.push({ code, message });
   if (!plan || typeof plan !== 'object' || plan.version !== 1) return { ok: false, errors: [{ code: 'E_PLAN_VERSION', message: 'Expected verification plan version 1.' }] };
@@ -22,6 +26,23 @@ export function verificationPlan(plan) {
     if (!['behavior', 'inventory'].includes(c.kind) || !nonempty(c.claim) || !runnable(c)) problem('E_CHECK_CONTRACT', `${c.id}: kind, claim and exactly one of an argv command or unique test names are required.`);
     if (c.kind === 'behavior' && (!nonempty(c.counterexample) || !nonempty(c.expected_failure))) problem('E_CHECK_DISCRIMINATION', `${c.id}: name the defective input and the specific failure it must cause.`);
     if (c.kind === 'behavior' && !list(c.scenario_refs)) problem('E_CHECK_SCENARIOS', `${c.id}: name the scenarios or invariant this behavior check exercises.`);
+    if (c.counterexample_kind !== undefined && !['sequential', 'concurrent'].includes(c.counterexample_kind)) problem('E_CHECK_CONTRACT', `${c.id}: counterexample_kind is sequential or concurrent.`);
+  }
+  if (plan.concurrent_invariants === undefined) {
+    if (design) problem('E_PLAN_CONCURRENCY', 'Explicitly declare concurrent_invariants: every uniqueness or counter rule, or an empty list when there is none.');
+  } else if (!Array.isArray(plan.concurrent_invariants)) problem('E_PLAN_CONCURRENCY', 'concurrent_invariants is a list.');
+  else {
+    for (const inv of plan.concurrent_invariants) {
+      if (!inv || !CONCURRENT_KINDS.includes(inv.kind) || !nonempty(inv.invariant) || !list(inv.scenario_refs) || !nonempty(inv.check_id)) {
+        problem('E_CONCURRENT_INVARIANT', 'Each concurrent invariant needs a kind (uniqueness or counter), the invariant, scenario references and a check_id.');
+        continue;
+      }
+      const check = (Array.isArray(plan.checks) ? plan.checks : []).find((c) => c?.id === inv.check_id);
+      if (!check || check.kind !== 'behavior' || check.counterexample_kind !== 'concurrent' ||
+          !inv.scenario_refs.every((ref) => Array.isArray(check.scenario_refs) && check.scenario_refs.includes(ref))) {
+        problem('E_CONCURRENT_CHECK', `${inv.check_id}: a ${inv.kind} rule is proven by a behavior check whose counterexample_kind is concurrent, two writes racing for the same rule, over the scenarios the rule names.`);
+      }
+    }
   }
   if (plan.changes_field_meaning) {
     const flow = plan.round_trip;

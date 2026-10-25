@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 107,
+    "title": "Harness do pass 2: cache de instalação da prova de mutação (tarefa 34) — v1.73.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/107",
+    "opened": "2026-10-25T21:48:01Z",
+    "merged": "2026-10-25T21:49:34Z"
+  },
+  "signals": {
+    "open_minutes": 2,
+    "commits": 5,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.73.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-harness-pass2/proposal.md"
+    ]
+  },
+  "friction": "- A segurança da entrada (dono, link, cadeia) não estava na seção Identidade escrita antes do código: a identidade de *o que é uma entrada* estava; a de *em quem ela confia* não. Três rodadas pagaram isso. Vai para a retro.\n- O cache não foi exercitado num consumidor real, só em fixtures (R-012).",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

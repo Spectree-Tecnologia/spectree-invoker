@@ -191,3 +191,12 @@
 - Due: Um projeto consumidor registra uma correção feita fora do executor depois de pass2_complete
 - Closure condition: A correção pedida depois de pass2_complete passa por tasks.mjs repair, com o estado e a evidência do pass 2 invalidados de forma explícita, visto num teste.
 
+## D-022 — Regra de unicidade ou de contador fora da lista concorrente
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: A mudança contraexemplo-concorrente cobra um check concorrente para cada regra declarada em concurrent_invariants. Não prova que o Architect declarou todas, nem que o teste nomeado corre duas escritas em paralelo: a classificação é leitura, e a lente de concorrência do pass 2 segue como rede. Fica fora porque nenhum check determinístico separa uma regra de unicidade pelo texto do Scenario sem falsos positivos.
+- Due: Um pass 2 de projeto consumidor acha uma corrida numa regra de unicidade ou de contador ausente de concurrent_invariants, ou um check concorrente cujo teste roda as escritas em série
+- Closure condition: Um check determinístico ou um passo do pass 1 recusa o caso do incidente, visto rejeitando-o.
+

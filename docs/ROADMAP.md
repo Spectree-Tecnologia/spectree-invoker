@@ -101,6 +101,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 32 | Executor depois do fechamento preparado | Integrada, v1.71.0: as referências das tarefas seguem a pasta arquivada, e `repair` e `verify` aceitam a change em `implemented`, onde chegam os achados do pass 2, [proposta](changes/archive/2026-10-25-executor-pos-fechamento/proposal.md) | D-020, D-021 |
 | 33 | Rodada incremental do pass 2 | Integrada, v1.72.0: `pass2.mjs record` e `scope` registram o que cada rodada atacou e dizem o que a seguinte ataca; evidência e `work.mjs finish` passam a medir duração e uso, [proposta](changes/archive/2026-10-25-pass2-incremental/proposal.md) | — |
 | 34 | Harness do pass 2 | Integrada, v1.73.0: `setup_cache` na prova de mutação copia a instalação de uma entrada fora do checkout, com a baseline rodando sempre; `docs/reliability.md` mostra o banco por template, [proposta](changes/archive/2026-10-25-harness-pass2/proposal.md) | — |
+| 35 | Contraexemplo concorrente no plano de verificação | Integrada, v1.74.0: o plano em desenho declara as regras de unicidade e de contador em `concurrent_invariants`, cada uma provada por um check com contraexemplo concorrente, [proposta](changes/archive/2026-10-25-contraexemplo-concorrente/proposal.md) | D-022 |
 
 ## Itens com aprovação permanente
 
@@ -114,6 +115,8 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-25:** Founder autorizou as tarefas 35 e 36, nessa ordem e depois da série 32 a 34, a partir
+  dos desvios da retro da change passkeys do SYND: contraexemplo concorrente no plano e despacho do pass 2.
 - **2026-10-25:** Founder autorizou as tarefas 32 a 34 em série, a partir do relatório do Invoker do SYND
   sobre o tempo do pass 2: executor depois do fechamento, rodada incremental do pass 2 e harness do plugin.
 - **2026-10-25:** Founder pediu a tarefa 31: a barra do plano em andamento no painel, no lugar de custo,
