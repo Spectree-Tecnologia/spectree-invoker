@@ -108,8 +108,6 @@ export function spinnerMarkup(kind: OrbKind): string {
   )
 }
 
-// A card's progress: finished is a full bar in the orb's colour, running is a
-// bar whose light sweeps across it, failed or stopped is red.
 // The plan's progress: a track cut into one segment per task, filled from
 // Quas through Wex to Exort as tasks close, with sparks drifting through the
 // fill while any task remains.
@@ -138,6 +136,8 @@ export function planBarMarkup(done: number, total: number): string {
   )
 }
 
+// A card's progress: finished is a full bar in the orb's colour, running is a
+// bar whose light sweeps across it, failed or stopped is red.
 export function barMarkup(color: string, state: 'running' | 'done' | 'failed'): string {
   const fill = state === 'failed' ? '#d64545' : color
   const sweep =

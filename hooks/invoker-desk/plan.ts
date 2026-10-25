@@ -15,6 +15,8 @@ export function applyToPlan(plan: Plan, tool: string, input: Field, result: unkn
     return { tasks: [...plan.tasks.filter(one => one.id !== id), task] }
   }
   if (tool === 'TaskUpdate') {
+    // An update the tool refused leaves the task as it was.
+    if ((result as { success?: unknown } | undefined)?.success === false) return plan
     const id = text(input('taskId'))
     const status = text(input('status'))
     if (!id || !plan.tasks.some(one => one.id === id)) return plan
