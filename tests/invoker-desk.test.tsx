@@ -198,3 +198,30 @@ test('a card names the subagent type, its model and its effort', async ($, on) =
     await ui.unmount()
   }
 })
+
+test('a running card heads with the step under way and the three orbs turning', async ($, on) => {
+  engine(on, 'd1')
+  await spawn($, 'd1', 'spectree:full-stack-developer', 'Developer: surface')
+
+  let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /^Invocando…$/ })).toBeDefined()
+  await ui.unmount()
+
+  await $.tool.call({ tool: 'Read', file_path: '/repo/server/src/http/app.ts', agentId: 'd1' } as any)
+  await $.tool.call({ tool: 'Bash', command: 'pnpm typecheck', agentId: 'd1' } as any)
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    ui = await $.ui.mount({ ...PANE, surface })
+    expect(await ui.find({ type: 'Text', text: /^Passo 2 · Running: pnpm typecheck$/ })).toBeDefined()
+    // The step under way heads the card once; the list holds the steps before it.
+    expect(await (ui as any).findAll({ type: 'Text', text: /Running: pnpm typecheck/ })).toHaveLength(1)
+    expect(await ui.find({ type: 'Text', text: /Using Read: \/repo\/server\/src\/http\/app\.ts/ })).toBeDefined()
+    await ui.unmount()
+  }
+
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const spinner = String(((await ui.find({ type: 'Svg', alt: /Em andamento/ } as any)) as any)?.props?.source ?? '')
+  expect(spinner).toContain('animateTransform')
+  for (const mid of ['#38b6ff', '#e040fb', '#ff8a1f']) expect(spinner).toContain(mid)
+  await ui.unmount()
+})

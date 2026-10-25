@@ -95,6 +95,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 26 | Retrato e orbs em vetor no painel | Integrada, v1.65.0: o retrato e os orbs traçados em polígonos, porque o app desktop apaga `<image>` de um `Svg`, e o CI recusa bitmap ali, [proposta](changes/archive/2026-10-25-retrato-vetorial/proposal.md) | — |
 | 27 | Cores dos orbs nos cards e sites nos passos | Integrada, v1.66.0: borda do card na cor do orb, faixas de Em execução (Quas) e Concluídos (Exort), e `Opening <site>` e `Searching: <busca>` nos passos de web, [proposta](changes/archive/2026-10-25-painel-cores-e-sites/proposal.md) | — |
 | 28 | Card contido na borda e com o modelo do subagente | Integrada, v1.67.0: o card corta o que passa da borda, o avatar fica no lugar, e a linha do subagente diz tipo, modelo e esforço, [proposta](changes/archive/2026-10-25-painel-card-contido/proposal.md) | — |
+| 29 | Passo em andamento no topo do card | Integrada, v1.68.0: o card em execução encabeça com o passo em andamento e Quas, Wex e Exort girando, [proposta](changes/archive/2026-10-25-painel-passo-em-andamento/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
@@ -108,6 +109,8 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-25:** Founder pediu a tarefa 29 ao comparar o card com o Helper Desk: o passo em andamento
+  no topo, com um indicador girando no DNA do Invoker.
 - **2026-10-25:** Founder pediu a tarefa 28 ao ver no v1.66.0 um passo longo passar da borda do card
   e empurrar o avatar para fora, e o tipo, o modelo e o esforço do subagente no card, como o Helper Desk.
 - **2026-10-25:** Founder pediu a tarefa 27 ao comparar o painel com o Helper Desk: borda na cor do orb,

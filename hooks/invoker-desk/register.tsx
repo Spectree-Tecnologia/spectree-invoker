@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { AgentRow, AgentStatus, DeskUi } from './state'
-import { barMarkup, invokerMarkup } from './avatar'
+import { barMarkup, invokerMarkup, spinnerMarkup } from './avatar'
 import { formatDuration, formatTokens, formatUsd, modelLabel, plural, stepLabel, tokensOf } from './format'
 import { labelOf, ORB_COLOR, orbAvatar, orbOf, roleOf, ROLES } from './orbs'
 import type { Role } from './orbs'
@@ -227,12 +227,17 @@ export const register: Register = on => {
       const kind = orbOf(row.type)
       const color = ORB_COLOR[kind].text
       const isOpen = view.expanded.includes(row.id)
-      const steps = isOpen ? row.steps : row.steps.slice(-SHOWN_STEPS)
+      // A running card heads with the step under way; the list holds the ones before it.
+      const done = row.status === 'running' ? row.steps.slice(0, -1) : row.steps
+      const steps = isOpen ? done : done.slice(-SHOWN_STEPS)
+      const current = row.steps[row.steps.length - 1]
       const elapsed = (row.endedAt ?? at) - row.startedAt
       const state = row.status === 'running' ? 'running' : row.status === 'completed' ? 'done' : 'failed'
       const headline =
         row.status === 'running'
-          ? `Orquestrando · ${plural(row.stepCount, 'passo', 'passos')}`
+          ? current
+            ? `Passo ${row.stepCount} · ${current}`
+            : 'Invocando…'
           : row.status === 'completed'
             ? `Concluído · ${plural(row.stepCount, 'passo', 'passos')}`
             : row.status === 'killed'
@@ -272,7 +277,20 @@ export const register: Register = on => {
                 </Text>
               </Box>
             </Box>
-            <Text color={headColor}>{headline}</Text>
+            {row.status === 'running' ? (
+              <Box flexDirection="row" gap={1} alignItems="center">
+                <Box flexShrink={0}>
+                  {Svg ? <Svg source={spinnerMarkup(kind)} alt="Em andamento" width={16} height={16} isInteractive /> : <Text color={color}>◐</Text>}
+                </Box>
+                <Box flexShrink={1} minWidth={0}>
+                  <Text color={headColor} weight="semibold" wrap="truncate-end">
+                    {headline}
+                  </Text>
+                </Box>
+              </Box>
+            ) : (
+              <Text color={headColor}>{headline}</Text>
+            )}
             {steps.map(step => (
               <Text dimColor wrap="truncate-end">
                 {`  ${step}`}
