@@ -1613,7 +1613,7 @@
     "**Mutation probes operate on disposable copies only.** Never in the live checkout, with shared dependency links or with production credentials (`mutation-probe.mjs <plan> --apply`); probe commands are trusted code, and the copy is no OS sandbox; an unrecognized diagnostic is inconclusive, never a kill.",
     "Never the step-by-step of how to do it.",
     "**Compact context.** At most 400 words per dispatch, linking task, spec and plan; if that cannot carry a safe mission, split the work or state the exception; handoffs carry result, command, revision, references and blockers.",
-    "**Bounded implementation executor.** After pass 1, implementation tasks go through `tasks.mjs run/repair`, never a direct dispatch around their budget and trail.",
+    "**Bounded implementation executor.** After pass 1, implementation tasks go through `tasks.mjs run/repair`, pass 2 findings included, never a direct dispatch around their budget and trail.",
     "It never cuts worktrees, merges, advances state or grants approval, and uncertain effects need inspection first.",
     "A completed agent envelope is only a report: the executor reruns acceptance and earlier completed tasks on the new candidate.",
     "A plan SHOULD register stable Scenario IDs, read-only acceptance files, paths, dependencies, exact TAP test names and an attempt budget; where acceptance cannot use the executor, say so, keep durable work checkpoints and invent no telemetry.",

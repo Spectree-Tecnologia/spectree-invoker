@@ -228,6 +228,30 @@
       "reevaluation_trigger": "Uma retro de projeto consumidor que registre uma pergunta ao Founder sobre fato já gravado em DOMAIN.md ou DECISIONS.md, ou uma entrada desses arquivos contradita pelo código e não detectada pelo Architect",
       "closure_condition": "Um check determinístico ou um passo da squad-closure-retro aponta a entrada contradita, visto rejeitando o caso do incidente.",
       "opened_by_change": "regras-de-volta-ao-nucleo"
+    },
+    {
+      "schema_version": "1.0.0",
+      "owner": "own_change",
+      "status": "open",
+      "opened_by_change": "executor-pos-fechamento",
+      "stable_id": 20,
+      "title": "Pass 2 por tarefa, durante a execução",
+      "impact": "ceiling",
+      "current_decision": "Proposto pelo Invoker do SYND (relatório de 2026-10-25 sobre o tempo do pass 2): atacar cada tarefa assim que o executor a verifica, em paralelo com as próximas. Fica fora porque contradiz a regra da 1.54.0 (o pass 2 ataca o candidato que vai ser integrado, sobre o fechamento preparado) e encosta no isolamento do QE. A rodada incremental do pass 2 vem antes e é medida primeiro.",
+      "reevaluation_trigger": "A rodada incremental do pass 2 integrada e medida em um projeto consumidor, com o pass 2 ainda dominando o tempo entre implemented e pass2_complete",
+      "closure_condition": "Decisão registrada: o ataque por tarefa adotado sem enfraquecer o pass 2 final sobre o fechamento preparado, ou descartado com a medição que o justifica."
+    },
+    {
+      "schema_version": "1.0.0",
+      "owner": "own_change",
+      "status": "open",
+      "opened_by_change": "executor-pos-fechamento",
+      "stable_id": 21,
+      "title": "Correção depois de pass2_complete fora do executor",
+      "impact": "defect",
+      "current_decision": "A mudança executor-pos-fechamento abre repair e verify só enquanto a change está em implemented, onde chegam os achados do pass 2. Um CI vermelho depois de pass2_complete ainda volta ao Developer por despacho direto, sem o orçamento e a trilha do executor. Fica fora porque nenhum projeto relatou o caso e a volta de estado que ele pede é decisão de protocolo.",
+      "reevaluation_trigger": "Um projeto consumidor registra uma correção feita fora do executor depois de pass2_complete",
+      "closure_condition": "A correção pedida depois de pass2_complete passa por tasks.mjs repair, com o estado e a evidência do pass 2 invalidados de forma explícita, visto num teste."
     }
   ]
 }

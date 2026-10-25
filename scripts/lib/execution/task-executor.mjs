@@ -1,6 +1,6 @@
 // Sequential implementation executor. Task completion never advances lifecycle state.
 import { readFileSync, existsSync, mkdirSync, unlinkSync, readdirSync, lstatSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
@@ -22,6 +22,7 @@ import {
   agentMetrics,
 } from '../change/index.mjs';
 import {
+  changeFolder,
   contractDigest,
   inside,
   refuse,
@@ -114,7 +115,7 @@ function load(root, id) {
   try { doc = json(file(root, id)); } catch (e) { refuse('E_TASK_STORE', `Cannot read task plan: ${e.message}`); }
   if (doc.version !== 1 || doc.change_id !== id || hash(doc.plan) !== doc.plan_digest || !Array.isArray(doc.attempts) ||
       !doc.results || typeof doc.results !== 'object') refuse('E_TASK_STORE', 'Task store identity or plan digest is invalid.');
-  validatePlan(root, doc.plan);
+  validatePlan(root, doc.plan, id);
   if (doc.attempts.some((a) => !doc.plan.tasks.some((t) => t.id === a.task_id) || !['started', 'succeeded', 'failed', 'interrupted', 'unknown', 'reconciled'].includes(a.status))) refuse('E_TASK_STORE', 'Invalid attempt.');
   validateBudgetHistory(doc);
   return doc;
@@ -125,7 +126,8 @@ function pathScope(root, path) {
   inside(root, path.endsWith('/') ? path.slice(0, -1) : path);
   if (/^(?:\.git|\.spectree|\.agents|\.codex|docs\/changes)(?:\/|$)/i.test(path) || /^(?:AGENTS|CLAUDE)\.md$/i.test(path)) refuse('E_TASK_SCOPE', 'Operational state, instructions and specs are not implementation paths.');
 }
-export function validatePlan(root, plan) {
+export function validatePlan(root, plan, id = null) {
+  const at = (paths) => (id ? paths.map((p) => located(root, id, p)) : paths);
   if (!plan || plan.version !== 1 || !Array.isArray(plan.tasks) || !plan.tasks.length || plan.tasks.length > 50) refuse('E_TASK_PLAN', 'Expected version 1 and 1..50 tasks.');
   const ids = new Set();
   for (const t of plan.tasks) {
@@ -138,12 +140,12 @@ export function validatePlan(root, plan) {
     if (!Number.isInteger(t.max_attempts) || t.max_attempts < 1 || t.max_attempts > 10) refuse('E_TASK_PLAN', 'max_attempts must be 1..10.');
     t.scenarios.forEach((s) => bounded(s, 'scenario', 300));
     t.allowed_paths.forEach((p) => pathScope(root, p));
-    references(root, t.refs);
+    references(root, at(t.refs));
     for (const check of t.checks) {
       if (!t.scenarios.includes(check.scenario) || !Array.isArray(check.command) || !check.command.length ||
           !check.command.every((s) => typeof s === 'string' && s.length) || !Array.isArray(check.files) || !check.files.length ||
           !Number.isInteger(check.timeout_seconds) || check.timeout_seconds < 1 || check.timeout_seconds > 300) refuse('E_TASK_CHECK', 'Each check needs a declared scenario, argv, immutable files and timeout 1..300.');
-      bounded(check.test_name, 'test name', 300); references(root, check.files);
+      bounded(check.test_name, 'test name', 300); references(root, at(check.files));
     }
     if (t.scenarios.some((s) => !t.checks.some((c) => c.scenario === s))) refuse('E_TASK_CHECK', 'Every scenario needs an executable named test.');
     const protectedFiles = [...t.refs, ...t.checks.flatMap((c) => c.files)];
@@ -162,24 +164,42 @@ export function validatePlan(root, plan) {
   if (plan.tasks.some((t) => protectedFiles.some((p) => t.allowed_paths.some((a) => covers(a, p))))) refuse('E_TASK_SCOPE', 'A task overlaps another task contract or acceptance file.');
   return plan;
 }
-function pins(root, plan) {
+// Preparing the closure archives docs/changes/<id>/ before pass 2, and pass 2 is where repairs
+// come from. A plan keeps the paths it was declared with; the bytes are read where the change
+// lives now, as the contract digest already does. Archiving moves those files, it does not change them.
+function located(root, id, path) {
+  const open = `docs/changes/${id}/`;
+  if (!path.replaceAll('\\', '/').startsWith(open) || existsSync(join(root, path))) return path;
+  const dir = changeFolder(root, id);
+  return dir ? `${relative(root, dir).replaceAll('\\', '/')}/${path.replaceAll('\\', '/').slice(open.length)}` : path;
+}
+function pins(root, id, plan) {
   const paths = [...new Set(plan.tasks.flatMap((t) => [...t.refs, ...t.checks.flatMap((c) => c.files)]))].sort();
-  return paths.flatMap((p) => references(root, [p]));
+  return paths.map((p) => ({ path: p, sha256: references(root, [located(root, id, p)])[0].sha256 }));
 }
 function guard(root, doc) {
   const change = new Store(root).change(doc.change_id);
-  if (!change || contractDigest(root, change).digest !== doc.contract_digest || hash(pins(root, doc.plan)) !== doc.pins_digest) refuse('E_TASK_STALE', 'Contract or acceptance inputs changed. Re-plan explicitly; never carry evidence forward.');
+  if (!change || contractDigest(root, change).digest !== doc.contract_digest || hash(pins(root, doc.change_id, doc.plan)) !== doc.pins_digest) refuse('E_TASK_STALE', 'Contract or acceptance inputs changed. Re-plan explicitly; never carry evidence forward.');
   if (doc.plan.tasks.some((t) => t.allowed_paths.some((p) => !(change.allowed_paths ?? []).some((a) => covers(a, p))))) refuse('E_TASK_SCOPE', 'Task paths exceed the registered change.');
   return change;
 }
-function implementationGate(root, id) {
+// A repair or a reverification is also accepted while the change sits in `implemented`: pass 2
+// attacks the prepared closure from there, and its findings are repaired through this executor,
+// with the same budget and trail. Nothing here advances the state or touches an approval. Only
+// the recommendations that wait on pass 2 or on its preparation open it: unreadable authority, a
+// pending lifecycle operation, a delivery problem or a missing approval keep it closed.
+const PASS2_WAITS = ['produce_evidence', 'prepare_closure', 'resolve_qa_independence', 'record_transition'];
+function implementationGate(root, id, { afterImplemented = false } = {}) {
   const result = launch([process.execPath, join(packageRoot, 'scripts/state.mjs'), 'plan', id, '--json'], {
     cwd: root, env: { ...process.env, SPECTREE_PROJECT_ROOT: root }, encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024 });
   let plan;
   try { plan = JSON.parse(result.stdout); } catch { refuse('E_TASK_GATE', 'Cannot read lifecycle recommendation.'); }
   // Task eligibility is checked by run/repair/verify themselves. Advisory frontier
   // actions must not deadlock verification, including repair of missing evidence.
-  if (result.status !== 0 || plan.target_state !== 'implemented' || !plan.gate?.ok) refuse('E_TASK_GATE', `${plan.code ?? plan.action}: ${plan.reason}`);
+  const open = plan.target_state === 'implemented' && plan.gate?.ok;
+  const repairWindow = afterImplemented && plan.preconditions?.state === 'implemented' &&
+    plan.target_state === 'pass2_complete' && PASS2_WAITS.includes(plan.action);
+  if (result.status !== 0 || !(open || repairWindow)) refuse('E_TASK_GATE', `${plan.code ?? plan.action}: ${plan.reason}`);
   const current = snapshot(root);
   if (!current.branch || /^(main|master)$/.test(current.branch)) refuse('E_TASK_BRANCH', 'A dedicated implementation branch is required.');
   let remoteDefault = '';
@@ -188,13 +208,13 @@ function implementationGate(root, id) {
   return plan;
 }
 export function initTasks(root, id, plan) {
-  identifier(id); validatePlan(root, plan);
+  identifier(id); validatePlan(root, plan, id);
   return exclusive(root, id, () => {
     if (existsSync(file(root, id))) refuse('E_TASK_EXISTS', 'Plan already exists. Task IDs and budgets cannot be reset by re-importing.');
     implementationGate(root, id);
     const change = new Store(root).change(id);
     const doc = { version: 1, change_id: id, plan, plan_digest: hash(plan), contract_digest: contractDigest(root, change).digest,
-      pins_digest: hash(pins(root, plan)), attempts: [], results: {} };
+      pins_digest: hash(pins(root, id, plan)), attempts: [], results: {} };
     guard(root, doc); save(root, doc); return taskStatus(root, id);
   });
 }
@@ -285,7 +305,8 @@ export function runTask(root, id, taskId, config, repair = null) {
       if (!selected || !doc.attempts.some((a) => a.task_id === taskId) || frontier.pending.length || frontier.work_pending || frontier.process_block ||
           !frontier.tasks.some((t) => t.status === 'stale') || selected.depends_on.some((d) => !doc.results[d])) refuse('E_TASK_NOT_READY', 'Repair requires a previously attempted task, reconciled work and stale evidence; it cannot bypass missing dependencies.');
     } else if (!frontier.ready.includes(taskId)) refuse('E_TASK_NOT_READY', 'Task has unmet dependencies, stale evidence, pending work or exhausted attempts.');
-    const gate = implementationGate(root, id); const task = doc.plan.tasks.find((t) => t.id === taskId);
+    const gate = implementationGate(root, id, { afterImplemented: !!repair }); const declared = doc.plan.tasks.find((t) => t.id === taskId);
+    const task = { ...declared, refs: declared.refs.map((p) => located(root, id, p)) };
     const previous = doc.attempts.filter((a) => a.task_id === taskId); const operation = `task-${randomUUID()}`;
     if (previous.length >= effectiveBudget(doc, taskId)) refuse('E_ATTEMPTS_EXCEEDED', 'Every recorded attempt consumes budget, including interrupted dispatch persistence.');
     const budgetRevision = doc.budget_revisions?.filter(r => r.plan.task_id === taskId).at(-1);
@@ -363,7 +384,7 @@ export function runTask(root, id, taskId, config, repair = null) {
 }
 export function verifyTasks(root, id) {
   return exclusive(root, id, () => {
-    const doc = load(root, id); guard(root, doc); implementationGate(root, id);
+    const doc = load(root, id); guard(root, doc); implementationGate(root, id, { afterImplemented: true });
     if (doc.attempts.some((a) => !['succeeded', 'reconciled'].includes(a.status)) || processBlock(root, id) || pendingWork(root, id)) refuse('E_TASK_PENDING', 'Reconcile unfinished work and inspect managed processes first.');
     const selected = doc.plan.tasks.filter((t) => doc.results[t.id]);
     if (!selected.length) refuse('E_TASK_CHECK', 'No completed task to reverify.');

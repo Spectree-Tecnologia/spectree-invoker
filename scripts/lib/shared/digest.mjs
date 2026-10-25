@@ -131,8 +131,8 @@ export function worktreeModified(status, prefix) {
   return out;
 }
 
-/** Where the change folder is now: open, or already moved into the archive. */
-function changeFolder(root, changeId) {
+/** Where a change's folder lives now: open under `docs/changes/`, or archived. Null when neither. */
+export function changeFolder(root, changeId) {
   const open = join(root, 'docs', 'changes', changeId);
   if (existsSync(open) && statSync(open).isDirectory()) return open;
   const archive = join(root, 'docs', 'changes', 'archive');
