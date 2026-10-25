@@ -33,11 +33,13 @@ lugar; cada correção entra por uma mudança própria.
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 | R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |
-| R-008 | `information-access · ambiente · node-abaixo-do-piso` | 6 | Aberto: ambiente das sessões, com o Founder |
-| R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única; frases explicativas seguem sem inventário |
+| R-008 | `information-access · ambiente · node-abaixo-do-piso` | 6 | Pago pelo ambiente: sessão de 2026-10-25 em Node 22.23.4, suíte verde |
+| R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única; frases normativas fora do inventário seguem no [D-017](../DEFERRED.md) |
+| R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
 
 ## Retros
 
+- [2026-10-25 — `baseline-rodada-ci` (#91)](2026-10-25-baseline-rodada-ci.md)
 - [2026-10-24 — `emenda-caminhos` (#90)](2026-10-24-emenda-caminhos.md)
 - [2026-10-24 — `tap-vitest-aninhado` (#89)](2026-10-24-tap-vitest-aninhado.md)
 - [2026-10-24 — `mutacoes-em-lote` (#88)](2026-10-24-mutacoes-em-lote.md)

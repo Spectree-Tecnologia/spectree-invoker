@@ -16,3 +16,22 @@ Contribuições são bem-vindas. Todo código entra por pull request e só é in
 - Uma mudança em `docs/changes/` é arquivada, e a linha dela no `docs/ROADMAP.md` é marcada, no mesmo PR que a entrega. A [retro](docs/retros/README.md) dela vem no PR seguinte. `tests/repo-changes.test.mjs` recusa as duas faltas.
 - Não inclua segredos, tokens ou dados de clientes. O push protection do GitHub bloqueia segredos conhecidos.
 - Workflows de PRs de contribuidores externos só rodam após aprovação do mantenedor.
+
+## Revisão independente
+
+Quem escreve a mudança não é quem a revisa. Antes do pedido de merge, o head que vai ser integrado
+passa por uma revisão em contexto limpo, guiada pelo [`REVIEW.md`](REVIEW.md).
+
+- **Quem revisa recebe só o diff, a proposta arquivada e o `REVIEW.md`**, nunca o raciocínio do
+  autor nem a conversa da thread: um subagente novo, não um fork da sessão que escreveu. O Code
+  Review do GitHub, quando ligado neste repositório, cumpre o mesmo papel e lê o `REVIEW.md` da
+  `main`. O `/code-review` local não serve aqui: ele roda como fork e não lê o `REVIEW.md`.
+- **A revisão vale para um head.** Um push depois dela pede outra.
+- **Achado Importante é corrigido no PR ou respondido com o porquê**; Nit é opcional. Um achado só
+  vira bloqueio com `arquivo:linha` ou trecho do diff que o sustente.
+- **Teto de três rodadas.** Se a terceira ainda trouxer achado novo, pare e volte à proposta.
+- **O que a revisão ensina volta para o `REVIEW.md` pela retro:** um falso positivo vira linha em
+  "Não reporte"; um defeito que escapou vira linha em "Sempre confira", ou um check, quando um check
+  puder pegá-lo.
+- A seção **Revisão independente** do PR registra quem revisou, em qual head, quantas rodadas e o
+  destino de cada achado Importante. `tests/repo-review.test.mjs` recusa o template sem ela.
