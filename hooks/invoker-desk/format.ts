@@ -28,12 +28,13 @@ function clip(text: string, max: number): string {
   return line.length > max ? `${line.slice(0, max - 1)}…` : line
 }
 
-// A model id as people say it, `claude-opus-5-5[1m]` → `Opus 5.5`; an id of
-// another shape as it is.
+// A model id as people say it, `claude-opus-5-5[1m]` and `claude-3-5-sonnet-20241022`
+// → `Opus 5.5` and `Sonnet 3.5`; an id of another shape as it is.
 export function modelLabel(id: string): string {
-  const found = id.match(/(opus|sonnet|haiku|fable)-(\d+)(?:-(\d{1,2}))?(?!\d)/i)
-  if (!found) return id
-  const [, family, major, minor] = found
+  const after = id.match(/(opus|sonnet|haiku|fable)-(\d{1,2})(?:-(\d{1,2}))?(?!\d)/i)
+  const before = id.match(/(?<!\d)(\d{1,2})(?:-(\d{1,2}))?-(opus|sonnet|haiku|fable)/i)
+  const [family, major, minor] = after ? [after[1], after[2], after[3]] : before ? [before[3], before[1], before[2]] : []
+  if (!family) return id
   return `${family[0].toUpperCase()}${family.slice(1).toLowerCase()} ${minor ? `${major}.${minor}` : major}`
 }
 

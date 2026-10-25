@@ -155,7 +155,7 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // A subagent's effort is known only from its requests: the first one names it.
+  // A subagent's effort is known only from its requests: the card shows the last one's.
   on('turn.step', async function* ($, e, next) {
     if (e.agentId && e.effort !== undefined) await recordEffort($, e.agentId, String(e.effort)).catch(error => logFailure($, error))
     return yield* next(e)

@@ -22,7 +22,7 @@ modelo em que ele roda e o esforço.
 2. **O passo é um texto só**, cortado com reticências no fim; na linha do título e na do tipo, o texto da
    esquerda encolhe e o da direita (status, tokens e tempo) não.
 3. **O card identifica o subagente**: `spectree:solutions-architect · Opus 5.5 · medium`. O modelo vem
-   do início do subagente; o esforço, do primeiro pedido que ele faz ao modelo, e falta enquanto não houver um.
+   do início do subagente; o esforço, do último pedido que ele fez ao modelo, e falta enquanto não houver um.
 4. **Teste no kit**, visto falhando no código do #99.
 5. A retro de `painel-cores-e-sites` (#99), devida por esta.
 
