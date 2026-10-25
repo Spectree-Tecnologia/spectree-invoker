@@ -34,6 +34,18 @@ histórico de transições, que mistura trabalho com espera.
    `docs/workflow.md` mostra a sequência.
 7. A retro de `executor-pos-fechamento` (#104), devida por esta.
 
+## Identidade
+
+As três rodadas da revisão independente acharam, cada uma, um caso em que o registro dizia mais do
+que a rodada fez. Esta seção fixa o que cada coisa é, e a mudança volta a ser revisada contra ela:
+
+- **Um arquivo coberto** é o seu caminho, os seus bytes e o bit de execução, como estavam quando a
+  rodada terminou completa. Mudou qualquer um, ou a rodada foi interrompida, ele volta para `attack`.
+- **Uma mutação** é o seu id sobre o seu alvo, porque o id só é único dentro de um plano. Vale o
+  último resultado dela; carregada só quando morta e com o alvo igual.
+- **Uma rodada** é uma operação `pass2` de `work.mjs` terminada com sucesso, registrada uma vez, antes
+  de qualquer correção. O relatório e a saída do probe ficam sob `.spectree/`.
+
 ## Risco aceito
 
 Uma mutação morta cujo alvo não mudou é carregada, não rodada de novo. Se a correção mudou outro

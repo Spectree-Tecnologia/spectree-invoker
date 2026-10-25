@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, writeFiles, cleanup, change } from './helpers.mjs';
 import { Store } from '../scripts/lib/change/store.mjs';
@@ -93,6 +93,26 @@ test('a round is bound to the bytes it finished on, and recorded once', () => {
     startWork(r.root, 'c1', 'implement-1', { phase: 'implement', task: 'B', next: 'Verify.' });
     finishWork(r.root, 'c1', 'implement-1', { result: { status: 'completed' }, next: 'Verify.' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'implement-1' }), { code: 'E_PASS2_OPERATION' });
+  } finally { cleanup(r.root); }
+});
+
+test('a mutant is its id on its target: a reused id never hides a survivor on another file', () => {
+  const r = repo();
+  try {
+    round(r, 'pass2-r1', { attacked: ['src/a.cjs'], mutation_report: probe(r, [{ id: 'm1', target: 'src/a.cjs', test_name: 'A', result: 'FAIL' }]) });
+    round(r, 'pass2-r2', { attacked: ['src/b.cjs'], mutation_report: probe(r, [{ id: 'm1', target: 'src/b.cjs', test_name: 'B', result: 'PASS' }]) });
+    const { carried, rerun } = pass2Scope(r.root, 'c1').mutations;
+    assert.deepEqual(carried.map((m) => m.target), ['src/b.cjs']);
+    assert.deepEqual(rerun.map((m) => m.target), ['src/a.cjs']);
+  } finally { cleanup(r.root); }
+});
+
+test('a file whose only change is its execute bit is attacked again', { skip: process.platform === 'win32' }, () => {
+  const r = repo();
+  try {
+    round(r, 'pass2-r1', { attacked: ['src/a.cjs', 'src/b.cjs', 'src/c.cjs'] });
+    chmodSync(join(r.root, 'src/a.cjs'), 0o755);
+    assert.deepEqual(pass2Scope(r.root, 'c1').attack.map((a) => a.path), ['src/a.cjs']);
   } finally { cleanup(r.root); }
 });
 

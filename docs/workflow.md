@@ -205,8 +205,8 @@ node scripts/pass2.mjs scope <change>   # files to attack, mutants carried and t
 ```
 
 The record is advisory: `pass2.attack` and `mutation.killed` are still observed on the whole current
-candidate. The probe output is saved under `.spectree/`, because a report inside the tree would move
-the content it measured. Tokens come only from the agent envelope; without them they stay unknown.
+candidate. The round report and the probe output are saved under `.spectree/`, because a file inside
+the tree would move the content it describes. Tokens come only from the agent envelope; without them they stay unknown.
 
 ### The integration approval
 

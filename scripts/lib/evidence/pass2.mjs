@@ -2,14 +2,20 @@
 // attacked, with the round's own duration. A record is an observation for planning the next round
 // on the same change. It never stands for `pass2.attack` or `mutation.killed`: those stay observed
 // on the whole current candidate. The next round reads `scope` and attacks only what moved since.
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Store, identifier, references, snapshot, workRecords } from '../change/index.mjs';
 import { flags, git, inside, publishOnce, refuse } from '../shared/index.mjs';
 
 const OPERATIONAL = /^(?:\.spectree|docs\/changes)(?:\/|$)/;
 const folder = (root, id) => inside(root, `.spectree/pass2/${identifier(id)}`);
-const shaOf = (root, path) => { try { return references(root, [path])[0].sha256; } catch { return null; } };
+// What a file is, for coverage: its bytes and whether it executes. A chmod alone changes what it does.
+const fingerprintOf = (root, path) => {
+  try {
+    const { sha256 } = references(root, [path])[0];
+    return lstatSync(inside(root, path)).mode & 0o111 ? `${sha256}+x` : sha256;
+  } catch { return null; }
+};
 
 function change(root, id) {
   const found = new Store(root).change(identifier(id));
@@ -52,9 +58,9 @@ export function recordPass2Round(root, id, report, { operation }) {
   const current = snapshot(root);
   if (current.content_digest !== op.finished.snapshot.content_digest) refuse('E_PASS2_STALE', 'The content moved since the round finished; record a round before anything changes it.');
   const attacked = [...new Set(report.attacked)].sort().map((p) => {
-    const sha256 = shaOf(root, p);
-    if (!sha256) refuse('E_PASS2_REPORT', `Attacked file is not a regular candidate file: ${p}`);
-    return { path: p, sha256 };
+    const fingerprint = fingerprintOf(root, p);
+    if (!fingerprint) refuse('E_PASS2_REPORT', `Attacked file is not a regular candidate file: ${p}`);
+    return { path: p, fingerprint };
   });
   let mutations = [];
   if (report.mutation_report !== undefined) {
@@ -63,7 +69,7 @@ export function recordPass2Round(root, id, report, { operation }) {
     if (probe?.version !== 1 || probe.dry_run || !Array.isArray(probe.mutations)) refuse('E_PASS2_REPORT', 'The mutation report must be a batch run of mutation-probe.mjs --apply.');
     if (probe.source_digest !== current.content_digest) refuse('E_PASS2_PROBE_STALE', 'The mutation report was produced on other content; run the probe on this candidate.');
     mutations = probe.mutations.map((m) => ({ id: m.id, target: m.target, test_name: m.test_name, result: m.result,
-      target_sha256: shaOf(root, m.target) }));
+      target_fingerprint: fingerprintOf(root, m.target) }));
   }
   const doc = { version: 1, change_id: id, round: rounds.length + 1, at: new Date().toISOString(),
     advisory: true, authorizes_execution: false, candidate: current, attacked, mutations,
@@ -86,17 +92,18 @@ export function pass2Scope(root, id) {
   const files = [...new Set([...listed(['diff', '-z', '--no-renames', '--relative', '--name-only', base]), ...listed(['ls-files', '-z', '--others', '--exclude-standard'])])]
     .filter((p) => !OPERATIONAL.test(p)).sort();
   const rounds = pass2Rounds(root, id);
-  const attackedAt = new Map(rounds.flatMap((r) => r.attacked.map((a) => [`${a.path}\0${a.sha256}`, r.round])));
+  const attackedAt = new Map(rounds.flatMap((r) => r.attacked.map((a) => [`${a.path}\0${a.fingerprint}`, r.round])));
   const attack = []; const covered = [];
   for (const path of files) {
-    const sha = shaOf(root, path);
+    const sha = fingerprintOf(root, path);
     const round = sha && attackedAt.get(`${path}\0${sha}`);
     if (round) covered.push({ path, round }); else attack.push({ path, reason: sha ? 'changed since the last round that attacked it, or never attacked' : 'deleted' });
   }
-  // The latest result of each mutant decides: a later survivor is never hidden by an older kill.
-  const latest = new Map(rounds.flatMap((r) => r.mutations.map((m) => [m.id, { ...m, round: r.round }])));
+  // The latest result of each mutant decides: a later survivor is never hidden by an older kill. A
+  // mutant is its id on its target: ids are unique only within one plan, so a later round may reuse one.
+  const latest = new Map(rounds.flatMap((r) => r.mutations.map((m) => [`${m.id}\0${m.target}`, { ...m, round: r.round }])));
   const carried = []; const rerun = [];
-  for (const m of latest.values()) (m.result === 'PASS' && m.target_sha256 && shaOf(root, m.target) === m.target_sha256 ? carried : rerun).push({ id: m.id, target: m.target, round: m.round });
+  for (const m of latest.values()) (m.result === 'PASS' && m.target_fingerprint && fingerprintOf(root, m.target) === m.target_fingerprint ? carried : rerun).push({ id: m.id, target: m.target, round: m.round });
   return { version: 1, advisory: true, authorizes_execution: false, change_id: id, candidate: snapshot(root),
     rounds: rounds.map((r) => ({ round: r.round, elapsed_ms: r.operation.elapsed_ms, usage: r.operation.usage, attacked: r.attacked.length, mutations: r.mutations.length })),
     attack, covered, mutations: { carried, rerun },
