@@ -89,8 +89,6 @@ export function invokerMarkup(isOrchestrating: boolean, active: readonly Role[])
   )
 }
 
-// A card's progress: finished is a full bar in the orb's colour, running is a
-// bar whose light sweeps across it, failed or stopped is red.
 // The running step's spinner: Quas, Wex and Exort turning like a clock hand,
 // the subagent's own orb the largest of the three.
 export function spinnerMarkup(kind: OrbKind): string {
@@ -110,6 +108,8 @@ export function spinnerMarkup(kind: OrbKind): string {
   )
 }
 
+// A card's progress: finished is a full bar in the orb's colour, running is a
+// bar whose light sweeps across it, failed or stopped is red.
 export function barMarkup(color: string, state: 'running' | 'done' | 'failed'): string {
   const fill = state === 'failed' ? '#d64545' : color
   const sweep =

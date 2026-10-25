@@ -297,11 +297,11 @@ export const register: Register = on => {
               </Text>
             ))}
             {Svg ? (
-              <Svg source={barMarkup(color, state)} alt={headline} height={6} isInteractive />
+              <Svg source={barMarkup(color, state)} alt={row.status === 'running' ? 'Progresso' : headline} height={6} isInteractive />
             ) : (
               <Text color={state === 'failed' ? 'error' : color}>{state === 'running' ? '━━━━━━━━──────' : '━━━━━━━━━━━━━━'}</Text>
             )}
-            {row.stepCount > SHOWN_STEPS && (
+            {done.length > SHOWN_STEPS && (
               <Button key={`steps-${row.id}`} plain dimColor onPress={toggleSteps(row.id)}>
                 {isOpen ? '▾ Menos passos' : `▸ Todos os ${row.stepCount} passos`}
               </Button>
