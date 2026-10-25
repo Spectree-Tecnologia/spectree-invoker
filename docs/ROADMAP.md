@@ -1,6 +1,6 @@
 # Roadmap do Spectree Invoker
 
-Atualizado em 2026-10-24. Este documento registra a ordem aprovada e seus motivos.
+Atualizado em 2026-10-25. Este documento registra a ordem aprovada e seus motivos.
 O escopo e os critérios de cada entrega pertencem à respectiva proposta de mudança;
 esta sequência não representa funcionalidades já disponíveis nem compromissos de data.
 
@@ -87,9 +87,22 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 19 | Emenda de caminhos | Integrada, PR #90 / v1.57.0: `state.mjs amend-paths` amplia a posse com motivo na trilha e recusa módulo não nomeado, [proposta](changes/archive/2026-10-24-emenda-caminhos/proposal.md) | — |
 | 20 | Baseline a partir de uma rodada de CI | Integrada, v1.58.0: `verification.mjs baseline <change> ci --from-run <id>` lê a rodada existente como `observed_ci_run`, [proposta](changes/archive/2026-10-24-baseline-rodada-ci/proposal.md) | — |
 | 21 | Revisão independente nos PRs deste repositório | Integrada, v1.59.0: `REVIEW.md` na raiz, revisor em contexto limpo por head no `CONTRIBUTING.md` e no template de PR, provado sobre o diff do #76, [proposta](changes/archive/2026-10-25-revisao-independente/proposal.md) | D-016, D-017 (registrados) |
+| 11d | Retro pós-merge: tendências e leitura do Architect | Integrada, v1.60.0: `retro.mjs trends` aponta achados recorrentes e quietos, o Solutions Architect os lê antes da proposta, e o item `retro-melhorias` abaixo, [proposta](changes/archive/2026-10-25-retro-tendencias/proposal.md) | — |
+
+## Itens com aprovação permanente
+
+Uma mudança que cabe inteira num item abaixo tem o escopo aprovado pela decisão já tomada (gate 1 por
+política, Seção 8 do protocolo). O merge continua pedindo a autorização do Founder no PR.
+
+- **`retro-melhorias`** · policy: scope · aprovado pelo Founder em 2026-10-25, no GO da tarefa 11d.
+  Cabe aqui uma mudança deltaless que paga um achado que `retro.mjs trends` lista como recorrente, ou
+  fecha um que lista como quieto, sem criar módulo, sem afrouxar regra ou check e sem passo
+  irreversível. Qualquer dúvida sobre esses três pontos, e é gate 1 comum.
 
 ## Histórico de decisões
 
+- **2026-10-25:** Founder autorizou a tarefa 11d: `retro.mjs trends`, a leitura das tendências pelo
+  Solutions Architect antes da proposta e o item permanente `retro-melhorias` com `policy: scope`.
 - **2026-10-25:** Founder autorizou a tarefa 21, a lacuna 1 do discovery do `REVIEW.md`: todo PR
   deste repositório passa por um revisor em contexto limpo. A lacuna 2, integração por política de
   risco, fica no D-016 até a decisão dele.

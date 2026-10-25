@@ -4,4 +4,4 @@
 export { evaluationCases, runEvaluations } from './agent-evals.mjs';
 export { engineeringReport } from './engineering-reports.mjs';
 export { runFlowEvaluation } from './flow-evals.mjs';
-export { frictionSection, retroCommand, retroDocument, retroSignals, SIGNATURES } from './retro.mjs';
+export { frictionSection, retroCommand, retroDocument, retroSignals, retroTrends, SIGNATURES } from './retro.mjs';

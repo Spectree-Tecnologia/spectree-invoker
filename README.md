@@ -184,7 +184,7 @@ Uma fonte, duas renderizações: `protocol/` é a única fonte autoritativa do s
 | `work.mjs`, `verification.mjs`, `mutation-probe.mjs` | [Retomada e verificação](docs/reliability.md): checkpoints, plano de verificação, mutação em cópia descartável |
 | `prepare-closure.mjs`, `post-merge.mjs` | Preparar o fechamento na branch e [confirmar o merge com recibo](docs/workflow.md) |
 | `delivery.mjs` | [Confiabilidade de entrega](docs/delivery-reliability.md): a suíte inteira contra os cenários e o inventário de testes |
-| `retro.mjs` | Os sinais medidos de um PR integrado para a [retro do fechamento](docs/retros/README.md): CI, commits, Atrito e as assinaturas de achados conhecidas |
+| `retro.mjs` | Os sinais medidos de um PR integrado para a [retro do fechamento](docs/retros/README.md): CI, commits, Atrito e as assinaturas de achados conhecidas; `trends` diz quais achados voltaram e quais ficaram quietos |
 | `reports.mjs`, `evals.mjs` | [Diagnóstico, revisão e avaliações](docs/evolution.md) com agentes reais |
 | `adopt.mjs`, `reconcile.mjs` | [Adoção operacional](docs/operational-adoption.md) e [reconciliação guiada](docs/guided-reconciliation.md) de projetos existentes |
 | `capabilities.mjs` | O que o Claude Code ou o Codex de fato oferecem ao squad, e com que grau de certeza |

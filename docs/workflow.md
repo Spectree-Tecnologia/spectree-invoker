@@ -461,6 +461,7 @@ visible instead of trusting someone to remember it.
 
 ```bash
 node scripts/retro.mjs collect <pr> --apply                     # measured signals -> .spectree/retros/
+node scripts/retro.mjs trends                                   # which findings came back, which went quiet
 # write docs/retros/<date>-<change>.md: "Change: `<change>`" and "## What was read"
 node scripts/state.mjs run <change> retro.recorded --role invoker -- \
   node scripts/retro.mjs check <change> docs/retros/<date>-<change>.md
@@ -472,6 +473,13 @@ change with `E_RETRO_PENDING`. The check observes a file that names its change a
 read; the judgement inside it stays the Invoker's. Only a person skips it, with
 `--retro-waived "<reason>"` on the change that opens, and that change keeps the waiver and the
 names of the changes it covers.
+
+`retro.mjs trends [--dir docs/retros]` reads the retros already written and groups their findings
+by signature, oldest retro first. `recurring` lists signatures seen in two or more retros that no
+index marks paid; `quiet` lists open ones no retro has named in the last three. When the retros
+directory has a `README.md` with a `| R-NNN | signature | … | situation |` table, the status comes
+from there; without one it stays unknown, and unknown is never paid. The Solutions Architect reads
+it before a proposal.
 
 ## CI proportional to what changed
 

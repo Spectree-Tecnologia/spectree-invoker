@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 92,
+    "title": "Revisão: REVIEW.md e revisor em contexto limpo nos PRs deste repo (tarefa 21) — v1.59.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/92",
+    "opened": "2026-10-25T02:35:27Z",
+    "merged": "2026-10-25T02:40:48Z"
+  },
+  "signals": {
+    "open_minutes": 5,
+    "commits": 2,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.59.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-revisao-independente/proposal.md"
+    ]
+  },
+  "friction": "- A prova sobre o #76 achou que seis frases normativas continuam fora do núcleo na `main` (D-017); ficou fora do escopo.\n- O Code Review do GitHub exige plano Team ou Enterprise e um Owner; não foi ligado.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
