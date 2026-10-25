@@ -29,10 +29,10 @@ async function spawn($: any, agentId: string, subagentType: string, description:
   })
 }
 
-function engine(on: any, agentId: string) {
+function engine(on: any, agentId: string, model = 'model') {
   mock.clock(on, { now: 1_000_000 })
   // Each spawn answers the agent id its tool_use_id names (`tu-<id>`), the first one by default.
-  on('agent.spawn', (_: unknown, e: any) => ({ model: 'model', agentId: String(e.tool_use_id ?? '').replace(/^tu-/, '') || agentId }))
+  on('agent.spawn', (_: unknown, e: any) => ({ model, agentId: String(e.tool_use_id ?? '').replace(/^tu-/, '') || agentId }))
   on('tool.call', () => ({ result: {} }))
   on('turn.complete', (_: unknown, e: any) => ({ text: e.answer }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
@@ -59,7 +59,7 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
     const ui = await $.ui.mount({ ...PANE, surface })
     expect((await ui.find({ type: 'Text', text: /subagente nesta conversa/ }))?.text).toBe('1 subagente nesta conversa')
     expect(await ui.find({ type: 'Text', text: /Concluído · 2 passos/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Quality Engineer/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^spectree:quality-engineer · model$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /6\.2M tokens/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Running: npm test/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Using Read: \/repo\/docs\/specs/ })).toBeDefined()
@@ -159,6 +159,42 @@ test('a card is bordered in its orb colour, the sections in Quas and Exort, and 
     expect(boxes.some(one => one.backgroundColor === '#ff8a1f')).toBe(true)
     expect(await ui.find({ type: 'Text', text: /Opening example\.com$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /secret/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+test('a long step is cut inside its card and the avatar keeps its place', async ($, on) => {
+  engine(on, 'a1')
+  await spawn($, 'a1', 'spectree:solutions-architect', 'Architect: exploration round 3')
+  const path = `C:\\Users\\someone\\AppData\\Local\\Temp\\claude\\${'very-long-folder\\'.repeat(20)}DOMAIN.md`
+  await $.tool.call({ tool: 'Grep', path, agentId: 'a1' } as any)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const boxes = ((await (ui as any).findAll({ type: 'Box' })) as any[]).map(one => one?.props ?? {})
+  // The card clips what does not fit, the avatar never shrinks, the text column may.
+  expect(boxes.some(one => one.borderColor === '#38b6ff' && one.overflow === 'hidden')).toBe(true)
+  const avatar = ((await (ui as any).findAll({ type: 'Box' })) as any[]).find(one =>
+    (one?.children ?? []).some((child: any) => child?.type === 'Svg' && child?.props?.alt === 'Solutions Architect'),
+  )
+  expect(avatar?.props?.flexShrink).toBe(0)
+  expect(boxes.some(one => one.minWidth === 0 && one.overflow === 'hidden' && one.flexGrow === 1)).toBe(true)
+  const step = await ui.find({ type: 'Text', text: /Using Grep: / })
+  expect((step as any)?.props?.wrap).toBe('truncate-end')
+  await ui.unmount()
+})
+
+test('a card names the subagent type, its model and its effort', async ($, on) => {
+  engine(on, 'a1', 'claude-opus-5-5[1m]')
+  // A request of the subagent's loop, streamed: the engine below answers it with nothing.
+  on('turn.step', async function* (_: unknown, e: any) {
+    return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null } as any
+  })
+  await spawn($, 'a1', 'spectree:solutions-architect', 'Architect: exploration round 3')
+  for await (const _ of ($ as any).turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', effort: 'medium', messageCount: 1, agentId: 'a1' })) void _
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect(await ui.find({ type: 'Text', text: /^spectree:solutions-architect · Opus 5\.5 · medium$/ })).toBeDefined()
     await ui.unmount()
   }
 })
