@@ -85,16 +85,50 @@ export function envelopeUsage(result) {
   const usage = { duration_ms: pick('totalDurationMs'), total_tokens: pick('totalTokens'), tool_uses: pick('totalToolUseCount') };
   return Object.values(usage).some((v) => v !== null) ? usage : null;
 }
-export function startWork(root, changeId, operationId, { phase, task, next, refs = [] }) {
+// What a pass 2 dispatch withholds from the Quality Engineer, so the attack is not the builder's own.
+const WITHHELD = ['builder_report', 'builder_reasoning', 'pull_request'];
+const texts = (v, min) => Array.isArray(v) && v.length >= min && v.length <= 500 && v.every((x) => typeof x === 'string' && x.trim() && x.length <= 300);
+/**
+ * The brief of a pass 2 dispatch, written before it is sent: who the attack is independent of, what
+ * it is not handed, and the final scope. Its bytes are pinned at start, so the scope cannot be cut
+ * while the round runs; a new scope is a new operation.
+ */
+export function pass2Brief(root, path) {
+  if (typeof path !== 'string' || !path) refuse('E_PASS2_BRIEF', 'A pass2 operation starts with --brief <file.json>: independence and final scope, written before the dispatch.');
+  let ref;
+  try { [ref] = references(root, [path]); } catch { refuse('E_PASS2_BRIEF', `The brief ${path} is not a regular file in the project.`); }
+  let doc;
+  try { doc = JSON.parse(readFileSync(inside(root, path), 'utf8')); } catch { refuse('E_PASS2_BRIEF', `${path} is not JSON.`); }
+  const problems = [];
+  if (!doc || typeof doc !== 'object' || doc.version !== 1) problems.push('version 1');
+  else {
+    if (!Array.isArray(doc.independent_of) || !doc.independent_of.includes('full_stack_developer')) problems.push('independent_of naming full_stack_developer');
+    if (doc.fork !== false) problems.push('fork: false, a fresh context and never a fork');
+    if (!Array.isArray(doc.withheld) || !WITHHELD.every((w) => doc.withheld.includes(w))) problems.push(`withheld naming ${WITHHELD.join(', ')}`);
+    if (!doc.scope || !texts(doc.scope.attack, 1) || !texts(doc.scope.excluded, 0)) problems.push('scope.attack (1..500) and scope.excluded (an explicit list, empty when nothing is)');
+  }
+  if (problems.length) refuse('E_PASS2_BRIEF', `${path} needs ${problems.join('; ')}.`);
+  return { ...ref, independent_of: doc.independent_of, attack: doc.scope.attack.length, excluded: doc.scope.excluded.length };
+}
+export function startWork(root, changeId, operationId, { phase, task, next, refs = [], brief }) {
   const dir = eventDir(root, changeId, operationId);
+  const pinned = phase === 'pass2' ? { brief: pass2Brief(root, brief) } : {};
   return writeEvent(dir, 'started', { change_id: changeId, operation_id: operationId,
     phase: bounded(phase, 'phase', 80), task: bounded(task, 'task', 300), next: bounded(next, 'next'),
-    refs: references(root, refs), snapshot: snapshot(root) });
+    refs: references(root, refs), ...pinned, snapshot: snapshot(root) });
 }
 export function finishWork(root, changeId, operationId, { result, next, refs = [] }) {
   const dir = eventDir(root, changeId, operationId);
-  if (!readEvent(dir, 'started')) refuse('E_WORK_MISSING', 'Record the operation before performing it.');
+  const started = readEvent(dir, 'started');
+  if (!started) refuse('E_WORK_MISSING', 'Record the operation before performing it.');
   if (readEvent(dir, 'reconciled')) refuse('E_WORK_CONFLICT', 'Operation already reconciled; start a new operation.');
+  // A round whose scope moved after it started attacked a scope nobody froze: reconcile it and
+  // dispatch a new operation with the new brief. Operations started before briefs existed carry none.
+  if (started.brief) {
+    let now = null;
+    try { now = references(root, [started.brief.path])[0].sha256; } catch { /* moved or removed */ }
+    if (now !== started.brief.sha256) refuse('E_PASS2_SCOPE_MOVED', `The brief ${started.brief.path} changed after the round started; reconcile this operation and start a new one with the new scope.`);
+  }
   return writeEvent(dir, 'finished', { change_id: changeId, operation_id: operationId,
     status: outcome(result), usage: envelopeUsage(result), next: bounded(next, 'next'), refs: references(root, refs), snapshot: snapshot(root) });
 }

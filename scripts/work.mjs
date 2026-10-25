@@ -8,7 +8,7 @@ const root = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
 const options = {};
 try {
   for (let i = 0; i < rest.length; i += 2) {
-    if (!['--phase', '--task', '--next', '--refs', '--result', '--note'].includes(rest[i]) || !rest[i + 1]) throw Error('Unknown or incomplete option.');
+    if (!['--phase', '--task', '--next', '--refs', '--result', '--note', '--brief'].includes(rest[i]) || !rest[i + 1]) throw Error('Unknown or incomplete option.');
     options[rest[i].slice(2)] = rest[i + 1];
   }
   if (options.refs) options.refs = options.refs.split(',');
@@ -19,6 +19,6 @@ try {
   else if (command === 'finish' && change && operation && options.result) {
     value = finishWork(root, change, operation, { ...options, result: JSON.parse(readFileSync(options.result, 'utf8')) });
   } else if (command === 'reconcile' && change && operation) value = reconcileWork(root, change, operation, options);
-  else throw Error('usage: work.mjs doctor | resume <change> | start <change> <operation> --phase <phase> --task <task-ref> --next <action> [--refs a,b] | finish <change> <operation> --result <json> --next <action> [--refs a,b] | reconcile <change> <operation> --note <observed-effects> --next <action> --refs a,b');
+  else throw Error('usage: work.mjs doctor | resume <change> | start <change> <operation> --phase <phase> --task <task-ref> --next <action> [--refs a,b] [--brief <file.json>, required for --phase pass2] | finish <change> <operation> --result <json> --next <action> [--refs a,b] | reconcile <change> <operation> --note <observed-effects> --next <action> --refs a,b');
   console.log(JSON.stringify(value, null, 2));
 } catch (e) { console.error(`${e.code ?? 'E_WORK'}: ${e.message}`); process.exitCode = 1; }

@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 105,
+    "title": "Contraexemplo concorrente no plano de verificação (tarefa 35) — v1.74.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/105",
+    "opened": "2026-10-25T21:09:30Z",
+    "merged": "2026-10-25T21:54:19Z"
+  },
+  "signals": {
+    "open_minutes": 45,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.74.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-contraexemplo-concorrente/proposal.md"
+    ]
+  },
+  "friction": "- A sessão começou sem `npm ci`, e os 6 arquivos do Presence ficaram vermelhos até instalar (R-013).\n- Editei primeiro `agents/solutions-architect.md`, que é arquivo gerado, e o build sobrescreveu a edição. Ela foi refeita em `protocol/roles/`.\n- O card do Architect estava a 549 bytes do teto, e o núcleo a 130.\n- Por ordem do Founder, o merge esperou as tarefas 33 e 34. A branch foi refeita sobre o main: a versão passou de 1.72.0 para 1.74.0, e a retro de #104 saiu, porque o #106 já a trouxe. No lugar entrou a retro de #107.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01SADgbUwVT7EEhShneiEWmH",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

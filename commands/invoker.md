@@ -62,6 +62,8 @@ Then the pipeline in Section 7, in that order. Two things that are easy to get w
 - **the branch is cut before anything is written**, pass 1 included — the Quality Engineer writes test files, and a pass 1 before the branch exists writes them onto whatever is checked out;
 - **a deltaless change skips pass 1 and nothing else** — the branch, the recorded baseline, pass 2, CI and the closure all still run.
 
+**The pass 2 dispatch starts from a brief, written before you send it.** `.spectree/pass2/<op>.json` declares `independent_of: ["full_stack_developer"]`, `fork: false`, `withheld: ["builder_report", "builder_reasoning", "pull_request"]` and the final scope, `scope.attack` (from `pass2.mjs scope` on a later round) and `scope.excluded`, an explicit list. `work.mjs start <change> <op> --phase pass2 --brief <file>` refuses without it (`E_PASS2_BRIEF`) and pins its bytes; the mission you send carries the same independence line and the same scope, verbatim. Cutting the scope after the round started is refused at `work.mjs finish` (`E_PASS2_SCOPE_MOVED`): reconcile the operation and dispatch a new one with the new brief, never a correction mid-round.
+
 **Without arguments** — report and ask.
 
 Emit the Section 10 status table with what you actually verified, then two things:
