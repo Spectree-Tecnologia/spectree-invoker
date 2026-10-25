@@ -116,3 +116,56 @@ test('the consumer CI blueprint runs once per PR or main push, cancels stale run
   const now = cheap(readFileSync(new URL('../docs/examples/consumer-ci.yml', import.meta.url), 'utf8'));
   assert.deepEqual(now, { triggers: true, cancels: true, namespace: true, oneReport: true });
 });
+
+const raced = () => ({ ...plan(),
+  checks: [...plan().checks, { id: 'name-race', kind: 'behavior', claim: 'Two racing registrations keep one name',
+    tests: ['two concurrent registrations with one name keep one'], scenario_refs: ['REQ-2/SC-1'],
+    counterexample: 'Read that the name is free, then write, with nothing between them', counterexample_kind: 'concurrent',
+    expected_failure: 'Both racing writes succeed instead of one NAME_TAKEN' }],
+  concurrent_invariants: [{ kind: 'uniqueness', invariant: 'One name per user', scenario_refs: ['REQ-2/SC-1'], check_id: 'name-race' }] });
+test('a plan being designed declares its uniqueness and counter rules, each attacked by a concurrent counterexample', () => {
+  assert.equal(verificationPlan(raced(), { design: true }).ok, true);
+  assert.equal(verificationPlan({ ...plan(), concurrent_invariants: [] }, { design: true }).ok, true);
+  const code = (p, design = true) => verificationPlan(p, { design }).errors.map((e) => e.code);
+  assert.deepEqual(code(plan()), ['E_PLAN_CONCURRENCY']);
+  for (const [mutate, expected] of [
+    [(p) => delete p.checks[1].counterexample_kind, 'E_CONCURRENT_CHECK'],
+    [(p) => { p.checks[1].counterexample_kind = 'sequential'; }, 'E_CONCURRENT_CHECK'],
+    [(p) => { p.checks[1].kind = 'inventory'; }, 'E_CONCURRENT_CHECK'],
+    [(p) => { p.concurrent_invariants[0].check_id = 'missing'; }, 'E_CONCURRENT_CHECK'],
+    [(p) => { p.checks[1].scenario_refs = ['REQ-9/SC-3']; }, 'E_CONCURRENT_CHECK'],
+    [(p) => { p.concurrent_invariants[0].kind = 'ordering'; }, 'E_CONCURRENT_INVARIANT'],
+    [(p) => delete p.concurrent_invariants[0].scenario_refs, 'E_CONCURRENT_INVARIANT'],
+    [(p) => { p.checks[1].counterexample_kind = 'parallel'; }, 'E_CHECK_CONTRACT'],
+    [(p) => { p.concurrent_invariants = {}; }, 'E_PLAN_CONCURRENCY'],
+  ]) {
+    const p = raced(); mutate(p);
+    assert.ok(code(p).includes(expected), `${expected} expected, got ${code(p)}`);
+  }
+});
+test('a plan already run or archived is not redesigned: an absent declaration is refused only at design', () => {
+  assert.equal(verificationPlan(plan()).ok, true);
+  const p = raced(); delete p.checks[1].counterexample_kind;
+  assert.ok(verificationPlan(p).errors.some((e) => e.code === 'E_CONCURRENT_CHECK'), 'a declaration that is present is still held to its check');
+});
+test('verification.mjs plan designs a new plan and reads an archived one as it was written', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join, dirname } = await import('node:path');
+  const { spawnSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
+  const cli = join(dirname(fileURLToPath(import.meta.url)), '../scripts/verification.mjs');
+  const root = mkdtempSync(join(tmpdir(), 'plan-design-'));
+  const at = (rel) => { const f = join(root, rel); mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, JSON.stringify(plan())); return f; };
+  const env = { ...process.env }; delete env.SPECTREE_PROJECT_ROOT;
+  const run = (cwd, file) => spawnSync(process.execPath, [cli, 'plan', file], { cwd, encoding: 'utf8', env });
+  const fresh = run(root, at('docs/changes/c1/verification.json'));
+  assert.equal(fresh.status, 1); assert.match(fresh.stdout, /E_PLAN_CONCURRENCY/);
+  const archived = run(root, at('docs/changes/archive/2026-10-01-c0/verification.json'));
+  assert.equal(archived.status, 0, archived.stdout + archived.stderr);
+  // A project whose own checkout sits under a changes/archive/ folder still designs its new plans.
+  const nested = join(root, 'srv/changes/archive/app');
+  mkdirSync(nested, { recursive: true });
+  const inside = run(nested, at('srv/changes/archive/app/docs/changes/c2/verification.json'));
+  assert.equal(inside.status, 1); assert.match(inside.stdout, /E_PLAN_CONCURRENCY/);
+});

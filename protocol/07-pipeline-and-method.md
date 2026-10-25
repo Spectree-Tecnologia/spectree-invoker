@@ -51,7 +51,7 @@ The reason behind each rule below, and the incident that produced it, is in {{RA
 
 **A deepening scan is dispatched, not a standing chore.** When a retro flags the same module twice, or the roadmap is empty, the Architect runs squad skill `squad-deepening-scan` on hot spots from `git log`; each candidate taken is a deltaless change.
 
-**Verification design before execution.** The Architect writes `verification.json` beside `tasks.md`, validated with `verification.mjs plan <file>`; each behavioral check names its Scenario, a defective counterexample and the expected failure; inventory and count checks cannot substitute. A field whose meaning changes requires create, read, edit another field, save, reread, and an explicit invariant across that flow.
+**Verification design before execution.** The Architect writes `verification.json` beside `tasks.md`, validated with `verification.mjs plan <file>`; each behavioral check names its Scenario, a defective counterexample and the expected failure; inventory and count checks cannot substitute; a uniqueness or counter rule's counterexample is two concurrent writes. A field whose meaning changes requires create, read, edit another field, save, reread, and an explicit invariant across that flow.
 
 **One suite run serves every check, never one run per Requirement.** `verification.mjs checks <plan> <report>` judges every check's named `tests` from one TAP run, archived changes too.
 

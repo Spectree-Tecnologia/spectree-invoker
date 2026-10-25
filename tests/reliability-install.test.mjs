@@ -38,7 +38,7 @@ test('installed reliability commands run a checkpoint, a baseline and a mutation
     example.checks[1].tests = ['preserves value'];
     writeFiles(r.root, { '.spectree/plan.json': JSON.stringify(example), '.spectree/suite.tap': suite.stdout });
     const judged = JSON.parse(ok('verification.mjs', 'checks', '.spectree/plan.json', '.spectree/suite.tap'));
-    assert.deepEqual(judged.checks.map((c) => c.result), ['NOT_EVALUATED', 'PASS']);
+    assert.deepEqual(judged.checks.map((c) => c.result), ['NOT_EVALUATED', 'PASS', 'NOT_EVALUATED']);
     example.checks[1].tests = ['preserves values'];
     writeFiles(r.root, { '.spectree/plan.json': JSON.stringify(example) });
     assert.equal(run('verification.mjs', 'checks', '.spectree/plan.json', '.spectree/suite.tap').status, 1);

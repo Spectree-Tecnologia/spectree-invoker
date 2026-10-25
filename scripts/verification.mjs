@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
+import { relative, resolve, sep } from 'node:path';
 import { verificationPlan, verificationChecks, baselineVerdict, verificationCi, ciRunBaseline } from './lib/evidence/index.mjs';
 import { Store, SCHEMA_VERSION } from './lib/change/index.mjs';
 import { contentDigestAt, runView, repository } from './lib/shared/index.mjs';
@@ -8,7 +9,10 @@ const USAGE = 'usage: verification.mjs plan <plan.json> | checks <plan.json> <re
 try {
   const read = (f) => JSON.parse(readFileSync(f, 'utf8'));
   let result;
-  if (command === 'plan' && file && !extra) result = verificationPlan(read(file));
+  // A plan under docs/changes/archive/ is history: it is read as it was written, not redesigned.
+  // Judged relative to the project, so a checkout that itself lives under such a folder is not all history.
+  const archived = (f) => relative(process.env.SPECTREE_PROJECT_ROOT ?? process.cwd(), resolve(f)).split(sep).join('/').startsWith('docs/changes/archive/');
+  if (command === 'plan' && file && !extra) result = verificationPlan(read(file), { design: !archived(file) });
   else if (command === 'checks' && file && extra) result = verificationChecks(read(file), readFileSync(extra, 'utf8'));
   else if (command === 'ci' && file && extra) result = verificationCi(read(file), read(extra));
   else if (command === 'baseline' && file && ['local', 'ci'].includes(extra) &&

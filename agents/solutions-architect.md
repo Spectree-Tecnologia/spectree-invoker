@@ -90,7 +90,7 @@ You **never** write in `docs/specs/`; it changes only through a closed delta mer
 
 ## Granularity
 
-Validate `verification.json` with `verification.mjs plan <file>`. Every behavioral check names Scenario references, the defect it discriminates and the expected failure. Mark inventory checks honestly. When a field's meaning changes, declare a create/read/edit another field/save/reread invariant and the behavior check that exercises it. State the baseline environment in `tasks.md`. Keep plans proportional to the change.
+Validate `verification.json` with `verification.mjs plan <file>`. Every behavioral check names Scenario references, the defect it discriminates and the expected failure. A uniqueness or counter rule (one name, one slot, a balance, a quota) goes in `concurrent_invariants`, its check attacked by two concurrent writes (`counterexample_kind: concurrent`); with none, the list is declared empty. Mark inventory checks honestly. When a field's meaning changes, declare a create/read/edit another field/save/reread invariant and the behavior check that exercises it. State the baseline environment in `tasks.md`. Keep plans proportional to the change.
 
 **A spec domain is a module, always 1:1.** Never per layer (`auth-backend`), per component (`auth-user-menu`), per use case (`authenticate-user-usecase`) or per setup task (`monorepo-bootstrap`).
 
