@@ -111,7 +111,8 @@ test('a file whose only change is its execute bit is attacked again', { skip: pr
   const r = repo();
   try {
     round(r, 'pass2-r1', { attacked: ['src/a.cjs', 'src/b.cjs', 'src/c.cjs'] });
-    chmodSync(join(r.root, 'src/a.cjs'), 0o755);
+    // Committed, as the content digest reads a tracked file's mode from the index.
+    chmodSync(join(r.root, 'src/a.cjs'), 0o755); r.git(['add', 'src/a.cjs']); r.git(['commit', '-qm', 'executable']);
     assert.deepEqual(pass2Scope(r.root, 'c1').attack.map((a) => a.path), ['src/a.cjs']);
   } finally { cleanup(r.root); }
 });

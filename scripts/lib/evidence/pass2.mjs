@@ -2,19 +2,17 @@
 // attacked, with the round's own duration. A record is an observation for planning the next round
 // on the same change. It never stands for `pass2.attack` or `mutation.killed`: those stay observed
 // on the whole current candidate. The next round reads `scope` and attacks only what moved since.
-import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Store, identifier, references, snapshot, workRecords } from '../change/index.mjs';
-import { flags, git, inside, publishOnce, refuse } from '../shared/index.mjs';
+import { fileMode, flags, git, inside, publishOnce, refuse } from '../shared/index.mjs';
 
 const OPERATIONAL = /^(?:\.spectree|docs\/changes)(?:\/|$)/;
 const folder = (root, id) => inside(root, `.spectree/pass2/${identifier(id)}`);
-// What a file is, for coverage: its bytes and whether it executes. A chmod alone changes what it does.
+// What a file is, for coverage: its bytes and its mode, read the way the content digest reads it
+// (the index for a tracked file), so the digest that binds a round and the fingerprint agree.
 const fingerprintOf = (root, path) => {
-  try {
-    const { sha256 } = references(root, [path])[0];
-    return lstatSync(inside(root, path)).mode & 0o111 ? `${sha256}+x` : sha256;
-  } catch { return null; }
+  try { return `${references(root, [path])[0].sha256}:${fileMode(root, path)}`; } catch { return null; }
 };
 
 function change(root, id) {

@@ -332,6 +332,12 @@ export function contentDigest(root, { neutral } = {}) {
   return { digest: sha(h), revision, tree, dirty, ...(code ? { code_digest: sha(code) } : {}) };
 }
 
+/** One file's mode the way the content digest measures it, for a caller that fingerprints a single file. */
+export function fileMode(root, rel) {
+  const line = gitIn(root, ['ls-files', '-s', '-z', '--', rel]).split('\0').find(Boolean);
+  return modeOf(root, rel, new Map(line ? [[rel, line.split(' ')[0]]] : []));
+}
+
 /** The mode git records: the index for a tracked file, the filesystem for one it has not seen. */
 function modeOf(root, rel, indexModes) {
   const tracked = indexModes.get(rel);
