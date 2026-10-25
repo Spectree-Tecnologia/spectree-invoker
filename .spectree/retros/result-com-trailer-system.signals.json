@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 102,
+    "title": "Executor: trailer `system` depois do `result` do Claude Code não vira mais `unknown` (tarefa 30) — v1.69.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/102",
+    "opened": "2026-10-25T13:27:03Z",
+    "merged": "2026-10-25T13:29:19Z"
+  },
+  "signals": {
+    "open_minutes": 2,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.69.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-result-com-trailer-system/proposal.md"
+    ]
+  },
+  "friction": "- O trailer foi reproduzido em fixture a partir do relato do SYND, não de um run real do Claude Code 2.1.302 nesta sessão. A confirmação fica com o próximo `tasks.mjs run` do SYND no v1.69.0.\n- A tentativa já gasta no SYND não é devolvida por esta mudança.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01WAAK9kBzY59ih9GL2dkjXV",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

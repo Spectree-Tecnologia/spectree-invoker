@@ -2,8 +2,9 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { AgentRow, AgentStatus, DeskUi } from './state'
-import { barMarkup, invokerMarkup, spinnerMarkup } from './avatar'
-import { formatDuration, formatTokens, formatUsd, modelLabel, plural, stepLabel, tokensOf } from './format'
+import { barMarkup, invokerMarkup, planBarMarkup, spinnerMarkup } from './avatar'
+import { formatDuration, formatTokens, modelLabel, plural, stepLabel, tokensOf } from './format'
+import { applyToPlan, planProgress } from './plan'
 import { labelOf, ORB_COLOR, orbAvatar, orbOf, roleOf, ROLES } from './orbs'
 import type { Role } from './orbs'
 
@@ -11,6 +12,7 @@ const PANE = 'invoker-desk'
 const TITLE = 'Invoker'
 const STEPS_KEPT = 100
 const SHOWN_STEPS = 3
+const PLAN_TOOLS = ['TaskCreate', 'TaskUpdate', 'TodoWrite']
 
 // Change a tag when the stored shape changes: an earlier value is then read
 // as the initial one instead of breaking the drawing.
@@ -20,8 +22,7 @@ const ui = atom(
   { isRunningCollapsed: false, isFinishedCollapsed: false, expanded: [], isAutoOpened: false },
   { shape: 'ui-2' },
 )
-const costUsd = atom({ plugin: 'spectree', key: 'costUsd' } as const, null)
-const startedAt = atom({ plugin: 'spectree', key: 'startedAt' } as const, null)
+const plan = atom({ plugin: 'spectree', key: 'plan' } as const, { tasks: [] }, { shape: 'plan-1' })
 const now = atom({ plugin: 'spectree', key: 'now' } as const, 0)
 
 type Agents = Record<string, AgentRow>
@@ -106,14 +107,8 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'invoker-desk',
-      description: 'Abre o painel do Invoker: subagentes, custo, tokens e tempo',
+      description: 'Abre o painel do Invoker: o plano em andamento e os subagentes',
     })
-    // Time counts from this launch: a resumed session's own start is its
-    // first launch, days back, and the panel would show hundreds of hours.
-    const launchedAt = await $.clock.now()
-    await update($, startedAt, () => launchedAt)
-    const usage = await $.session.usage()
-    if (usage.cost) await update($, costUsd, () => usage.cost?.usd ?? null)
     // The clock starts here only in a squad project; elsewhere the first
     // dispatch starts it, so a session that never orchestrates pays nothing.
     if (await isSpectreeProject($, e.cwd)) {
@@ -132,11 +127,6 @@ export const register: Register = on => {
     return { text: opened.isPlaced ? 'Painel do Invoker aberto.' : `Painel do Invoker não pôde abrir: ${opened.reason ?? 'sem superfície'}` }
   })
 
-  on('session.measure', async ($, e, next) => {
-    if (e.cost) await update($, costUsd, () => e.cost?.usd ?? null)
-    return next(e)
-  })
-
   on('agent.spawn', async ($, e, next) => {
     const started = await next(e)
     const id = started.agentId
@@ -152,7 +142,13 @@ export const register: Register = on => {
     // An observer: whatever happens to the bookkeeping, the call goes on.
     if (id) await recordStep($, id, stepLabel(String(e.tool), e as unknown as Record<string, unknown>)).catch(error => logFailure($, error))
 
-    return next(e)
+    const answered = await next(e)
+    // The plan bar follows the main loop's own task list; a subagent's is its own.
+    if (!id && PLAN_TOOLS.includes(String(e.tool)) && answered.result !== undefined && !answered.isError) {
+      const input = (key: string) => (e as unknown as Record<string, unknown>)[key]
+      await update($, plan, current => applyToPlan(current, String(e.tool), input, answered.result)).catch(error => logFailure($, error))
+    }
+    return answered
   })
 
   // A subagent's effort is known only from its requests: the card shows the last one's.
@@ -178,14 +174,12 @@ export const register: Register = on => {
 
     const list = Object.values(await read($, agents)).sort((a, b) => a.startedAt - b.startedAt)
     const view: DeskUi = await read($, ui)
-    const cost = await read($, costUsd)
-    const since = await read($, startedAt)
+    const progress = planProgress(await read($, plan))
     const at = (await read($, now)) || Date.now()
 
     const running = list.filter(isRunning)
     const finished = list.filter(row => !isRunning(row)).reverse()
     const active = [...new Set(running.map(row => roleOf(row.type)).filter((r): r is Role => r !== null))]
-    const tokens = list.reduce((sum, row) => sum + row.tokens, 0)
     const isOrchestrating = running.length > 0
 
     const toggle = (field: 'isRunningCollapsed' | 'isFinishedCollapsed') => () =>
@@ -212,16 +206,36 @@ export const register: Register = on => {
       )
     }
 
-    const stat = (label: string, value: string) => (
-      <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1} flexGrow={1}>
-        <Text dimColor size="footnote">
-          {label}
-        </Text>
-        <Text color="#ff8a5c" weight="semibold" tabular>
-          {value}
-        </Text>
-      </Box>
-    )
+    // The plan in progress, in place of the cost, token and time figures.
+    const planBar = () =>
+      progress.total === 0 ? (
+        <Text dimColor>Nenhum plano em andamento.</Text>
+      ) : (
+        <Box flexDirection="column" borderStyle="round" borderColor={ORB_COLOR.wex.mid} paddingX={1}>
+          <Box flexDirection="row" gap={1} alignItems="center">
+            <Box flexShrink={0}>
+              <Text color={ORB_COLOR.wex.text} weight="semibold">
+                Plano
+              </Text>
+            </Box>
+            <Box flexGrow={1} flexShrink={1} minWidth={0}>
+              {Svg ? (
+                <Svg source={planBarMarkup(progress.done, progress.total)} alt={`Tarefas ${progress.done} de ${progress.total}`} height={14} isInteractive />
+              ) : (
+                <Text color={ORB_COLOR.wex.text}>{'━'.repeat(Math.round(progress.percent / 10)) + '─'.repeat(10 - Math.round(progress.percent / 10))}</Text>
+              )}
+            </Box>
+            <Box flexShrink={0}>
+              <Text dimColor tabular>
+                {`Tarefas ${progress.done}/${progress.total} · ${progress.percent}%`}
+              </Text>
+            </Box>
+          </Box>
+          <Text dimColor wrap="truncate-end">
+            {progress.now}
+          </Text>
+        </Box>
+      )
 
     const card = (row: AgentRow) => {
       const kind = orbOf(row.type)
@@ -358,11 +372,7 @@ export const register: Register = on => {
           </Text>
         </Box>
 
-        <Box flexDirection="row" gap={1}>
-          {stat('Custo da conversa', formatUsd(cost))}
-          {stat('Tokens dos subagentes', formatTokens(tokens))}
-          {stat('Tempo', since === null ? '—' : formatDuration(at - since))}
-        </Box>
+        {planBar()}
 
         {list.length === 0 && <Text dimColor>Nenhum subagente despachado ainda.</Text>}
         {section('Em execução', running, 'isRunningCollapsed', ORB_COLOR.quas.mid)}

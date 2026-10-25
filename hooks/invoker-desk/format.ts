@@ -19,10 +19,6 @@ export function formatDuration(ms: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`
 }
 
-export function formatUsd(usd: number | null): string {
-  return usd === null ? '—' : `$${usd.toFixed(2)}`
-}
-
 function clip(text: string, max: number): string {
   const line = text.replace(/\s+/g, ' ').trim()
   return line.length > max ? `${line.slice(0, max - 1)}…` : line

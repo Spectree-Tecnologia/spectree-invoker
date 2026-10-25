@@ -97,6 +97,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 28 | Card contido na borda e com o modelo do subagente | Integrada, v1.67.0: o card corta o que passa da borda, o avatar fica no lugar, e a linha do subagente diz tipo, modelo e esforço, [proposta](changes/archive/2026-10-25-painel-card-contido/proposal.md) | — |
 | 29 | Passo em andamento no topo do card | Integrada, v1.68.0: o card em execução encabeça com o passo em andamento e Quas, Wex e Exort girando, [proposta](changes/archive/2026-10-25-painel-passo-em-andamento/proposal.md) | — |
 | 30 | Execução do Claude Code com trailer `system` | Integrada, v1.69.0: o executor aceita eventos `system` (o `task_summary` do Claude Code 2.1.302) depois do único `result`, e o perfil `implement` pede a linha `spectree_result` sem condição, [proposta](changes/archive/2026-10-25-result-com-trailer-system/proposal.md) | — |
+| 31 | Barra do plano no painel | Integrada, v1.70.0: a barra do plano em andamento, de Quas a Exort, substitui custo, tokens e tempo no painel, [proposta](changes/archive/2026-10-25-painel-plano/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
@@ -110,6 +111,8 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-25:** Founder pediu a tarefa 31: a barra do plano em andamento no painel, no lugar de custo,
+  tokens e tempo.
 - **2026-10-25:** Founder autorizou a tarefa 30, a partir do bug que o Invoker relatou no SYND: toda
   execução do Claude Code 2.1.302 virava `unknown` pelo `task_summary` depois do `result`.
 - **2026-10-25:** Founder pediu a tarefa 29 ao comparar o card com o Helper Desk: o passo em andamento
