@@ -178,7 +178,7 @@ if (marketplace) {
 }
 
 // --- 7. schemas parse and carry an $id ---------------------------------------
-for (const f of ['work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'lib/change/work.mjs', 'lib/evidence/mutation.mjs', 'lib/evidence/verification.mjs']) {
+for (const f of ['work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'pass2.mjs', 'lib/change/work.mjs', 'lib/evidence/mutation.mjs', 'lib/evidence/pass2.mjs', 'lib/evidence/verification.mjs']) {
   if (!has(`scripts/${f}`)) fail(`scripts/${f}`, 'required reliability command or library missing');
 }
 

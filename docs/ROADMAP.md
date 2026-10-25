@@ -99,6 +99,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 30 | Execução do Claude Code com trailer `system` | Integrada, v1.69.0: o executor aceita eventos `system` (o `task_summary` do Claude Code 2.1.302) depois do único `result`, e o perfil `implement` pede a linha `spectree_result` sem condição, [proposta](changes/archive/2026-10-25-result-com-trailer-system/proposal.md) | — |
 | 31 | Barra do plano no painel | Integrada, v1.70.0: a barra do plano em andamento, de Quas a Exort, substitui custo, tokens e tempo no painel, [proposta](changes/archive/2026-10-25-painel-plano/proposal.md) | — |
 | 32 | Executor depois do fechamento preparado | Integrada, v1.71.0: as referências das tarefas seguem a pasta arquivada, e `repair` e `verify` aceitam a change em `implemented`, onde chegam os achados do pass 2, [proposta](changes/archive/2026-10-25-executor-pos-fechamento/proposal.md) | D-020, D-021 |
+| 33 | Rodada incremental do pass 2 | Integrada, v1.72.0: `pass2.mjs record` e `scope` registram o que cada rodada atacou e dizem o que a seguinte ataca; evidência e `work.mjs finish` passam a medir duração e uso, [proposta](changes/archive/2026-10-25-pass2-incremental/proposal.md) | — |
 
 ## Itens com aprovação permanente
 

@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 104,
+    "title": "Executor de tarefas depois do fechamento preparado (tarefa 32) — v1.71.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/104",
+    "opened": "2026-10-25T20:52:01Z",
+    "merged": "2026-10-25T20:53:40Z"
+  },
+  "signals": {
+    "open_minutes": 2,
+    "commits": 2,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.71.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-executor-pos-fechamento/proposal.md"
+    ]
+  },
+  "friction": "- O primeiro `npm run check` deu vermelho em 6 arquivos do Presence (`Cannot find package 'three'`) porque a sessão estava sem `npm ci`. Depois da instalação ficou verde. Não tem relação com a mudança.\n- Ao editar o teste, um replace pegou o bloco errado e o deixou vermelho localmente. Foi corrigido antes do commit.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

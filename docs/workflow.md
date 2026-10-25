@@ -193,6 +193,21 @@ attacks what will be integrated and a late document never pays for a second atta
 invalidates it, and so does a Requirement added afterwards — the same rule that already
 invalidates a QA pass, for the same reason.
 
+A fix does not make the next round attack the whole change again. Each round is recorded with
+what it attacked, bound to the bytes, and the next round reads what moved since:
+
+```bash
+node scripts/work.mjs start <change> <op> --phase pass2 --task <ref> --next <action>   # before the dispatch
+node scripts/work.mjs finish <change> <op> --result <envelope.json> --next <action>   # its duration and usage
+node scripts/mutation-probe.mjs <plan.json> --apply > .spectree/pass2/<change>-probe.json
+node scripts/pass2.mjs record <change> <report.json> --operation <op>   # before any repair; {"attacked": [...], "mutation_report": "..."}
+node scripts/pass2.mjs scope <change>   # files to attack, mutants carried and to rerun, past rounds' time and tokens
+```
+
+The record is advisory: `pass2.attack` and `mutation.killed` are still observed on the whole current
+candidate. The round report and the probe output are saved under `.spectree/`, because a file inside
+the tree would move the content it describes. Tokens come only from the agent envelope; without them they stay unknown.
+
 ### The integration approval
 
 It names three things now, and `record-approval` refuses one that does not:

@@ -74,7 +74,7 @@ planCopy(join(dist, 'SQUAD.md'), join(squadRoot, 'SQUAD.md'), 'squad protocol');
 // The closure migration travels WITH the scripts and is never RUN by the installer: updating
 // code and rewriting a project's records are different acts with different blast radii, and an
 // installer that quietly did the second one would rewrite state nobody asked it to touch.
-for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs', 'prepare-closure.mjs', 'post-merge.mjs', 'ci-treatment.mjs', 'migrate-closure.mjs', 'work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'tasks.mjs', 'bridge.mjs', 'reports.mjs', 'evals.mjs', 'adopt.mjs', 'reconcile.mjs', 'delivery.mjs', 'retro.mjs']) {
+for (const f of ['state.mjs', 'capabilities.mjs', 'verify-change.mjs', 'prepare-closure.mjs', 'post-merge.mjs', 'ci-treatment.mjs', 'migrate-closure.mjs', 'work.mjs', 'mutation-probe.mjs', 'verification.mjs', 'tasks.mjs', 'bridge.mjs', 'reports.mjs', 'evals.mjs', 'adopt.mjs', 'reconcile.mjs', 'delivery.mjs', 'retro.mjs', 'pass2.mjs']) {
   planCopy(join(pkg, 'scripts', f), join(squadRoot, 'scripts', f), 'script the skill calls');
 }
 // Named, not "everything but": a new module reaches the consumer because someone decided it

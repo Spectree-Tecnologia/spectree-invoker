@@ -9,6 +9,7 @@ export {
   contentDigestAt,
   contractDigest,
   contractDigestAt,
+  fileMode,
   gatedDigest,
   normalisedHashes,
 } from './digest.mjs';
