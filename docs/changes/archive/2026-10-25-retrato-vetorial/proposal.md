@@ -14,10 +14,12 @@ prévias do #97 eram do Chromium desenhando o SVG direto, que mostra o `<image>`
 ## Escopo
 
 1. **`hooks/invoker-desk/portrait.ts`**: o avatar do Founder traçado em polígonos de cor chapada
-   (200×210, cerca de 49 mil caracteres), no lugar da data URI. O avatar o encaixa no mesmo oval por
-   um `<svg>` aninhado.
-2. **`hooks/invoker-desk/orb-art.ts`**: cada orb traçado em dois tamanhos, `small` (56×56, cerca de
-   7,8 mil caracteres) para a órbita e `large` (96×96, cerca de 23 mil) para o card do subagente.
+   (260×273, cerca de 86 mil caracteres), no lugar da data URI. O avatar o encaixa no mesmo oval por
+   um `<svg>` aninhado, sob um desfoque leve que tira o degrau dos polígonos.
+2. **`hooks/invoker-desk/orb-art.ts`**: cada orb traçado em dois tamanhos. O `small` (56×56, cerca de
+   7,8 mil caracteres) entra uma vez nos `defs` do avatar, e os seis orbs da órbita apontam para ele
+   com `<use href="#...">`, a referência interna que o app aceita, por cima da esfera vetorial. O
+   `large` (160×160, cerca de 47 mil) é o avatar do card do subagente.
 3. **Testes:** o `tests/invoker-desk.test.mjs` passa a aceitar retrato e orbs só como `<svg
    viewBox>` com caminhos preenchidos, nada de `<image>`, referência ou marcação, e mede o SVG do
    avatar e do card contra o teto; o kit cobra que avatar e card não levem `<image>`. Vistos
@@ -27,8 +29,9 @@ prévias do #97 eram do Chromium desenhando o SVG direto, que mostra o `<image>`
 ## Decisões
 
 - **Vetor traçado, não bitmap.** O app não desenha bitmap dentro de um `Svg` e não tem `Image` fora
-  do terminal. O traço perde o degradê fino das pinturas e ganha um ar de pôster; com mais detalhe
-  o SVG do avatar passaria do teto de 131.072 caracteres.
+  do terminal. O traço perde o degradê fino das pinturas; o detalhe vai até onde o SVG do avatar
+  cabe no teto de 131.072 caracteres, com os orbs da órbita reaproveitados por `<use>`. SVGs feitos
+  pelo Founder num vetorizador melhor entram trocando os dois arquivos, se passarem na guarda.
 - **O traço é feito fora do repositório**, com o VTracer, e só o resultado entra; outra imagem entra
   trocando os dois arquivos.
 

@@ -48,7 +48,7 @@ const networkProblems = (sources) =>
 // strips an <image> (only fragment references survive), and a path list carries no reference, no
 // script and no markup to smuggle. Each file must be its literals and nothing after them, or the
 // value could be rebuilt at runtime.
-const isTraced = (v) => v === '' || /^<svg viewBox="0 0 \d+ \d+">(<path d="[MZ0-9 -]+" fill="#[0-9a-f]{6}"\/>)+<\/svg>$/.test(v);
+const isTraced = (v) => v === '' || /^<svg viewBox="0 0 \d+ \d+">(<path d="[MLCZ0-9 -]+" fill="#[0-9a-f]{6}"\/>)+<\/svg>$/.test(v);
 
 function portraitOf(source) {
   return source.match(/export const PORTRAIT =\s*'([^']*)'\s*;?\s*$/)?.[1];
@@ -60,8 +60,8 @@ function orbArtOf(source) {
   return m && { quas: { small: m[1], large: m[2] }, wex: { small: m[3], large: m[4] }, exort: { small: m[5], large: m[6] } };
 }
 
-// The engine refuses an Svg source past 131072 characters. The avatar carries the portrait once and
-// each small orb twice, a card one large orb, and the drawing around them takes about 12k: a CI
+// The engine refuses an Svg source past 131072 characters. The avatar carries the portrait and each
+// small orb once (the six orbits point at them), a card one large orb, and the drawing around them takes about 12k: a CI
 // proxy, since invoker-desk.test.tsx measures the SVG itself where Claude Code runs.
 function artProblems(portraitSource, orbSource) {
   const portrait = portraitOf(portraitSource);
@@ -72,7 +72,7 @@ function artProblems(portraitSource, orbSource) {
   if (!orbs) problems.push('orb-art.ts: ORB_ART is not quas, wex and exort, each small and large, as single-quoted literals');
   else for (const [k, v] of Object.entries(orbs)) for (const [size, art] of Object.entries(v)) if (!isTraced(art)) problems.push(`orb-art.ts: ${k}.${size} is not a traced drawing of filled paths`);
   if (problems.length) return problems;
-  const avatar = portrait.length + 2 * Object.values(orbs).reduce((n, v) => n + v.small.length, 0) + 12_000;
+  const avatar = portrait.length + Object.values(orbs).reduce((n, v) => n + v.small.length, 0) + 12_000;
   if (avatar > 131_072) problems.push(`portrait.ts + orb-art.ts: about ${avatar} characters, the avatar's SVG would pass 131072`);
   for (const [k, v] of Object.entries(orbs)) if (v.large.length + 4_000 > 131_072) problems.push(`orb-art.ts: ${k}.large would push a card's SVG past 131072`);
   return problems;
@@ -104,7 +104,7 @@ test('each guard rejects the state it exists to catch', () => {
   assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace('} as const\n', '} as const\nORB_ART.wex.small = url\n')).length, 1);
   assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace(`'${DRAWING}'`, `'<svg viewBox="0 0 4 4"><script>x</script></svg>'`)).length, 1);
   assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace(`'${DRAWING}'`, `'<svg viewBox="0 0 4 4" onload="x"><path d="M0 0Z" fill="#ff8800"/></svg>'`)).length, 1);
-  const smallBig = `<svg viewBox="0 0 4 4">${'<path d="M0 0 4 0 4 4Z" fill="#ff8800"/>'.repeat(1_500)}</svg>`;
+  const smallBig = `<svg viewBox="0 0 4 4">${'<path d="M0 0 4 0 4 4Z" fill="#ff8800"/>'.repeat(3_000)}</svg>`;
   assert.match(artProblems("export const PORTRAIT = ''", ORBS_OK.replace(`'${DRAWING}'`, `'${smallBig}'`))[0], /avatar's SVG would pass/);
   const largeBig = `<svg viewBox="0 0 4 4">${'<path d="M0 0 4 0 4 4Z" fill="#ff8800"/>'.repeat(3_200)}</svg>`;
   assert.match(artProblems("export const PORTRAIT = ''", ORBS_OK.replace("large:\n      '',\n  },\n  wex", `large:\n      '${largeBig}',\n  },\n  wex`))[0], /quas\.large would push a card/);

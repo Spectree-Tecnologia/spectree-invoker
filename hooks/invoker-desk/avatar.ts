@@ -58,7 +58,7 @@ function portraitMarkup(isOrchestrating: boolean): string {
     `<stop offset="0.72" stop-color="#ffffff"/><stop offset="1" stop-color="#000000"/></radialGradient>` +
     `<mask id="soft"><ellipse cx="${CX}" cy="${OY}" rx="82" ry="86" fill="url(#fade)"/></mask></defs>` +
     `<circle cx="${CX}" cy="${OY}" r="80" fill="url(#aura)"/>` +
-    `<g mask="url(#soft)" opacity="${isOrchestrating ? 1 : 0.88}">${nest(PORTRAIT, CX - 82, OY - 86, 164, 172)}</g>`
+    `<g mask="url(#soft)" opacity="${isOrchestrating ? 1 : 0.88}"><g filter="url(#soften)">${nest(PORTRAIT, CX - 82, OY - 86, 164, 172)}</g></g>`
   )
 }
 

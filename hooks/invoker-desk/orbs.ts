@@ -82,13 +82,21 @@ export function orbMarkup(kind: OrbKind, cx: number, cy: number, r: number, gid:
   const art = artOf(kind, size)
   if (art) {
     const d = Math.round(r * 2.2 * 10) / 10
-    return glow + `<g clip-path="url(#round)">${nest(art, cx - d / 2, cy - d / 2, d, d)}</g>`
+    // An orbit orb points at the one copy of its drawing in the avatar's
+    // defs, over the vector sphere, so six orbs cost three drawings.
+    const drawn =
+      size === 'small'
+        ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/><use href="#art-${kind}" transform="translate(${cx - d / 2} ${cy - d / 2}) scale(${d})"/>`
+        : nest(art, cx - d / 2, cy - d / 2, d, d)
+    return glow + `<g clip-path="url(#round)" filter="url(#soften)">${drawn}</g>`
   }
   return glow + `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/>` + mark
 }
 
+// `soften` takes the hard steps off a traced drawing's polygons.
 const BLUR =
   '<filter id="blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>' +
+  '<filter id="soften"><feGaussianBlur stdDeviation="0.35"/></filter>' +
   '<clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.5"/></clipPath>'
 
 // The small avatar of one subagent's card.
@@ -102,7 +110,11 @@ export function orbAvatar(kind: OrbKind, isActive: boolean): string {
 }
 
 export function defs(): string {
-  return BLUR + gradient('quas', 'gq') + gradient('wex', 'gw') + gradient('exort', 'ge')
+  const art = (['quas', 'wex', 'exort'] as const)
+    .filter(kind => artOf(kind, 'small'))
+    .map(kind => `<g id="art-${kind}">${nest(artOf(kind, 'small'), 0, 0, 1, 1)}</g>`)
+    .join('')
+  return BLUR + gradient('quas', 'gq') + gradient('wex', 'gw') + gradient('exort', 'ge') + art
 }
 
 export const GRADIENT_ID: Record<OrbKind, string> = { quas: 'gq', wex: 'gw', exort: 'ge', neutral: 'gq' }
