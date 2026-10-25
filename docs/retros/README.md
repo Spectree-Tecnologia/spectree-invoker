@@ -43,6 +43,7 @@ lugar; cada correção entra por uma mudança própria.
 
 ## Retros
 
+- [2026-10-25 — `skills-fora-do-menu` (#95)](2026-10-25-skills-fora-do-menu.md)
 - [2026-10-25 — `regras-de-volta-ao-nucleo` (#94)](2026-10-25-regras-de-volta-ao-nucleo.md)
 - [2026-10-25 — `retro-tendencias` (#93)](2026-10-25-retro-tendencias.md)
 - [2026-10-25 — `revisao-independente` (#92)](2026-10-25-revisao-independente.md)

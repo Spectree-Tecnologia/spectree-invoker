@@ -1,0 +1,109 @@
+import { expect, mock, test } from 'claude-code/testing'
+
+const PANE = {
+  plugin: 'spectree',
+  component: 'Pane',
+  requestId: 'invoker-desk',
+  props: {
+    title: 'Invoker',
+    isFocused: false,
+    bodyColumns: 48,
+    placement: 'dock',
+    scroll: { offset: 0, bodyRows: 40 },
+    view: {},
+  },
+} as const
+
+const ENGINE = { plugin: 'engine', tier: 'core' } as const
+
+async function spawn($: any, agentId: string, subagentType: string, description: string) {
+  return $.agent.spawn({
+    tool_use_id: `tu-${agentId}`,
+    prompt: 'mission',
+    description,
+    subagentType,
+    provider: ENGINE,
+    parentModel: 'model',
+    background: false,
+    fork: false,
+  })
+}
+
+function engine(on: any, agentId: string) {
+  mock.clock(on, { now: 1_000_000 })
+  on('agent.spawn', () => ({ model: 'model', agentId }))
+  on('tool.call', () => ({ result: {} }))
+  on('turn.complete', (_: unknown, e: any) => ({ text: e.answer }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.status', () => ({ value: {} }))
+  on('session.surfaces', () => ({ value: ['terminal'] }))
+}
+
+test('a finished subagent is a card with its role, steps, tokens and status', async ($, on) => {
+  engine(on, 'a1')
+  await spawn($, 'a1', 'spectree:quality-engineer', 'QE pass 2 for platform-hardening')
+  await $.tool.call({ tool: 'Bash', command: 'npm test', agentId: 'a1' } as any)
+  await $.tool.call({ tool: 'Read', file_path: '/repo/docs/specs/account/spec.md', agentId: 'a1' } as any)
+  await $.turn.complete({
+    answer: 'done',
+    durationMs: 1000,
+    isAborted: false,
+    turnId: 't1',
+    agentId: 'a1',
+    reason: 'answer',
+    usage: { input_tokens: 1000, output_tokens: 500, cache_read_input_tokens: 6_000_000, cache_creation_input_tokens: 200_000, model: 'm' },
+  } as any)
+
+  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect((await ui.find({ type: 'Text', text: /subagente nesta conversa/ }))?.text).toBe('1 subagente nesta conversa')
+    expect(await ui.find({ type: 'Text', text: /Concluído · 2 passos/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Quality Engineer/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /6\.2M tokens/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Running: npm test/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Using Read: \/repo\/docs\/specs/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Invoker em repouso/ })).toBeDefined()
+    await ui.unmount()
+  }
+})
+
+test('while a subagent runs the Invoker orchestrates and its orb pulses', async ($, on) => {
+  engine(on, 'p1')
+  await spawn($, 'p1', 'spectree:platform-engineer', 'PE: merge PR 4 and close')
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /Invocando Platform Engineer/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Em execução · 1/ })).toBeDefined()
+  const avatar = await ui.find({ type: 'Svg', alt: /Invoker orquestrando 1/ } as any)
+  expect(avatar).toBeDefined()
+  expect(String((avatar as any)?.props?.source ?? '')).toContain('animateTransform')
+  await ui.unmount()
+})
+
+test('a section collapses and the steps of a card expand', async ($, on) => {
+  engine(on, 'd1')
+  await spawn($, 'd1', 'spectree:full-stack-developer', 'account module')
+  for (const command of ['a', 'b', 'c', 'd', 'e']) {
+    await $.tool.call({ tool: 'Bash', command: `step ${command}`, agentId: 'd1' } as any)
+  }
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /Running: step a/ })).toBeUndefined()
+  await ui.press({ key: 'steps-d1' })
+  expect(await ui.find({ type: 'Text', text: /Running: step a/ })).toBeDefined()
+  await ui.press({ key: 'isRunningCollapsed' })
+  expect(await ui.find({ type: 'Text', text: /Running: step e/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('cost comes from the session measure and the main loop adds no card', async ($, on) => {
+  engine(on, 'x')
+  on('session.measure', (_: unknown, e: any) => ({ changed: e.changed }))
+  await $.session.measure({ context: {}, rateLimits: [], cost: { usd: 401.49 }, changed: ['cost'] } as any)
+  await $.tool.call({ tool: 'Bash', command: 'ls' } as any)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /\$401\.49/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Nenhum subagente/ })).toBeDefined()
+  await ui.unmount()
+})
