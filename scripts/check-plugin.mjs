@@ -257,20 +257,21 @@ if (inventory) {
 // --- 8c. no normative sentence leaves the core without being named -------------
 // 8b holds each rule by its lead phrase, so a core that keeps every lead and empties the body
 // beneath it passed — that is how task 8 (#76) moved a dozen binding sentences into the
-// rationale, which binds nothing. Here every sentence of the core protocol that says never,
-// must, only, refuse, at most or cannot is listed in protocol/rules.json. One that disappears
-// fails; one that appears fails until it is listed. `--write-normative` rewrites the list, so a
-// removal is always a visible line in the diff, never a silent one.
+// rationale, which binds nothing. Here every sentence of the core protocol that says never, must,
+// only, refuse, at most, cannot, requires, always, shall, no or not is listed in
+// protocol/rules.json. One that disappears fails; one that appears fails until it is listed.
+// `--write-normative` rewrites the list, so a removal is always a visible line in the diff. A rule
+// written without any of those words is not covered, and neither are the cards: that is review.
 function normativeSentences(markdown) {
   const text = markdown.replace(/```[\s\S]*?```/g, '').replace(/<!--[\s\S]*?-->/g, '');
   const out = [];
   for (const para of text.split(/\n\s*\n/)) {
     const flat = para.replace(/\s+/g, ' ').trim();
     for (const s of flat.split(/(?<=[.;])\s+(?=[A-Z*`(])/)) {
-      if (/\b(never|must|only|refuses?|refused|at most|cannot|neither|nothing|no|not)\b/i.test(s)) out.push(s.trim());
+      if (/\b(never|must|only|refuses?|refused|at most|cannot|neither|nothing|no|not|requires?|required|always|shall)\b/i.test(s)) out.push(s.trim());
     }
   }
-  return [...new Set(out)];
+  return out;
 }
 if (inventory && manifest) {
   const source = (manifest.core ?? []).filter((f) => has(`protocol/${f}`)).map((f) => read(`protocol/${f}`)).join('\n\n');
@@ -284,10 +285,12 @@ if (inventory && manifest) {
     const listed = inventory.core_normative;
     if (!Array.isArray(listed) || listed.length === 0) fail('protocol/rules.json', 'core_normative is empty; run check-plugin.mjs --write-normative');
     else {
-      const have = new Set(found);
-      for (const s of listed) if (!have.has(s)) fail('protocol/', `dropped the normative sentence "${s.slice(0, 120)}"; remove it from core_normative in the same change and name it in the proposal`);
-      const known = new Set(listed);
-      for (const s of found) if (!known.has(s)) fail('protocol/', `normative sentence not in core_normative: "${s.slice(0, 120)}"; run check-plugin.mjs --write-normative`);
+      // Counted, not deduplicated: deleting one of two copies of a sentence is still a deletion.
+      const tally = (list) => list.reduce((m, s) => m.set(s, (m.get(s) ?? 0) + 1), new Map());
+      const have = tally(found);
+      const known = tally(listed);
+      for (const [s, n] of known) if ((have.get(s) ?? 0) < n) fail('protocol/', `dropped the normative sentence "${s.slice(0, 120)}"; remove it from core_normative in the same change and name it in the proposal`);
+      for (const [s, n] of have) if ((known.get(s) ?? 0) < n) fail('protocol/', `normative sentence not in core_normative: "${s.slice(0, 120)}"; run check-plugin.mjs --write-normative`);
     }
   }
 }

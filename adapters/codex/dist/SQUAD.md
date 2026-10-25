@@ -233,7 +233,7 @@ The reason behind each rule below, and the incident that produced it, is in `.sp
 
 **Opening a new project: the stack round comes before bootstrap.** The Architect returns **one table with every slot the project actually has**, recommended and ordered by **cost of reversal**. **The cheap end of that table is yours, not his**: what touches no data, money, deploy target or authentication you close, on one decided line he may override; only the expensive lines are a question. Absent slots are **dropped, not answered "N/A"**; a version is a **fact with a source**; no bootstrap before approval, and a missing slot is a blocker, never a default.
 
-**A slot that surfaces after the table was approved is yours to close, and the cost of reversal decides how.** Cheap: close it and **record the decision and its one-line reason in `docs/DECISIONS.md`** through the Architect. Expensive (data, money, deploy target): a question of its own.
+**A slot that surfaces after the table was approved is yours to close, and the cost of reversal decides how.** Cheap: close it and **record the decision and its one-line reason in `docs/DECISIONS.md`** through the Architect. Expensive (data, money, deploy target): a question of its own. A slot missed twice at bootstrap goes back to the Architect: the table is drawn wrong.
 
 **Roles and skills are born from module 1, not from bootstrap.** Once module 1 closes green, the Platform Engineer extracts **roles** (naming and **semantic convention**: absence, errors, what a command returns) and **skills** (procedure pointing at the project's files). A project skill beats a squad skill (`squad-*`).
 
@@ -245,7 +245,7 @@ The reason behind each rule below, and the incident that produced it, is in `.sp
 
 **A deepening scan is dispatched, not a standing chore.** When a retro flags the same module twice, or the roadmap is empty, the Architect runs squad skill `squad-deepening-scan` on hot spots from `git log`; each candidate taken is a deltaless change.
 
-**Verification design before execution.** The Architect writes `verification.json` beside `tasks.md`, validated with `verification.mjs plan <file>`; each behavioral check names its Scenario, a defective counterexample and the expected failure; inventory and count checks cannot substitute.
+**Verification design before execution.** The Architect writes `verification.json` beside `tasks.md`, validated with `verification.mjs plan <file>`; each behavioral check names its Scenario, a defective counterexample and the expected failure; inventory and count checks cannot substitute. A field whose meaning changes requires create, read, edit another field, save, reread, and an explicit invariant across that flow.
 
 **One suite run serves every check, never one run per Requirement.** `verification.mjs checks <plan> <report>` judges every check's named `tests` from one TAP run, archived changes too.
 

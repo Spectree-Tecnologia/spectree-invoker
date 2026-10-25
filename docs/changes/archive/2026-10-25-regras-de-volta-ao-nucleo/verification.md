@@ -7,7 +7,7 @@ Com o `check-plugin.mjs` desta mudança copiado para duas worktrees: em `f81421f
 (o #76) falhou com 258 "dropped the normative sentence", entre elas a do R-009 ("One complete
 observed suite can support multiple Scenarios; repeat neither database setup nor the suite per
 Requirement") e "Each revision adds at most three attempts, up to ten total…". No head desta
-mudança, o mesmo check passa com 161 frases listadas.
+mudança, o mesmo check passa com 166 frases listadas.
 
 `tests/package-integrity.test.mjs` tira uma frase do §7 e põe outra que ninguém listou, numa cópia
 do pacote: as duas recusas aparecem.

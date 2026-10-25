@@ -17,10 +17,12 @@ caso; a regra da suíte única (R-009) já tinha escapado assim.
 
 1. **Retro da tarefa 11d** (`retro-tendencias`), devida por esta mudança, coletada com
    `retro.mjs collect 93`.
-2. **As frases perdidas voltam ao §7**, compactas, em 20 trechos. Primeiro os 11 que o revisor do
-   #92 apontou (adoção arquitetural, perfil de entrega, plano de verificação, TypeSafe, executor,
+2. **As frases perdidas voltam ao §7**, compactas. Primeiro 11 trechos nos parágrafos que o revisor
+   do #92 apontou (adoção arquitetural, perfil de entrega, plano de verificação, TypeSafe, executor,
    execução resiliente, diagnóstico, adoção operacional, fronteiras de operação, reconciliação,
-   aprovação ambígua); depois as 11 que a classificação abaixo achou perdidas e que mandam em agente.
+   aprovação ambígua); depois as 11 frases que a classificação abaixo achou perdidas e que mandam em
+   agente, em 9 trechos; e por fim 2 frases sem marca normativa que a revisão desta mudança achou
+   (o fluxo exigido quando o significado de um campo muda, e o slot perdido duas vezes no bootstrap).
 3. **Classificação das 258 frases** que o #76 tirou do núcleo, por um revisor em contexto limpo
    contra o `CLAUDE.md` já com o item 2: 206 mantidas (reescritas), 34 só justificativa, 18 perdidas.
    Das 18, 11 voltaram, uma já está na skill `squad-closure-retro` (como cada tipo de achado da retro
@@ -40,7 +42,7 @@ caso; a regra da suíte única (R-009) já tinha escapado assim.
    (`protocol/rules.json`): a que some sem sair da lista é recusada, e a nova que não está nela
    também. `node scripts/check-plugin.mjs --write-normative` reescreve a lista, então tirar uma frase
    vira uma linha visível no diff. O `REVIEW.md` pede que a proposta nomeie cada linha que sai.
-5. **Teto do núcleo de 46.080 para 49.152 bytes.** O núcleo fica com 48.778. Cortar 2,7 KB de
+5. **Teto do núcleo de 46.080 para 49.152 bytes.** O núcleo fica com 48.996. Cortar 3 KB de
    redação "repetida" sem perder regra é o corte que causou o D-017. O Founder escolheu subir o teto
    em 2026-10-25, no cartão de decisão da thread.
 6. **D-018 e D-019 registrados**, só como gatilho: hook que barra escrita fora dos caminhos do papel,
@@ -50,12 +52,16 @@ caso; a regra da suíte única (R-009) já tinha escapado assim.
 
 R-004 (`automated-checks · protocol · teto-sem-folga`, D-013): esta é a terceira mudança cujo escopo
 o teto do núcleo decide. Não é pago aqui: o D-013 pede aviso de folga abaixo de 2% no
-`check-plugin` e orçamento de bytes declarado na proposta; este item declara o seu (+2.742).
+`check-plugin` e orçamento de bytes declarado na proposta; este item declara o seu (+2.960).
 
 ## Fora do escopo
 
 - O mesmo exame nos cards do Solutions Architect e do Platform Engineer, que passaram pela mesma
   separação no #77; `core_normative` cobre só o núcleo.
+- Uma varredura completa das frases sem marca normativa. A classificação partiu das frases com
+  marca; uma busca por `requires`, `always`, `every`, `each` e `SHALL` nas que não tinham marca achou
+  34, das quais 2 perdidas, que voltaram. Uma regra escrita sem nenhuma dessas palavras pode ainda
+  estar só na justificativa.
 - Mudança de comportamento do runtime, D-016 (integração por risco) e construir D-018 ou D-019.
 
 ## O que esta mudança deve e não paga

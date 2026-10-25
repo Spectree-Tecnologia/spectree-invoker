@@ -20,9 +20,10 @@ Reserve Importante para o que muda o que o plugin impõe ou deixa passar:
 
 - **Regra que sai do núcleo.** Uma frase normativa (`never`, `must`, `refuse`, `only`, "nunca",
   "só") de `protocol/0*.md` ou de `protocol/roles/*.md` que some, afrouxa ou vai para
-  `docs/protocol-rationale.md` sem a proposta dizer isso. O `check-plugin` recusa a frase com
-  marca normativa que some sem sair de `core_normative` em `protocol/rules.json`; uma linha que sai
-  de lá, ou uma regra escrita sem marca, é com você. Cite a linha removida.
+  `docs/protocol-rationale.md` sem a proposta dizer isso. No núcleo (`protocol/0*.md`), o
+  `check-plugin` recusa a frase com marca normativa que some sem sair de `core_normative` em
+  `protocol/rules.json`. Uma linha que sai de lá, uma regra escrita sem marca e tudo em
+  `protocol/roles/*.md` são com você. Cite a linha removida.
 - **Check enfraquecido.** Um teste apagado, pulado ou com a expectativa afrouxada; um passo de
   `.github/workflows/` removido, condicionado ou fora do agregado `required`; uma allowlist
   (`ADMINISTRATIVE` em `scripts/lib/evidence/diff.mjs`, `neutral_paths`) que passa a aceitar mais.
