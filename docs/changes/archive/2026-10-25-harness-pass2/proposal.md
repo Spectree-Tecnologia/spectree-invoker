@@ -39,7 +39,7 @@ Escrita antes do código, porque a mudança anterior (#106) mostrou o custo de n
    lote, valendo só junto com `setup_command`. Um caminho declarado não pode cobrir arquivo do candidato.
 2. O registro da prova diz `setup.cache`: `hit`, `miss` ou `stored`, com a chave.
 3. `docs/reliability.md` troca "não há reaproveitamento de `node_modules`" pela regra acima e mostra o
-   padrão de banco por template (`CREATE DATABASE … TEMPLATE`) no `setup_command` do projeto. O banco
+   padrão de banco por template (`CREATE DATABASE … TEMPLATE`) no comando de teste do projeto (num acerto o `setup_command` não roda). O banco
    continua sendo do projeto: a prova não recebe credencial nenhuma.
 4. O card do Quality Engineer manda declarar `setup_cache` quando a instalação domina o tempo da prova.
 5. A retro de `pass2-incremental` (#106), devida por esta.

@@ -25,8 +25,9 @@ what the record is:
 ## Never
 
 - Never write a `.spectree/` record with `writeFileSync` directly, with `{ flag: 'wx' }`, or with
-  your own `linkSync` or `renameSync`. The one rename left outside the layer archives a change
-  folder under `docs/` in `closure/prepare.mjs`.
+  your own `linkSync` or `renameSync`. The renames left outside the layer write no record: one
+  archives a change folder under `docs/` in `closure/prepare.mjs`, the other publishes a probe-cache
+  entry outside the checkout in `evidence/mutation.mjs`.
 - Never take a lock out of order, or the same kind twice. The layer refuses it with
   `E_LOCK_ORDER`; do not catch that refusal and retry.
 - Never remove a lock file another owner holds.

@@ -126,10 +126,12 @@ feito (um venv do Python, por exemplo) não serve para `setup_cache`, e um link 
 do caminho declarado faz a entrada não ser gravada (`cache_error: "LINK_ESCAPES"`). A entrada não é
 sincronizada em disco: depois de uma queda de energia, a baseline é o que mostra uma entrada truncada.
 
-O banco é do projeto, e a prova não recebe credencial nenhuma. Quando os testes precisam de banco,
-o `setup_command` do projeto cria um a partir de um template já migrado, em vez de migrar a cada
-prova: `createdb -T app_test_template app_probe_$$` (ou `CREATE DATABASE … TEMPLATE …`), com a URL
-passada no próprio comando de teste.
+Num acerto, o `setup_command` inteiro não roda: só o que ele deixou sob os caminhos declarados volta.
+Por isso o banco nunca é criado no setup. O banco é do projeto, e a prova não recebe credencial
+nenhuma. Quando os testes precisam de banco, o **comando de teste** do plano é um script do projeto
+que cria um banco a partir de um template já migrado, em vez de migrar a cada prova
+(`CREATE DATABASE app_probe_<id> TEMPLATE app_test_template`, ou `createdb -T`), roda a suíte com a
+URL desse banco e o apaga ao sair. O comando roda sem shell: o nome único e a URL são do script.
 
 O teste precisa passar antes e falhar por asserção depois da mutação. A saída deve ser TAP
 completo e conter exatamente o nome solicitado. O adaptador atual reconhece `ERR_ASSERTION`

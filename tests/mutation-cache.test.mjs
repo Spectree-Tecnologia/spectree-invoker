@@ -124,12 +124,21 @@ test('a cache folder open to others is refused before any hit', { skip: process.
   } finally { f.drop(); }
 });
 
-test('a setup that leaves a link outside its declared path stores nothing', { skip: process.platform === 'win32' }, () => {
-  const f = fixture();
-  try {
-    const setup = [...f.plan.setup_command.slice(0, 2), `${f.plan.setup_command[2]};fs.symlinkSync(require('node:os').tmpdir(),'node_modules/escape')`];
-    const run = runMutation(f.root, { ...f.plan, setup_command: setup }, { apply: true });
-    assert.deepEqual([run.setup.cache, run.setup.cache_error], ['miss', 'LINK_ESCAPES']);
-    assert.deepEqual(f.entries(), []);
-  } finally { f.drop(); }
+test('a setup that leaves a link outside its declared path stores nothing, even through a chain', { skip: process.platform === 'win32' }, () => {
+  // Read as text, the chained link stays inside node_modules; followed, it reaches outside the copy.
+  const deep = Array(12).fill('d').join('/'); const up = Array(12).fill('..').join('/');
+  const links = {
+    absolute: "fs.symlinkSync(require('node:os').tmpdir(),'node_modules/escape')",
+    chain: `fs.mkdirSync('node_modules/a/${deep}',{recursive:true});fs.symlinkSync('${up}','node_modules/a/${deep}/y');fs.symlinkSync('a/${deep}/y/${up}','node_modules/x')`,
+    dangling: "fs.symlinkSync('missing','node_modules/gone')",
+  };
+  for (const [name, link] of Object.entries(links)) {
+    const f = fixture();
+    try {
+      const setup = [...f.plan.setup_command.slice(0, 2), `${f.plan.setup_command[2]};${link}`];
+      const run = runMutation(f.root, { ...f.plan, setup_command: setup }, { apply: true });
+      assert.deepEqual([run.setup.cache, run.setup.cache_error], ['miss', 'LINK_ESCAPES'], name);
+      assert.deepEqual(f.entries(), [], name);
+    } finally { f.drop(); }
+  }
 });

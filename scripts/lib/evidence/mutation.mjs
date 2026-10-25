@@ -9,7 +9,7 @@ import {
   inside,
   refuse,
 } from '../shared/index.mjs';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, lstatSync, chmodSync, cpSync, renameSync, readdirSync, readlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, lstatSync, chmodSync, cpSync, renameSync, readdirSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname, resolve, relative, isAbsolute, delimiter, posix } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
@@ -116,16 +116,19 @@ function restoreCache(entry, copy) {
   privateFolder(entry.root);
   if (!existsSync(join(entry.dir, COMPLETE))) return false;
   privateFolder(entry.dir);
-  for (const p of entry.paths) if (existsSync(join(entry.dir, p))) cpSync(join(entry.dir, p), join(copy, p), { recursive: true, verbatimSymlinks: true });
+  try {
+    for (const p of entry.paths) if (existsSync(join(entry.dir, p))) cpSync(join(entry.dir, p), join(copy, p), { recursive: true, verbatimSymlinks: true });
+  } catch (e) { refuse('E_MUTATION_TEMP', `The cached setup ${entry.key} could not be copied (${e.code ?? 'unknown'}); run the probe again.`); }
   return true;
 }
-// A link kept verbatim must stay inside its declared path: an absolute or escaping target would
-// let a hit load code from a folder outside the private cache.
+// A link kept verbatim must stay inside its declared path: one that resolves outside it, through
+// any chain of links, or does not resolve at all, would let a hit load code from outside the cache.
 function linkEscapes(base, dir = base) {
   if (!existsSync(dir) || !lstatSync(dir).isDirectory()) return false;
+  const real = realpathSync.native(base);
   return readdirSync(dir, { withFileTypes: true }).some((d) => {
     const p = join(dir, d.name);
-    if (d.isSymbolicLink()) { const t = readlinkSync(p); return isAbsolute(t) || !containedBy(base, resolve(dir, t)); }
+    if (d.isSymbolicLink()) { try { return !containedBy(real, realpathSync.native(p)); } catch { return true; } }
     return d.isDirectory() && linkEscapes(base, p);
   });
 }
