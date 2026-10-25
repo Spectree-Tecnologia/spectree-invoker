@@ -107,6 +107,31 @@ test('a mutant is its id on its target: a reused id never hides a survivor on an
   } finally { cleanup(r.root); }
 });
 
+test('a file name with glob characters reads its own mode, not a match', { skip: process.platform === 'win32' }, () => {
+  const r = repo();
+  try {
+    writeFiles(r.root, { 'src/d.cjs': 'x\n' }); chmodSync(join(r.root, 'src/d.cjs'), 0o755);
+    r.git(['add', '-A']); r.git(['commit', '-qm', 'executable d']);
+    writeFiles(r.root, { 'src/[d].cjs': 'route\n' });
+    round(r, 'pass2-r1', { attacked: ['src/[d].cjs'] });
+    chmodSync(join(r.root, 'src/[d].cjs'), 0o755);
+    assert.ok(pass2Scope(r.root, 'c1').attack.some((a) => a.path === 'src/[d].cjs'));
+  } finally { cleanup(r.root); }
+});
+
+test('rounds are recorded in the order they finished', () => {
+  const r = repo();
+  try {
+    for (const op of ['pass2-a', 'pass2-b']) {
+      startWork(r.root, 'c1', op, { phase: 'pass2', task: 'attack', next: 'Record.' });
+      finishWork(r.root, 'c1', op, { result: { status: 'completed' }, next: 'Record.' });
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5); // distinct finish times
+    }
+    recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'] }, { operation: 'pass2-b' });
+    assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'] }, { operation: 'pass2-a' }), { code: 'E_PASS2_ORDER' });
+  } finally { cleanup(r.root); }
+});
+
 test('a file whose only change is its execute bit is attacked again', { skip: process.platform === 'win32' }, () => {
   const r = repo();
   try {
@@ -117,13 +142,13 @@ test('a file whose only change is its execute bit is attacked again', { skip: pr
   } finally { cleanup(r.root); }
 });
 
-test('a renamed file leaves its old path to attack as deleted', () => {
+test('a renamed file leaves its old path listed as deleted, and the new one to attack', () => {
   const r = repo();
   try {
     r.git(['mv', 'src/a.cjs', 'src/renamed.cjs']); r.git(['commit', '-qm', 'rename']);
-    const attack = pass2Scope(r.root, 'c1').attack;
-    assert.deepEqual(attack.map((a) => a.path), ['src/a.cjs', 'src/b.cjs', 'src/c.cjs', 'src/renamed.cjs']);
-    assert.equal(attack[0].reason, 'deleted');
+    const scope = pass2Scope(r.root, 'c1');
+    assert.deepEqual(scope.attack.map((a) => a.path), ['src/b.cjs', 'src/c.cjs', 'src/renamed.cjs']);
+    assert.deepEqual(scope.deleted, [{ path: 'src/a.cjs' }]);
   } finally { cleanup(r.root); }
 });
 

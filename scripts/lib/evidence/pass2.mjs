@@ -9,8 +9,10 @@ import { fileMode, flags, git, inside, publishOnce, refuse } from '../shared/ind
 
 const OPERATIONAL = /^(?:\.spectree|docs\/changes)(?:\/|$)/;
 const folder = (root, id) => inside(root, `.spectree/pass2/${identifier(id)}`);
-// What a file is, for coverage: its bytes and its mode, read the way the content digest reads it
-// (the index for a tracked file), so the digest that binds a round and the fingerprint agree.
+// What a file is, for coverage: its raw bytes and its mode. The mode is read the way the content
+// digest reads it (the index for a tracked file), so the digest that binds a round and the
+// fingerprint agree; raw bytes are stricter than the digest's normalised blob, so a line-ending
+// change alone sends a file back to attack.
 const fingerprintOf = (root, path) => {
   try { return `${references(root, [path])[0].sha256}:${fileMode(root, path)}`; } catch { return null; }
 };
@@ -51,6 +53,9 @@ export function recordPass2Round(root, id, report, { operation }) {
   const rounds = pass2Rounds(root, id);
   const already = rounds.find((r) => r.operation.operation_id === op.operation_id);
   if (already) refuse('E_PASS2_DUPLICATE', `Operation ${op.operation_id} is already round ${already.round}.`);
+  // Rounds are numbered in the order they finished, so "the latest result" of a mutant is the latest observed.
+  const last = rounds.at(-1);
+  if (last && op.finished.at < last.operation.finished_at) refuse('E_PASS2_ORDER', `Operation ${op.operation_id} finished before round ${last.round}; record rounds in the order they finished.`);
   // Bound to the bytes the round ended on: a repair between finish and record would otherwise be
   // recorded as attacked, and the next round would skip exactly the file it changed.
   const current = snapshot(root);
@@ -91,11 +96,13 @@ export function pass2Scope(root, id) {
     .filter((p) => !OPERATIONAL.test(p)).sort();
   const rounds = pass2Rounds(root, id);
   const attackedAt = new Map(rounds.flatMap((r) => r.attacked.map((a) => [`${a.path}\0${a.fingerprint}`, r.round])));
-  const attack = []; const covered = [];
+  const attack = []; const covered = []; const deleted = [];
   for (const path of files) {
     const sha = fingerprintOf(root, path);
     const round = sha && attackedAt.get(`${path}\0${sha}`);
-    if (round) covered.push({ path, round }); else attack.push({ path, reason: sha ? 'changed since the last round that attacked it, or never attacked' : 'deleted' });
+    if (round) covered.push({ path, round });
+    else if (sha) attack.push({ path, reason: 'changed since the last round that attacked it, or never attacked' });
+    else deleted.push({ path });
   }
   // The latest result of each mutant decides: a later survivor is never hidden by an older kill. A
   // mutant is its id on its target: ids are unique only within one plan, so a later round may reuse one.
@@ -104,7 +111,7 @@ export function pass2Scope(root, id) {
   for (const m of latest.values()) (m.result === 'PASS' && m.target_fingerprint && fingerprintOf(root, m.target) === m.target_fingerprint ? carried : rerun).push({ id: m.id, target: m.target, round: m.round });
   return { version: 1, advisory: true, authorizes_execution: false, change_id: id, candidate: snapshot(root),
     rounds: rounds.map((r) => ({ round: r.round, elapsed_ms: r.operation.elapsed_ms, usage: r.operation.usage, attacked: r.attacked.length, mutations: r.mutations.length })),
-    attack, covered, mutations: { carried, rerun },
+    attack, covered, deleted, mutations: { carried, rerun },
     meaning: rounds.length
       ? 'Attack the files under `attack`; rerun the mutants under `rerun` and those of new or changed rules. The suite still runs whole for pass2.attack.'
       : 'No round recorded yet: the first round attacks the whole change.' };
