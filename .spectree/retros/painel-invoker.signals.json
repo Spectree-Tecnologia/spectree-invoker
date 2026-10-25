@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 96,
+    "title": "Plugin: painel do Invoker com os seis orbs (tarefa 24) — v1.63.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/96",
+    "opened": "2026-10-25T04:10:05Z",
+    "merged": "2026-10-25T04:19:45Z"
+  },
+  "signals": {
+    "open_minutes": 10,
+    "commits": 3,
+    "ci_heads": 3,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.63.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-painel-invoker/proposal.md"
+    ]
+  },
+  "friction": "- O mod nasceu fora do repositório, como plugin próprio. Ao entrar no plugin `spectree`, as chaves de estado precisaram mudar de `invoker-desk` para `spectree`. O teste novo guarda exatamente esse ponto.\n- O CI não tem Claude Code, então `claude plugin test` só roda localmente. Isso está declarado na proposta.\n- O comando ficou `/invoker-desk`, porque `/invoker` já é o boot do squad.\n- Foram três rodadas de revisão e dois pushes de correção, todos para Nits.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01TbzdKTcqdV5Hm7BS1sTJub",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

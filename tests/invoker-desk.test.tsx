@@ -63,6 +63,12 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
     expect(await ui.find({ type: 'Text', text: /Running: npm test/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Using Read: \/repo\/docs\/specs/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Invoker em repouso/ })).toBeDefined()
+    if (surface !== 'terminal') {
+      // The card's avatar is the orb painting, not the vector sphere.
+      const svgs = (await (ui as any).findAll({ type: 'Svg' })) as any[]
+      const orb = svgs.find(one => one?.props?.alt === 'Quality Engineer')
+      expect(String(orb?.props?.source ?? '')).toContain('data:image/jpeg;base64,')
+    }
     await ui.unmount()
   }
 })
@@ -77,6 +83,9 @@ test('while a subagent runs the Invoker orchestrates and its orb pulses', async 
   const avatar = await ui.find({ type: 'Svg', alt: /Invoker orquestrando 1/ } as any)
   expect(avatar).toBeDefined()
   expect(String((avatar as any)?.props?.source ?? '')).toContain('animateTransform')
+  expect(String((avatar as any)?.props?.source ?? '')).toContain('data:image/jpeg;base64,')
+  // The engine refuses an Svg source past 131072 characters; the portrait and the orbs ride inside it.
+  expect(String((avatar as any)?.props?.source ?? '').length).toBeLessThanOrEqual(131072)
   await ui.unmount()
 })
 
@@ -108,10 +117,10 @@ test('cost comes from the session measure and the main loop adds no card', async
   await ui.unmount()
 })
 
-test('in a squad project the session time runs on with no subagent dispatched', async ($, on) => {
+test('in a resumed squad session the time counts from this launch and runs on with no subagent', async ($, on) => {
   const clock = mock.clock(on, { now: 1_000_000 })
   on('command.register', () => ({ value: { command: 'invoker-desk' } }))
-  on('session.usage', () => ({ value: { startedAt: 1_000_000, context: {}, rateLimits: [] } }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: {}, rateLimits: [] } }))
   on('fs.exists', () => ({ value: true }))
   on('session.surfaces', () => ({ value: ['terminal'] }))
   on('ui.status', () => ({ value: {} }))

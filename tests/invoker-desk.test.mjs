@@ -43,6 +43,39 @@ function orbProblems(orbsSource, cards) {
 const networkProblems = (sources) =>
   Object.entries(sources).filter(([, s]) => /\$\.(http|process|tool|mcp|model|telemetry)\b|\bfetch\(/.test(s)).map(([f]) => `${f}: reaches the network, a process or a tool`);
 
+// The portrait and the three orb paintings ride inside the avatar's SVG as images, so each is
+// either empty (the vector drawing) or a base64 raster data URI (jpeg, png or webp; svg+xml is left
+// out, it could carry markup): never a remote address, which would fetch from the network. Each file
+// must be its literals and nothing after them, or the value could be rebuilt at runtime.
+const isImage = (v) => v === '' || /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v);
+
+function portraitOf(source) {
+  return source.match(/export const PORTRAIT =\s*'([^']*)'\s*;?\s*$/)?.[1];
+}
+
+function orbArtOf(source) {
+  const m = source.match(/export const ORB_ART = \{\s*quas:\s*'([^']*)',\s*wex:\s*'([^']*)',\s*exort:\s*'([^']*)',?\s*\} as const\s*;?\s*$/);
+  return m ? { quas: m[1], wex: m[2], exort: m[3] } : undefined;
+}
+
+// The engine refuses an Svg source past 131072 characters. The avatar carries the portrait once and
+// each orb painting twice, and the drawing around them takes about 12k; invoker-desk.test.tsx
+// measures the SVG itself where Claude Code runs.
+function artProblems(portraitSource, orbSource) {
+  const portrait = portraitOf(portraitSource);
+  const orbs = orbArtOf(orbSource);
+  const problems = [];
+  if (portrait === undefined) problems.push('portrait.ts: PORTRAIT is not one single-quoted string literal');
+  else if (!isImage(portrait)) problems.push('portrait.ts: PORTRAIT is not a base64 image data URI');
+  if (orbs === undefined) problems.push('orb-art.ts: ORB_ART is not quas, wex and exort as single-quoted literals');
+  else for (const [k, v] of Object.entries(orbs)) if (!isImage(v)) problems.push(`orb-art.ts: ${k} is not a base64 image data URI`);
+  if (problems.length) return problems;
+  const size = portrait.length + 2 * Object.values(orbs).reduce((n, v) => n + v.length, 0) + 12_000;
+  return size > 131_072 ? [`portrait.ts + orb-art.ts: about ${size} characters, the avatar's SVG would pass 131072`] : [];
+}
+
+const ORBS_OK = "export const ORB_ART = {\n  quas:\n    'data:image/jpeg;base64,/9j/',\n  wex:\n    '',\n  exort:\n    '',\n} as const\n";
+
 const commandProblems = (source) =>
   [...source.matchAll(/name: '([^']+)'/g)].map((m) => m[1]).filter((n) => n === 'invoker').map(() => 'register.tsx: registers /invoker, which commands/invoker.md already is');
 
@@ -52,6 +85,19 @@ test('each guard rejects the state it exists to catch', () => {
   assert.ok(orbProblems("{ role: 'quality-engineer', label: 'QE', orb: 'wex' }", ['quality-engineer', 'platform-engineer']).includes('orbs.ts: no orb for agents/platform-engineer.md'));
   assert.deepEqual(networkProblems({ 'a.ts': 'await $.http.fetch(url)' }), ['a.ts: reaches the network, a process or a tool']);
   assert.equal(networkProblems({ 'b.ts': "await $.tool.call({ tool: 'Bash' })", 'c.ts': '$.telemetry.log(x)' }).length, 2);
+  const portrait = (v) => artProblems(v, ORBS_OK).length;
+  assert.equal(portrait("export const PORTRAIT = 'https://host/invoker.png'"), 1);
+  assert.equal(portrait("export const PORTRAIT =\n  'data:text/html;base64,PHNjcmlwdD4='"), 1);
+  assert.equal(portrait('export const PORTRAIT = "data:image/png;base64,AAAA"'), 1);
+  assert.equal(portrait("export const PORTRAIT = '' + 'https://host/invoker.png'"), 1);
+  assert.equal(portrait("export const PORTRAIT = ''\n  + 'https://host/invoker.png'\n"), 1);
+  assert.equal(portrait("export const PORTRAIT =\n  'data:image/png;base64,AAAA'\n  .replace('A', 'B')\n"), 1);
+  assert.equal(portrait(`export const PORTRAIT = 'data:image/jpeg;base64,${'A'.repeat(120_000)}'`), 1);
+  assert.deepEqual(artProblems("export const PORTRAIT = ''\n", ORBS_OK), []);
+  assert.deepEqual(artProblems("export const PORTRAIT =\n  'data:image/jpeg;base64,/9j/AA=='\n", ORBS_OK), []);
+  assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace("'',\n  exort", "'https://host/wex.png',\n  exort")).length, 1);
+  assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace('} as const\n', '} as const\nORB_ART.wex = url\n')).length, 1);
+  assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace("/9j/'", `${'A'.repeat(60_000)}'`)).length, 1);
   assert.equal(commandProblems("$.command.register({ name: 'invoker' })").length, 1);
 });
 
@@ -69,6 +115,7 @@ test('the panel module is wired, keyed, mapped and offline', () => {
       ...orbProblems(read(join(DESK, 'orbs.ts')), cards),
       ...networkProblems(sources),
       ...commandProblems(register),
+      ...artProblems(read(join(DESK, 'portrait.ts')), read(join(DESK, 'orb-art.ts'))),
     ],
     [],
   );

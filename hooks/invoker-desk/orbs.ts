@@ -1,3 +1,4 @@
+import { ORB_ART } from './orb-art'
 import type { OrbKind } from './state'
 
 // The six specialists, two per orb. Quas (ice, intellect) thinks before the
@@ -48,8 +49,13 @@ function gradient(kind: OrbKind, id: string): string {
   )
 }
 
-// One orb drawn at (cx, cy): a glow, the sphere and a swirl that tells the
-// three apart without colour (a spiral, a bolt, a flame).
+function artOf(kind: OrbKind): string {
+  return kind === 'neutral' ? '' : ORB_ART[kind]
+}
+
+// One orb drawn at (cx, cy): a glow, then the Founder's painting of the orb,
+// cut round. Without a painting, a sphere and a swirl that tells the three
+// apart without colour (a spiral, a bolt, a flame).
 export function orbMarkup(kind: OrbKind, cx: number, cy: number, r: number, gid: string, isActive: boolean): string {
   const c = ORB_COLOR[kind]
   const s = r / 10
@@ -64,21 +70,25 @@ export function orbMarkup(kind: OrbKind, cx: number, cy: number, r: number, gid:
   const pulse = isActive
     ? `<animate attributeName="r" values="${r * 1.5};${r * 2.1};${r * 1.5}" dur="1.4s" repeatCount="indefinite"/>`
     : ''
-  return (
-    `<circle cx="${cx}" cy="${cy}" r="${r * (isActive ? 1.7 : 1.45)}" fill="${c.mid}" opacity="${isActive ? 0.45 : 0.22}" filter="url(#blur)">${pulse}</circle>` +
-    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/>` +
-    mark
-  )
+  const glow = `<circle cx="${cx}" cy="${cy}" r="${r * (isActive ? 1.7 : 1.45)}" fill="${c.mid}" opacity="${isActive ? 0.45 : 0.22}" filter="url(#blur)">${pulse}</circle>`
+  const art = artOf(kind)
+  if (art) {
+    const d = Math.round(r * 2.2 * 10) / 10
+    return glow + `<image href="${art}" x="${cx - d / 2}" y="${cy - d / 2}" width="${d}" height="${d}" clip-path="url(#round)"/>`
+  }
+  return glow + `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/>` + mark
 }
 
-const BLUR = '<filter id="blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>'
+const BLUR =
+  '<filter id="blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>' +
+  '<clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.5"/></clipPath>'
 
 // The small avatar of one subagent's card.
 export function orbAvatar(kind: OrbKind, isActive: boolean): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="40" height="40">` +
     `<defs>${BLUR}${gradient(kind, `g-${kind}`)}</defs>` +
-    orbMarkup(kind, 24, 24, 9, `g-${kind}`, isActive) +
+    orbMarkup(kind, 24, 24, artOf(kind) ? 14 : 9, `g-${kind}`, isActive) +
     `</svg>`
   )
 }
