@@ -4,6 +4,7 @@
 
 export { flags } from './cli.mjs';
 export {
+  changeFolder,
   contentDigest,
   contentDigestAt,
   contractDigest,

@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 103,
+    "title": "Painel: barra do plano em andamento no lugar de custo, tokens e tempo (tarefa 31) — v1.70.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/103",
+    "opened": "2026-10-25T13:44:12Z",
+    "merged": "2026-10-25T13:48:07Z"
+  },
+  "signals": {
+    "open_minutes": 4,
+    "commits": 2,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.70.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-painel-plano/proposal.md"
+    ]
+  },
+  "friction": "- O kit desenha a árvore, não a pintura: o brilho da barra não foi visto rodando. A conferência no app desktop fica com o Founder (R-011).",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

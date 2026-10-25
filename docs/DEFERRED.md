@@ -164,7 +164,6 @@
 - Due: A primeira recusa real do verify-change por caminho fora do papel, ou a primeira edição manual de docs/specs/ detectada, num projeto consumidor
 - Closure condition: Um hook PreToolUse clássico (não function hook) recusa a escrita fora dos caminhos do papel, visto recusando o caso do incidente, e a linha enforced da matriz de papéis diz exatamente o que ele cobre e em qual harness.
 
-
 ## D-019 — Memória do projeto contradita pelo código sem ninguém ver
 
 - Status: open
@@ -173,3 +172,22 @@
 - Decision: Visto no discovery da LLM Wiki (/mnt/project-files/analysis/llm-wiki-vs-invoker.md, 2026-10-25): uma entrada de docs/DOMAIN.md ou docs/DECISIONS.md contradita pelo código, ou superada sem registro, hoje só é pega se o Architect ler na hora. O lint de memória da wiki é a ideia aproveitável. Fica fora porque não há incidente em campo, e a resposta esperada é um check ou um passo da squad-closure-retro, nunca um papel.
 - Due: Uma retro de projeto consumidor que registre uma pergunta ao Founder sobre fato já gravado em DOMAIN.md ou DECISIONS.md, ou uma entrada desses arquivos contradita pelo código e não detectada pelo Architect
 - Closure condition: Um check determinístico ou um passo da squad-closure-retro aponta a entrada contradita, visto rejeitando o caso do incidente.
+
+## D-020 — Pass 2 por tarefa, durante a execução
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: Proposto pelo Invoker do SYND (relatório de 2026-10-25 sobre o tempo do pass 2): atacar cada tarefa assim que o executor a verifica, em paralelo com as próximas. Fica fora porque contradiz a regra da 1.54.0 (o pass 2 ataca o candidato que vai ser integrado, sobre o fechamento preparado) e encosta no isolamento do QE. A rodada incremental do pass 2 vem antes e é medida primeiro.
+- Due: A rodada incremental do pass 2 integrada e medida em um projeto consumidor, com o pass 2 ainda dominando o tempo entre implemented e pass2_complete
+- Closure condition: Decisão registrada: o ataque por tarefa adotado sem enfraquecer o pass 2 final sobre o fechamento preparado, ou descartado com a medição que o justifica.
+
+## D-021 — Correção depois de pass2_complete fora do executor
+
+- Status: open
+- Owner: own_change
+- Impact: defect
+- Decision: A mudança executor-pos-fechamento abre repair e verify só enquanto a change está em implemented, onde chegam os achados do pass 2. Um CI vermelho depois de pass2_complete ainda volta ao Developer por despacho direto, sem o orçamento e a trilha do executor. Fica fora porque nenhum projeto relatou o caso e a volta de estado que ele pede é decisão de protocolo.
+- Due: Um projeto consumidor registra uma correção feita fora do executor depois de pass2_complete
+- Closure condition: A correção pedida depois de pass2_complete passa por tasks.mjs repair, com o estado e a evidência do pass 2 invalidados de forma explícita, visto num teste.
+
