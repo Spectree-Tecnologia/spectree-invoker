@@ -3,8 +3,9 @@
 ## O check novo recusa o #76
 
 Com o `check-plugin.mjs` desta mudança copiado para duas worktrees: em `f81421f^1` (antes do #76),
-`--write-normative` listou 301 frases normativas no protocolo; com essa lista, o check em `f81421f`
-(o #76) falhou com 258 "dropped the normative sentence", entre elas a do R-009 ("One complete
+`--write-normative` listou 307 frases normativas no protocolo; com essa lista, o check em `f81421f`
+(o #76) falhou com 263 "dropped the normative sentence" (medido no head final; a primeira versão
+do padrão, sem `requires`/`always`/`shall`, deu 301 e 258, e as 258 foram as classificadas), entre elas a do R-009 ("One complete
 observed suite can support multiple Scenarios; repeat neither database setup nor the suite per
 Requirement") e "Each revision adds at most three attempts, up to ten total…". No head desta
 mudança, o mesmo check passa com 166 frases listadas.
