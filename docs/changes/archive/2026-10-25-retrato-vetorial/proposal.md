@@ -19,9 +19,9 @@ prévias do #97 eram do Chromium desenhando o SVG direto, que mostra o `<image>`
 2. **`hooks/invoker-desk/orb-art.ts`**: cada orb traçado em dois tamanhos. O `small` (56×56, cerca de
    7,8 mil caracteres) entra uma vez nos `defs` do avatar, e os seis orbs da órbita apontam para ele
    com `<use href="#...">`, a referência interna que o app aceita, por cima da esfera vetorial. O
-   `large` (160×160, cerca de 47 mil) é o avatar do card do subagente.
-3. **Testes:** o `tests/invoker-desk.test.mjs` passa a aceitar retrato e orbs só como `<svg
-   viewBox>` com caminhos preenchidos, nada de `<image>`, referência ou marcação, e mede o SVG do
+   `large` (160×160, de 45 a 51 mil) é o avatar do card do subagente.
+3. **Testes:** o `tests/invoker-desk.test.mjs` passa a aceitar os desenhos traçados só como
+   `<svg viewBox>` com caminhos preenchidos, nada de `<image>`, referência ou marcação dentro deles, e mede o SVG do
    avatar e do card contra o teto; o kit cobra que avatar e card não levem `<image>`. Vistos
    falhando no código do #97.
 4. A retro de `retrato-invoker` (#97), devida por esta.

@@ -83,7 +83,8 @@ export function orbMarkup(kind: OrbKind, cx: number, cy: number, r: number, gid:
   if (art) {
     const d = Math.round(r * 2.2 * 10) / 10
     // An orbit orb points at the one copy of its drawing in the avatar's
-    // defs, over the vector sphere, so six orbs cost three drawings.
+    // defs, so six orbs cost three drawings; the vector sphere beneath shows
+    // only if a surface drops the reference.
     const drawn =
       size === 'small'
         ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/><use href="#art-${kind}" transform="translate(${cx - d / 2} ${cy - d / 2}) scale(${d})"/>`

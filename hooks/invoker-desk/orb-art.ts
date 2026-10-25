@@ -1,7 +1,6 @@
 // The Founder's three orb paintings (tarefa 25) traced into flat-colour polygons, since the desktop
 // app strips any <image> from an Svg: `small`, drawn once and pointed at by the six orbs that circle
-// the Invoker, and `large` for a
-// subagent card's avatar. An empty value falls back to the vector orb.
+// the Invoker, and `large` for a subagent card's avatar. An empty value falls back to the vector orb.
 export const ORB_ART = {
   quas: {
     small:
