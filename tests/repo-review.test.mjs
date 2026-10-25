@@ -19,11 +19,19 @@ function missingSections(text) {
 // A path the reviewer is told to read or check. Globs and placeholders are patterns, not paths.
 const looksLikePath = (t) => !/[\s*<>]/.test(t) && (t.includes('/') || /\.(md|mjs|json|ya?ml)$/.test(t));
 
-function stalePaths(text, exists) {
+// The anchor GitHub gives a heading: lower case, punctuation dropped, spaces as hyphens.
+const slug = (heading) => heading.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s/g, '-');
+
+function stalePaths(text, exists, read = () => '') {
   const ticked = [...text.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-  const linked = [...text.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1].split('#')[0]);
-  return [...new Set([...ticked, ...linked])].filter(looksLikePath).filter((p) => !exists(p))
-    .map((p) => `REVIEW.md: points at ${p}, which does not exist`);
+  const linked = [...text.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]);
+  return [...new Set([...ticked, ...linked])].filter((t) => looksLikePath(t.split('#')[0])).flatMap((t) => {
+    const [path, anchor] = t.split('#');
+    if (!exists(path)) return [`REVIEW.md: points at ${path}, which does not exist`];
+    if (!anchor) return [];
+    const anchors = read(path).split('\n').filter((l) => /^#+\s/.test(l)).map((l) => slug(l.replace(/^#+\s+/, '')));
+    return anchors.includes(anchor) ? [] : [`REVIEW.md: points at ${path}#${anchor}, a heading that does not exist`];
+  });
 }
 
 function templateWithoutReview(text) {
@@ -50,11 +58,18 @@ test('a guide pointing at a path that moved is refused, and patterns are not pat
   ]);
 });
 
+test('a guide pointing at a heading that was renamed is refused', () => {
+  const read = () => '# Contribuindo\n\n## Revisão por pares\n';
+  assert.deepEqual(stalePaths('[CONTRIBUTING](CONTRIBUTING.md#revisão-independente)', () => true, read),
+    ['REVIEW.md: points at CONTRIBUTING.md#revisão-independente, a heading that does not exist']);
+  assert.deepEqual(stalePaths('[CONTRIBUTING](CONTRIBUTING.md#revisão-por-pares)', () => true, read), []);
+});
+
 test('a PR template that does not ask where the review went is refused', () => {
   assert.equal(templateWithoutReview('## O quê\n\n## Atrito\n').length, 1);
 });
 
 test('this repository: REVIEW.md is whole and current, and the template asks for the review', () => {
   const guide = read('REVIEW.md');
-  assert.deepEqual([...missingSections(guide), ...stalePaths(guide, exists), ...templateWithoutReview(read('.github/pull_request_template.md'))], []);
+  assert.deepEqual([...missingSections(guide), ...stalePaths(guide, exists, read), ...templateWithoutReview(read('.github/pull_request_template.md'))], []);
 });

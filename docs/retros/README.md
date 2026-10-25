@@ -33,7 +33,7 @@ lugar; cada correção entra por uma mudança própria.
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 | R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |
-| R-008 | `information-access · ambiente · node-abaixo-do-piso` | 6 | Pago pelo ambiente: sessão de 2026-10-25 em Node 22.23.4, suíte verde |
+| R-008 | `information-access · ambiente · node-abaixo-do-piso` | 6 | Aberto, observado no piso uma vez: sessão de 2026-10-25 em Node 22.23.4, suíte verde |
 | R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única; frases normativas fora do inventário seguem no [D-017](../DEFERRED.md) |
 | R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
 

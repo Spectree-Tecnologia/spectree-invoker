@@ -20,7 +20,7 @@ merge arquivou. Nenhuma assinatura conhecida casou.
   contexto limpo por head, guiado pelo `REVIEW.md` · pago nesta mudança (tarefa 21).
 - **R-008 · 6 · acesso à informação** · `information-access · ambiente · node-abaixo-do-piso` · a
   sessão desta mudança roda Node v22.23.4 e a suíte da `main` em `4a51738` ficou verde (629 de 632,
-  3 pulados, 0 falhas) · primeira sessão no piso; não reproduzido · pago pelo ambiente.
+  3 pulados, 0 falhas) · primeira sessão no piso; não reproduzido · segue aberto até mais sessões novas confirmarem.
 
 ## O que funcionou
 
