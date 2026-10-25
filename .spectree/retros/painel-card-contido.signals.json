@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 100,
+    "title": "Painel: card contido na borda e com tipo, modelo e esforço do subagente (tarefa 28) — v1.67.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/100",
+    "opened": "2026-10-25T12:08:35Z",
+    "merged": "2026-10-25T12:22:50Z"
+  },
+  "signals": {
+    "open_minutes": 14,
+    "commits": 3,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.67.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-painel-card-contido/proposal.md"
+    ]
+  },
+  "friction": "- O kit desenha a árvore, não a pintura: prova as propriedades do card, não a largura desenhada. A conferência no app desktop segue com o Founder (R-011).",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

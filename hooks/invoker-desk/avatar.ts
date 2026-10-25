@@ -1,5 +1,5 @@
-import { defs, GRADIENT_ID, nest, orbMarkup, ROLES } from './orbs'
-import type { Role } from './orbs'
+import { defs, GRADIENT_ID, nest, ORB_COLOR, orbMarkup, ROLES } from './orbs'
+import type { OrbKind, Role } from './orbs'
 import { PORTRAIT } from './portrait'
 
 const CX = 130
@@ -85,6 +85,25 @@ export function invokerMarkup(isOrchestrating: boolean, active: readonly Role[])
     (PORTRAIT ? portraitMarkup(isOrchestrating) : `<g transform="translate(0 ${DROP})">${FIGURE}</g>`) +
     ring +
     orbit +
+    `</svg>`
+  )
+}
+
+// The running step's spinner: Quas, Wex and Exort turning like a clock hand,
+// the subagent's own orb the largest of the three.
+export function spinnerMarkup(kind: OrbKind): string {
+  const dots = (['quas', 'wex', 'exort'] as const)
+    .map((orb, i) => {
+      const angle = (i * 2 * Math.PI) / 3 - Math.PI / 2
+      const x = Math.round((8 + 5.2 * Math.cos(angle)) * 10) / 10
+      const y = Math.round((8 + 5.2 * Math.sin(angle)) * 10) / 10
+      return `<circle cx="${x}" cy="${y}" r="${orb === kind ? 2.6 : 1.8}" fill="${ORB_COLOR[orb].mid}"/>`
+    })
+    .join('')
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">` +
+    `<circle cx="8" cy="8" r="5.2" fill="none" stroke="${ORB_COLOR[kind].mid}" stroke-opacity="0.25" stroke-width="1"/>` +
+    `<g>${dots}<animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="1.2s" repeatCount="indefinite"/></g>` +
     `</svg>`
   )
 }
