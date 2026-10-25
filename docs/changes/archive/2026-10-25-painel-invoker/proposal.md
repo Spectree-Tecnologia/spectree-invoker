@@ -20,7 +20,7 @@ de avatar e os especialistas como os orbs do herói.
    subagente roda. Mostra o custo da conversa, os tokens dos subagentes, o tempo de sessão, as seções
    "Em execução" e "Concluídos" recolhíveis, e um card por subagente com papel, tokens, duração,
    status, os últimos passos e a lista completa. `/invoker-desk` reabre o painel; a status line diz
-   quantos orbs estão ativos.
+   quantos subagentes estão rodando.
 2. **`plugin.json` aponta o contrato de estado** (`types`), que o `claude plugin validate` confere.
 3. **`tests/invoker-desk.test.mjs`**: o módulo que o manifesto nomeia existe, o estado fica sob o nome
    do plugin, há um orb por card de `agents/`, dois de cada tipo, nada alcança rede ou processo, e o

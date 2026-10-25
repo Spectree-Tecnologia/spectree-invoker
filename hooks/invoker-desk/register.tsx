@@ -29,22 +29,16 @@ type Agents = Record<string, AgentRow>
 const isRunning = (row: AgentRow) => row.status === 'running'
 
 // A reload starts the module over; the next event that needs the clock
-// starts it again.
+// starts it again. It ticks once a second for the session time and the
+// running cards' durations.
 let tick: { cancel: () => void } | null = null
 
 async function syncClock($: EngineInterface, list: Agents) {
   const at = await $.clock.now()
   await update($, now, () => at)
-  const hasRunning = Object.values(list).some(isRunning)
-  if (hasRunning && !tick) {
-    tick = $.clock.every(1000, () => void update($, now, () => Date.now()))
-  }
-  if (!hasRunning && tick) {
-    tick.cancel()
-    tick = null
-  }
+  if (!tick) tick = $.clock.every(1000, () => void $.clock.now().then(t => update($, now, () => t)))
   const running = Object.values(list).filter(isRunning).length
-  $.ui.status(running > 0 ? `Invoker orquestrando ${plural(running, 'orb', 'orbs')}` : undefined)
+  $.ui.status(running > 0 ? `Invoker orquestrando ${plural(running, 'subagente', 'subagentes')}` : undefined)
 }
 
 async function openPane($: EngineInterface) {
@@ -111,8 +105,7 @@ export const register: Register = on => {
     const usage = await $.session.usage()
     await update($, startedAt, () => usage.startedAt)
     if (usage.cost) await update($, costUsd, () => usage.cost?.usd ?? null)
-    const at = await $.clock.now()
-    await update($, now, () => at)
+    await syncClock($, await read($, agents))
     if (await isSpectreeProject($, e.cwd)) await openWhereSidebar($)
 
     return next(e)
