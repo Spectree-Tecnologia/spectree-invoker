@@ -3,6 +3,8 @@
 // to start without them, and refuses to finish if the scope was cut while the round ran.
 
 import { test } from 'node:test';
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import { gitRepo, writeFiles, cleanup, change, writePass2Brief } from './helpers.mjs';
 import { Store } from '../scripts/lib/change/store.mjs';
@@ -23,7 +25,7 @@ test('a pass 2 operation does not start without a brief declaring independence a
   try {
     assert.equal(code(() => start(r, 'p1')), 'E_PASS2_BRIEF');
     assert.equal(code(() => start(r, 'p1', '.spectree/pass2/missing.json')), 'E_PASS2_BRIEF');
-    for (const over of [{ independent_of: [] }, { fork: true }, { fork: undefined },
+    for (const over of [{ independent_of: [] }, { independent_of: ['full_stack_developer', 42] }, { fork: true }, { fork: undefined },
       { withheld: ['builder_report', 'pull_request'] }, { scope: { attack: [], excluded: [] } },
       { scope: { attack: ['src/'] } }, { version: 2 }]) {
       assert.equal(code(() => start(r, 'p1', writePass2Brief(r.root, 'bad', over))), 'E_PASS2_BRIEF', JSON.stringify(over));
@@ -45,6 +47,10 @@ test('cutting the scope after the round started refuses its finish; the round is
     writePass2Brief(r.root, 'brief', { scope: { attack: ['src/a.cjs'], excluded: ['src/b.cjs'] } });
     assert.equal(code(() => finishWork(r.root, 'c1', 'p1', { result: done, next: 'Record.' })), 'E_PASS2_SCOPE_MOVED');
     assert.equal(pendingWork(r.root, 'c1').operation_id, 'p1', 'the round stays pending until it is reconciled');
+    // A brief removed mid-round is a scope nobody can read any more: the same refusal.
+    start(r, 'p3', writePass2Brief(r.root, 'brief-3'));
+    rmSync(join(r.root, '.spectree/pass2/brief-3.json'));
+    assert.equal(code(() => finishWork(r.root, 'c1', 'p3', { result: done, next: 'Record.' })), 'E_PASS2_SCOPE_MOVED');
     // The new scope is a new operation, with its own brief pinned.
     start(r, 'p2', writePass2Brief(r.root, 'brief-2', { scope: { attack: ['src/a.cjs'], excluded: ['src/b.cjs'] } }));
     assert.equal(finishWork(r.root, 'c1', 'p2', { result: done, next: 'Record.' }).status, 'reported_success');

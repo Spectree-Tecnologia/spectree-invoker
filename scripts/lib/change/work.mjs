@@ -102,7 +102,7 @@ export function pass2Brief(root, path) {
   const problems = [];
   if (!doc || typeof doc !== 'object' || doc.version !== 1) problems.push('version 1');
   else {
-    if (!Array.isArray(doc.independent_of) || !doc.independent_of.includes('full_stack_developer')) problems.push('independent_of naming full_stack_developer');
+    if (!texts(doc.independent_of, 1) || doc.independent_of.length > 12 || !doc.independent_of.includes('full_stack_developer')) problems.push('independent_of, up to 12 role names, naming full_stack_developer');
     if (doc.fork !== false) problems.push('fork: false, a fresh context and never a fork');
     if (!Array.isArray(doc.withheld) || !WITHHELD.every((w) => doc.withheld.includes(w))) problems.push(`withheld naming ${WITHHELD.join(', ')}`);
     if (!doc.scope || !texts(doc.scope.attack, 1) || !texts(doc.scope.excluded, 0)) problems.push('scope.attack (1..500) and scope.excluded (an explicit list, empty when nothing is)');
