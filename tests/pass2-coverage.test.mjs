@@ -72,7 +72,7 @@ test('a surviving mutant is never carried, not even behind an older kill, and a 
     writeFileSync(join(r.root, '.spectree/probe.json'), JSON.stringify({ version: 1, source_digest: 'sha256:' + '0'.repeat(64), mutations: [] }));
     startWork(r.root, 'c1', 'pass2-r2', { phase: 'pass2', task: 'attack', next: 'Record.' });
     finishWork(r.root, 'c1', 'pass2-r2', { result: { status: 'completed' }, next: 'Record.' });
-    assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'], mutation_report: '.spectree/probe.json' }, { operation: 'pass2-r2' }), { code: 'E_PASS2_STALE' });
+    assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'], mutation_report: '.spectree/probe.json' }, { operation: 'pass2-r2' }), { code: 'E_PASS2_PROBE_STALE' });
   } finally { cleanup(r.root); }
 });
 
@@ -87,6 +87,9 @@ test('a round is bound to the bytes it finished on, and recorded once', () => {
     writeFiles(r.root, { 'src/b.cjs': 'module.exports = 20;\n' });
     recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'pass2-r1' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'pass2-r1' }), { code: 'E_PASS2_DUPLICATE' });
+    startWork(r.root, 'c1', 'pass2-r2', { phase: 'pass2', task: 'attack', next: 'Record.' });
+    finishWork(r.root, 'c1', 'pass2-r2', { result: { status: 'completed', error: 'rate_limit' }, next: 'Resume.' });
+    assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'] }, { operation: 'pass2-r2' }), { code: 'E_PASS2_UNFINISHED' });
     startWork(r.root, 'c1', 'implement-1', { phase: 'implement', task: 'B', next: 'Verify.' });
     finishWork(r.root, 'c1', 'implement-1', { result: { status: 'completed' }, next: 'Verify.' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'implement-1' }), { code: 'E_PASS2_OPERATION' });

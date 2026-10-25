@@ -41,6 +41,9 @@ export function recordPass2Round(root, id, report, { operation }) {
       report.attacked.some((p) => typeof p !== 'string' || OPERATIONAL.test(p.replaceAll('\\', '/')))) refuse('E_PASS2_REPORT', '`attacked` lists 1..500 candidate files, outside .spectree/ and docs/changes/.');
   const op = workRecords(root, id).find((r) => r.operation_id === identifier(operation));
   if (!op?.finished || op.started.phase !== 'pass2') refuse('E_PASS2_OPERATION', 'Record a pass2 operation after work.mjs finish: its start and end are what this record measures.');
+  // An interrupted or failed round attacked only part of what it lists; recording it as coverage
+  // would let the next round skip the rest.
+  if (op.finished.status !== 'reported_success') refuse('E_PASS2_UNFINISHED', `The round ended ${op.finished.status}; only a completed round is coverage. Run it again.`);
   const rounds = pass2Rounds(root, id);
   const already = rounds.find((r) => r.operation.operation_id === op.operation_id);
   if (already) refuse('E_PASS2_DUPLICATE', `Operation ${op.operation_id} is already round ${already.round}.`);
@@ -58,7 +61,7 @@ export function recordPass2Round(root, id, report, { operation }) {
     let probe;
     try { probe = JSON.parse(readFileSync(inside(root, report.mutation_report), 'utf8')); } catch { refuse('E_PASS2_REPORT', 'The mutation report is not readable JSON.'); }
     if (probe?.version !== 1 || probe.dry_run || !Array.isArray(probe.mutations)) refuse('E_PASS2_REPORT', 'The mutation report must be a batch run of mutation-probe.mjs --apply.');
-    if (probe.source_digest !== current.content_digest) refuse('E_PASS2_STALE', 'The mutation report was produced on other content; run the probe on this candidate.');
+    if (probe.source_digest !== current.content_digest) refuse('E_PASS2_PROBE_STALE', 'The mutation report was produced on other content; run the probe on this candidate.');
     mutations = probe.mutations.map((m) => ({ id: m.id, target: m.target, test_name: m.test_name, result: m.result,
       target_sha256: shaOf(root, m.target) }));
   }
@@ -66,7 +69,8 @@ export function recordPass2Round(root, id, report, { operation }) {
     advisory: true, authorizes_execution: false, candidate: current, attacked, mutations,
     operation: { operation_id: op.operation_id, started_at: op.started.at, finished_at: op.finished.at,
       elapsed_ms: Date.parse(op.finished.at) - Date.parse(op.started.at), status: op.finished.status, usage: op.finished.usage ?? null } };
-  publishOnce(join(folder(root, id), `${String(doc.round).padStart(3, '0')}.json`), `${JSON.stringify(doc, null, 2)}\n`);
+  try { publishOnce(join(folder(root, id), `${String(doc.round).padStart(3, '0')}.json`), `${JSON.stringify(doc, null, 2)}\n`); }
+  catch (e) { if (e.code === 'EEXIST') refuse('E_PASS2_CONFLICT', `Round ${doc.round} was recorded concurrently; read scope and record again.`); throw e; }
   return doc;
 }
 
@@ -79,7 +83,7 @@ export function pass2Scope(root, id) {
   // NUL-separated and without rename pairing: a renamed file's old path is listed as deleted, and
   // a non-ASCII path arrives as itself instead of quoted.
   const listed = (args) => git(root, args).split('\0').filter(Boolean);
-  const files = [...new Set([...listed(['diff', '-z', '--no-renames', '--name-only', base]), ...listed(['ls-files', '-z', '--others', '--exclude-standard'])])]
+  const files = [...new Set([...listed(['diff', '-z', '--no-renames', '--relative', '--name-only', base]), ...listed(['ls-files', '-z', '--others', '--exclude-standard'])])]
     .filter((p) => !OPERATIONAL.test(p)).sort();
   const rounds = pass2Rounds(root, id);
   const attackedAt = new Map(rounds.flatMap((r) => r.attacked.map((a) => [`${a.path}\0${a.sha256}`, r.round])));

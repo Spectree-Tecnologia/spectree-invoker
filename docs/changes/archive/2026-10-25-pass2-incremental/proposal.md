@@ -19,8 +19,8 @@ histórico de transições, que mistura trabalho com espera.
 1. **`pass2.mjs record`** registra uma rodada terminada: os arquivos atacados, cada um preso ao seu
    sha256, e, opcionalmente, a saída do `mutation-probe.mjs --apply` feita sobre o mesmo conteúdo. O
    início, o fim e o uso da rodada vêm da operação `pass2` de `work.mjs` em volta do despacho, nunca do
-   relatório. O registro é recusado se o conteúdo mudou desde o fim da rodada, e uma operação vira uma
-   rodada só uma vez.
+   relatório. O registro é recusado se a rodada não terminou completa, se o conteúdo mudou desde o fim
+   dela, e uma operação vira uma rodada só uma vez.
 2. **`pass2.mjs scope`** diz o que a rodada seguinte ataca: os arquivos do candidato mudados desde a
    base cujos bytes nenhuma rodada atacou, e as mutações mortas cujo alvo mudou (`rerun`) ou não
    (`carried`). Vale o último resultado de cada mutação: uma sobrevivente nunca é carregada. Também
