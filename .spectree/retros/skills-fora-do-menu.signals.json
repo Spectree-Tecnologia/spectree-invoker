@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 95,
+    "title": "Plugin: skills do squad fora do menu de slash (tarefa 23) — v1.62.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/95",
+    "opened": "2026-10-25T03:32:43Z",
+    "merged": "2026-10-25T03:53:14Z"
+  },
+  "signals": {
+    "open_minutes": 21,
+    "commits": 2,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 1,
+    "friction": "present",
+    "release": "v1.62.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-skills-fora-do-menu/proposal.md"
+    ]
+  },
+  "friction": "- Aberto em paralelo ao #94 e dependente dele: ficou vermelho no `repo-changes` até o merge do #94, porque a retro devida só existe depois dele; o rebase teve conflito em versão e ROADMAP. Registrado como R-001 na retro.\n- A primeira rodada local teve 6 falhas do Presence por `node_modules` ausente no container; `npm ci` resolveu.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01PyK3pn2hyHsjj3na2c7BtT",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

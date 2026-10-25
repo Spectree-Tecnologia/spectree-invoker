@@ -16,6 +16,20 @@ state; with an argument it takes the request into the pipeline.
 That is the only entry in the slash menu. The squad skills (`squad-*`) ship with
 `user-invocable: false`: the agents load them when their phase reaches them, and you never type them.
 
+### The Invoker panel
+
+The plugin also ships a Claude Code hooks module, `hooks/invoker-desk/`: a side panel that follows the
+orchestration. The Invoker sits in the middle with six orbs around him, two Quas (Solutions Architect,
+Integration Engineer), two Wex (Full Stack Developer, Quality Engineer) and two Exort (Platform
+Engineer, TypeSafe Engineer), and the orbs circle him while a subagent runs. Below: the session's
+cost, the subagents' tokens, the session time, and one card per subagent with its role, tokens,
+duration, status and steps.
+
+It opens by itself once per session on the desktop app and in VS Code, in a folder with `.spectree/`
+or `docs/changes/`, or at the first specialist dispatch. `/invoker-desk` reopens it; in the terminal
+the orbs are drawn as glyphs. It only watches: it reaches no network and never refuses a dispatch, a
+tool call or a turn. Function hooks are an early-access Claude Code API; Codex ignores the module.
+
 ## OpenAI Codex
 
 Use the installer. It is a **dry run by default** and writes nothing until `--apply`:

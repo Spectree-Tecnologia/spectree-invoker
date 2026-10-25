@@ -1,0 +1,95 @@
+import { defs, GRADIENT_ID, orbMarkup, ROLES } from './orbs'
+import type { Role } from './orbs'
+
+const CX = 130
+const CY = 108
+const ORBIT = 92
+// The figure is drawn on a 216-high canvas and set 14 lower, so the top orb's
+// glow has room above it.
+const DROP = 14
+const OY = CY + DROP
+
+// An original drawing in the spirit of the hero, no game art copied: purple
+// cape, gold pauldrons, cream robe, magenta collar, swept blond hair and the
+// white glow of the eyes.
+const FIGURE =
+  // aura
+  `<circle cx="${CX}" cy="${CY}" r="70" fill="url(#aura)"/>` +
+  // cape
+  `<path d="M84 112 Q130 92 176 112 L196 206 L64 206 Z" fill="#4a1559"/>` +
+  `<path d="M92 118 Q130 104 168 118 L182 206 L78 206 Z" fill="#6b2280"/>` +
+  // collar wings behind the head
+  `<path d="M112 98 L96 52 L120 84 Z" fill="#a3245e"/>` +
+  `<path d="M148 98 L164 52 L140 84 Z" fill="#a3245e"/>` +
+  `<path d="M113 96 L101 60 L120 86 Z" fill="#d4a017" opacity="0.55"/>` +
+  `<path d="M147 96 L159 60 L140 86 Z" fill="#d4a017" opacity="0.55"/>` +
+  // robe
+  `<path d="M108 104 L152 104 L162 206 L98 206 Z" fill="#e9dfc6"/>` +
+  `<path d="M124 104 L136 104 L140 206 L120 206 Z" fill="#5a2a8a"/>` +
+  `<path d="M108 104 L152 104 L150 112 L110 112 Z" fill="#d4a017"/>` +
+  // chest sigil
+  `<circle cx="${CX}" cy="132" r="9" fill="#d4a017"/>` +
+  `<circle cx="${CX}" cy="132" r="5.5" fill="#7a3b0c"/>` +
+  `<circle cx="${CX}" cy="132" r="2.5" fill="#ffd970"/>` +
+  // pauldrons, layered
+  `<path d="M78 124 Q82 100 110 102 Q112 116 104 126 Q90 132 78 124 Z" fill="#b8860b"/>` +
+  `<path d="M82 118 Q88 102 108 104 Q108 114 102 120 Q92 124 82 118 Z" fill="#e3b341"/>` +
+  `<path d="M182 124 Q178 100 150 102 Q148 116 156 126 Q170 132 182 124 Z" fill="#b8860b"/>` +
+  `<path d="M178 118 Q172 102 152 104 Q152 114 158 120 Q168 124 178 118 Z" fill="#e3b341"/>` +
+  // neck and face
+  `<rect x="124" y="88" width="12" height="16" fill="#d9a77c"/>` +
+  `<ellipse cx="${CX}" cy="76" rx="13" ry="16" fill="#e8b98f"/>` +
+  `<path d="M118 82 Q130 96 142 82 Q138 92 130 93 Q122 92 118 82 Z" fill="#d9a77c"/>` +
+  // hair swept back into a crest
+  `<path d="M116 76 Q114 54 130 50 Q148 52 145 76 Q142 62 130 60 Q120 62 116 76 Z" fill="#e8c66a"/>` +
+  `<path d="M122 56 Q130 34 140 50 Q134 46 128 54 Z" fill="#f2d98c"/>` +
+  // glowing eyes
+  `<ellipse cx="124.5" cy="76" rx="3" ry="1.4" fill="#ffffff" filter="url(#blur)"/>` +
+  `<ellipse cx="135.5" cy="76" rx="3" ry="1.4" fill="#ffffff" filter="url(#blur)"/>` +
+  `<ellipse cx="124.5" cy="76" rx="2.2" ry="0.9" fill="#ffffff"/>` +
+  `<ellipse cx="135.5" cy="76" rx="2.2" ry="0.9" fill="#ffffff"/>`
+
+// The Invoker with the six orbs around him. Idle, they rest on the circle;
+// orchestrating, they orbit him, and the orb of every role with a subagent
+// running pulses. The markup depends only on those two facts, so a redraw
+// for a timer or a token count sends the same source and the orbit runs on.
+export function invokerMarkup(isOrchestrating: boolean, active: readonly Role[]): string {
+  const orbs = ROLES.map((one, i) => {
+    const angle = (i / ROLES.length) * 2 * Math.PI - Math.PI / 2
+    const x = Math.round((CX + ORBIT * Math.cos(angle)) * 10) / 10
+    const y = Math.round((OY + ORBIT * Math.sin(angle)) * 10) / 10
+    return `<g><title>${one.label}</title>${orbMarkup(one.orb, x, y, 13, GRADIENT_ID[one.orb], active.includes(one.role))}</g>`
+  }).join('')
+  const orbit = isOrchestrating
+    ? `<g>${orbs}<animateTransform attributeName="transform" type="rotate" from="0 ${CX} ${OY}" to="360 ${CX} ${OY}" dur="7s" repeatCount="indefinite"/></g>`
+    : `<g opacity="0.8">${orbs}</g>`
+  const ring = `<circle cx="${CX}" cy="${OY}" r="${ORBIT}" fill="none" stroke="#ffffff" stroke-opacity="${isOrchestrating ? 0.12 : 0.05}" stroke-dasharray="2 6"/>`
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 240" width="260" height="240">` +
+    `<defs>${defs()}<radialGradient id="aura" cx="50%" cy="45%" r="50%">` +
+    `<stop offset="0" stop-color="#ffb347" stop-opacity="${isOrchestrating ? 0.35 : 0.18}"/>` +
+    `<stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient></defs>` +
+    `<g transform="translate(0 ${DROP})">${FIGURE}</g>` +
+    ring +
+    orbit +
+    `</svg>`
+  )
+}
+
+// A card's progress: finished is a full bar in the orb's colour, running is a
+// bar whose light sweeps across it, failed or stopped is red.
+export function barMarkup(color: string, state: 'running' | 'done' | 'failed'): string {
+  const fill = state === 'failed' ? '#d64545' : color
+  const sweep =
+    state === 'running'
+      ? `<rect x="-80" y="0" width="80" height="6" rx="3" fill="url(#shine)"><animate attributeName="x" from="-80" to="300" dur="1.6s" repeatCount="indefinite"/></rect>`
+      : ''
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 6" width="300" height="6" preserveAspectRatio="none">` +
+    `<defs><linearGradient id="shine"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/>` +
+    `<stop offset="0.5" stop-color="#ffffff" stop-opacity="0.7"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient></defs>` +
+    `<rect x="0" y="0" width="300" height="6" rx="3" fill="${fill}" opacity="${state === 'running' ? 0.45 : 0.9}"/>` +
+    sweep +
+    `</svg>`
+  )
+}
