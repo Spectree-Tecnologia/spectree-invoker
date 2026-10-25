@@ -19,8 +19,8 @@ retros aprendem não chega a quem escreve a próxima proposta.
    `retro.mjs collect 92`.
 2. **`retro.mjs trends [--dir docs/retros]`:** lê as retros escritas, agrupa os achados pela
    assinatura, da mais antiga para a mais nova, e responde `recurring` (assinatura em duas ou mais
-   retros que nenhum índice marca como paga) e `quiet` (achado aberto que nenhuma das três últimas
-   retros citou). A situação vem da tabela do `README.md` da pasta quando ela existe; sem ela, fica
+   retros que nenhum índice marca como paga e que ainda não ficou quieta) e `quiet` (achado aberto que nenhuma das três últimas
+   retros citou). A situação vem da tabela do `README.md` da pasta quando ela existe, pelo id ou pela assinatura; sem ela, fica
    desconhecida, e desconhecida nunca conta como paga. Só leitura.
 3. **Feed-forward:** o card do Solutions Architect lê `trends` antes da proposta e nomeia, no
    `proposal.md`, o achado recorrente da área que a mudança toca, pago ou deixado de fora com o

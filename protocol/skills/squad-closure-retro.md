@@ -19,7 +19,7 @@ Read the change's trail, not your memory of the session: the work checkpoints an
 
 Start from what was measured: `retro.mjs collect <pr> --apply` reads the merged PR, its CI runs per commit, the merge's commits and archive, and the PR's **Atrito** section, and records them in `.spectree/retros/` with the known finding signatures they match. A matched signature is a candidate for you to judge, never a finding by itself, and an empty match is not a clean change.
 
-Then read what came back: `retro.mjs trends` counts each finding signature across every retro already written. A signature in two retros that nobody marked paid is a second recurrence, and it earns a change of its own instead of another line; an open one that no retro has named in the last three is a candidate to close. Both are candidates; the judgement is still yours.
+Then read what came back: `retro.mjs trends` counts each finding signature across every retro already written. A signature in two retros that nobody marked paid, and that has not gone quiet since, is a second recurrence, and it earns a change of its own instead of another line; an open one that no retro has named in the last three is a candidate to close. Both are candidates; the judgement is still yours.
 
 ## What to look for
 

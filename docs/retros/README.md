@@ -19,8 +19,8 @@ lugar; cada correção entra por uma mudança própria.
   cada commit, os commits e o archive do merge e a seção **Atrito**, grava em `.spectree/retros/` e
   aponta as assinaturas conhecidas que casaram. Uma assinatura que casou é candidata; quem julga é a retro.
 - **Leia as tendências:** `node scripts/retro.mjs trends` agrupa os achados de todas as retros pela
-  assinatura e lê a situação da tabela abaixo. Assinatura em duas retros e não paga é a segunda
-  recorrência, que pede mudança própria pelo item `retro-melhorias` do [ROADMAP](../ROADMAP.md);
+  assinatura e lê a situação da tabela abaixo. Assinatura em duas retros, não paga e ainda não
+  quieta é a segunda recorrência, que pede mudança própria pelo item `retro-melhorias` do [ROADMAP](../ROADMAP.md);
   achado aberto que nenhuma das três últimas retros citou é candidato a fechar.
 - **Modo legado:** enquanto as mudanças deste repo não forem abertas com `state.mjs` (D-009),
   esse é todo o rastro; a seção Atrito é a única fonte do que não chega ao GitHub.

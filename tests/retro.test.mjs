@@ -157,11 +157,24 @@ test('an open finding no retro named in the last three is quiet; one of unknown 
   assert.deepEqual(t.quiet, ['tool-economy · release · disputa'], 'two retros without it is not yet quiet, and an unknown status never is');
 });
 
+test('a finding written the way the skill asks, with no id, takes its status from the index by signature', () => {
+  const line = `- 2 · tool economy · ${SIG_A} · two threads raced for the version · owner: change of its own`;
+  const retros = [1, 2].map((n) => ({ path: `docs/retros/2026-10-2${n}-r${n}.md`, text: retro(`r${n}`, n, [line]) }));
+  const paid = retroTrends({ retros, index: '| R-001 | `tool-economy · release · disputa` | 2 | Paid in change 9 |\n' });
+  assert.equal(paid.findings[0].status, 'paid');
+  assert.deepEqual(paid.recurring, [], 'a paid finding is not charged again');
+  const later = [3, 4, 5].map((n) => ({ path: `docs/retros/2026-10-2${n}-r${n}.md`, text: retro(`r${n}`, n, []) }));
+  const open = retroTrends({ retros: [...retros, ...later], index: '| R-001 | `tool-economy · release · disputa` | 2 | Open |\n' });
+  assert.deepEqual(open.quiet, ['tool-economy · release · disputa']);
+  assert.deepEqual(open.recurring, [], 'came back once, then went quiet: a candidate to close, not a recurrence');
+});
+
 test('trends read the project directory, and refuse one that does not exist', () => {
   const r = gitRepo({
     'docs/retros/2026-10-24-a.md': retro('a', 1, [`- **R-001 · 2 · economia** · ${SIG_A}`]),
     'docs/retros/2026-10-25-b.md': retro('b', 2, [`- **R-001 · 2 · economia** · ${SIG_A}`]),
     'docs/retros/README.md': '| R-001 | `tool-economy · release · disputa` | 2 | Aberto |\n',
+    'docs/retros/old.md/keep.txt': 'a folder whose name ends in .md is not a retro',
   });
   try {
     const run = (...argv) => { const lines = []; const errors = []; const code = retroCommand({ root: r.root, argv: ['trends', ...argv], out: (s) => lines.push(s), err: (s) => errors.push(s) }); return { code, result: lines.length ? JSON.parse(lines.join('\n')) : null, err: errors[0] ?? '' }; };

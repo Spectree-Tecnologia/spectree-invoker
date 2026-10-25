@@ -476,9 +476,9 @@ names of the changes it covers.
 
 `retro.mjs trends [--dir docs/retros]` reads the retros already written and groups their findings
 by signature, oldest retro first. `recurring` lists signatures seen in two or more retros that no
-index marks paid; `quiet` lists open ones no retro has named in the last three. When the retros
+index marks paid and that have not gone quiet; `quiet` lists open ones no retro has named in the last three. When the retros
 directory has a `README.md` with a `| R-NNN | signature | … | situation |` table, the status comes
-from there; without one it stays unknown, and unknown is never paid. The Solutions Architect reads
+from there, by id or by signature; without one it stays unknown, and unknown is never paid. The Solutions Architect reads
 it before a proposal.
 
 ## CI proportional to what changed

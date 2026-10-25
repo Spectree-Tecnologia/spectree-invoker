@@ -7,7 +7,7 @@
 // the retros already written and says which findings came back and which went quiet; whether that
 // earns a change of its own is still the Invoker's call.
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { flags, git, inside, publishOnce, pullRequestRecord, refuse, runsForCommit } from '../shared/index.mjs';
 
@@ -187,7 +187,8 @@ export function retroTrends({ retros, index = null }) {
 
   const findings = [...bySignature.values()].map((e) => {
     const ids = [...e.ids].sort();
-    const row = ids.map((id) => rows.get(id)).find(Boolean) ?? null;
+    // A line written the way the skill asks carries no id, so the index is also read by signature.
+    const row = ids.map((id) => rows.get(id)).find(Boolean) ?? [...rows.values()].find((r) => r.signature === e.signature) ?? null;
     const last = Math.max(...e.positions);
     return {
       signature: e.signature, ids, status: row?.status ?? null, situation: row?.situation ?? null,
@@ -198,11 +199,12 @@ export function retroTrends({ retros, index = null }) {
   return {
     retros: parsed.length,
     findings,
-    // Unknown status is not paid: a finding nobody marked paid that came back is still recurring.
-    recurring: findings.filter((f) => f.appearances >= 2 && f.status !== 'paid').map((f) => f.signature),
+    // Unknown status is not paid: a finding nobody marked paid that came back is still recurring,
+    // until it goes quiet; then it is a candidate to close, never both at once.
+    recurring: findings.filter((f) => f.appearances >= 2 && f.status !== 'paid' && f.quiet_for < QUIET_AFTER).map((f) => f.signature),
     quiet: findings.filter((f) => f.status === 'open' && f.quiet_for >= QUIET_AFTER).map((f) => f.signature),
     unsigned,
-    meaning: `Counted from the retros written, not from the changes: a finding no retro recorded is absent here. Recurring is a signature in two or more retros that no index marks paid; quiet is an open one no retro has named in the last ${QUIET_AFTER}. Both are candidates, never decisions.`,
+    meaning: `Counted from the retros written, not from the changes: a finding no retro recorded is absent here. Recurring is a signature in two or more retros that no index marks paid and that has not gone quiet; quiet is an open one no retro has named in the last ${QUIET_AFTER}. Both are candidates, never decisions.`,
   };
 }
 
@@ -210,7 +212,7 @@ export function retroTrends({ retros, index = null }) {
 function readRetros(root, rel) {
   const dir = inside(root, rel);
   if (!existsSync(dir)) refuse('E_RETRO_MISSING', `${rel} does not exist; trends read the retros a project already wrote.`);
-  const names = readdirSync(dir).filter((n) => n.endsWith('.md') && n !== 'README.md');
+  const names = readdirSync(dir).filter((n) => n.endsWith('.md') && n !== 'README.md' && statSync(join(dir, n)).isFile());
   const base = rel.replaceAll('\\', '/').replace(/\/$/, '');
   return {
     retros: names.map((n) => ({ path: `${base}/${n}`, text: readFileSync(join(dir, n), 'utf8') })),
