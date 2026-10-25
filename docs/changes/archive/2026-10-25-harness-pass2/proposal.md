@@ -27,7 +27,8 @@ Escrita antes do código, porque a mudança anterior (#106) mostrou o custo de n
   e o registro diz que houve acerto e qual era a chave.
 - **A entrada mora fora do checkout**, em `SPECTREE_PROBE_CACHE` ou em `~/.cache/spectree-probe`.
   A pasta é privada ao usuário: outra dona, permissão aberta ou link é recusa, porque a entrada roda
-  como código da prova. Nunca entra no digest de conteúdo nem em `.spectree/`.
+  como código da prova. Pelo mesmo motivo, um link guardado na entrada fica dentro do caminho
+  declarado; um que aponte para fora faz a entrada não ser gravada. Nunca entra no digest de conteúdo nem em `.spectree/`.
 - **Uma entrada só existe completa.** Ela é gravada numa pasta temporária e renomeada; a marca de
   completa é o último arquivo escrito. Sem a marca, não há acerto.
 - **O cache é opcional e declarado.** Sem `setup_cache` no plano, nada muda.

@@ -9,7 +9,7 @@ import {
   inside,
   refuse,
 } from '../shared/index.mjs';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, lstatSync, chmodSync, cpSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, lstatSync, chmodSync, cpSync, renameSync, readdirSync, readlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname, resolve, relative, isAbsolute, delimiter, posix } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
@@ -119,6 +119,16 @@ function restoreCache(entry, copy) {
   for (const p of entry.paths) if (existsSync(join(entry.dir, p))) cpSync(join(entry.dir, p), join(copy, p), { recursive: true, verbatimSymlinks: true });
   return true;
 }
+// A link kept verbatim must stay inside its declared path: an absolute or escaping target would
+// let a hit load code from a folder outside the private cache.
+function linkEscapes(base, dir = base) {
+  if (!existsSync(dir) || !lstatSync(dir).isDirectory()) return false;
+  return readdirSync(dir, { withFileTypes: true }).some((d) => {
+    const p = join(dir, d.name);
+    if (d.isSymbolicLink()) { const t = readlinkSync(p); return isAbsolute(t) || !containedBy(base, resolve(dir, t)); }
+    return d.isDirectory() && linkEscapes(base, p);
+  });
+}
 /** Stores what setup produced; returns `stored` or `miss` with why. */
 function storeCache(entry, copy) {
   if (!entry.paths.some((p) => existsSync(join(copy, p)))) return { cache: 'miss', cache_error: 'NO_DECLARED_PATH' };
@@ -127,12 +137,19 @@ function storeCache(entry, copy) {
   try {
     temp = mkdtempSync(join(entry.root, 'incoming-'));
     for (const p of entry.paths) if (existsSync(join(copy, p))) cpSync(join(copy, p), join(temp, p), { recursive: true, verbatimSymlinks: true });
+    if (entry.paths.some((p) => existsSync(join(temp, p)) && (lstatSync(join(temp, p)).isSymbolicLink() || linkEscapes(join(temp, p))))) {
+      rmSync(temp, { recursive: true, force: true });
+      return { cache: 'miss', cache_error: 'LINK_ESCAPES' };
+    }
     writeFileSync(join(temp, COMPLETE), `${entry.key}\n`);
     try { renameSync(temp, entry.dir); } catch (e) {
       // Another probe stored it first; a folder without the marker is a broken entry, replaced once.
       if (existsSync(join(entry.dir, COMPLETE))) { rmSync(temp, { recursive: true, force: true }); return { cache: 'miss', cache_error: 'STORED_CONCURRENTLY' }; }
       if (!existsSync(entry.dir)) throw e;
-      rmSync(entry.dir, { recursive: true, force: true });
+      // Moved aside before it is removed, so a probe that stored it meanwhile is never deleted mid-copy.
+      const dead = mkdtempSync(join(entry.root, 'incoming-dead-'));
+      renameSync(entry.dir, join(dead, 'entry'));
+      rmSync(dead, { recursive: true, force: true });
       renameSync(temp, entry.dir);
     }
     return { cache: 'stored' };

@@ -123,3 +123,13 @@ test('a cache folder open to others is refused before any hit', { skip: process.
     assert.throws(() => runMutation(f.root, f.plan, { apply: true }), { code: 'E_MUTATION_TEMP' });
   } finally { f.drop(); }
 });
+
+test('a setup that leaves a link outside its declared path stores nothing', { skip: process.platform === 'win32' }, () => {
+  const f = fixture();
+  try {
+    const setup = [...f.plan.setup_command.slice(0, 2), `${f.plan.setup_command[2]};fs.symlinkSync(require('node:os').tmpdir(),'node_modules/escape')`];
+    const run = runMutation(f.root, { ...f.plan, setup_command: setup }, { apply: true });
+    assert.deepEqual([run.setup.cache, run.setup.cache_error], ['miss', 'LINK_ESCAPES']);
+    assert.deepEqual(f.entries(), []);
+  } finally { f.drop(); }
+});

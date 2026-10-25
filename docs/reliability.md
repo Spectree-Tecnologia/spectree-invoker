@@ -122,7 +122,9 @@ descartável, sem link e sem rodar o setup, e o registro diz `setup.cache: "hit"
 baseline roda sempre: uma entrada estragada aparece como baseline vermelha que nomeia a chave, e
 apagar a pasta dela resolve. Um caminho declarado nunca cobre arquivo do candidato. A chave não
 inclui o caminho absoluto da cópia, que muda a cada prova: um setup cujo resultado grava onde foi
-feito (um venv do Python, por exemplo) não serve para `setup_cache`.
+feito (um venv do Python, por exemplo) não serve para `setup_cache`, e um link que aponta para fora
+do caminho declarado faz a entrada não ser gravada (`cache_error: "LINK_ESCAPES"`). A entrada não é
+sincronizada em disco: depois de uma queda de energia, a baseline é o que mostra uma entrada truncada.
 
 O banco é do projeto, e a prova não recebe credencial nenhuma. Quando os testes precisam de banco,
 o `setup_command` do projeto cria um a partir de um template já migrado, em vez de migrar a cada
