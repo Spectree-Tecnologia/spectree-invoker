@@ -91,8 +91,11 @@ export function claudeEvents(stdout, result) {
     (mission?.status === 'completed' ? '' : last?.result ?? '');
   const limit = /rate.?limit|quota|usage limit|session limit/i.test(failureText);
   const failed = errors.length > 0 || last?.is_error || (last?.permission_denials?.length ?? 0) > 0;
+  // Claude Code 2.1.302 emits system events (task_summary) after the result;
+  // any other event after it still leaves the run unknown.
+  const settled = events.slice(events.indexOf(last) + 1).every((e) => e.type === 'system');
   const status = result.error || result.signal || limit ? 'interrupted' : result.status !== 0 || failed ? 'failed'
-    : terminal.length === 1 && events.at(-1) === last && last.subtype === 'success' && last.is_error === false ? 'reported_success' : 'unknown';
+    : terminal.length === 1 && settled && last.subtype === 'success' && last.is_error === false ? 'reported_success' : 'unknown';
   let finalStatus = status === 'reported_success' && mission && mission.status !== 'completed'
     ? mission.status === 'interrupted' ? 'interrupted' : 'failed' : status;
   const kind = classification(result, failureText, finalStatus, mission);

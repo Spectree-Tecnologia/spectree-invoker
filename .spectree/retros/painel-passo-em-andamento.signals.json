@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 101,
+    "title": "Painel: passo em andamento no topo do card, com Quas, Wex e Exort girando (tarefa 29) — v1.68.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/101",
+    "opened": "2026-10-25T12:40:14Z",
+    "merged": "2026-10-25T13:15:41Z"
+  },
+  "signals": {
+    "open_minutes": 35,
+    "commits": 2,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.68.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-painel-passo-em-andamento/proposal.md"
+    ]
+  },
+  "friction": "- O kit desenha a árvore, não a pintura: o giro não foi visto rodando. A conferência no app desktop fica com o Founder (R-011).",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
