@@ -162,3 +162,20 @@ test('a card is bordered in its orb colour, the sections in Quas and Exort, and 
     await ui.unmount()
   }
 })
+
+test('a long step is cut inside its card and the avatar keeps its place', async ($, on) => {
+  engine(on, 'a1')
+  await spawn($, 'a1', 'spectree:solutions-architect', 'Architect: exploration round 3')
+  const path = `C:\\Users\\someone\\AppData\\Local\\Temp\\claude\\${'very-long-folder\\'.repeat(20)}DOMAIN.md`
+  await $.tool.call({ tool: 'Grep', path, agentId: 'a1' } as any)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const boxes = ((await (ui as any).findAll({ type: 'Box' })) as any[]).map(one => one?.props ?? {})
+  // The card clips what does not fit, the avatar never shrinks, the text column may.
+  expect(boxes.some(one => one.borderColor === '#38b6ff' && one.overflow === 'hidden')).toBe(true)
+  expect(boxes.some(one => one.flexShrink === 0 && one.justifyContent === 'center')).toBe(true)
+  expect(boxes.some(one => one.minWidth === 0 && one.overflow === 'hidden' && one.flexGrow === 1)).toBe(true)
+  const step = await ui.find({ type: 'Text', text: /Using Grep: / })
+  expect((step as any)?.props?.wrap).toBe('truncate-end')
+  await ui.unmount()
+})

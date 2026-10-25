@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 99,
+    "title": "Painel: borda na cor do orb, faixas Quas e Exort, sites nos passos de web (tarefa 27) — v1.66.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/99",
+    "opened": "2026-10-25T05:43:19Z",
+    "merged": "2026-10-25T05:49:33Z"
+  },
+  "signals": {
+    "open_minutes": 6,
+    "commits": 2,
+    "ci_heads": 2,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.66.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-painel-cores-e-sites/proposal.md"
+    ]
+  },
+  "friction": "- A prova no app desktop fica com o Founder (R-011).",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

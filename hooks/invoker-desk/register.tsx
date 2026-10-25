@@ -229,15 +229,15 @@ export const register: Register = on => {
       const headColor = row.status === 'completed' ? 'success' : row.status === 'running' ? color : 'error'
 
       return (
-        <Box flexDirection="row" borderStyle="round" borderColor={ORB_COLOR[kind].mid} paddingX={1} gap={1}>
-          <Box flexDirection="column" justifyContent="center">
+        <Box flexDirection="row" borderStyle="round" borderColor={ORB_COLOR[kind].mid} paddingX={1} gap={1} overflow="hidden">
+          <Box flexDirection="column" justifyContent="center" flexShrink={0}>
             {Svg ? (
               <Svg source={orbAvatar(kind, row.status === 'running')} alt={labelOf(row.type)} width={40} height={40} isInteractive />
             ) : (
               <Text color={color}>◉</Text>
             )}
           </Box>
-          <Box flexDirection="column" flexGrow={1} flexShrink={1}>
+          <Box flexDirection="column" flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
             <Box flexDirection="row" justifyContent="space-between">
               <Text weight="semibold" wrap="truncate-end">
                 {row.description}
@@ -255,8 +255,7 @@ export const register: Register = on => {
             <Text color={headColor}>{headline}</Text>
             {steps.map(step => (
               <Text dimColor wrap="truncate-end">
-                {'  '}
-                {step}
+                {`  ${step}`}
               </Text>
             ))}
             {Svg ? (
