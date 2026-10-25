@@ -1,4 +1,4 @@
-import { defs, GRADIENT_ID, orbMarkup, ROLES } from './orbs'
+import { defs, GRADIENT_ID, nest, orbMarkup, ROLES } from './orbs'
 import type { Role } from './orbs'
 import { PORTRAIT } from './portrait'
 
@@ -50,7 +50,7 @@ const FIGURE =
   `<ellipse cx="124.5" cy="76" rx="2.2" ry="0.9" fill="#ffffff"/>` +
   `<ellipse cx="135.5" cy="76" rx="2.2" ry="0.9" fill="#ffffff"/>`
 
-// The painted portrait, when one is shipped: an oval inside the orbit whose
+// The traced portrait, when one is shipped: an oval inside the orbit whose
 // edge fades into the panel, warmer while the Invoker orchestrates.
 function portraitMarkup(isOrchestrating: boolean): string {
   return (
@@ -58,7 +58,7 @@ function portraitMarkup(isOrchestrating: boolean): string {
     `<stop offset="0.72" stop-color="#ffffff"/><stop offset="1" stop-color="#000000"/></radialGradient>` +
     `<mask id="soft"><ellipse cx="${CX}" cy="${OY}" rx="82" ry="86" fill="url(#fade)"/></mask></defs>` +
     `<circle cx="${CX}" cy="${OY}" r="80" fill="url(#aura)"/>` +
-    `<image href="${PORTRAIT}" x="${CX - 82}" y="${OY - 86}" width="164" height="172" preserveAspectRatio="xMidYMid slice" mask="url(#soft)" opacity="${isOrchestrating ? 1 : 0.88}"/>`
+    `<g mask="url(#soft)" opacity="${isOrchestrating ? 1 : 0.88}"><g filter="url(#soften)">${nest(PORTRAIT, CX - 82, OY - 86, 164, 172)}</g></g>`
   )
 }
 

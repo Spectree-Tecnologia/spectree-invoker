@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 97,
+    "title": "Painel: retrato e orbs pintados do Invoker, tempo desde esta abertura (tarefa 25) — v1.64.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/97",
+    "opened": "2026-10-25T04:32:04Z",
+    "merged": "2026-10-25T04:54:28Z"
+  },
+  "signals": {
+    "open_minutes": 22,
+    "commits": 6,
+    "ci_heads": 6,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.64.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-retrato-invoker/proposal.md"
+    ]
+  },
+  "friction": "- O `ui.find` do kit ignora `alt`: o primeiro teste do card achou o SVG do avatar, e não o do card, e passou com o código antigo. Troquei por `findAll` e filtro por `alt`.\n- Os dois defeitos do #96 apareceram no app real minutos depois do merge. Estão registrados como R-011 na retro.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

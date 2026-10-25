@@ -67,7 +67,9 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
       // The card's avatar is the orb painting, not the vector sphere.
       const svgs = (await (ui as any).findAll({ type: 'Svg' })) as any[]
       const orb = svgs.find(one => one?.props?.alt === 'Quality Engineer')
-      expect(String(orb?.props?.source ?? '')).toContain('data:image/jpeg;base64,')
+      expect(String(orb?.props?.source ?? '')).toContain('viewBox="0 0 160 160"')
+      expect(String(orb?.props?.source ?? '')).not.toContain('<image')
+      expect(String(orb?.props?.source ?? '').length).toBeLessThanOrEqual(131072)
     }
     await ui.unmount()
   }
@@ -83,7 +85,10 @@ test('while a subagent runs the Invoker orchestrates and its orb pulses', async 
   const avatar = await ui.find({ type: 'Svg', alt: /Invoker orquestrando 1/ } as any)
   expect(avatar).toBeDefined()
   expect(String((avatar as any)?.props?.source ?? '')).toContain('animateTransform')
-  expect(String((avatar as any)?.props?.source ?? '')).toContain('data:image/jpeg;base64,')
+  expect(String((avatar as any)?.props?.source ?? '')).toContain('preserveAspectRatio="xMidYMid slice" viewBox="0 0 260 273"')
+  expect(String((avatar as any)?.props?.source ?? '')).toContain('<use href="#art-wex"')
+  // The desktop app strips an <image> from an Svg: every picture in it is traced paths.
+  expect(String((avatar as any)?.props?.source ?? '')).not.toContain('<image')
   // The engine refuses an Svg source past 131072 characters; the portrait and the orbs ride inside it.
   expect(String((avatar as any)?.props?.source ?? '').length).toBeLessThanOrEqual(131072)
   await ui.unmount()

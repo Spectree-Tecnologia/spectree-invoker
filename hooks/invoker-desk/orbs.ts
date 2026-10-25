@@ -49,14 +49,22 @@ function gradient(kind: OrbKind, id: string): string {
   )
 }
 
-function artOf(kind: OrbKind): string {
-  return kind === 'neutral' ? '' : ORB_ART[kind]
+type ArtSize = 'small' | 'large'
+
+function artOf(kind: OrbKind, size: ArtSize): string {
+  return kind === 'neutral' ? '' : ORB_ART[kind][size]
+}
+
+// Seats a traced drawing, `<svg viewBox="...">paths</svg>`, in the box at
+// (x, y) of width w and height h, filling it and cut at its edges.
+export function nest(art: string, x: number, y: number, w: number, h: number): string {
+  return art.replace('<svg ', `<svg x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice" `)
 }
 
 // One orb drawn at (cx, cy): a glow, then the Founder's painting of the orb,
-// cut round. Without a painting, a sphere and a swirl that tells the three
+// traced, cut round. Without a painting, a sphere and a swirl that tells the three
 // apart without colour (a spiral, a bolt, a flame).
-export function orbMarkup(kind: OrbKind, cx: number, cy: number, r: number, gid: string, isActive: boolean): string {
+export function orbMarkup(kind: OrbKind, cx: number, cy: number, r: number, gid: string, isActive: boolean, size: ArtSize = 'small'): string {
   const c = ORB_COLOR[kind]
   const s = r / 10
   const mark =
@@ -71,16 +79,25 @@ export function orbMarkup(kind: OrbKind, cx: number, cy: number, r: number, gid:
     ? `<animate attributeName="r" values="${r * 1.5};${r * 2.1};${r * 1.5}" dur="1.4s" repeatCount="indefinite"/>`
     : ''
   const glow = `<circle cx="${cx}" cy="${cy}" r="${r * (isActive ? 1.7 : 1.45)}" fill="${c.mid}" opacity="${isActive ? 0.45 : 0.22}" filter="url(#blur)">${pulse}</circle>`
-  const art = artOf(kind)
+  const art = artOf(kind, size)
   if (art) {
     const d = Math.round(r * 2.2 * 10) / 10
-    return glow + `<image href="${art}" x="${cx - d / 2}" y="${cy - d / 2}" width="${d}" height="${d}" clip-path="url(#round)"/>`
+    // An orbit orb points at the one copy of its drawing in the avatar's
+    // defs, so six orbs cost three drawings; the vector sphere beneath shows
+    // only if a surface drops the reference.
+    const drawn =
+      size === 'small'
+        ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/><use href="#art-${kind}" transform="translate(${cx - d / 2} ${cy - d / 2}) scale(${d})"/>`
+        : nest(art, cx - d / 2, cy - d / 2, d, d)
+    return glow + `<g clip-path="url(#round)" filter="url(#soften)">${drawn}</g>`
   }
   return glow + `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/>` + mark
 }
 
+// `soften` takes the hard steps off a traced drawing's polygons.
 const BLUR =
   '<filter id="blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>' +
+  '<filter id="soften"><feGaussianBlur stdDeviation="0.35"/></filter>' +
   '<clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.5"/></clipPath>'
 
 // The small avatar of one subagent's card.
@@ -88,13 +105,17 @@ export function orbAvatar(kind: OrbKind, isActive: boolean): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="40" height="40">` +
     `<defs>${BLUR}${gradient(kind, `g-${kind}`)}</defs>` +
-    orbMarkup(kind, 24, 24, artOf(kind) ? 14 : 9, `g-${kind}`, isActive) +
+    orbMarkup(kind, 24, 24, artOf(kind, 'large') ? 14 : 9, `g-${kind}`, isActive, 'large') +
     `</svg>`
   )
 }
 
 export function defs(): string {
-  return BLUR + gradient('quas', 'gq') + gradient('wex', 'gw') + gradient('exort', 'ge')
+  const art = (['quas', 'wex', 'exort'] as const)
+    .filter(kind => artOf(kind, 'small'))
+    .map(kind => `<g id="art-${kind}">${nest(artOf(kind, 'small'), 0, 0, 1, 1)}</g>`)
+    .join('')
+  return BLUR + gradient('quas', 'gq') + gradient('wex', 'gw') + gradient('exort', 'ge') + art
 }
 
 export const GRADIENT_ID: Record<OrbKind, string> = { quas: 'gq', wex: 'gw', exort: 'ge', neutral: 'gq' }
