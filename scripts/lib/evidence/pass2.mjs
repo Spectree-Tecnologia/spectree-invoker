@@ -39,8 +39,20 @@ export function recordPass2Round(root, id, report, { operation }) {
   if (!report || typeof report !== 'object' || Object.keys(report).some((k) => !['attacked', 'mutation_report'].includes(k))) refuse('E_PASS2_REPORT', 'A report has `attacked` and, optionally, `mutation_report`.');
   if (!Array.isArray(report.attacked) || !report.attacked.length || report.attacked.length > 500 ||
       report.attacked.some((p) => typeof p !== 'string' || OPERATIONAL.test(p.replaceAll('\\', '/')))) refuse('E_PASS2_REPORT', '`attacked` lists 1..500 candidate files, outside .spectree/ and docs/changes/.');
+  const op = workRecords(root, id).find((r) => r.operation_id === identifier(operation));
+  if (!op?.finished || op.started.phase !== 'pass2') refuse('E_PASS2_OPERATION', 'Record a pass2 operation after work.mjs finish: its start and end are what this record measures.');
+  const rounds = pass2Rounds(root, id);
+  const already = rounds.find((r) => r.operation.operation_id === op.operation_id);
+  if (already) refuse('E_PASS2_DUPLICATE', `Operation ${op.operation_id} is already round ${already.round}.`);
+  // Bound to the bytes the round ended on: a repair between finish and record would otherwise be
+  // recorded as attacked, and the next round would skip exactly the file it changed.
   const current = snapshot(root);
-  const attacked = [...new Set(report.attacked)].sort().map((p) => references(root, [p])[0]);
+  if (current.content_digest !== op.finished.snapshot.content_digest) refuse('E_PASS2_STALE', 'The content moved since the round finished; record a round before anything changes it.');
+  const attacked = [...new Set(report.attacked)].sort().map((p) => {
+    const sha256 = shaOf(root, p);
+    if (!sha256) refuse('E_PASS2_REPORT', `Attacked file is not a regular candidate file: ${p}`);
+    return { path: p, sha256 };
+  });
   let mutations = [];
   if (report.mutation_report !== undefined) {
     let probe;
@@ -50,9 +62,6 @@ export function recordPass2Round(root, id, report, { operation }) {
     mutations = probe.mutations.map((m) => ({ id: m.id, target: m.target, test_name: m.test_name, result: m.result,
       target_sha256: shaOf(root, m.target) }));
   }
-  const op = workRecords(root, id).find((r) => r.operation_id === identifier(operation));
-  if (!op?.finished) refuse('E_PASS2_OPERATION', 'Record the round after work.mjs finish of its operation: its start and end are what this record measures.');
-  const rounds = pass2Rounds(root, id);
   const doc = { version: 1, change_id: id, round: rounds.length + 1, at: new Date().toISOString(),
     advisory: true, authorizes_execution: false, candidate: current, attacked, mutations,
     operation: { operation_id: op.operation_id, started_at: op.started.at, finished_at: op.finished.at,
@@ -67,8 +76,10 @@ export function recordPass2Round(root, id, report, { operation }) {
  */
 export function pass2Scope(root, id) {
   const base = change(root, id).base_revision;
-  const listed = (args) => git(root, args).split('\n').map((l) => l.trim()).filter(Boolean);
-  const files = [...new Set([...listed(['diff', '--name-only', base]), ...listed(['ls-files', '--others', '--exclude-standard'])])]
+  // NUL-separated and without rename pairing: a renamed file's old path is listed as deleted, and
+  // a non-ASCII path arrives as itself instead of quoted.
+  const listed = (args) => git(root, args).split('\0').filter(Boolean);
+  const files = [...new Set([...listed(['diff', '-z', '--no-renames', '--name-only', base]), ...listed(['ls-files', '-z', '--others', '--exclude-standard'])])]
     .filter((p) => !OPERATIONAL.test(p)).sort();
   const rounds = pass2Rounds(root, id);
   const attackedAt = new Map(rounds.flatMap((r) => r.attacked.map((a) => [`${a.path}\0${a.sha256}`, r.round])));
@@ -78,9 +89,10 @@ export function pass2Scope(root, id) {
     const round = sha && attackedAt.get(`${path}\0${sha}`);
     if (round) covered.push({ path, round }); else attack.push({ path, reason: sha ? 'changed since the last round that attacked it, or never attacked' : 'deleted' });
   }
-  const killed = new Map(rounds.flatMap((r) => r.mutations.filter((m) => m.result === 'PASS').map((m) => [m.id, { ...m, round: r.round }])));
+  // The latest result of each mutant decides: a later survivor is never hidden by an older kill.
+  const latest = new Map(rounds.flatMap((r) => r.mutations.map((m) => [m.id, { ...m, round: r.round }])));
   const carried = []; const rerun = [];
-  for (const m of killed.values()) (m.target_sha256 && shaOf(root, m.target) === m.target_sha256 ? carried : rerun).push({ id: m.id, target: m.target, round: m.round });
+  for (const m of latest.values()) (m.result === 'PASS' && m.target_sha256 && shaOf(root, m.target) === m.target_sha256 ? carried : rerun).push({ id: m.id, target: m.target, round: m.round });
   return { version: 1, advisory: true, authorizes_execution: false, change_id: id, candidate: snapshot(root),
     rounds: rounds.map((r) => ({ round: r.round, elapsed_ms: r.operation.elapsed_ms, usage: r.operation.usage, attacked: r.attacked.length, mutations: r.mutations.length })),
     attack, covered, mutations: { carried, rerun },

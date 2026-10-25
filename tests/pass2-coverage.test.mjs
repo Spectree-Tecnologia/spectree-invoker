@@ -62,16 +62,44 @@ test('after a fix, the next round attacks only what moved, and carries the kills
   } finally { cleanup(r.root); }
 });
 
-test('a surviving mutant is never carried, and a probe from other content is refused', () => {
+test('a surviving mutant is never carried, not even behind an older kill, and a probe from other content is refused', () => {
   const r = repo();
   try {
+    round(r, 'pass2-r0', { attacked: ['src/a.cjs'], mutation_report: probe(r, [{ id: 'm-a', target: 'src/a.cjs', test_name: 'A', result: 'PASS' }]) });
     const report = probe(r, [{ id: 'm-a', target: 'src/a.cjs', test_name: 'A', result: 'FAIL' }]);
     round(r, 'pass2-r1', { attacked: ['src/a.cjs'], mutation_report: report });
-    assert.deepEqual(pass2Scope(r.root, 'c1').mutations, { carried: [], rerun: [] });
+    assert.deepEqual(pass2Scope(r.root, 'c1').mutations, { carried: [], rerun: [{ id: 'm-a', target: 'src/a.cjs', round: 2 }] });
     writeFileSync(join(r.root, '.spectree/probe.json'), JSON.stringify({ version: 1, source_digest: 'sha256:' + '0'.repeat(64), mutations: [] }));
     startWork(r.root, 'c1', 'pass2-r2', { phase: 'pass2', task: 'attack', next: 'Record.' });
     finishWork(r.root, 'c1', 'pass2-r2', { result: { status: 'completed' }, next: 'Record.' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'], mutation_report: '.spectree/probe.json' }, { operation: 'pass2-r2' }), { code: 'E_PASS2_STALE' });
+  } finally { cleanup(r.root); }
+});
+
+test('a round is bound to the bytes it finished on, and recorded once', () => {
+  const r = repo();
+  try {
+    startWork(r.root, 'c1', 'pass2-r1', { phase: 'pass2', task: 'attack', next: 'Record.' });
+    finishWork(r.root, 'c1', 'pass2-r1', { result: { status: 'completed' }, next: 'Record.' });
+    // A repair lands before anyone records the round: recording it would mark the repair as attacked.
+    writeFiles(r.root, { 'src/b.cjs': 'module.exports = 21;\n' });
+    assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'pass2-r1' }), { code: 'E_PASS2_STALE' });
+    writeFiles(r.root, { 'src/b.cjs': 'module.exports = 20;\n' });
+    recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'pass2-r1' });
+    assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'pass2-r1' }), { code: 'E_PASS2_DUPLICATE' });
+    startWork(r.root, 'c1', 'implement-1', { phase: 'implement', task: 'B', next: 'Verify.' });
+    finishWork(r.root, 'c1', 'implement-1', { result: { status: 'completed' }, next: 'Verify.' });
+    assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'implement-1' }), { code: 'E_PASS2_OPERATION' });
+  } finally { cleanup(r.root); }
+});
+
+test('a renamed file leaves its old path to attack as deleted', () => {
+  const r = repo();
+  try {
+    r.git(['mv', 'src/a.cjs', 'src/renamed.cjs']); r.git(['commit', '-qm', 'rename']);
+    const attack = pass2Scope(r.root, 'c1').attack;
+    assert.deepEqual(attack.map((a) => a.path), ['src/a.cjs', 'src/b.cjs', 'src/c.cjs', 'src/renamed.cjs']);
+    assert.equal(attack[0].reason, 'deleted');
   } finally { cleanup(r.root); }
 });
 
@@ -80,6 +108,8 @@ test('a round is recorded only after its operation finished, and only over candi
   try {
     startWork(r.root, 'c1', 'pass2-open', { phase: 'pass2', task: 'attack', next: 'Finish it.' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'] }, { operation: 'pass2-open' }), { code: 'E_PASS2_OPERATION' });
+    finishWork(r.root, 'c1', 'pass2-open', { result: { status: 'completed' }, next: 'Record.' });
+    assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/missing.cjs'] }, { operation: 'pass2-open' }), { code: 'E_PASS2_REPORT' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['.spectree/state.json'] }, { operation: 'pass2-open' }), { code: 'E_PASS2_REPORT' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'], verdict: 'all good' }, { operation: 'pass2-open' }), { code: 'E_PASS2_REPORT' });
     const lines = []; const code = pass2Command({ root: r.root, argv: ['record', 'c1', 'x.json'], err: (s) => lines.push(s) });

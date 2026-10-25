@@ -200,7 +200,7 @@ what it attacked, bound to the bytes, and the next round reads what moved since:
 node scripts/work.mjs start <change> <op> --phase pass2 --task <ref> --next <action>   # before the dispatch
 node scripts/work.mjs finish <change> <op> --result <envelope.json> --next <action>   # its duration and usage
 node scripts/mutation-probe.mjs <plan.json> --apply > .spectree/pass2/<change>-probe.json
-node scripts/pass2.mjs record <change> <report.json> --operation <op>   # {"attacked": [...], "mutation_report": "..."}
+node scripts/pass2.mjs record <change> <report.json> --operation <op>   # before any repair; {"attacked": [...], "mutation_report": "..."}
 node scripts/pass2.mjs scope <change>   # files to attack, mutants carried and to rerun, past rounds' time and tokens
 ```
 
