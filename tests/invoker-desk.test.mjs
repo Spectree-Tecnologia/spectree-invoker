@@ -45,12 +45,14 @@ const networkProblems = (sources) =>
 
 // The portrait rides inside the avatar's SVG as an image, so PORTRAIT is either empty (the vector
 // figure) or a base64 image data URI: never a remote address, which would fetch from the network.
-// The SVG's own size against the engine's 131072-character cap is measured in invoker-desk.test.tsx.
+// The SVG it rides in is refused past 131072 characters and the drawing around it takes about 10k,
+// so CI bounds the URI at 110k; invoker-desk.test.tsx measures the SVG itself where Claude Code runs.
 function portraitProblems(source) {
-  const value = source.match(/export const PORTRAIT =\s*'([^']*)'/)?.[1];
-  if (value === undefined) return ['portrait.ts: PORTRAIT is not a single-quoted string literal'];
+  const value = source.match(/export const PORTRAIT =\s*'([^']*)'\s*;?\s*$/m)?.[1];
+  if (value === undefined) return ['portrait.ts: PORTRAIT is not one single-quoted string literal'];
   if (!value) return [];
-  return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value) ? [] : ['portrait.ts: PORTRAIT is not a base64 image data URI'];
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) return ['portrait.ts: PORTRAIT is not a base64 image data URI'];
+  return value.length > 110_000 ? [`portrait.ts: ${value.length} characters, the avatar's SVG would pass 131072`] : [];
 }
 
 const commandProblems = (source) =>
@@ -65,6 +67,8 @@ test('each guard rejects the state it exists to catch', () => {
   assert.equal(portraitProblems("export const PORTRAIT = 'https://host/invoker.png'").length, 1);
   assert.equal(portraitProblems("export const PORTRAIT =\n  'data:text/html;base64,PHNjcmlwdD4='").length, 1);
   assert.equal(portraitProblems('export const PORTRAIT = "data:image/png;base64,AAAA"').length, 1);
+  assert.equal(portraitProblems("export const PORTRAIT = '' + 'https://host/invoker.png'").length, 1);
+  assert.equal(portraitProblems(`export const PORTRAIT = 'data:image/jpeg;base64,${'A'.repeat(120_000)}'`).length, 1);
   assert.equal(commandProblems("$.command.register({ name: 'invoker' })").length, 1);
 });
 

@@ -79,7 +79,7 @@ test('while a subagent runs the Invoker orchestrates and its orb pulses', async 
   expect(String((avatar as any)?.props?.source ?? '')).toContain('animateTransform')
   expect(String((avatar as any)?.props?.source ?? '')).toContain('data:image/jpeg;base64,')
   // The engine refuses an Svg source past 131072 characters; the portrait rides inside it.
-  expect(String((avatar as any)?.props?.source ?? '').length <= 131072).toBe(true)
+  expect(String((avatar as any)?.props?.source ?? '').length).toBeLessThanOrEqual(131072)
   await ui.unmount()
 })
 
