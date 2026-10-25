@@ -1,6 +1,7 @@
 ---
 name: squad-test-quality
 description: How the squad writes a test worth keeping — where it goes, what it may fake, and the shapes that pass without proving anything. Load before writing or judging any test, in Quality Engineer pass 1 and pass 2 and in a Developer's implementation cycle.
+user-invocable: false
 ---
 
 <!-- GENERATED FILE — do not edit.

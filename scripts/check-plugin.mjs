@@ -123,7 +123,17 @@ for (const name of manifest?.skills ?? []) {
     const fm = frontmatter(join(root, f));
     if (!fm?.description) fail(f, 'frontmatter missing "description"');
     if (fm?.name !== name) fail(f, `frontmatter name "${fm?.name}" does not match "${name}"`);
+    for (const [k, v] of Object.entries(readJson(`adapters/${id}/adapter.json`)?.skill_frontmatter ?? {}))
+      if (fm?.[k] !== String(v)) fail(f, `frontmatter "${k}" is "${fm?.[k]}", the adapter declares "${v}"`);
   }
+}
+// Only /spectree:invoker belongs in the Founder's slash menu. A squad skill is loaded by the agent
+// whose phase reaches it; hidden with user-invocable, never with disable-model-invocation, which
+// would keep the agents from loading it.
+if (adapters.includes('claude-code')) {
+  const fmExtra = readJson('adapters/claude-code/adapter.json')?.skill_frontmatter ?? {};
+  if (fmExtra['user-invocable'] !== false) fail('adapters/claude-code/adapter.json', 'skill_frontmatter must set "user-invocable": false; the squad skills would show in the slash menu');
+  if ('disable-model-invocation' in fmExtra) fail('adapters/claude-code/adapter.json', 'skill_frontmatter must not set "disable-model-invocation"; the agents could not load the squad skills');
 }
 
 // --- 5. Codex entrypoint and specialists -------------------------------------

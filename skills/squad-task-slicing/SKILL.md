@@ -1,6 +1,7 @@
 ---
 name: squad-task-slicing
 description: How the Solutions Architect cuts a change into tasks for `tasks.md` — vertical slices by `Scenario`, each fitting a fresh window and naming what blocks it; a preparatory refactor as its own change; a wide refactor as expand–contract. Load before writing `tasks.md`.
+user-invocable: false
 ---
 
 <!-- GENERATED FILE — do not edit.

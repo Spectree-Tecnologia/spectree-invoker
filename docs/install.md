@@ -13,6 +13,9 @@ claude plugin install spectree@spectree-invoker
 Boot it inside a project with `/spectree:invoker`. With no argument it reports the pipeline
 state; with an argument it takes the request into the pipeline.
 
+That is the only entry in the slash menu. The squad skills (`squad-*`) ship with
+`user-invocable: false`: the agents load them when their phase reaches them, and you never type them.
+
 ## OpenAI Codex
 
 Use the installer. It is a **dry run by default** and writes nothing until `--apply`:

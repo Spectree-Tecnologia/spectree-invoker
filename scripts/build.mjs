@@ -54,13 +54,15 @@ export function renderAdapter(adapterId) {
   }
 
   // The squad's own method skills: the same body on every harness, loaded by a role when its
-  // phase reaches them. They describe how the squad works, never a project's pattern.
+  // phase reaches them. They describe how the squad works, never a project's pattern. An adapter's
+  // `skill_frontmatter` adds the keys only its harness reads, such as Claude Code's menu visibility.
   for (const name of manifest.skills ?? []) {
     const src = `protocol/skills/${name}.md`;
     const text = read(src);
     const end = text.startsWith('---\n') ? text.indexOf('\n---\n', 4) : -1;
     if (end === -1) throw new Error(`${src}: no frontmatter block`);
-    const fm = text.slice(0, end + 5);
+    const extra = Object.entries(a.skill_frontmatter ?? {}).map(([k, v]) => `${k}: ${v}\n`).join('');
+    const fm = text.slice(0, end + 1) + extra + text.slice(end + 1, end + 5);
     if (!new RegExp(`^name: ${name}$`, 'm').test(fm)) throw new Error(`${src}: frontmatter name is not "${name}"`);
     if (!/^description: \S/m.test(fm)) throw new Error(`${src}: frontmatter has no description`);
     const body = render(text.slice(end + 5), coreTokens, src);

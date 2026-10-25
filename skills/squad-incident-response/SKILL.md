@@ -1,6 +1,7 @@
 ---
 name: squad-incident-response
 description: How the squad works a security incident — an affected advisory, a leaked secret, a red security scan — from triage to a verified fix, with what the Invoker decides alone and what is gate 3 for the Founder. Load when a security watch returns `affected` or `unknown`, a secret scan or audit goes red, or someone reports suspicious activity.
+user-invocable: false
 ---
 
 <!-- GENERATED FILE — do not edit.
