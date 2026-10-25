@@ -9,8 +9,9 @@ import {
   inside,
   refuse,
 } from '../shared/index.mjs';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, lstatSync, chmodSync } from 'node:fs';
-import { join, dirname, resolve, relative, isAbsolute, delimiter } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, lstatSync, chmodSync, cpSync, renameSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { join, dirname, resolve, relative, isAbsolute, delimiter, posix } from 'node:path';
 import { tmpdir } from 'node:os';
 import { bounded } from '../change/index.mjs';
 
@@ -32,8 +33,8 @@ function mutationOf(root, m, label) {
 export function mutationPlan(root, plan) {
   if (!plan || typeof plan !== 'object') refuse('E_MUTATION_PLAN', 'A plan object is required.');
   const batch = plan.mutations !== undefined;
-  const keys = batch ? ['mutations', 'command', 'mutant_command', 'setup_command', 'timeout_seconds']
-    : ['target', 'before', 'after', 'test_name', 'command', 'setup_command', 'timeout_seconds'];
+  const keys = batch ? ['mutations', 'command', 'mutant_command', 'setup_command', 'setup_cache', 'timeout_seconds']
+    : ['target', 'before', 'after', 'test_name', 'command', 'setup_command', 'setup_cache', 'timeout_seconds'];
   if (Object.keys(plan).some((k) => !keys.includes(k))) refuse('E_MUTATION_PLAN', 'Unknown plan field.');
   if (batch) {
     if (!Array.isArray(plan.mutations) || !plan.mutations.length || plan.mutations.length > 200) refuse('E_MUTATION_PLAN', 'mutations must list 1..200 mutations.');
@@ -48,6 +49,14 @@ export function mutationPlan(root, plan) {
   } else mutationOf(root, plan, '');
   command(plan.command, 'command');
   if (plan.setup_command) command(plan.setup_command, 'setup_command');
+  if (plan.setup_cache !== undefined) {
+    const c = plan.setup_cache; const relativePath = (p) => typeof p === 'string' && p && !isAbsolute(p) && !p.split(/[\\/]/).includes('..');
+    if (!plan.setup_command || !c || typeof c !== 'object' || Object.keys(c).some((k) => !['key_files', 'paths'].includes(k)) ||
+        !Array.isArray(c.key_files) || !c.key_files.length || c.key_files.length > 20 || !c.key_files.every(relativePath) ||
+        !Array.isArray(c.paths) || !c.paths.length || c.paths.length > 10 || !c.paths.every(relativePath)) {
+      refuse('E_MUTATION_PLAN', 'setup_cache needs setup_command, 1..20 relative key_files and 1..10 relative paths.');
+    }
+  }
   if (!Number.isInteger(plan.timeout_seconds) || plan.timeout_seconds < 1 || plan.timeout_seconds > 3600) refuse('E_MUTATION_PLAN', 'timeout_seconds must be 1..3600.');
   return plan;
 }
@@ -70,6 +79,38 @@ export function candidateFiles(root) {
 function containedBy(base, target) {
   const rel = relative(resolve(base), resolve(target));
   return !rel || (!rel.startsWith('..') && !isAbsolute(rel));
+}
+// The install cache: what a successful setup produced under the declared paths, keyed by everything
+// that decides it. A hit is copied into the disposable copy, never linked; the baseline still runs.
+function cacheEntry(root, plan, originals) {
+  const { key_files: keyFiles, paths } = plan.setup_cache;
+  const h = createHash('sha256').update(JSON.stringify({ setup: plan.setup_command, paths,
+    platform: process.platform, arch: process.arch, node: process.versions.node }));
+  for (const f of keyFiles) {
+    const bytes = originals.get(f.replaceAll('\\', '/'));
+    if (!bytes) refuse('E_MUTATION_PLAN', `setup_cache key file is not a candidate file: ${f}`);
+    h.update(`\0${f}\0`); h.update(bytes);
+  }
+  const cacheRoot = resolve(process.env.SPECTREE_PROBE_CACHE || join(tmpdir(), 'spectree-probe-cache'));
+  if (containedBy(root, cacheRoot)) refuse('E_MUTATION_TEMP', 'The probe cache must be outside the source checkout.');
+  const key = h.digest('hex');
+  return { key, dir: join(cacheRoot, key), root: cacheRoot, paths };
+}
+const COMPLETE = '.spectree-cache-complete';
+function restoreCache(entry, copy) {
+  if (!existsSync(join(entry.dir, COMPLETE))) return false;
+  for (const p of entry.paths) if (existsSync(join(entry.dir, p))) cpSync(join(entry.dir, p), join(copy, p), { recursive: true, verbatimSymlinks: true });
+  return true;
+}
+function storeCache(entry, copy) {
+  mkdirSync(entry.root, { recursive: true });
+  const temp = mkdtempSync(join(entry.root, 'incoming-'));
+  try {
+    for (const p of entry.paths) if (existsSync(join(copy, p))) cpSync(join(copy, p), join(temp, p), { recursive: true, verbatimSymlinks: true });
+    writeFileSync(join(temp, COMPLETE), `${entry.key}\n`);
+    renameSync(temp, entry.dir);
+    return true;
+  } catch { rmSync(temp, { recursive: true, force: true }); return false; } // another probe stored it first
 }
 function cleanEnvironment(home, root) {
   const env = {};
@@ -97,7 +138,7 @@ export function runMutation(root, input, { apply = false } = {}) {
   if (!apply) return { dry_run: true, file_count: files.length, source_digest: before.digest,
     ...(batch ? { mutations: mutations.map((m) => ({ id: m.id, target: m.target, test_name: m.test_name })), mutant_command: plan.mutant_command ?? plan.command }
       : { target: plan.target }),
-    command: plan.command, setup_command: plan.setup_command ?? null,
+    command: plan.command, setup_command: plan.setup_command ?? null, setup_cache: plan.setup_cache ?? null,
     limits: 'Fresh file copies, no shared dependencies or project credentials. Commands are trusted code, not OS-sandboxed.' };
   const scratch = mkdtempSync(join(base, 'spectree-probe-'));
   const copy = join(scratch, 'candidate'); const home = join(scratch, 'home');
@@ -129,10 +170,18 @@ export function runMutation(root, input, { apply = false } = {}) {
       }
     };
     if (contentDigest(root).digest !== before.digest) refuse('E_MUTATION_SOURCE_CHANGED', 'Source changed during copying; no test was run.');
-    if (plan.setup_command) {
+    const entry = plan.setup_cache ? cacheEntry(root, plan, originals) : null;
+    const covers = (p, f) => { const n = posix.normalize(p.replaceAll('\\', '/')).replace(/\/$/, ''); return n === '.' || f === n || f.startsWith(`${n}/`); };
+    if (entry && files.some((f) => entry.paths.some((p) => covers(p, f)))) {
+      refuse('E_MUTATION_PLAN', 'A setup_cache path covers a candidate file; cache only what setup produces.');
+    }
+    if (entry && restoreCache(entry, copy)) {
+      record.setup = { cache: 'hit', cache_key: entry.key };
+    } else if (plan.setup_command) {
       const setup = run(plan.setup_command);
       record.setup = { exit_code: setup.exit_code, error: setup.error, signal: setup.signal };
       if (setup.error || setup.signal || setup.exit_code !== 0) return { ...record, reason: 'Setup did not complete successfully.' };
+      if (entry) Object.assign(record.setup, { cache: storeCache(entry, copy) ? 'stored' : 'miss', cache_key: entry.key });
     }
     assertCandidate();
     // One baseline for the whole batch: every named test runs once and passes in a complete run.
@@ -141,7 +190,9 @@ export function runMutation(root, input, { apply = false } = {}) {
     const controls = names.map((name) => (tap ? judgePassingRun(tap, name, baseline.exit_code)
       : { result: 'INFRA_ERROR', reason: baseline.error ?? baseline.signal }));
     record.baseline = controls.find((c) => c.result !== 'PASS') ?? controls[0];
-    if (record.baseline.result !== 'PASS') return { ...record, reason: 'The unmutated copy did not prove the named test green.', baseline: record.baseline };
+    if (record.baseline.result !== 'PASS') return { ...record, baseline: record.baseline, reason: record.setup?.cache === 'hit'
+      ? `The unmutated copy did not prove the named test green, over the cached setup ${record.setup.cache_key}; remove that entry to rule it out.`
+      : 'The unmutated copy did not prove the named test green.' };
     assertCandidate();
     const results = [];
     for (const m of mutations) {

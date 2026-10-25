@@ -86,10 +86,11 @@ test('writeAtomic replaces a document whole and leaves no temp file', () => with
 }));
 
 // Raw exclusive-create, link and rename are how a record is written outside this layer. The one
-// rename left is the archive of a change folder under docs/, which is not a `.spectree/` record.
+// renames left are the archive of a change folder under docs/ and the probe's install cache, which
+// lives outside the checkout; neither is a `.spectree/` record.
 const LIB = join(REPO, 'scripts', 'lib');
 const RAW = /\{\s*flag:\s*'wx'\s*\}|openSync\([^)]*'wx'\)|\blinkSync\(|\brenameSync\(/;
-const ALLOWED = new Set(['shared/persistence.mjs', 'closure/prepare.mjs:renameSync']);
+const ALLOWED = new Set(['shared/persistence.mjs', 'closure/prepare.mjs:renameSync', 'evidence/mutation.mjs:renameSync']);
 function rawWriters(files) {
   return files.flatMap(([rel, text]) => text.split('\n').flatMap((line, i) => {
     const m = line.match(RAW);
