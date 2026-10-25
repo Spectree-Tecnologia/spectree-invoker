@@ -102,6 +102,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 33 | Rodada incremental do pass 2 | Integrada, v1.72.0: `pass2.mjs record` e `scope` registram o que cada rodada atacou e dizem o que a seguinte ataca; evidência e `work.mjs finish` passam a medir duração e uso, [proposta](changes/archive/2026-10-25-pass2-incremental/proposal.md) | — |
 | 34 | Harness do pass 2 | Integrada, v1.73.0: `setup_cache` na prova de mutação copia a instalação de uma entrada fora do checkout, com a baseline rodando sempre; `docs/reliability.md` mostra o banco por template, [proposta](changes/archive/2026-10-25-harness-pass2/proposal.md) | — |
 | 35 | Contraexemplo concorrente no plano de verificação | Integrada, v1.74.0: o plano em desenho declara as regras de unicidade e de contador em `concurrent_invariants`, cada uma provada por um check com contraexemplo concorrente, [proposta](changes/archive/2026-10-25-contraexemplo-concorrente/proposal.md) | D-022 |
+| 36 | Despacho do pass 2 com independência e escopo final | Integrada, v1.75.0: `work.mjs start --phase pass2` exige o brief com a independência e o escopo final, e `finish` recusa um escopo que mudou depois do início, [proposta](changes/archive/2026-10-25-despacho-pass2/proposal.md) | D-023 |
 
 ## Itens com aprovação permanente
 

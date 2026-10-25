@@ -14,3 +14,5 @@ failing test or check; heuristics remain suggestions. Never repair the implement
 as reviewer. Do not import the builder's reasoning. Report both axes even if one
 has no findings. Where the project's conventions are silent, the standards axis applies
 the `squad-code-smells` baseline as suggestions. A separate context alone does not demonstrate capability isolation.
+A pass 2 round attacks the scope of its brief: what it lists under `scope.attack`, never
+what it lists under `scope.excluded`, and nothing handed over that the brief says is withheld.

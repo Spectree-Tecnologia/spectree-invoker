@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { gitRepo, writeFiles, cleanup, change } from './helpers.mjs';
+import { gitRepo, writeFiles, cleanup, change, writePass2Brief } from './helpers.mjs';
 import { Store } from '../scripts/lib/change/store.mjs';
 import { startWork, finishWork, envelopeUsage } from '../scripts/lib/change/work.mjs';
 import { contentDigest } from '../scripts/lib/shared/digest.mjs';
@@ -22,7 +22,7 @@ function repo() {
   return r;
 }
 function round(r, op, report, envelope = { status: 'completed', toolUseResult: { totalDurationMs: 3_600_000, totalTokens: 391_000, totalToolUseCount: 161 } }) {
-  startWork(r.root, 'c1', op, { phase: 'pass2', task: 'attack the prepared closure', next: 'Record the round.' });
+  startWork(r.root, 'c1', op, { phase: 'pass2', task: 'attack the prepared closure', next: 'Record the round.', brief: writePass2Brief(r.root, op) });
   finishWork(r.root, 'c1', op, { result: envelope, next: 'Repair what it found.' });
   return recordPass2Round(r.root, 'c1', report, { operation: op });
 }
@@ -70,7 +70,7 @@ test('a surviving mutant is never carried, not even behind an older kill, and a 
     round(r, 'pass2-r1', { attacked: ['src/a.cjs'], mutation_report: report });
     assert.deepEqual(pass2Scope(r.root, 'c1').mutations, { carried: [], rerun: [{ id: 'm-a', target: 'src/a.cjs', round: 2 }] });
     writeFileSync(join(r.root, '.spectree/probe.json'), JSON.stringify({ version: 1, source_digest: 'sha256:' + '0'.repeat(64), mutations: [] }));
-    startWork(r.root, 'c1', 'pass2-r2', { phase: 'pass2', task: 'attack', next: 'Record.' });
+    startWork(r.root, 'c1', 'pass2-r2', { phase: 'pass2', task: 'attack', next: 'Record.', brief: writePass2Brief(r.root) });
     finishWork(r.root, 'c1', 'pass2-r2', { result: { status: 'completed' }, next: 'Record.' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'], mutation_report: '.spectree/probe.json' }, { operation: 'pass2-r2' }), { code: 'E_PASS2_PROBE_STALE' });
   } finally { cleanup(r.root); }
@@ -79,7 +79,7 @@ test('a surviving mutant is never carried, not even behind an older kill, and a 
 test('a round is bound to the bytes it finished on, and recorded once', () => {
   const r = repo();
   try {
-    startWork(r.root, 'c1', 'pass2-r1', { phase: 'pass2', task: 'attack', next: 'Record.' });
+    startWork(r.root, 'c1', 'pass2-r1', { phase: 'pass2', task: 'attack', next: 'Record.', brief: writePass2Brief(r.root) });
     finishWork(r.root, 'c1', 'pass2-r1', { result: { status: 'completed' }, next: 'Record.' });
     // A repair lands before anyone records the round: recording it would mark the repair as attacked.
     writeFiles(r.root, { 'src/b.cjs': 'module.exports = 21;\n' });
@@ -87,7 +87,7 @@ test('a round is bound to the bytes it finished on, and recorded once', () => {
     writeFiles(r.root, { 'src/b.cjs': 'module.exports = 20;\n' });
     recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'pass2-r1' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/b.cjs'] }, { operation: 'pass2-r1' }), { code: 'E_PASS2_DUPLICATE' });
-    startWork(r.root, 'c1', 'pass2-r2', { phase: 'pass2', task: 'attack', next: 'Record.' });
+    startWork(r.root, 'c1', 'pass2-r2', { phase: 'pass2', task: 'attack', next: 'Record.', brief: writePass2Brief(r.root) });
     finishWork(r.root, 'c1', 'pass2-r2', { result: { status: 'completed', error: 'rate_limit' }, next: 'Resume.' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'] }, { operation: 'pass2-r2' }), { code: 'E_PASS2_UNFINISHED' });
     startWork(r.root, 'c1', 'implement-1', { phase: 'implement', task: 'B', next: 'Verify.' });
@@ -133,7 +133,7 @@ test('rounds are recorded in the order they finished', () => {
   const r = repo();
   try {
     for (const op of ['pass2-a', 'pass2-b']) {
-      startWork(r.root, 'c1', op, { phase: 'pass2', task: 'attack', next: 'Record.' });
+      startWork(r.root, 'c1', op, { phase: 'pass2', task: 'attack', next: 'Record.', brief: writePass2Brief(r.root) });
       finishWork(r.root, 'c1', op, { result: { status: 'completed' }, next: 'Record.' });
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5); // distinct finish times
     }
@@ -165,7 +165,7 @@ test('a renamed file leaves its old path listed as deleted, and the new one to a
 test('a round is recorded only after its operation finished, and only over candidate files', () => {
   const r = repo();
   try {
-    startWork(r.root, 'c1', 'pass2-open', { phase: 'pass2', task: 'attack', next: 'Finish it.' });
+    startWork(r.root, 'c1', 'pass2-open', { phase: 'pass2', task: 'attack', next: 'Finish it.', brief: writePass2Brief(r.root) });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'] }, { operation: 'pass2-open' }), { code: 'E_PASS2_OPERATION' });
     finishWork(r.root, 'c1', 'pass2-open', { result: { status: 'completed' }, next: 'Record.' });
     assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/missing.cjs'] }, { operation: 'pass2-open' }), { code: 'E_PASS2_REPORT' });

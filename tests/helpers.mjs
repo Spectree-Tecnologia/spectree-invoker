@@ -189,3 +189,11 @@ export function closureCli(script, argv, { cwd, env = {}, spawn = false } = {}) 
 /** Both spellings the suite reads: trimmed `code/out/err`, and spawnSync's `status/stdout/stderr`. */
 const answer = (status, stdout, stderr) => ({ code: status, out: stdout.trim(), err: stderr.trim(), status, stdout, stderr });
 
+
+/** The brief a pass 2 operation starts with: independence and the final scope, under .spectree/. */
+export function writePass2Brief(root, name = 'brief', over = {}) {
+  const path = `.spectree/pass2/${name}.json`;
+  writeFiles(root, { [path]: JSON.stringify({ version: 1, independent_of: ['full_stack_developer'], fork: false,
+    withheld: ['builder_report', 'builder_reasoning', 'pull_request'], scope: { attack: ['src/'], excluded: [] }, ...over }) });
+  return path;
+}

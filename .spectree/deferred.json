@@ -264,6 +264,18 @@
       "current_decision": "A mudança contraexemplo-concorrente cobra um check concorrente para cada regra declarada em concurrent_invariants. Não prova que o Architect declarou todas, nem que o teste nomeado corre duas escritas em paralelo: a classificação é leitura, e a lente de concorrência do pass 2 segue como rede. Fica fora porque nenhum check determinístico separa uma regra de unicidade pelo texto do Scenario sem falsos positivos.",
       "reevaluation_trigger": "Um pass 2 de projeto consumidor acha uma corrida numa regra de unicidade ou de contador ausente de concurrent_invariants, ou um check concorrente cujo teste roda as escritas em série",
       "closure_condition": "Um check determinístico ou um passo do pass 1 recusa o caso do incidente, visto rejeitando-o."
+    },
+    {
+      "schema_version": "1.0.0",
+      "owner": "own_change",
+      "status": "open",
+      "opened_by_change": "despacho-pass2",
+      "stable_id": 23,
+      "title": "Evidência do pass 2 sem a rodada com brief por trás",
+      "impact": "ceiling",
+      "current_decision": "A mudança despacho-pass2 exige o brief para abrir uma operação pass2 e recusa fechá-la com o escopo movido. O brief prova o que o Invoker declarou, não o texto que o Quality Engineer recebeu, e state.mjs run pass2.attack ainda aceita --independent-of sem uma operação pass2 com brief. Fica fora porque ligar a evidência à operação muda o portão de pass2_complete para projetos que ainda não abrem rodadas com work.mjs.",
+      "reevaluation_trigger": "Uma retro de projeto consumidor registra um pass 2 cuja missão não carregava o que o brief declarou, ou uma evidência pass2.attack sem operação pass2 por trás",
+      "closure_condition": "pass2_complete exige uma operação pass2 terminada com brief cujo conteúdo é o do candidato, visto recusando o caso do incidente."
     }
   ]
 }

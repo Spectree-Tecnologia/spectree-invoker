@@ -200,3 +200,12 @@
 - Due: Um pass 2 de projeto consumidor acha uma corrida numa regra de unicidade ou de contador ausente de concurrent_invariants, ou um check concorrente cujo teste roda as escritas em série
 - Closure condition: Um check determinístico ou um passo do pass 1 recusa o caso do incidente, visto rejeitando-o.
 
+## D-023 — Evidência do pass 2 sem a rodada com brief por trás
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: A mudança despacho-pass2 exige o brief para abrir uma operação pass2 e recusa fechá-la com o escopo movido. O brief prova o que o Invoker declarou, não o texto que o Quality Engineer recebeu, e state.mjs run pass2.attack ainda aceita --independent-of sem uma operação pass2 com brief. Fica fora porque ligar a evidência à operação muda o portão de pass2_complete para projetos que ainda não abrem rodadas com work.mjs.
+- Due: Uma retro de projeto consumidor registra um pass 2 cuja missão não carregava o que o brief declarou, ou uma evidência pass2.attack sem operação pass2 por trás
+- Closure condition: pass2_complete exige uma operação pass2 terminada com brief cujo conteúdo é o do candidato, visto recusando o caso do incidente.
+

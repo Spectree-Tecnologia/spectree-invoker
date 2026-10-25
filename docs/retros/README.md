@@ -33,7 +33,7 @@ lugar; cada correção entra por uma mudança própria.
 | R-001 | `tool-economy · release · identificador-sequencial-disputado` | 17 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 e de novo no #94/#95 |
 | R-002 | `automated-checks · docs · fechamento-depois-do-merge` | 12 | Pago na tarefa 11 |
 | R-003 | `information-access · retro · rastro-apagado` | todos os PRs | Curto prazo pago na tarefa 11; longo prazo é o D-009 |
-| R-004 | `automated-checks · protocol · teto-sem-folga` | 4 | Aberto, [D-013](../DEFERRED.md); o #94 subiu o teto do núcleo, a mudança própria segue devida |
+| R-004 | `automated-checks · protocol · teto-sem-folga` | 5 | Aberto, [D-013](../DEFERRED.md); o #94 subiu o teto do núcleo; no #105 o núcleo ficou a 58 bytes e a tarefa 36 deixou a regra do brief fora dele; a mudança própria segue devida |
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 | R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |
@@ -42,13 +42,14 @@ lugar; cada correção entra por uma mudança própria.
 | R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
 | R-011 | `information-access · mod · sem-superficie-real` | 7 | Aberto: o v1.67.0 foi conferido pelo Founder no app desktop depois do merge; o giro do v1.68.0 e o brilho da barra do v1.70.0 seguem sem conferência; ver o app antes do merge de um mod segue devido |
 | R-012 | `information-access · executor · fixture-sem-run-real` | 3 | Aberto: o trailer `system` do 2.1.302, o registro de cobertura do pass 2 (#106) e o cache da prova de mutação (#107) foram testados em fixture; a confirmação é o próximo run real do consumidor |
-| R-013 | `information-access · ambiente · dependencias-nao-instaladas` | 1 | Aberto: a sessão do #104 rodou o check sem `npm ci`; primo do R-008 |
+| R-013 | `information-access · ambiente · dependencias-nao-instaladas` | 2 | Aberto: as sessões do #104 e do #105 rodaram o check sem `npm ci`; primo do R-008 |
 | R-014 | `automated-checks · executor · janela-sem-teste-discriminante` | 1 | Aberto: a lista de ações da janela de repair do #104 não tem teste que a discrimine |
 | R-015 | `review-standards · proposta · identidade-depois-do-codigo` | 2 | Aberto, segunda recorrência: a tarefa 34 escreveu a identidade antes do código, sem a metade "em quem a entrada confia"; pede mudança própria pelo `retro-melhorias` |
 | R-016 | `automated-checks · pass2 · nits-da-revisao-final` | 2 | Aberto: três Nits da revisão final do #106 e três do #107 |
 
 ## Retros
 
+- [2026-10-25 — `contraexemplo-concorrente` (#105)](2026-10-25-contraexemplo-concorrente.md)
 - [2026-10-25 — `harness-pass2` (#107)](2026-10-25-harness-pass2.md)
 - [2026-10-25 — `pass2-incremental` (#106)](2026-10-25-pass2-incremental.md)
 - [2026-10-25 — `executor-pos-fechamento` (#104)](2026-10-25-executor-pos-fechamento.md)
