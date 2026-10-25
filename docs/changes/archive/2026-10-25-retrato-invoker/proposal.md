@@ -17,7 +17,7 @@ Visto pelo Founder no app desktop, logo depois do merge do #96:
 ## Escopo
 
 1. **`hooks/invoker-desk/portrait.ts`**: a imagem do Founder, recortada no busto, 328×344, JPEG,
-   em data URI de cerca de 26 mil caracteres. O avatar a desenha num oval de borda esmaecida dentro da
+   em data URI de cerca de 41 mil caracteres. O avatar a desenha num oval de borda esmaecida dentro da
    órbita, e os orbs seguem girando por cima. Com `PORTRAIT` vazio, volta o desenho vetorial.
 2. **O tempo conta desde esta abertura da sessão**, lido do relógio no `session.start`.
 3. **Testes:** a sessão retomada mostra o tempo desta abertura (visto falhando com o código do
@@ -27,9 +27,10 @@ Visto pelo Founder no app desktop, logo depois do merge do #96:
 
 ## Decisões
 
-- **A imagem é a que o Founder mandou, como está**, por escolha dele no cartão da thread. Ela não tem
-  autor nem licença conhecidos e retrata um personagem da Valve num repositório público. O risco de
-  licença é dele, aceito por escrito; outra imagem entra trocando só `portrait.ts`.
+- **A imagem é um avatar próprio do Founder**, gerado por ele para isso. A primeira versão deste PR
+  embutia uma arte de terceiros, sem autor nem licença conhecidos, com o risco aceito por ele; ele a
+  trocou por esta para não levar esse risco ao repositório público. Outra imagem entra trocando só
+  `portrait.ts`.
 - **O custo continua o do Claude Code**, acumulado desde a primeira abertura, como o `/cost`.
 
 ## Fora do escopo
