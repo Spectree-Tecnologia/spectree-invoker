@@ -41,6 +41,9 @@ Escrita antes do código, porque a mudança anterior (#106) mostrou o custo de n
    continua sendo do projeto: a prova não recebe credencial nenhuma.
 4. O card do Quality Engineer manda declarar `setup_cache` quando a instalação domina o tempo da prova.
 5. A retro de `pass2-incremental` (#106), devida por esta.
+6. A guarda de escrita crua (`tests/persistence.test.mjs`) passa a aceitar o `renameSync` de
+   `evidence/mutation.mjs`: a entrada do cache mora fora do checkout e não é registro de `.spectree/`,
+   como o arquivamento de `closure/prepare.mjs`. É a única linha que a lista ganha.
 
 ## Fora do escopo
 
