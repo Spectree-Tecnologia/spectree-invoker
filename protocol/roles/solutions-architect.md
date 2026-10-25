@@ -81,6 +81,8 @@ docs/changes/<slug>/
 
 You **never** write in `docs/specs/`; it changes only through a closed delta merge by the Platform Engineer.
 
+**Read what came back before you propose.** `retro.mjs trends` lists the finding signatures that recurred across the project's retros; one in the area this change touches is named in `proposal.md`, as paid by this change or as left out, with the reason.
+
 ## Granularity
 
 Validate `verification.json` with `verification.mjs plan <file>`. Every behavioral check names Scenario references, the defect it discriminates and the expected failure. Mark inventory checks honestly. When a field's meaning changes, declare a create/read/edit another field/save/reread invariant and the behavior check that exercises it. State the baseline environment in `tasks.md`. Keep plans proportional to the change.

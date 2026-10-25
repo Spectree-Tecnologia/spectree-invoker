@@ -18,6 +18,10 @@ lugar; cada correção entra por uma mudança própria.
 - **Comece pelo medido:** `node scripts/retro.mjs collect <pr> --apply` lê o PR, os runs de CI de
   cada commit, os commits e o archive do merge e a seção **Atrito**, grava em `.spectree/retros/` e
   aponta as assinaturas conhecidas que casaram. Uma assinatura que casou é candidata; quem julga é a retro.
+- **Leia as tendências:** `node scripts/retro.mjs trends` agrupa os achados de todas as retros pela
+  assinatura e lê a situação da tabela abaixo. Assinatura em duas retros, não paga e ainda não
+  quieta é a segunda recorrência, que pede mudança própria pelo item `retro-melhorias` do [ROADMAP](../ROADMAP.md);
+  achado aberto que nenhuma das três últimas retros citou é candidato a fechar.
 - **Modo legado:** enquanto as mudanças deste repo não forem abertas com `state.mjs` (D-009),
   esse é todo o rastro; a seção Atrito é a única fonte do que não chega ao GitHub.
 - **Retro vazia é resultado:** diga em uma linha o que foi lido.
@@ -33,12 +37,13 @@ lugar; cada correção entra por uma mudança própria.
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 | R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |
-| R-008 | `information-access · ambiente · node-abaixo-do-piso` | 6 | Aberto, observado no piso uma vez: sessão de 2026-10-25 em Node 22.23.4, suíte verde |
+| R-008 | `information-access · ambiente · node-abaixo-do-piso` | 7 | Aberto: a sessão da tarefa 11d voltou ao Node 22.22.0; o script de ambiente não vale para toda sessão nova |
 | R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única; frases normativas fora do inventário seguem no [D-017](../DEFERRED.md) |
 | R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
 
 ## Retros
 
+- [2026-10-25 — `revisao-independente` (#92)](2026-10-25-revisao-independente.md)
 - [2026-10-25 — `baseline-rodada-ci` (#91)](2026-10-25-baseline-rodada-ci.md)
 - [2026-10-24 — `emenda-caminhos` (#90)](2026-10-24-emenda-caminhos.md)
 - [2026-10-24 — `tap-vitest-aninhado` (#89)](2026-10-24-tap-vitest-aninhado.md)

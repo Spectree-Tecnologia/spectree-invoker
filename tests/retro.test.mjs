@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, writeFiles, cleanup } from './helpers.mjs';
-import { frictionSection, retroCommand, SIGNATURES } from '../scripts/lib/evaluation/index.mjs';
+import { frictionSection, retroCommand, retroTrends, SIGNATURES } from '../scripts/lib/evaluation/index.mjs';
 
 // A branch that archives `archivedSlug`, bumps to `version`, and merges into main with `subjects`
 // as its commits. Returns the repository and the merge commit.
@@ -116,5 +116,75 @@ test('what retro.recorded observes: the retro exists, names its change and says 
     assert.match(check('c1', 'docs/retros/none.md').err, /^E_RETRO_MISSING:/);
     assert.match(check('c1', '../outside.md').err, /^E_WORK_PATH:/);
     assert.equal(check('c1').code, 2);
+  } finally { cleanup(r.root); }
+});
+
+// `retro.mjs trends` over retros written the way docs/retros writes them.
+const retro = (change, pr, findings) => `# Retro — ${change} (#${pr})\n\nChange: \`${change}\`\n\n## O que foi lido\n\nO PR.\n\n## Achados\n\n${findings.join('\n')}\n\n## O que funcionou\n\n- **R-999** · \`x · y · fora-dos-achados\` · não conta.\n`;
+const SIG_A = '`tool-economy · release · disputa`';
+const SIG_B = '`automated-checks · docs · fechamento`';
+const SIG_C = '`information-access · ambiente · piso`';
+
+test('a signature that came back in two retros is recurring, unless the index marks it paid', () => {
+  const retros = [
+    { path: 'docs/retros/2026-10-24-b.md', text: retro('b', 12, [`- **R-001 · 2 · economia** · ${SIG_A}\n  · continua na linha seguinte.`, `- **R-002 · 2 · checks** · ${SIG_B} · pago.`]) },
+    { path: 'docs/retros/2026-10-24-a.md', text: retro('a', 11, [`- **R-001 · 2 · economia** · ${SIG_A}`, `- **R-002 · 2 · checks** · ${SIG_B}`, `- **R-004 · 3 · acesso** · ${SIG_C} · uma vez só.`]) },
+    { path: 'docs/retros/2026-10-25-c.md', text: retro('c', 13, ['- **R-001 · segunda forma** · sem assinatura na linha, conta pelo id.', '- **Sem achado novo:** nada a contar.']) },
+  ];
+  const index = '| Id | Assinatura | Ocorrências | Situação |\n|---|---|---|---|\n| R-001 | `tool-economy · release · disputa` | 3 | Aberto, D-012 |\n| R-002 | `automated-checks · docs · fechamento` | 2 | Pago na tarefa 11 |\n| R-004 | `information-access · ambiente · piso` | 1 | Aberto |\n';
+  const t = retroTrends({ retros, index });
+  assert.equal(t.retros, 3);
+  const a = t.findings.find((f) => f.ids.includes('R-001'));
+  assert.deepEqual(a.retros, ['a', 'b', 'c'], 'oldest retro first, by date then PR number');
+  assert.equal(a.status, 'open');
+  assert.deepEqual(t.recurring, ['tool-economy · release · disputa']);
+  assert.equal(t.findings.find((f) => f.ids.includes('R-002')).status, 'paid');
+  assert.equal(t.unsigned, 1);
+  assert.ok(!t.findings.some((f) => f.ids.includes('R-999')), 'only the findings section counts');
+
+  const noIndex = retroTrends({ retros });
+  assert.equal(noIndex.findings[0].status, null, 'no index: the status is unknown');
+  assert.ok(noIndex.recurring.includes('automated-checks · docs · fechamento'), 'and unknown is not paid');
+});
+
+test('an open finding no retro named in the last three is quiet; one of unknown status never is', () => {
+  const named = { 1: [`- **R-001 · 2 · economia** · ${SIG_A}`, `- **R-005 · 2 · checks** · ${SIG_B}`], 3: [`- **R-003 · 2 · acesso** · ${SIG_C}`] };
+  const retros = [1, 2, 3, 4, 5].map((n) => ({ path: `docs/retros/2026-10-2${n}-r${n}.md`, text: retro(`r${n}`, n, named[n] ?? []) }));
+  const index = '| R-001 | `tool-economy · release · disputa` | 1 | Aberto |\n| R-003 | `information-access · ambiente · piso` | 1 | Aberto |\n';
+  const t = retroTrends({ retros, index });
+  const quietFor = (id) => t.findings.find((f) => f.ids.includes(id)).quiet_for;
+  assert.deepEqual([quietFor('R-001'), quietFor('R-003'), quietFor('R-005')], [4, 2, 4]);
+  assert.deepEqual(t.quiet, ['tool-economy · release · disputa'], 'two retros without it is not yet quiet, and an unknown status never is');
+});
+
+test('a finding written the way the skill asks, with no id, takes its status from the index by signature', () => {
+  const line = `- 2 · tool economy · ${SIG_A} · two threads raced for the version · owner: change of its own`;
+  const retros = [1, 2].map((n) => ({ path: `docs/retros/2026-10-2${n}-r${n}.md`, text: retro(`r${n}`, n, [line]) }));
+  const paid = retroTrends({ retros, index: '| R-001 | `tool-economy · release · disputa` | 2 | Paid in change 9 |\n' });
+  assert.equal(paid.findings[0].status, 'paid');
+  assert.deepEqual(paid.recurring, [], 'a paid finding is not charged again');
+  const later = [3, 4, 5].map((n) => ({ path: `docs/retros/2026-10-2${n}-r${n}.md`, text: retro(`r${n}`, n, []) }));
+  const open = retroTrends({ retros: [...retros, ...later], index: '| R-001 | `tool-economy · release · disputa` | 2 | Open |\n' });
+  assert.deepEqual(open.quiet, ['tool-economy · release · disputa']);
+  assert.deepEqual(open.recurring, [], 'came back once, then went quiet: a candidate to close, not a recurrence');
+});
+
+test('trends read the project directory, and refuse one that does not exist', () => {
+  const r = gitRepo({
+    'docs/retros/2026-10-24-a.md': retro('a', 1, [`- **R-001 · 2 · economia** · ${SIG_A}`]),
+    'docs/retros/2026-10-25-b.md': retro('b', 2, [`- **R-001 · 2 · economia** · ${SIG_A}`]),
+    'docs/retros/README.md': '| R-001 | `tool-economy · release · disputa` | 2 | Aberto |\n',
+    'docs/retros/old.md/keep.txt': 'a folder whose name ends in .md is not a retro',
+  });
+  try {
+    const run = (...argv) => { const lines = []; const errors = []; const code = retroCommand({ root: r.root, argv: ['trends', ...argv], out: (s) => lines.push(s), err: (s) => errors.push(s) }); return { code, result: lines.length ? JSON.parse(lines.join('\n')) : null, err: errors[0] ?? '' }; };
+    const ok = run();
+    assert.equal(ok.code, 0);
+    assert.deepEqual(ok.result.recurring, ['tool-economy · release · disputa']);
+    assert.equal(ok.result.retros, 2, 'the index is not a retro');
+    assert.match(run('--dir', 'docs/none').err, /^E_RETRO_MISSING:/);
+    assert.match(run('--dir', '../outside').err, /^E_WORK_PATH:/);
+    assert.equal(run('--dir').code, 2);
+    assert.equal(run('extra').code, 2);
   } finally { cleanup(r.root); }
 });
