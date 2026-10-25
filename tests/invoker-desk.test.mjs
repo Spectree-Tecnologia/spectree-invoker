@@ -41,7 +41,7 @@ function orbProblems(orbsSource, cards) {
 
 // The panel only watches the session: nothing it sees leaves it.
 const networkProblems = (sources) =>
-  Object.entries(sources).filter(([, s]) => /\$\.http\b|\bfetch\(|\$\.process\b/.test(s)).map(([f]) => `${f}: reaches the network or a process`);
+  Object.entries(sources).filter(([, s]) => /\$\.(http|process|tool|mcp|model|telemetry)\b|\bfetch\(/.test(s)).map(([f]) => `${f}: reaches the network, a process or a tool`);
 
 const commandProblems = (source) =>
   [...source.matchAll(/name: '([^']+)'/g)].map((m) => m[1]).filter((n) => n === 'invoker').map(() => 'register.tsx: registers /invoker, which commands/invoker.md already is');
@@ -50,7 +50,8 @@ test('each guard rejects the state it exists to catch', () => {
   assert.deepEqual(moduleProblems('{ "modules": ["./gone.tsx"] }', () => false), ['hooks/hooks.json: names ./gone.tsx, which does not exist']);
   assert.equal(stateProblems('spectree', "atom({ plugin: 'invoker-desk', key: 'x' })", "\n    'invoker-desk': {").length, 2);
   assert.ok(orbProblems("{ role: 'quality-engineer', label: 'QE', orb: 'wex' }", ['quality-engineer', 'platform-engineer']).includes('orbs.ts: no orb for agents/platform-engineer.md'));
-  assert.deepEqual(networkProblems({ 'a.ts': 'await $.http.fetch(url)' }), ['a.ts: reaches the network or a process']);
+  assert.deepEqual(networkProblems({ 'a.ts': 'await $.http.fetch(url)' }), ['a.ts: reaches the network, a process or a tool']);
+  assert.equal(networkProblems({ 'b.ts': "await $.tool.call({ tool: 'Bash' })", 'c.ts': '$.telemetry.log(x)' }).length, 2);
   assert.equal(commandProblems("$.command.register({ name: 'invoker' })").length, 1);
 });
 

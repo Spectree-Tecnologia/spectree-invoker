@@ -108,11 +108,12 @@ test('cost comes from the session measure and the main loop adds no card', async
   await ui.unmount()
 })
 
-test('the session time runs on with no subagent dispatched', async ($, on) => {
+test('in a squad project the session time runs on with no subagent dispatched', async ($, on) => {
   const clock = mock.clock(on, { now: 1_000_000 })
   on('command.register', () => ({ value: { command: 'invoker-desk' } }))
   on('session.usage', () => ({ value: { startedAt: 1_000_000, context: {}, rateLimits: [] } }))
-  on('fs.exists', () => ({ value: false }))
+  on('fs.exists', () => ({ value: true }))
+  on('session.surfaces', () => ({ value: ['terminal'] }))
   on('ui.status', () => ({ value: {} }))
   on('session.start', (_: unknown, e: any) => ({ cwd: e.cwd }))
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })

@@ -105,8 +105,15 @@ export const register: Register = on => {
     const usage = await $.session.usage()
     await update($, startedAt, () => usage.startedAt)
     if (usage.cost) await update($, costUsd, () => usage.cost?.usd ?? null)
-    await syncClock($, await read($, agents))
-    if (await isSpectreeProject($, e.cwd)) await openWhereSidebar($)
+    // The clock starts here only in a squad project; elsewhere the first
+    // dispatch starts it, so a session that never orchestrates pays nothing.
+    if (await isSpectreeProject($, e.cwd)) {
+      await syncClock($, await read($, agents))
+      await openWhereSidebar($)
+    } else {
+      const at = await $.clock.now()
+      await update($, now, () => at)
+    }
 
     return next(e)
   })
