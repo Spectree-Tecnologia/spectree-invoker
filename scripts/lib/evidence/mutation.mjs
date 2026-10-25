@@ -12,7 +12,7 @@ import {
 import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, lstatSync, chmodSync, cpSync, renameSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname, resolve, relative, isAbsolute, delimiter, posix } from 'node:path';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { bounded } from '../change/index.mjs';
 
 function command(value, label) {
@@ -91,26 +91,55 @@ function cacheEntry(root, plan, originals) {
     if (!bytes) refuse('E_MUTATION_PLAN', `setup_cache key file is not a candidate file: ${f}`);
     h.update(`\0${f}\0`); h.update(bytes);
   }
-  const cacheRoot = resolve(process.env.SPECTREE_PROBE_CACHE || join(tmpdir(), 'spectree-probe-cache'));
+  // Per user by default: a shared temporary folder would let another local user plant an entry.
+  const cacheRoot = resolve(process.env.SPECTREE_PROBE_CACHE || join(homedir(), '.cache', 'spectree-probe'));
   if (containedBy(root, cacheRoot)) refuse('E_MUTATION_TEMP', 'The probe cache must be outside the source checkout.');
   const key = h.digest('hex');
   return { key, dir: join(cacheRoot, key), root: cacheRoot, paths };
 }
 const COMPLETE = '.spectree-cache-complete';
+// An entry runs as the probe's own code, so the root and the entry must be this user's alone: a real
+// folder, owned by the caller, with no group or other permission bits. Where there is no uid (Windows),
+// only the symlink and folder checks apply.
+function privateFolder(dir) {
+  const st = lstatSync(dir);
+  const uid = process.getuid?.();
+  if (st.isSymbolicLink() || !st.isDirectory() || (uid !== undefined && (st.uid !== uid || (st.mode & 0o077))))
+    refuse('E_MUTATION_TEMP', `The probe cache folder is not private to this user: ${dir}`);
+}
+function cacheRootReady(entry) {
+  mkdirSync(entry.root, { recursive: true, mode: 0o700 });
+  privateFolder(entry.root);
+}
 function restoreCache(entry, copy) {
+  if (!existsSync(entry.root)) return false;
+  privateFolder(entry.root);
   if (!existsSync(join(entry.dir, COMPLETE))) return false;
+  privateFolder(entry.dir);
   for (const p of entry.paths) if (existsSync(join(entry.dir, p))) cpSync(join(entry.dir, p), join(copy, p), { recursive: true, verbatimSymlinks: true });
   return true;
 }
+/** Stores what setup produced; returns `stored` or `miss` with why. */
 function storeCache(entry, copy) {
-  mkdirSync(entry.root, { recursive: true });
-  const temp = mkdtempSync(join(entry.root, 'incoming-'));
+  if (!entry.paths.some((p) => existsSync(join(copy, p)))) return { cache: 'miss', cache_error: 'NO_DECLARED_PATH' };
+  cacheRootReady(entry);
+  let temp;
   try {
+    temp = mkdtempSync(join(entry.root, 'incoming-'));
     for (const p of entry.paths) if (existsSync(join(copy, p))) cpSync(join(copy, p), join(temp, p), { recursive: true, verbatimSymlinks: true });
     writeFileSync(join(temp, COMPLETE), `${entry.key}\n`);
-    renameSync(temp, entry.dir);
-    return true;
-  } catch { rmSync(temp, { recursive: true, force: true }); return false; } // another probe stored it first
+    try { renameSync(temp, entry.dir); } catch (e) {
+      // Another probe stored it first; a folder without the marker is a broken entry, replaced once.
+      if (existsSync(join(entry.dir, COMPLETE))) { rmSync(temp, { recursive: true, force: true }); return { cache: 'miss', cache_error: 'STORED_CONCURRENTLY' }; }
+      if (!existsSync(entry.dir)) throw e;
+      rmSync(entry.dir, { recursive: true, force: true });
+      renameSync(temp, entry.dir);
+    }
+    return { cache: 'stored' };
+  } catch (e) {
+    if (temp) rmSync(temp, { recursive: true, force: true });
+    return { cache: 'miss', cache_error: e.code ?? 'UNKNOWN' };
+  }
 }
 function cleanEnvironment(home, root) {
   const env = {};
@@ -181,7 +210,7 @@ export function runMutation(root, input, { apply = false } = {}) {
       const setup = run(plan.setup_command);
       record.setup = { exit_code: setup.exit_code, error: setup.error, signal: setup.signal };
       if (setup.error || setup.signal || setup.exit_code !== 0) return { ...record, reason: 'Setup did not complete successfully.' };
-      if (entry) Object.assign(record.setup, { cache: storeCache(entry, copy) ? 'stored' : 'miss', cache_key: entry.key });
+      if (entry) Object.assign(record.setup, storeCache(entry, copy), { cache_key: entry.key });
     }
     assertCandidate();
     // One baseline for the whole batch: every named test runs once and passes in a complete run.

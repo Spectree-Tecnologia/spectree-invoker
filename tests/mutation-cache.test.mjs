@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { gitRepo, cleanup, writeFiles } from './helpers.mjs';
@@ -83,9 +83,43 @@ test('the cache is declared with a setup, never covers a candidate file and neve
     const { setup_command: _, ...noSetup } = f.plan;
     assert.throws(() => runMutation(f.root, noSetup), { code: 'E_MUTATION_PLAN' });
     assert.throws(() => runMutation(f.root, { ...f.plan, setup_cache: { key_files: ['package-lock.json'], paths: ['../outside'] } }), { code: 'E_MUTATION_PLAN' });
-    assert.throws(() => runMutation(f.root, { ...f.plan, setup_cache: { key_files: ['package-lock.json'], paths: ['.'] } }, { apply: true }), { code: 'E_MUTATION_PLAN' });
+    for (const paths of [['.'], ['math.cjs'], ['./']]) {
+      assert.throws(() => runMutation(f.root, { ...f.plan, setup_cache: { key_files: ['package-lock.json'], paths } }, { apply: true }), { code: 'E_MUTATION_PLAN' });
+    }
     assert.throws(() => runMutation(f.root, { ...f.plan, setup_cache: { key_files: ['missing.json'], paths: ['node_modules'] } }, { apply: true }), { code: 'E_MUTATION_PLAN' });
     process.env.SPECTREE_PROBE_CACHE = join(f.root, 'cache');
+    assert.throws(() => runMutation(f.root, f.plan, { apply: true }), { code: 'E_MUTATION_TEMP' });
+  } finally { f.drop(); }
+});
+
+test('a folder without the marker is never a hit, and the next store replaces it', () => {
+  const f = fixture();
+  try {
+    const first = runMutation(f.root, f.plan, { apply: true });
+    const dir = join(process.env.SPECTREE_PROBE_CACHE, first.setup.cache_key);
+    rmSync(join(dir, '.spectree-cache-complete'));
+    const second = runMutation(f.root, f.plan, { apply: true });
+    assert.equal(second.setup.cache, 'stored', JSON.stringify(second.setup));
+    assert.equal(runMutation(f.root, f.plan, { apply: true }).setup.cache, 'hit');
+    assert.equal(f.setups(), 2);
+  } finally { f.drop(); }
+});
+
+test('a setup that produced none of the declared paths stores nothing', () => {
+  const f = fixture();
+  try {
+    const plan = { ...f.plan, setup_cache: { key_files: ['package-lock.json'], paths: ['node_module'] } };
+    const run = runMutation(f.root, plan, { apply: true });
+    assert.deepEqual([run.setup.cache, run.setup.cache_error], ['miss', 'NO_DECLARED_PATH']);
+    assert.equal(runMutation(f.root, plan, { apply: true }).setup.cache, 'miss');
+  } finally { f.drop(); }
+});
+
+test('a cache folder open to others is refused before any hit', { skip: process.getuid === undefined }, () => {
+  const f = fixture();
+  try {
+    runMutation(f.root, f.plan, { apply: true });
+    chmodSync(process.env.SPECTREE_PROBE_CACHE, 0o777);
     assert.throws(() => runMutation(f.root, f.plan, { apply: true }), { code: 'E_MUTATION_TEMP' });
   } finally { f.drop(); }
 });

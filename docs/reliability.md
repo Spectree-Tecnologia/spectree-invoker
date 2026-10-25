@@ -113,12 +113,16 @@ A instalação pode ser reaproveitada entre provas, se o plano declarar `setup_c
 ```
 
 Depois de um `setup_command` que sai com 0, os caminhos declarados são copiados para uma entrada
-fora do checkout (`SPECTREE_PROBE_CACHE`, ou `spectree-probe-cache` na pasta temporária do sistema).
+fora do checkout (`SPECTREE_PROBE_CACHE`, ou `~/.cache/spectree-probe`), numa pasta do usuário
+sem permissão de grupo nem de outros; uma pasta de outro dono, aberta ou simbólica é recusada com
+`E_MUTATION_TEMP`, porque uma entrada roda como código da prova.
 A chave é o `setup_command`, esses caminhos, os bytes dos `key_files` no candidato, a plataforma, a
 arquitetura e a versão do Node. A prova seguinte com a mesma chave **copia** a entrada para a cópia
 descartável, sem link e sem rodar o setup, e o registro diz `setup.cache: "hit"` com a chave. A
 baseline roda sempre: uma entrada estragada aparece como baseline vermelha que nomeia a chave, e
-apagar a pasta dela resolve. Um caminho declarado nunca cobre arquivo do candidato.
+apagar a pasta dela resolve. Um caminho declarado nunca cobre arquivo do candidato. A chave não
+inclui o caminho absoluto da cópia, que muda a cada prova: um setup cujo resultado grava onde foi
+feito (um venv do Python, por exemplo) não serve para `setup_cache`.
 
 O banco é do projeto, e a prova não recebe credencial nenhuma. Quando os testes precisam de banco,
 o `setup_command` do projeto cria um a partir de um template já migrado, em vez de migrar a cada

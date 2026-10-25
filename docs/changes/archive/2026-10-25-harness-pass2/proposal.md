@@ -25,8 +25,9 @@ Escrita antes do código, porque a mudança anterior (#106) mostrou o custo de n
   continua descartável: um mutante que escreva em `node_modules` não alcança a entrada.
 - **A baseline roda sempre**, com ou sem acerto. Uma entrada estragada aparece como baseline vermelha,
   e o registro diz que houve acerto e qual era a chave.
-- **A entrada mora fora do checkout**, em `SPECTREE_PROBE_CACHE` ou na pasta temporária do sistema,
-  como a cópia. Nunca entra no digest de conteúdo nem em `.spectree/`.
+- **A entrada mora fora do checkout**, em `SPECTREE_PROBE_CACHE` ou em `~/.cache/spectree-probe`.
+  A pasta é privada ao usuário: outra dona, permissão aberta ou link é recusa, porque a entrada roda
+  como código da prova. Nunca entra no digest de conteúdo nem em `.spectree/`.
 - **Uma entrada só existe completa.** Ela é gravada numa pasta temporária e renomeada; a marca de
   completa é o último arquivo escrito. Sem a marca, não há acerto.
 - **O cache é opcional e declarado.** Sem `setup_cache` no plano, nada muda.
@@ -50,7 +51,7 @@ Escrita antes do código, porque a mudança anterior (#106) mostrou o custo de n
 - Um `run-all` do plugin: o comando da suíte já é do projeto (`verification.json`) e a cobertura
   entre rodadas já é do `pass2.mjs`. O que sobra de harness por change é dado, não código.
 - Criar e apagar o banco por mutante: o plugin não conhece o banco do projeto.
-- Limpar entradas antigas do cache: é a pasta temporária do sistema, ou a que o operador apontou.
+- Limpar entradas antigas do cache: é uma pasta do usuário, ou a que o operador apontou.
 
 ## O que esta mudança deve e não paga
 
