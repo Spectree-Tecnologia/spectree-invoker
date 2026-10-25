@@ -23,7 +23,7 @@ Engineer, Full Stack Developer, Platform Engineer, Integration Engineer), nunca 
    Claude Code declara `user-invocable: false` e não declara `disable-model-invocation`, que
    impediria os agentes de carregar a skill.
 3. Uma frase no `docs/install.md`.
-4. A retro da mudança anterior, devida por esta.
+4. A retro de `regras-de-volta-ao-nucleo` (#94), devida por esta.
 
 ## Fora do escopo
 
