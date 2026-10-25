@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 93,
+    "title": "Retro: retro.mjs trends e leitura do Architect antes da proposta (tarefa 11d) — v1.60.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/93",
+    "opened": "2026-10-25T02:58:29Z",
+    "merged": "2026-10-25T03:05:51Z"
+  },
+  "signals": {
+    "open_minutes": 7,
+    "commits": 2,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.60.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-retro-tendencias/proposal.md"
+    ]
+  },
+  "friction": "- A sessão voltou a rodar Node 22.22.0, depois de uma sessão no piso (R-008, ocorrência 7, registrada na retro do #92).\n- A rodada 1 achou dois defeitos reais, que os testes não cobriam porque só usavam linhas com `**R-NNN`. Os dois foram corrigidos antes do push.\n- Nenhum conflito de versão: nenhuma outra thread tinha mudança aberta.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
