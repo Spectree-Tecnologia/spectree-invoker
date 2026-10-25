@@ -31,7 +31,8 @@ async function spawn($: any, agentId: string, subagentType: string, description:
 
 function engine(on: any, agentId: string) {
   mock.clock(on, { now: 1_000_000 })
-  on('agent.spawn', () => ({ model: 'model', agentId }))
+  // Each spawn answers the agent id its tool_use_id names (`tu-<id>`), the first one by default.
+  on('agent.spawn', (_: unknown, e: any) => ({ model: 'model', agentId: String(e.tool_use_id ?? '').replace(/^tu-/, '') || agentId }))
   on('tool.call', () => ({ result: {} }))
   on('turn.complete', (_: unknown, e: any) => ({ text: e.answer }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
@@ -143,6 +144,9 @@ test('a card is bordered in its orb colour, the sections in Quas and Exort, and 
   await spawn($, 'i1', 'spectree:integration-engineer', 'IE: WebAuthn research')
   await $.tool.call({ tool: 'WebFetch', url: 'https://www.w3.org/TR/webauthn-3/', prompt: 'read', agentId: 'i1' } as any)
   await $.tool.call({ tool: 'WebSearch', query: 'passkeys conditional ui', agentId: 'i1' } as any)
+  await $.tool.call({ tool: 'WebFetch', url: 'https://user:secret@example.com:8443/x', prompt: 'read', agentId: 'i1' } as any)
+  await spawn($, 'q1', 'spectree:quality-engineer', 'QE pass 2')
+  await $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId: 't', agentId: 'q1', reason: 'answer', usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, model: 'm' } } as any)
 
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
@@ -151,6 +155,10 @@ test('a card is bordered in its orb colour, the sections in Quas and Exort, and 
     const boxes = ((await (ui as any).findAll({ type: 'Box' })) as any[]).map(one => one?.props ?? {})
     expect(boxes.some(one => one.borderColor === '#38b6ff')).toBe(true)
     expect(boxes.some(one => one.backgroundColor === '#38b6ff')).toBe(true)
+    expect(boxes.some(one => one.borderColor === '#e040fb')).toBe(true)
+    expect(boxes.some(one => one.backgroundColor === '#ff8a1f')).toBe(true)
+    expect(await ui.find({ type: 'Text', text: /Opening example\.com$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /secret/ })).toBeUndefined()
     await ui.unmount()
   }
 })

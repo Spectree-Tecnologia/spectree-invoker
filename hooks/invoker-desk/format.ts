@@ -28,10 +28,12 @@ function clip(text: string, max: number): string {
   return line.length > max ? `${line.slice(0, max - 1)}…` : line
 }
 
-// The host of an address, `https://www.w3.org/TR/x` → `www.w3.org`, or the
-// address itself when it has none.
+// The host of an address, `https://www.w3.org/TR/x` → `www.w3.org`, without
+// any user, password or port before or after it; the address itself when it
+// has no host.
 function hostOf(url: string): string {
-  return url.match(/^[a-z][a-z0-9+.-]*:\/\/([^/?#]+)/i)?.[1] ?? url
+  const authority = url.match(/^[a-z][a-z0-9+.-]*:\/\/([^/?#]+)/i)?.[1]
+  return authority ? authority.replace(/^.*@/, '').replace(/:\d+$/, '') : url
 }
 
 // What a step of a subagent reads as on its card: the command a Bash call
