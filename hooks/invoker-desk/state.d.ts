@@ -17,6 +17,15 @@ export type AgentRow = {
   effort?: string
 }
 
+export type PlanTask = {
+  id: string
+  subject: string
+  activeForm?: string
+  status: 'pending' | 'in_progress' | 'completed'
+}
+
+export type Plan = { tasks: PlanTask[] }
+
 export type DeskUi = {
   isRunningCollapsed: boolean
   isFinishedCollapsed: boolean
@@ -29,8 +38,7 @@ declare module 'claude-code' {
     spectree: {
       agents: Shaped<Record<string, AgentRow>>
       ui: Shaped<DeskUi>
-      costUsd: number | null
-      startedAt: number | null
+      plan: Shaped<Plan>
       now: number
     }
   }

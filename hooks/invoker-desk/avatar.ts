@@ -108,6 +108,34 @@ export function spinnerMarkup(kind: OrbKind): string {
   )
 }
 
+// The plan's progress: a track cut into one segment per task, filled from
+// Quas through Wex to Exort as tasks close, with sparks drifting through the
+// fill while any task remains.
+export function planBarMarkup(done: number, total: number): string {
+  const width = total === 0 ? 0 : Math.round((done / total) * 300)
+  const ticks = Array.from({ length: Math.max(0, total - 1) }, (_, i) => {
+    const x = Math.round(((i + 1) * 300) / total)
+    return `<rect x="${x}" y="3" width="1" height="8" fill="#ffffff" opacity="0.18"/>`
+  }).join('')
+  const sparks =
+    done < total
+      ? `<g clip-path="url(#plan-clip)"><rect x="-90" y="0" width="90" height="14" fill="url(#plan-shine)"><animate attributeName="x" from="-90" to="${width}" dur="2.2s" repeatCount="indefinite"/></rect></g>`
+      : ''
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 14" width="300" height="14" preserveAspectRatio="none">` +
+    `<defs><linearGradient id="plan-fill"><stop offset="0" stop-color="${ORB_COLOR.quas.mid}"/>` +
+    `<stop offset="0.5" stop-color="${ORB_COLOR.wex.mid}"/><stop offset="1" stop-color="${ORB_COLOR.exort.mid}"/></linearGradient>` +
+    `<linearGradient id="plan-shine"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/>` +
+    `<stop offset="0.5" stop-color="#ffffff" stop-opacity="0.55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>` +
+    `<clipPath id="plan-clip"><rect x="0" y="0" width="${width}" height="14" rx="7"/></clipPath></defs>` +
+    `<rect x="0" y="0" width="300" height="14" rx="7" fill="#ffffff" opacity="0.08"/>` +
+    `<rect x="0" y="0" width="${width}" height="14" rx="7" fill="url(#plan-fill)"/>` +
+    sparks +
+    ticks +
+    `</svg>`
+  )
+}
+
 // A card's progress: finished is a full bar in the orb's colour, running is a
 // bar whose light sweeps across it, failed or stopped is red.
 export function barMarkup(color: string, state: 'running' | 'done' | 'failed'): string {

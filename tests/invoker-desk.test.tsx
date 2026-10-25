@@ -14,6 +14,12 @@ const PANE = {
   },
 } as const
 
+// The kit's find ignores `alt`: the Svg is picked out of all of them by its alt.
+async function svgSource(ui: any, alt: string): Promise<string> {
+  const svgs = (await ui.findAll({ type: 'Svg' })) as any[]
+  return String(svgs.find(one => one?.props?.alt === alt)?.props?.source ?? '')
+}
+
 const ENGINE = { plugin: 'engine', tier: 'core' } as const
 
 async function spawn($: any, agentId: string, subagentType: string, description: string) {
@@ -33,7 +39,9 @@ function engine(on: any, agentId: string, model = 'model') {
   mock.clock(on, { now: 1_000_000 })
   // Each spawn answers the agent id its tool_use_id names (`tu-<id>`), the first one by default.
   on('agent.spawn', (_: unknown, e: any) => ({ model, agentId: String(e.tool_use_id ?? '').replace(/^tu-/, '') || agentId }))
-  on('tool.call', () => ({ result: {} }))
+  // A TaskCreate answers the id of the task it made, numbered from 1.
+  let created = 0
+  on('tool.call', (_: unknown, e: any) => ({ result: e.tool === 'TaskCreate' ? { task: { id: String(++created), subject: e.subject } } : {} }))
   on('turn.complete', (_: unknown, e: any) => ({ text: e.answer }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('ui.status', () => ({ value: {} }))
@@ -111,31 +119,60 @@ test('a section collapses and the steps of a card expand', async ($, on) => {
   await ui.unmount()
 })
 
-test('cost comes from the session measure and the main loop adds no card', async ($, on) => {
+test('the main loop adds no card and its task list fills the plan bar in place of the figures', async ($, on) => {
   engine(on, 'x')
-  on('session.measure', (_: unknown, e: any) => ({ changed: e.changed }))
-  await $.session.measure({ context: {}, rateLimits: [], cost: { usd: 401.49 }, changed: ['cost'] } as any)
   await $.tool.call({ tool: 'Bash', command: 'ls' } as any)
 
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: /\$401\.49/ })).toBeDefined()
+  let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   expect(await ui.find({ type: 'Text', text: /Nenhum subagente/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Nenhum plano em andamento/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Custo da conversa|Tokens dos subagentes|^Tempo$/ })).toBeUndefined()
+  await ui.unmount()
+
+  for (const subject of ['Bump plugin', 'T-ID-REG', 'Pass 2', 'Close']) {
+    await $.tool.call({ tool: 'TaskCreate', subject, description: subject, activeForm: `Doing ${subject}` } as any)
+  }
+  await $.tool.call({ tool: 'TaskUpdate', taskId: '1', status: 'completed' } as any)
+  await $.tool.call({ tool: 'TaskUpdate', taskId: '2', status: 'in_progress' } as any)
+  await $.tool.call({ tool: 'TaskUpdate', taskId: '4', status: 'deleted' } as any)
+  // A subagent's own task list is not the plan.
+  await spawn($, 'd1', 'spectree:full-stack-developer', 'Developer')
+  await $.tool.call({ tool: 'TaskCreate', subject: 'inner', description: 'inner', agentId: 'd1' } as any)
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    ui = await $.ui.mount({ ...PANE, surface })
+    expect(await ui.find({ type: 'Text', text: /^Tarefas 1\/3 · 33%$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Agora: Doing T-ID-REG$/ })).toBeDefined()
+    await ui.unmount()
+  }
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const bar = await svgSource(ui, 'Tarefas 1 de 3')
+  expect(bar).toContain('viewBox="0 0 300 14"')
+  expect(bar).toContain('<animate')
+  for (const mid of ['#38b6ff', '#e040fb', '#ff8a1f']) expect(bar).toContain(mid)
+  await ui.unmount()
+
+  await $.tool.call({ tool: 'TaskUpdate', taskId: '2', status: 'completed' } as any)
+  await $.tool.call({ tool: 'TaskUpdate', taskId: '3', status: 'completed' } as any)
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /^Plano concluído$/ })).toBeDefined()
+  const full = await svgSource(ui, 'Tarefas 3 de 3')
+  expect(full).toContain('viewBox="0 0 300 14"')
+  expect(full).not.toContain('<animate')
   await ui.unmount()
 })
 
-test('in a resumed squad session the time counts from this launch and runs on with no subagent', async ($, on) => {
-  const clock = mock.clock(on, { now: 1_000_000 })
-  on('command.register', () => ({ value: { command: 'invoker-desk' } }))
-  on('session.usage', () => ({ value: { startedAt: 0, context: {}, rateLimits: [] } }))
-  on('fs.exists', () => ({ value: true }))
-  on('session.surfaces', () => ({ value: ['terminal'] }))
-  on('ui.status', () => ({ value: {} }))
-  on('session.start', (_: unknown, e: any) => ({ cwd: e.cwd }))
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  await clock.advance(65_000)
+test('a todo list fills the plan bar too, the next task named while none is under way', async ($, on) => {
+  engine(on, 'x')
+  const todos = [
+    { content: 'Write the delta', status: 'completed', activeForm: 'Writing the delta' },
+    { content: 'Run pass 1', status: 'pending', activeForm: 'Running pass 1' },
+  ]
+  await $.tool.call({ tool: 'TodoWrite', todos } as any)
 
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(await ui.find({ type: 'Text', text: /^1:05$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^Tarefas 1\/2 · 50%$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^A seguir: Run pass 1$/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -220,7 +257,8 @@ test('a running card heads with the step under way and the three orbs turning', 
   }
 
   ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  const spinner = String(((await ui.find({ type: 'Svg', alt: /Em andamento/ } as any)) as any)?.props?.source ?? '')
+  const spinner = await svgSource(ui, 'Em andamento')
+  expect(spinner).toContain('viewBox="0 0 16 16"')
   expect(spinner).toContain('animateTransform')
   for (const mid of ['#38b6ff', '#e040fb', '#ff8a1f']) expect(spinner).toContain(mid)
   await ui.unmount()
