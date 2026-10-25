@@ -12,11 +12,11 @@
 //   does not observe an agent's behaviour, and it does not prove the plugin works
 //   inside a harness. Those are three different checks and only one of them is here.
 
-import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = resolve(process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), '..'));
+const root = resolve(process.argv.slice(2).find((a) => !a.startsWith('--')) ?? join(dirname(fileURLToPath(import.meta.url)), '..'));
 const problems = [];
 const fail = (where, msg) => problems.push(`${where}: ${msg}`);
 
@@ -250,6 +250,44 @@ if (inventory) {
       for (const r of card.rules ?? []) {
         if (!text.includes(norm(r.text))) fail(rel, `dropped the rule "${r.text}" (${r.section})`);
       }
+    }
+  }
+}
+
+// --- 8c. no normative sentence leaves the core without being named -------------
+// 8b holds each rule by its lead phrase, so a core that keeps every lead and empties the body
+// beneath it passed — that is how task 8 (#76) moved a dozen binding sentences into the
+// rationale, which binds nothing. Here every sentence of the core protocol that says never,
+// must, only, refuse, at most or cannot is listed in protocol/rules.json. One that disappears
+// fails; one that appears fails until it is listed. `--write-normative` rewrites the list, so a
+// removal is always a visible line in the diff, never a silent one.
+function normativeSentences(markdown) {
+  const text = markdown.replace(/```[\s\S]*?```/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  const out = [];
+  for (const para of text.split(/\n\s*\n/)) {
+    const flat = para.replace(/\s+/g, ' ').trim();
+    for (const s of flat.split(/(?<=[.;])\s+(?=[A-Z*`(])/)) {
+      if (/\b(never|must|only|refuses?|refused|at most|cannot|neither|nothing|no|not)\b/i.test(s)) out.push(s.trim());
+    }
+  }
+  return [...new Set(out)];
+}
+if (inventory && manifest) {
+  const source = (manifest.core ?? []).filter((f) => has(`protocol/${f}`)).map((f) => read(`protocol/${f}`)).join('\n\n');
+  const found = normativeSentences(source);
+  if (process.argv.includes('--write-normative')) {
+    const raw = JSON.parse(read('protocol/rules.json'));
+    raw.core_normative = found;
+    writeFileSync(join(root, 'protocol/rules.json'), JSON.stringify(raw, null, 2) + '\n');
+    console.log(`protocol/rules.json: core_normative rewritten with ${found.length} sentence(s)`);
+  } else {
+    const listed = inventory.core_normative;
+    if (!Array.isArray(listed) || listed.length === 0) fail('protocol/rules.json', 'core_normative is empty; run check-plugin.mjs --write-normative');
+    else {
+      const have = new Set(found);
+      for (const s of listed) if (!have.has(s)) fail('protocol/', `dropped the normative sentence "${s.slice(0, 120)}"; remove it from core_normative in the same change and name it in the proposal`);
+      const known = new Set(listed);
+      for (const s of found) if (!known.has(s)) fail('protocol/', `normative sentence not in core_normative: "${s.slice(0, 120)}"; run check-plugin.mjs --write-normative`);
     }
   }
 }

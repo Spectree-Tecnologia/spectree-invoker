@@ -20,8 +20,9 @@ Reserve Importante para o que muda o que o plugin impõe ou deixa passar:
 
 - **Regra que sai do núcleo.** Uma frase normativa (`never`, `must`, `refuse`, `only`, "nunca",
   "só") de `protocol/0*.md` ou de `protocol/roles/*.md` que some, afrouxa ou vai para
-  `docs/protocol-rationale.md` sem a proposta dizer isso. O `check-plugin` só cobre as regras
-  inventariadas em `protocol/rules.json`; o resto é com você. Cite a linha removida.
+  `docs/protocol-rationale.md` sem a proposta dizer isso. O `check-plugin` recusa a frase com
+  marca normativa que some sem sair de `core_normative` em `protocol/rules.json`; uma linha que sai
+  de lá, ou uma regra escrita sem marca, é com você. Cite a linha removida.
 - **Check enfraquecido.** Um teste apagado, pulado ou com a expectativa afrouxada; um passo de
   `.github/workflows/` removido, condicionado ou fora do agregado `required`; uma allowlist
   (`ADMINISTRATIVE` em `scripts/lib/evidence/diff.mjs`, `neutral_paths`) que passa a aceitar mais.
@@ -39,6 +40,7 @@ Reserve Importante para o que muda o que o plugin impõe ou deixa passar:
 - Edição à mão em arquivo gerado (`CLAUDE.md`, `agents/*.md`, `skills/*/SKILL.md`,
   `adapters/*/dist/`) sem a mudança correspondente em `protocol/`.
 - Arquivo tocado que a proposta não justifica, e item do **Fora do escopo** que apareceu no diff.
+- Linha removida de `core_normative` em `protocol/rules.json`: a proposta nomeia cada uma.
 - Versão: `package.json`, `package-lock.json` e `.claude-plugin/plugin.json` sobem juntas, e a
   proposta arquivada nomeia a mesma versão.
 

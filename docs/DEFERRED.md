@@ -115,7 +115,7 @@
 - Status: open
 - Owner: own_change
 - Impact: ceiling
-- Decision: Visto pela retro do #78 (R-004, docs/retros/2026-10-24-pass1-superficie.md): CLAUDE.md com 45.934 de 46.080 bytes e o card do Solutions Architect com 34.012 de 34.816. A próxima regra nova no núcleo derruba o check-plugin no meio da change. Fica fora porque é risco medido, sem incidente, e não muda nada do que esta mudança entrega. Atualizado pela mudança seguranca-resposta: a Seção 4 ganhou 68 bytes para citar as skills de segurança, e o CLAUDE.md está com 46.002 de 46.080 bytes (78 de folga). O gatilho disparou na mudança checagens-por-relatorio: a regra da suíte única levou o CLAUDE.md a 46.178 bytes e derrubou o check-plugin; ela coube cortando 142 bytes de redação repetida do §7 e do §12, e o núcleo terminou com 46.036 (44 de folga). Segunda ocorrência do R-004, então a próxima regra nova paga o teto ou o corte numa mudança deltaless própria.
+- Decision: Visto pela retro do #78 (R-004, docs/retros/2026-10-24-pass1-superficie.md): CLAUDE.md com 45.934 de 46.080 bytes e o card do Solutions Architect com 34.012 de 34.816. A próxima regra nova no núcleo derruba o check-plugin no meio da change. Fica fora porque é risco medido, sem incidente, e não muda nada do que esta mudança entrega. Atualizado pela mudança seguranca-resposta: a Seção 4 ganhou 68 bytes para citar as skills de segurança, e o CLAUDE.md está com 46.002 de 46.080 bytes (78 de folga). O gatilho disparou na mudança checagens-por-relatorio: a regra da suíte única levou o CLAUDE.md a 46.178 bytes e derrubou o check-plugin; ela coube cortando 142 bytes de redação repetida do §7 e do §12, e o núcleo terminou com 46.036 (44 de folga). Segunda ocorrência do R-004, então a próxima regra nova paga o teto ou o corte numa mudança deltaless própria. Na mudança regras-de-volta-ao-nucleo as regras devolvidas levaram o CLAUDE.md a 48.778 bytes, e o teto subiu para 49.152 (374 de folga), por decisão do Founder em 2026-10-25; terceira vez que o teto do núcleo decide o escopo de uma mudança (R-004).
 - Due: A próxima mudança que acrescentar regra a protocol/rules.json
 - Closure condition: check-plugin avisa quando a folga de um teto cai abaixo de 2%, e a proposta que acrescenta regra declara o orçamento de bytes.
 
@@ -151,6 +151,25 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Visto pela verificação da mudança revisao-independente: os dois revisores em contexto limpo sobre o diff do #76 acharam frases normativas que saíram do núcleo e ficaram só em docs/protocol-rationale.md, que se declara não vinculante. Na main 4a51738 continuam fora do CLAUDE.md, entre outras: at most three attempts, up to ten total; no successful rerun erases an unresolved failure; all completed Scenarios must pass again; Changed inputs invalidate their evidence; a reviewed complete test inventory; negative control first. O inventário de protocol/rules.json casa só a frase de abertura de cada regra, então um corpo esvaziado passa no check-plugin (é a causa do R-009). Fica fora porque devolver regra ao núcleo muda o protocolo e esbarra no teto do D-013.
+- Decision: Visto pela verificação da mudança revisao-independente: os dois revisores em contexto limpo sobre o diff do #76 acharam frases normativas que saíram do núcleo e ficaram só em docs/protocol-rationale.md, que se declara não vinculante. Na main 4a51738 continuam fora do CLAUDE.md, entre outras: at most three attempts, up to ten total; no successful rerun erases an unresolved failure; all completed Scenarios must pass again; Changed inputs invalidate their evidence; a reviewed complete test inventory; negative control first. O inventário de protocol/rules.json casa só a frase de abertura de cada regra, então um corpo esvaziado passa no check-plugin (é a causa do R-009). Fica fora porque devolver regra ao núcleo muda o protocolo e esbarra no teto do D-013. Entregue pela mudança regras-de-volta-ao-nucleo (v1.61.0): as 258 frases normativas que o #76 tirou do núcleo foram classificadas por um revisor em contexto limpo (206 mantidas reescritas, 34 justificativa, 18 perdidas); 11 das perdidas que mandam em agente voltaram ao §7, junto com os 11 trechos achados antes, uma já estava na skill squad-closure-retro, e as 6 que descrevem o runtime de fechamento estão nomeadas na proposta. O check-plugin passou a listar cada frase normativa do núcleo em core_normative e recusa a que some sem sair da lista, visto recusando o diff do #76 (258 frases, a do R-009 entre elas). Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: A próxima mudança que tocar protocol/07-pipeline-and-method.md ou protocol/rules.json
 - Closure condition: Cada frase normativa do núcleo anterior ao #76 está de volta ao núcleo ou nomeada como removida numa proposta, e o check-plugin recusa uma regra cujo corpo normativo sumiu, visto rejeitando o diff do #76.
+
+## D-018 — Escrita fora dos caminhos do papel barrada na hora
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: Visto no discovery de mods do Claude Code (/mnt/project-files/analysis/mods-claude-code-vs-invoker.md, 2026-10-25): a posse de caminhos por papel é verificada depois, pelo verify-change, e não barrada quando a escrita acontece. Um hook PreToolUse clássico, que lê o agent_type e nega Edit/Write fora dos caminhos do papel e qualquer escrita do loop principal, converteria parte disso em recusa na hora. Fica fora porque não há incidente: nenhuma retro, item deste ledger ou recusa do verify-change registra escrita fora de caminho, e um hook só vale no Claude Code, não no Codex.
+- Due: A primeira recusa real do verify-change por caminho fora do papel, ou a primeira edição manual de docs/specs/ detectada, num projeto consumidor
+- Closure condition: Um hook PreToolUse clássico (não function hook) recusa a escrita fora dos caminhos do papel, visto recusando o caso do incidente, e a linha enforced da matriz de papéis diz exatamente o que ele cobre e em qual harness.
+
+
+## D-019 — Memória do projeto contradita pelo código sem ninguém ver
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: Visto no discovery da LLM Wiki (/mnt/project-files/analysis/llm-wiki-vs-invoker.md, 2026-10-25): uma entrada de docs/DOMAIN.md ou docs/DECISIONS.md contradita pelo código, ou superada sem registro, hoje só é pega se o Architect ler na hora. O lint de memória da wiki é a ideia aproveitável. Fica fora porque não há incidente em campo, e a resposta esperada é um check ou um passo da squad-closure-retro, nunca um papel.
+- Due: Uma retro de projeto consumidor que registre uma pergunta ao Founder sobre fato já gravado em DOMAIN.md ou DECISIONS.md, ou uma entrada desses arquivos contradita pelo código e não detectada pelo Architect
+- Closure condition: Um check determinístico ou um passo da squad-closure-retro aponta a entrada contradita, visto rejeitando o caso do incidente.

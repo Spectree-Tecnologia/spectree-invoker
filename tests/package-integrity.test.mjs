@@ -135,12 +135,30 @@ test('a rendered core over its size ceiling, or without its rationale, fails', (
   const dir = pkgCopy();
   try {
     const f = join(dir, 'CLAUDE.md');
-    writeFileSync(f, readFileSync(f, 'utf8') + '\n' + 'x'.repeat(46080));
+    writeFileSync(f, readFileSync(f, 'utf8') + '\n' + 'x'.repeat(49152));
     rmSync(join(dir, 'docs', 'protocol-rationale.md'));
     const r = check(dir);
     assert.equal(r.code, 1);
-    assert.match(r.out, /CLAUDE\.md: is \d+ bytes, over the 46080-byte ceiling/);
+    assert.match(r.out, /CLAUDE\.md: is \d+ bytes, over the 49152-byte ceiling/);
     assert.match(r.out, /protocol-rationale\.md: the protocol rationale is missing/);
+  } finally { cleanup(dir); }
+});
+
+// The lead phrase alone let #76 empty a rule's body and pass. The sentence inventory is what
+// refuses that: a normative sentence removed from the protocol fails, and so does a new one
+// nobody listed.
+test('a protocol that empties a rule body below its lead phrase fails, sentence by sentence', () => {
+  const dir = pkgCopy();
+  try {
+    const f = join(dir, 'protocol/07-pipeline-and-method.md');
+    const text = readFileSync(f, 'utf8');
+    const sentence = 'Each revision adds at most three attempts, up to ten total, and the original plan and attempts stay intact.';
+    assert.ok(text.includes(sentence), 'the sentence the probe removes is in the protocol');
+    writeFileSync(f, text.replace(` ${sentence}`, ' The recorded baseline must never be skipped.'));
+    const r = check(dir);
+    assert.equal(r.code, 1);
+    assert.match(r.out, /dropped the normative sentence "Each revision adds at most three attempts/);
+    assert.match(r.out, /normative sentence not in core_normative: "The recorded baseline must never be skipped\./);
   } finally { cleanup(dir); }
 });
 

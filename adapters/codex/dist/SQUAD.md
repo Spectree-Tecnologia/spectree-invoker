@@ -241,15 +241,15 @@ The reason behind each rule below, and the incident that produced it, is in `.sp
 
 **But module 1 cannot wait for its own roles, and pretending otherwise is how it diverges from itself.** With more than one Developer on change 1, the **Architect declares the semantic convention in `proposal.md`**, binding them all, until the role is extracted from the code.
 
-**Architectural adoption is not operational adoption.** `adopt.mjs` moves no code. Modularizing is the Architect's extraction sequence: an acyclic target map approved at gate 1, then one deltaless change per module, leaves first, a characterization change before any untested code moves. The first module extracted is module 1 for roles.
+**Architectural adoption is not operational adoption.** `adopt.mjs` moves no code. Modularizing is the Architect's extraction sequence: an acyclic target map approved at gate 1, then one deltaless change per module, leaves first, a characterization change before any untested code moves. The first module extracted is module 1 for roles. Behaviour never changes inside an extraction; a defect found there goes to `docs/DEFERRED.md`, and the boundary check covers each module from the change that extracts it.
 
 **A deepening scan is dispatched, not a standing chore.** When a retro flags the same module twice, or the roadmap is empty, the Architect runs squad skill `squad-deepening-scan` on hot spots from `git log`; each candidate taken is a deltaless change.
 
-**Verification design before execution.** The Architect writes `verification.json` beside `tasks.md`, validated with `verification.mjs plan <file>`; each behavioral check names its Scenario, a defective counterexample and the expected failure.
+**Verification design before execution.** The Architect writes `verification.json` beside `tasks.md`, validated with `verification.mjs plan <file>`; each behavioral check names its Scenario, a defective counterexample and the expected failure; inventory and count checks cannot substitute.
 
 **One suite run serves every check, never one run per Requirement.** `verification.mjs checks <plan> <report>` judges every check's named `tests` from one TAP run, archived changes too.
 
-**Delivery reliability profile.** New consumers enable `delivery.version: 1` (`docs/delivery-reliability.md`): Scenarios mapped to exact test names, `delivery.mjs preflight` before implementation, `delivery.mjs run --apply` on the candidate. It supplements QA and CI; missing, skipped, duplicated or stale results and due deferrals refuse advancement.
+**Delivery reliability profile.** New consumers enable `delivery.version: 1` (`docs/delivery-reliability.md`): Scenarios mapped to exact test names, `delivery.mjs preflight` before implementation, `delivery.mjs run --apply` on the candidate. It supplements QA and CI; missing, skipped, duplicated or stale results and due deferrals refuse advancement. Existing projects adopt it only with write authority and a reviewed complete test inventory, and the reporter must first pass a positive and fail an assertion in a negative control.
 
 ### 7.2 Building
 
@@ -272,13 +272,13 @@ The reason behind each rule below, and the incident that produced it, is in `.sp
 
 **Quality Engineer isolation.** Pass it the spec and the target, **never** the builder's report, reasoning or PR, **and never as a fork**.
 
-**The TypeSafe Engineer** works at step 7 only when the stack names TypeSafe, implementing the adapter behind the core's port; `Scenario`s are proven with the judgment faked, and the live model runs only in its calibration, recorded as `judgment.calibrated` at the gated revision. The **Integration Engineer** enters wherever an external system must be asserted.
+**The TypeSafe Engineer** works at step 7 only when the stack names TypeSafe, implementing the adapter behind the core's port, with file ownership split from the Developer's at step 4; `Scenario`s are proven with the judgment faked, and the live model runs only in its calibration, recorded as `judgment.calibrated` at the gated revision, and verified by running that evaluation, never by reading its report. The **Integration Engineer** enters wherever an external system must be asserted.
 
-**Pass 2 also audits the scope, not only the `Scenario`s.** What it did that it never promised — byte-identical files, named absences, budgets — quoted from the diff.
+**Pass 2 also audits the scope, not only the `Scenario`s.** What it did that it never promised — byte-identical files, named absences, budgets, tests beyond the ones named — quoted from the diff.
 
 **The core domain owes a killed mutation.** A delta on a module of the `Core modules:` line of `docs/DOMAIN.md` needs `mutation.killed` evidence, observed on the current content and independent of the Developer, before `pass2_complete` or any later state.
 
-**Mutation probes operate on disposable copies only.** Never in the live checkout or with production credentials (`mutation-probe.mjs <plan> --apply`); an unrecognized diagnostic is inconclusive, never a kill.
+**Mutation probes operate on disposable copies only.** Never in the live checkout, with shared dependency links or with production credentials (`mutation-probe.mjs <plan> --apply`); probe commands are trusted code, and the copy is no OS sandbox; an unrecognized diagnostic is inconclusive, never a kill.
 
 ### 7.3 Dispatch
 
@@ -286,31 +286,31 @@ The reason behind each rule below, and the incident that produced it, is in `.sp
 
 **Mandatory reading in every dispatch** — 3 to 6 project files that already are the pattern; necessary and **demonstrably insufficient** against drift.
 
-**Compact context.** At most 400 words per dispatch, linking task, spec and plan; handoffs carry result, command, revision, references and blockers.
+**Compact context.** At most 400 words per dispatch, linking task, spec and plan; if that cannot carry a safe mission, split the work or state the exception; handoffs carry result, command, revision, references and blockers.
 
 **Loop ceiling, and retries in a clean window.** Every dispatch but an exploration round has a **maximum of 3 attempts** and a timeout; each attempt is a **fresh dispatch with a zeroed context**, carrying what was learned as **fact**. Ceiling hit: report the blocker.
 
 **Parallelism** by independence in the graph. Two modules needing the same file means the map is wrong.
 
-**Bounded implementation executor.** After pass 1, implementation tasks go through `tasks.mjs run/repair`, never a direct dispatch around their budget and trail. It never merges, advances state or grants approval, and uncertain effects need inspection first.
+**Bounded implementation executor.** After pass 1, implementation tasks go through `tasks.mjs run/repair`, never a direct dispatch around their budget and trail. It never cuts worktrees, merges, advances state or grants approval, and uncertain effects need inspection first. A completed agent envelope is only a report: the executor reruns acceptance and earlier completed tasks on the new candidate. Changed inputs invalidate their evidence; legacy projects need structured adoption first. A plan SHOULD register stable Scenario IDs, read-only acceptance files, paths, dependencies, exact TAP test names and an attempt budget; where acceptance cannot use the executor, say so, keep durable work checkpoints and invent no telemetry.
 
-**Resilient execution.** A spent budget grows only through `tasks.mjs budget-plan` and `budget-apply`, on a human decision bound to the plan digest. Never manufacture a terminal result or replay a mission because a waiter expired.
+**Resilient execution.** A spent budget grows only through `tasks.mjs budget-plan` and `budget-apply`, on a human decision bound to the plan digest, with inspected evidence, reconciled work and stopped managed processes. Each revision adds at most three attempts, up to ten total, and the original plan and attempts stay intact. Review unblocks no state, scope or execution approval; native turn completion is only a transport observation. Never manufacture a terminal result or replay a mission because a waiter expired.
 
 **Connected observations.** Run records are observations, never authority; missing usage or cost stays unknown.
 
 **Context by phase.** Phase profiles from `protocol/runtime/` bound a mission and replace nothing here.
 
-**Diagnosis and review records.** Separate observation, hypothesis and cause; a blocker needs a failing execution.
+**Diagnosis and review records.** Separate observation, hypothesis and cause, and record the reproduction command, environment, attempts and interventions; a blocker needs a failing execution, and no successful rerun erases an unresolved failure. `reports.mjs` checks record consistency and candidate identity only, never execution or QA independence; adapter isolation capability is no evidence of independence for a given QA mission. Real-agent evaluations run only through `evals.mjs`, in disposable synthetic projects; the flow suite states its synthetic scope policy and its lack of independent QA, CI and integration.
 
-**Operational adoption.** `adopt.mjs` creates only a draft, never historical approvals; an uncertain process boundary blocks recovery whatever an operator asserts.
+**Operational adoption.** `adopt.mjs` creates only a draft, never historical approvals; an uncertain process boundary blocks recovery whatever an operator asserts. A stale candidate is repaired through `tasks.mjs repair` only with inspected evidence, reconciled work, existing dependencies and the original attempt budget, and every completed Scenario passes again.
 
-**Durable operation boundaries.** Once there is a commit and a change ID, `work.mjs start <change> <operation>` before each write-capable dispatch or side effect and `work.mjs finish` with the real envelope before any transition; on an unknown outcome, inspect the effects, then `work.mjs reconcile`. Quota exhaustion in a completed envelope is an interruption; a checkpoint grants nothing.
+**Durable operation boundaries.** Once there is a commit and a change ID, `work.mjs start <change> <operation>` before each write-capable dispatch or side effect and `work.mjs finish` with the real envelope before any transition; on an unknown outcome, inspect the effects, then `work.mjs reconcile`. Use a new operation ID for each attempt; exploration stays read-only, and bootstrap uses the Platform action log until the first commit exists, and checkpoints never erase that log. Structured transitions refuse pending work. Quota exhaustion in a completed envelope is an interruption; a checkpoint grants nothing.
 
 ### 7.4 Verifying and closing
 
 **Handoff verification.** Run the command yourself — `gh pr checks`, the DB CLI, the suite. A disagreement with the agent's report refuses the handoff.
 
-**A green that exists because someone re-ran a red is not an approval — it is a finding.** Re-run only to **characterise** a failure; the assertion stays a blocker until the evidence puts the fault in the runner.
+**A green that exists because someone re-ran a red is not an approval — it is a finding.** Re-run only to **characterise** a failure, saying how many times and at which heads; the assertion stays a blocker until the evidence puts the fault in the runner.
 
 **A "done" annotation authorises nothing.** A transition needs the evidence its precondition names, from a run with recorded revision and result.
 
@@ -324,9 +324,9 @@ Without a consolidation mechanism the change closes the **legacy** way, declared
 
 **Diagnose adoption before choosing closure.** `reconcile.mjs diagnose`; `prepared` needs `closure.consolidate` declared.
 
-**Correct a mistaken mode through the reviewed reconciliation CLI, never by editing state JSON.** `reconcile.mjs plan`, then `apply <plan> --apply` (`docs/guided-reconciliation.md`).
+**Correct a mistaken mode through the reviewed reconciliation CLI, never by editing state JSON.** `reconcile.mjs plan`, then `apply <plan> --apply` (`docs/guided-reconciliation.md`). It reaches only changes through `implemented` with no preparation or receipt, creates no evidence or approval, advances nothing, and never treats an archive as proof of integration.
 
-**A preparation has an identity, and an integration approval names it.** The approval names the snapshot's `preparation_id`, `generation` and `preparation_digest`, plus repository, PR, head and base branch. A merge is confirmed against the PR approved.
+**A preparation has an identity, and an integration approval names it.** The approval names the snapshot's `preparation_id`, `generation` and `preparation_digest`, plus repository, PR, head and base branch. A merge is confirmed against the PR approved. Two approvals in force with nothing saying which is `E_APPROVAL_AMBIGUOUS`, never a pick.
 
 **One identity names one document.** Every preparation, re-preparation and reopening reserves a new `preparation_id`.
 

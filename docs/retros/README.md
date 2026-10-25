@@ -43,6 +43,7 @@ lugar; cada correção entra por uma mudança própria.
 
 ## Retros
 
+- [2026-10-25 — `retro-tendencias` (#93)](2026-10-25-retro-tendencias.md)
 - [2026-10-25 — `revisao-independente` (#92)](2026-10-25-revisao-independente.md)
 - [2026-10-25 — `baseline-rodada-ci` (#91)](2026-10-25-baseline-rodada-ci.md)
 - [2026-10-24 — `emenda-caminhos` (#90)](2026-10-24-emenda-caminhos.md)
