@@ -119,6 +119,16 @@ test('a file name with glob characters reads its own mode, not a match', { skip:
   } finally { cleanup(r.root); }
 });
 
+test('a file that cannot be fingerprinted is attacked as unknown, never listed as deleted', { skip: process.platform === 'win32' }, () => {
+  const r = repo();
+  try {
+    writeFiles(r.root, { 'src/rule:v2.cjs': 'module.exports = 2;\n' });
+    const scope = pass2Scope(r.root, 'c1');
+    assert.deepEqual(scope.deleted, []);
+    assert.match(scope.attack.find((a) => a.path === 'src/rule:v2.cjs').reason, /^unknown/);
+  } finally { cleanup(r.root); }
+});
+
 test('rounds are recorded in the order they finished', () => {
   const r = repo();
   try {

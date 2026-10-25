@@ -71,7 +71,7 @@ export function recordPass2Round(root, id, report, { operation }) {
     try { probe = JSON.parse(readFileSync(inside(root, report.mutation_report), 'utf8')); } catch { refuse('E_PASS2_REPORT', 'The mutation report is not readable JSON.'); }
     if (probe?.version !== 1 || probe.dry_run || !Array.isArray(probe.mutations)) refuse('E_PASS2_REPORT', 'The mutation report must be a batch run of mutation-probe.mjs --apply.');
     if (probe.source_digest !== current.content_digest) refuse('E_PASS2_PROBE_STALE', 'The mutation report was produced on other content; run the probe on this candidate.');
-    mutations = probe.mutations.map((m) => ({ id: m.id, target: m.target, test_name: m.test_name, result: m.result,
+    mutations = probe.mutations.map((m) => ({ id: m.id, target: m.target.replaceAll('\\', '/'), test_name: m.test_name, result: m.result,
       target_fingerprint: fingerprintOf(root, m.target) }));
   }
   const doc = { version: 1, change_id: id, round: rounds.length + 1, at: new Date().toISOString(),
@@ -102,7 +102,9 @@ export function pass2Scope(root, id) {
     const round = sha && attackedAt.get(`${path}\0${sha}`);
     if (round) covered.push({ path, round });
     else if (sha) attack.push({ path, reason: 'changed since the last round that attacked it, or never attacked' });
-    else deleted.push({ path });
+    // Only a file that is not there is deleted; one that cannot be read is unknown, and attacked.
+    else if (!existsSync(join(root, path))) deleted.push({ path });
+    else attack.push({ path, reason: 'unknown: the file could not be fingerprinted' });
   }
   // The latest result of each mutant decides: a later survivor is never hidden by an older kill. A
   // mutant is its id on its target: ids are unique only within one plan, so a later round may reuse one.

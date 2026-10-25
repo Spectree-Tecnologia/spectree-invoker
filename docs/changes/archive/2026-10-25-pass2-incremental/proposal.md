@@ -54,6 +54,11 @@ arquivo de um jeito que deixe o teste que a matava sem alcançá-la, a rodada in
 SYND já fazia assim por disciplina; o que muda é que agora fica registrado. O pass 2 final continua
 rodando a suíte inteira, e a mutação de regra nova ou mudada continua obrigatória.
 
+Um arquivo que alguém muda durante a rodada, em paralelo ao ataque, é gravado nos bytes do fim da
+rodada, que o ataque pode não ter visto. A rodada não tem como provar arquivo a arquivo o que viu,
+porque o próprio QE escreve testes durante ela; o pass 2 não roda em paralelo com correção no mesmo
+arquivo.
+
 ## Fora do escopo
 
 - O harness do plugin, o cache de instalação e o banco por template: mudança 34.
