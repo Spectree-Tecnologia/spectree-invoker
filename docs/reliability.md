@@ -102,8 +102,36 @@ O primeiro comando só mostra o plano. O segundo copia arquivos versionados e n�
 do candidato atual, incluindo alterações locais, para uma pasta temporária externa. Não
 copia `.git`, estado operacional, dependências, arquivos de ambiente ou formatos comuns de
 credenciais. Symlinks/junctions são recusados. Dependências necessárias devem ser instaladas
-pela preparação explícita na cópia; não há hardlinks nem reaproveitamento de `node_modules`.
-Mudanças nos arquivos copiados pela preparação ou baseline invalidam o ensaio.
+pela preparação explícita na cópia; não há hardlinks. Mudanças nos arquivos copiados pela
+preparação ou baseline invalidam o ensaio.
+
+A instalação pode ser reaproveitada entre provas, se o plano declarar `setup_cache` ao lado do
+`setup_command`:
+
+```json
+{ "setup_cache": { "key_files": ["package-lock.json"], "paths": ["node_modules"] } }
+```
+
+Depois de um `setup_command` que sai com 0, os caminhos declarados são copiados para uma entrada
+fora do checkout (`SPECTREE_PROBE_CACHE`, ou `~/.cache/spectree-probe`), numa pasta do usuário
+sem permissão de grupo nem de outros; uma pasta de outro dono, aberta ou simbólica é recusada com
+`E_MUTATION_TEMP`, porque uma entrada roda como código da prova.
+A chave é o `setup_command`, esses caminhos, os bytes dos `key_files` no candidato, a plataforma, a
+arquitetura e a versão do Node. A prova seguinte com a mesma chave **copia** a entrada para a cópia
+descartável, sem link e sem rodar o setup, e o registro diz `setup.cache: "hit"` com a chave. A
+baseline roda sempre: uma entrada estragada aparece como baseline vermelha que nomeia a chave, e
+apagar a pasta dela resolve. Um caminho declarado nunca cobre arquivo do candidato. A chave não
+inclui o caminho absoluto da cópia, que muda a cada prova: um setup cujo resultado grava onde foi
+feito (um venv do Python, por exemplo) não serve para `setup_cache`, e um link que aponta para fora
+do caminho declarado faz a entrada não ser gravada (`cache_error: "LINK_ESCAPES"`). A entrada não é
+sincronizada em disco: depois de uma queda de energia, a baseline é o que mostra uma entrada truncada.
+
+Num acerto, o `setup_command` inteiro não roda: só o que ele deixou sob os caminhos declarados volta.
+Por isso o banco nunca é criado no setup. O banco é do projeto, e a prova não recebe credencial
+nenhuma. Quando os testes precisam de banco, o **comando de teste** do plano é um script do projeto
+que cria um banco a partir de um template já migrado, em vez de migrar a cada prova
+(`CREATE DATABASE app_probe_<id> TEMPLATE app_test_template`, ou `createdb -T`), roda a suíte com a
+URL desse banco e o apaga ao sair. O comando roda sem shell: o nome único e a URL são do script.
 
 O teste precisa passar antes e falhar por asserção depois da mutação. A saída deve ser TAP
 completo e conter exatamente o nome solicitado. O adaptador atual reconhece `ERR_ASSERTION`

@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 106,
+    "title": "Rodada incremental do pass 2 (tarefa 33) — v1.72.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/106",
+    "opened": "2026-10-25T21:26:50Z",
+    "merged": "2026-10-25T21:28:13Z"
+  },
+  "signals": {
+    "open_minutes": 1,
+    "commits": 7,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.72.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-pass2-incremental/proposal.md"
+    ]
+  },
+  "friction": "- A revisão precisou de sete rodadas. O desenho inicial não dizia o que era uma rodada, uma mutação e um arquivo coberto, e cada rodada achou um caso de borda dessa identidade. A seção Identidade devia ter vindo antes do código. Isso vai para a retro.\n- O registro de cobertura não foi exercitado num consumidor real, só em fixtures.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
