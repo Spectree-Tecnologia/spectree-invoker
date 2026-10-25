@@ -75,6 +75,16 @@ export function outcome(result) {
   return 'unknown';
 }
 
+/**
+ * What the agent envelope itself reports about the turn: Claude Code's subagent result carries
+ * `totalDurationMs`, `totalTokens` and `totalToolUseCount`. Absent numbers stay unknown (null).
+ */
+export function envelopeUsage(result) {
+  const parts = [result, result?.toolUseResult].filter((p) => p && typeof p === 'object');
+  const pick = (key) => parts.map((p) => p[key]).find((v) => Number.isFinite(v) && v >= 0) ?? null;
+  const usage = { duration_ms: pick('totalDurationMs'), total_tokens: pick('totalTokens'), tool_uses: pick('totalToolUseCount') };
+  return Object.values(usage).some((v) => v !== null) ? usage : null;
+}
 export function startWork(root, changeId, operationId, { phase, task, next, refs = [] }) {
   const dir = eventDir(root, changeId, operationId);
   return writeEvent(dir, 'started', { change_id: changeId, operation_id: operationId,
@@ -86,7 +96,7 @@ export function finishWork(root, changeId, operationId, { result, next, refs = [
   if (!readEvent(dir, 'started')) refuse('E_WORK_MISSING', 'Record the operation before performing it.');
   if (readEvent(dir, 'reconciled')) refuse('E_WORK_CONFLICT', 'Operation already reconciled; start a new operation.');
   return writeEvent(dir, 'finished', { change_id: changeId, operation_id: operationId,
-    status: outcome(result), next: bounded(next, 'next'), refs: references(root, refs), snapshot: snapshot(root) });
+    status: outcome(result), usage: envelopeUsage(result), next: bounded(next, 'next'), refs: references(root, refs), snapshot: snapshot(root) });
 }
 export function reconcileWork(root, changeId, operationId, { note, next, refs = [] }) {
   const dir = eventDir(root, changeId, operationId);

@@ -93,6 +93,8 @@
     },
 
     "timestamp": { "$ref": "spectree/common#/definitions/timestamp" },
+    "started_at": { "$ref": "spectree/common#/definitions/timestamp", "description": "When the command started, measured by the runner." },
+    "elapsed_ms": { "type": "integer", "minimum": 0, "description": "How long the command ran, measured by the runner. Not the duration of the agent round around it." },
     "result": { "$ref": "spectree/common#/definitions/result" },
     "exit_code": { "type": "integer" },
 

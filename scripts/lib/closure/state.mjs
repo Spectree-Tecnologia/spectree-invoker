@@ -686,6 +686,7 @@ function run({ root, argv, print, warn }) {
     try { before = { content: contentDigest(root, { neutral }), contract: contractDigest(root, change, { artifactsDir: opt('artifacts') }) }; }
     catch (e) { die(`${e.code}: ${e.message}`, 1); }
     let r;
+    const startedAt = new Date(); const began = performance.now();
     try { r = launch(cmd, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }); }
     catch (e) {
       // The command could not be delivered as written. That is an invocation to fix, not a
@@ -746,6 +747,10 @@ function run({ root, argv, print, warn }) {
       environment: { os: process.platform, runtime: `node ${process.versions.node}`,
         ci: process.env.CI === 'true' || process.env.CI === '1' || process.env.GITHUB_ACTIONS === 'true' },
       timestamp: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+      // How long the command itself ran, measured here. A pass 2 round's own duration is the
+      // work operation around it (pass2.mjs record), never this.
+      started_at: startedAt.toISOString().replace(/\.\d+Z$/, 'Z'),
+      elapsed_ms: Math.round(performance.now() - began),
       result,
       ...(typeof r.status === 'number' ? { exit_code: r.status } : {}),
       ...(assertsFailure

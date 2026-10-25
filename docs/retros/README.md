@@ -42,9 +42,12 @@ lugar; cada correção entra por uma mudança própria.
 | R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
 | R-011 | `information-access · mod · sem-superficie-real` | 7 | Aberto: o v1.67.0 foi conferido pelo Founder no app desktop depois do merge; o giro do v1.68.0 e o brilho da barra do v1.70.0 seguem sem conferência; ver o app antes do merge de um mod segue devido |
 | R-012 | `information-access · executor · fixture-sem-run-real` | 1 | Aberto: o trailer `system` do 2.1.302 foi testado em fixture; a confirmação é o próximo run real do consumidor no v1.69.0 |
+| R-013 | `information-access · ambiente · dependencias-nao-instaladas` | 1 | Aberto: a sessão do #104 rodou o check sem `npm ci`; primo do R-008 |
+| R-014 | `automated-checks · executor · janela-sem-teste-discriminante` | 1 | Aberto: a lista de ações da janela de repair do #104 não tem teste que a discrimine |
 
 ## Retros
 
+- [2026-10-25 — `executor-pos-fechamento` (#104)](2026-10-25-executor-pos-fechamento.md)
 - [2026-10-25 — `painel-plano` (#103)](2026-10-25-painel-plano.md)
 - [2026-10-25 — `result-com-trailer-system` (#102)](2026-10-25-result-com-trailer-system.md)
 - [2026-10-25 — `painel-passo-em-andamento` (#101)](2026-10-25-painel-passo-em-andamento.md)
