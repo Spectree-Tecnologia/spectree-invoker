@@ -91,7 +91,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 22 | Regras do #76 de volta ao núcleo | Integrada, v1.61.0: frases normativas perdidas de volta ao §7, `core_normative` no `check-plugin` visto recusando o #76, teto do núcleo em 49.152 bytes, [proposta](changes/archive/2026-10-25-regras-de-volta-ao-nucleo/proposal.md) | D-017 (entregue); D-018, D-019 (registrados) |
 | 23 | Skills do squad fora do menu de slash | Integrada, v1.62.0: `user-invocable: false` nas skills `squad-*` geradas para o Claude Code, cobrado pelo `check-plugin`; só `/spectree:invoker` fica no menu, [proposta](changes/archive/2026-10-25-skills-fora-do-menu/proposal.md) | — |
 | 24 | Painel do Invoker no Claude Code | Integrada, v1.63.0: `hooks/invoker-desk/` mostra a orquestração num painel lateral, o Invoker com seis orbs (Quas, Wex, Exort) que giram enquanto um subagente roda, custo, tokens e passos por subagente, [proposta](changes/archive/2026-10-25-painel-invoker/proposal.md) | — |
-| 25 | Retrato do Invoker e tempo da sessão no painel | Integrada, v1.64.0: o avatar próprio do Founder no retrato, com os orbs por cima, e o tempo contado desde esta abertura da sessão, [proposta](changes/archive/2026-10-25-retrato-invoker/proposal.md) | — |
+| 25 | Retrato do Invoker e tempo da sessão no painel | Integrada, v1.64.0: o avatar e os orbs pintados pelo Founder, nos cards e na órbita, e o tempo contado desde esta abertura da sessão, [proposta](changes/archive/2026-10-25-retrato-invoker/proposal.md) | — |
 
 ## Itens com aprovação permanente
 

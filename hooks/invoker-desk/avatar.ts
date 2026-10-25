@@ -71,7 +71,7 @@ export function invokerMarkup(isOrchestrating: boolean, active: readonly Role[])
     const angle = (i / ROLES.length) * 2 * Math.PI - Math.PI / 2
     const x = Math.round((CX + ORBIT * Math.cos(angle)) * 10) / 10
     const y = Math.round((OY + ORBIT * Math.sin(angle)) * 10) / 10
-    return `<g><title>${one.label}</title>${orbMarkup(one.orb, x, y, 13, GRADIENT_ID[one.orb], active.includes(one.role))}</g>`
+    return `<g><title>${one.label}</title>${orbMarkup(one.orb, x, y, 15, GRADIENT_ID[one.orb], active.includes(one.role))}</g>`
   }).join('')
   const orbit = isOrchestrating
     ? `<g>${orbs}<animateTransform attributeName="transform" type="rotate" from="0 ${CX} ${OY}" to="360 ${CX} ${OY}" dur="7s" repeatCount="indefinite"/></g>`

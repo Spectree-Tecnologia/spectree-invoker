@@ -10,7 +10,8 @@ Claude Code e corrige o tempo que ele mostra; nenhum comportamento do runtime mu
 Visto pelo Founder no app desktop, logo depois do merge do #96:
 
 1. O Invoker desenhado em vetor ficou infantil. Ele pediu uma arte realista e mandou a imagem de
-   referência.
+   referência; depois mandou também uma pintura de cada orb, para os avatares dos subagentes e os
+   orbs da órbita.
 2. O stat "Tempo" mostrou `349:56:43`. O painel contava desde o `startedAt` do Claude Code, que numa
    sessão retomada é a primeira abertura dela, dias atrás.
 
@@ -19,15 +20,19 @@ Visto pelo Founder no app desktop, logo depois do merge do #96:
 1. **`hooks/invoker-desk/portrait.ts`**: a imagem do Founder, recortada no busto, 328×344, JPEG,
    em data URI de cerca de 41 mil caracteres. O avatar a desenha num oval de borda esmaecida dentro da
    órbita, e os orbs seguem girando por cima. Com `PORTRAIT` vazio, volta o desenho vetorial.
-2. **O tempo conta desde esta abertura da sessão**, lido do relógio no `session.start`.
-3. **Testes:** a sessão retomada mostra o tempo desta abertura (visto falhando com o código do
-   #96); o avatar embute a imagem; o `tests/invoker-desk.test.mjs` recusa um retrato que não seja
-   imagem em base64 ou que leve o SVG do avatar além de 131.072 caracteres.
-4. A retro de `painel-invoker` (#96), devida por esta.
+2. **`hooks/invoker-desk/orb-art.ts`**: as pinturas de Quas, Wex e Exort do Founder, 80×80, JPEG,
+   cerca de 3,5 mil caracteres cada. Cada uma, cortada em círculo, é o avatar do card do subagente
+   do seu orb e o orb que gira em volta do Invoker. Um valor vazio volta ao orb vetorial.
+3. **O tempo conta desde esta abertura da sessão**, lido do relógio no `session.start`.
+4. **Testes:** a sessão retomada mostra o tempo desta abertura (visto falhando com o código do
+   #96); o avatar embute a imagem; o card do subagente mostra a pintura do orb (visto falhando com o
+   orb vetorial); o `tests/invoker-desk.test.mjs` recusa retrato ou orb que não seja imagem em
+   base64 ou que leve o SVG do avatar além de 131.072 caracteres.
+5. A retro de `painel-invoker` (#96), devida por esta.
 
 ## Decisões
 
-- **A imagem é um avatar próprio do Founder**, gerado por ele para isso. A primeira versão deste PR
+- **As imagens são do próprio Founder**, geradas por ele para isso: o avatar e os três orbs. A primeira versão deste PR
   embutia uma arte de terceiros, sem autor nem licença conhecidos, com o risco aceito por ele; ele a
   trocou por esta para não levar esse risco ao repositório público. Outra imagem entra trocando só
   `portrait.ts`.

@@ -63,6 +63,12 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
     expect(await ui.find({ type: 'Text', text: /Running: npm test/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Using Read: \/repo\/docs\/specs/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Invoker em repouso/ })).toBeDefined()
+    if (surface !== 'terminal') {
+      // The card's avatar is the orb painting, not the vector sphere.
+      const svgs = (await (ui as any).findAll({ type: 'Svg' })) as any[]
+      const orb = svgs.find(one => one?.props?.alt === 'Quality Engineer')
+      expect(String(orb?.props?.source ?? '')).toContain('data:image/jpeg;base64,')
+    }
     await ui.unmount()
   }
 })
@@ -78,7 +84,7 @@ test('while a subagent runs the Invoker orchestrates and its orb pulses', async 
   expect(avatar).toBeDefined()
   expect(String((avatar as any)?.props?.source ?? '')).toContain('animateTransform')
   expect(String((avatar as any)?.props?.source ?? '')).toContain('data:image/jpeg;base64,')
-  // The engine refuses an Svg source past 131072 characters; the portrait rides inside it.
+  // The engine refuses an Svg source past 131072 characters; the portrait and the orbs ride inside it.
   expect(String((avatar as any)?.props?.source ?? '').length).toBeLessThanOrEqual(131072)
   await ui.unmount()
 })
