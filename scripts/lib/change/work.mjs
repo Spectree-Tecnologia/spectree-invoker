@@ -104,11 +104,16 @@ export function pass2Brief(root, path) {
   else {
     if (!texts(doc.independent_of, 1) || doc.independent_of.length > 12 || !doc.independent_of.includes('full_stack_developer')) problems.push('independent_of, up to 12 role names, naming full_stack_developer');
     if (doc.fork !== false) problems.push('fork: false, a fresh context and never a fork');
-    if (!Array.isArray(doc.withheld) || !WITHHELD.every((w) => doc.withheld.includes(w))) problems.push(`withheld naming ${WITHHELD.join(', ')}`);
-    if (!doc.scope || !texts(doc.scope.attack, 1) || !texts(doc.scope.excluded, 0)) problems.push('scope.attack (1..500) and scope.excluded (an explicit list, empty when nothing is)');
+    if (!texts(doc.withheld, WITHHELD.length) || doc.withheld.length > 12 || !WITHHELD.every((w) => doc.withheld.includes(w))) problems.push(`withheld, up to 12 names, naming ${WITHHELD.join(', ')}`);
+    // A later round may have no file left to attack and only killed mutants to rerun, the two lists
+    // `pass2.mjs scope` returns (its `attack[].path` and `mutations.rerun[].id`); a round with neither attacks nothing.
+    const sc = doc.scope;
+    if (!sc || !texts(sc.attack, 0) || !texts(sc.rerun ?? [], 0) || !texts(sc.excluded, 0) || sc.attack.length + (sc.rerun ?? []).length === 0) {
+      problems.push('scope.attack (file paths) and, optionally, scope.rerun (mutant ids), together at least one, and scope.excluded (an explicit list, empty when nothing is)');
+    }
   }
   if (problems.length) refuse('E_PASS2_BRIEF', `${path} needs ${problems.join('; ')}.`);
-  return { ...ref, independent_of: doc.independent_of, attack: doc.scope.attack.length, excluded: doc.scope.excluded.length };
+  return { ...ref, independent_of: doc.independent_of, attack: doc.scope.attack.length, rerun: (doc.scope.rerun ?? []).length, excluded: doc.scope.excluded.length };
 }
 export function startWork(root, changeId, operationId, { phase, task, next, refs = [], brief }) {
   const dir = eventDir(root, changeId, operationId);

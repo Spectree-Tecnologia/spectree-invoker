@@ -26,7 +26,9 @@ test('a pass 2 operation does not start without a brief declaring independence a
     assert.equal(code(() => start(r, 'p1')), 'E_PASS2_BRIEF');
     assert.equal(code(() => start(r, 'p1', '.spectree/pass2/missing.json')), 'E_PASS2_BRIEF');
     for (const over of [{ independent_of: [] }, { independent_of: ['full_stack_developer', 42] }, { fork: true }, { fork: undefined },
-      { withheld: ['builder_report', 'pull_request'] }, { scope: { attack: [], excluded: [] } },
+      { withheld: ['builder_report', 'pull_request'] }, { withheld: ['builder_report', 'builder_reasoning', 'pull_request', 7] },
+      { scope: { attack: [], excluded: [] } }, { scope: { attack: [], rerun: [], excluded: [] } },
+      { scope: { attack: [{ path: 'src/a.cjs', reason: 'changed' }], excluded: [] } },
       { scope: { attack: ['src/'] } }, { version: 2 }]) {
       assert.equal(code(() => start(r, 'p1', writePass2Brief(r.root, 'bad', over))), 'E_PASS2_BRIEF', JSON.stringify(over));
     }
@@ -34,6 +36,8 @@ test('a pass 2 operation does not start without a brief declaring independence a
     assert.deepEqual(started.brief.independent_of, ['full_stack_developer']);
     assert.equal(started.brief.attack, 1);
     assert.match(started.brief.sha256, /^[a-f0-9]{64}$/);
+    // A later round with no file left to attack still opens to rerun the killed mutants whose target moved.
+    assert.equal(start(r, 'p-rerun', writePass2Brief(r.root, 'rerun', { scope: { attack: [], rerun: ['m-b'], excluded: [] } })).brief.rerun, 1);
     // Other phases are not asked for one.
     assert.equal(code(() => startWork(r.root, 'c1', 'impl', { phase: 'implement', task: 't', next: 'n' })), null);
   } finally { cleanup(r.root); }

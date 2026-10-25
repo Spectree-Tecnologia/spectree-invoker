@@ -206,7 +206,9 @@ node scripts/pass2.mjs scope <change>   # files to attack, mutants carried and t
 
 The brief is written before the dispatch and its bytes are pinned at start: `version: 1`, `independent_of` naming
 `full_stack_developer`, `fork: false`, `withheld` naming `builder_report`, `builder_reasoning` and
-`pull_request`, and `scope.attack` with `scope.excluded`, explicit even when empty. A brief that
+`pull_request`, and the scope: `scope.attack` (file paths) and `scope.rerun` (mutant ids), at least one
+between them, taken on a later round from `scope`'s `attack[].path` and `mutations.rerun[].id`, and
+`scope.excluded`, explicit even when empty. A brief that
 changes before `finish` refuses it with `E_PASS2_SCOPE_MOVED`: a scope cut mid-round is a new operation.
 
 The record is advisory: `pass2.attack` and `mutation.killed` are still observed on the whole current

@@ -18,8 +18,8 @@ não tinha forma fixa, e a operação `pass2` de `work.mjs` não guardava escopo
 
 1. **`work.mjs start --phase pass2` exige `--brief <arquivo.json>`**, escrito antes do despacho:
    `independent_of` com `full_stack_developer`, `fork: false`, `withheld` com `builder_report`,
-   `builder_reasoning` e `pull_request`, e `scope.attack` (1..500) com `scope.excluded`, lista explícita
-   mesmo vazia. Faltou ou veio malformado, `E_PASS2_BRIEF`. O evento `started` guarda o caminho, o sha256,
+   `builder_reasoning` e `pull_request`, e o escopo: `scope.attack` (caminhos de arquivo) e `scope.rerun`
+   (ids de mutante), ao menos um entre os dois, e `scope.excluded`, lista explícita mesmo vazia. Faltou ou veio malformado, `E_PASS2_BRIEF`. O evento `started` guarda o caminho, o sha256,
    `independent_of` e as contagens.
 2. **`work.mjs finish` recusa `E_PASS2_SCOPE_MOVED`** quando os bytes do brief mudaram, ou ele sumiu,
    depois do início. A operação fica pendente até `reconcile`, e o novo escopo é uma operação nova.
@@ -35,10 +35,17 @@ não tinha forma fixa, e a operação `pass2` de `work.mjs` não guardava escopo
 - **Um brief** é um arquivo regular dentro do projeto, sob `.spectree/pass2/` por convenção (fora do
   conteúdo que a rodada ataca), lido como JSON na versão 1. Sua identidade são os bytes, pinados no
   `started`.
-- **O escopo de uma rodada** é o que o brief diz no início dela. Qualquer byte do brief que mude antes do
+- **O escopo de uma rodada** são os arquivos que ela ataca e as mutações mortas que ela roda de novo,
+  as duas listas que `pass2.mjs scope` devolve (`attack[].path`, `mutations.rerun[].id`), copiadas como
+  texto. Uma rodada sem nenhuma das duas não ataca nada e não abre; até 500 itens em cada, o mesmo teto
+  do `attacked` de `pass2.mjs record`.
+- **O escopo vale** como o brief diz no início dela. Qualquer byte do brief que mude antes do
   `finish`, inclusive fora de `scope`, é escopo movido: o runtime não compara campos, compara bytes.
 - **Em quem o brief confia:** em quem escreve em `.spectree/`, como todo o resto do rastro operacional. Ele
   declara; não prova que o texto entregue ao agente o continha.
+
+Esta seção foi refeita depois da terceira rodada de revisão independente, que achou o formato de
+`pass2.mjs scope` recusado pelo brief e uma rodada só de mutantes sem forma de abrir.
 
 ## Fora do escopo
 
