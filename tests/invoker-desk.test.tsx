@@ -69,6 +69,7 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
       const orb = svgs.find(one => one?.props?.alt === 'Quality Engineer')
       expect(String(orb?.props?.source ?? '')).toContain('viewBox="0 0 96 96"')
       expect(String(orb?.props?.source ?? '')).not.toContain('<image')
+      expect(String(orb?.props?.source ?? '').length).toBeLessThanOrEqual(131072)
     }
     await ui.unmount()
   }

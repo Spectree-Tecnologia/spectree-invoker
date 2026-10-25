@@ -102,6 +102,12 @@ test('each guard rejects the state it exists to catch', () => {
   assert.deepEqual(artProblems(`export const PORTRAIT =\n  '${DRAWING}'\n`, ORBS_OK), []);
   assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace(`'${DRAWING}'`, "'data:image/png;base64,AAAA'")).length, 1);
   assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace('} as const\n', '} as const\nORB_ART.wex.small = url\n')).length, 1);
+  assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace(`'${DRAWING}'`, `'<svg viewBox="0 0 4 4"><script>x</script></svg>'`)).length, 1);
+  assert.equal(artProblems("export const PORTRAIT = ''", ORBS_OK.replace(`'${DRAWING}'`, `'<svg viewBox="0 0 4 4" onload="x"><path d="M0 0Z" fill="#ff8800"/></svg>'`)).length, 1);
+  const smallBig = `<svg viewBox="0 0 4 4">${'<path d="M0 0 4 0 4 4Z" fill="#ff8800"/>'.repeat(1_500)}</svg>`;
+  assert.match(artProblems("export const PORTRAIT = ''", ORBS_OK.replace(`'${DRAWING}'`, `'${smallBig}'`))[0], /avatar's SVG would pass/);
+  const largeBig = `<svg viewBox="0 0 4 4">${'<path d="M0 0 4 0 4 4Z" fill="#ff8800"/>'.repeat(3_200)}</svg>`;
+  assert.match(artProblems("export const PORTRAIT = ''", ORBS_OK.replace("large:\n      '',\n  },\n  wex", `large:\n      '${largeBig}',\n  },\n  wex`))[0], /quas\.large would push a card/);
   assert.equal(commandProblems("$.command.register({ name: 'invoker' })").length, 1);
 });
 
