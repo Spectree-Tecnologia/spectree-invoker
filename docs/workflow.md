@@ -204,7 +204,7 @@ node scripts/pass2.mjs record <change> <report.json> --operation <op>   # before
 node scripts/pass2.mjs scope <change>   # files to attack, mutants carried and to rerun, past rounds' time and tokens
 ```
 
-The brief is written before the dispatch and its bytes are pinned at start: `independent_of` naming
+The brief is written before the dispatch and its bytes are pinned at start: `version: 1`, `independent_of` naming
 `full_stack_developer`, `fork: false`, `withheld` naming `builder_report`, `builder_reasoning` and
 `pull_request`, and `scope.attack` with `scope.excluded`, explicit even when empty. A brief that
 changes before `finish` refuses it with `E_PASS2_SCOPE_MOVED`: a scope cut mid-round is a new operation.
