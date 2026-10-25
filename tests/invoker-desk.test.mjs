@@ -43,6 +43,15 @@ function orbProblems(orbsSource, cards) {
 const networkProblems = (sources) =>
   Object.entries(sources).filter(([, s]) => /\$\.(http|process|tool|mcp|model|telemetry)\b|\bfetch\(/.test(s)).map(([f]) => `${f}: reaches the network, a process or a tool`);
 
+// The portrait rides inside the avatar's SVG, whose source the engine refuses past 131072
+// characters; the drawing around it takes about 10k.
+function portraitProblems(source) {
+  const uri = source.match(/'(data:[^']*)'/)?.[1] ?? '';
+  if (!uri) return [];
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(uri)) return ['portrait.ts: PORTRAIT is not a base64 image data URI'];
+  return uri.length > 110_000 ? [`portrait.ts: ${uri.length} characters, the avatar's SVG would pass 131072`] : [];
+}
+
 const commandProblems = (source) =>
   [...source.matchAll(/name: '([^']+)'/g)].map((m) => m[1]).filter((n) => n === 'invoker').map(() => 'register.tsx: registers /invoker, which commands/invoker.md already is');
 
@@ -52,6 +61,8 @@ test('each guard rejects the state it exists to catch', () => {
   assert.ok(orbProblems("{ role: 'quality-engineer', label: 'QE', orb: 'wex' }", ['quality-engineer', 'platform-engineer']).includes('orbs.ts: no orb for agents/platform-engineer.md'));
   assert.deepEqual(networkProblems({ 'a.ts': 'await $.http.fetch(url)' }), ['a.ts: reaches the network, a process or a tool']);
   assert.equal(networkProblems({ 'b.ts': "await $.tool.call({ tool: 'Bash' })", 'c.ts': '$.telemetry.log(x)' }).length, 2);
+  assert.equal(portraitProblems(`'data:image/jpeg;base64,${'A'.repeat(120_000)}'`).length, 1);
+  assert.equal(portraitProblems("'data:text/html;base64,PHNjcmlwdD4='").length, 1);
   assert.equal(commandProblems("$.command.register({ name: 'invoker' })").length, 1);
 });
 
@@ -69,6 +80,7 @@ test('the panel module is wired, keyed, mapped and offline', () => {
       ...orbProblems(read(join(DESK, 'orbs.ts')), cards),
       ...networkProblems(sources),
       ...commandProblems(register),
+      ...portraitProblems(read(join(DESK, 'portrait.ts'))),
     ],
     [],
   );

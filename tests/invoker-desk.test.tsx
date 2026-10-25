@@ -77,6 +77,7 @@ test('while a subagent runs the Invoker orchestrates and its orb pulses', async 
   const avatar = await ui.find({ type: 'Svg', alt: /Invoker orquestrando 1/ } as any)
   expect(avatar).toBeDefined()
   expect(String((avatar as any)?.props?.source ?? '')).toContain('animateTransform')
+  expect(String((avatar as any)?.props?.source ?? '')).toContain('data:image/jpeg;base64,')
   await ui.unmount()
 })
 
@@ -108,10 +109,10 @@ test('cost comes from the session measure and the main loop adds no card', async
   await ui.unmount()
 })
 
-test('in a squad project the session time runs on with no subagent dispatched', async ($, on) => {
+test('in a resumed squad session the time counts from this launch and runs on with no subagent', async ($, on) => {
   const clock = mock.clock(on, { now: 1_000_000 })
   on('command.register', () => ({ value: { command: 'invoker-desk' } }))
-  on('session.usage', () => ({ value: { startedAt: 1_000_000, context: {}, rateLimits: [] } }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: {}, rateLimits: [] } }))
   on('fs.exists', () => ({ value: true }))
   on('session.surfaces', () => ({ value: ['terminal'] }))
   on('ui.status', () => ({ value: {} }))

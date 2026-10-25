@@ -1,5 +1,6 @@
 import { defs, GRADIENT_ID, orbMarkup, ROLES } from './orbs'
 import type { Role } from './orbs'
+import { PORTRAIT } from './portrait'
 
 const CX = 130
 const CY = 108
@@ -49,6 +50,18 @@ const FIGURE =
   `<ellipse cx="124.5" cy="76" rx="2.2" ry="0.9" fill="#ffffff"/>` +
   `<ellipse cx="135.5" cy="76" rx="2.2" ry="0.9" fill="#ffffff"/>`
 
+// The painted portrait, when one is shipped: an oval inside the orbit whose
+// edge fades into the panel, warmer while the Invoker orchestrates.
+function portraitMarkup(isOrchestrating: boolean): string {
+  return (
+    `<defs><radialGradient id="fade" cx="50%" cy="50%" r="50%">` +
+    `<stop offset="0.72" stop-color="#ffffff"/><stop offset="1" stop-color="#000000"/></radialGradient>` +
+    `<mask id="soft"><ellipse cx="${CX}" cy="${OY}" rx="82" ry="86" fill="url(#fade)"/></mask></defs>` +
+    `<circle cx="${CX}" cy="${OY}" r="80" fill="url(#aura)"/>` +
+    `<image href="${PORTRAIT}" x="${CX - 82}" y="${OY - 86}" width="164" height="172" preserveAspectRatio="xMidYMid slice" mask="url(#soft)" opacity="${isOrchestrating ? 1 : 0.88}"/>`
+  )
+}
+
 // The Invoker with the six orbs around him. Idle, they rest on the circle;
 // orchestrating, they orbit him, and the orb of every role with a subagent
 // running pulses. The markup depends only on those two facts, so a redraw
@@ -69,7 +82,7 @@ export function invokerMarkup(isOrchestrating: boolean, active: readonly Role[])
     `<defs>${defs()}<radialGradient id="aura" cx="50%" cy="45%" r="50%">` +
     `<stop offset="0" stop-color="#ffb347" stop-opacity="${isOrchestrating ? 0.35 : 0.18}"/>` +
     `<stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient></defs>` +
-    `<g transform="translate(0 ${DROP})">${FIGURE}</g>` +
+    (PORTRAIT ? portraitMarkup(isOrchestrating) : `<g transform="translate(0 ${DROP})">${FIGURE}</g>`) +
     ring +
     orbit +
     `</svg>`

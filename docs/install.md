@@ -19,7 +19,7 @@ That is the only entry in the slash menu. The squad skills (`squad-*`) ship with
 ### The Invoker panel
 
 The plugin also ships a Claude Code hooks module, `hooks/invoker-desk/`: a side panel that follows the
-orchestration. The Invoker sits in the middle with six orbs around him, two Quas (Solutions Architect,
+orchestration. The Invoker's portrait sits in the middle with six orbs around him, two Quas (Solutions Architect,
 Integration Engineer), two Wex (Full Stack Developer, Quality Engineer) and two Exort (Platform
 Engineer, TypeSafe Engineer), and the orbs circle him while a subagent runs. Below: the session's
 cost, the subagents' tokens, the session time, and one card per subagent with its role, tokens,

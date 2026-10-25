@@ -91,6 +91,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 22 | Regras do #76 de volta ao núcleo | Integrada, v1.61.0: frases normativas perdidas de volta ao §7, `core_normative` no `check-plugin` visto recusando o #76, teto do núcleo em 49.152 bytes, [proposta](changes/archive/2026-10-25-regras-de-volta-ao-nucleo/proposal.md) | D-017 (entregue); D-018, D-019 (registrados) |
 | 23 | Skills do squad fora do menu de slash | Integrada, v1.62.0: `user-invocable: false` nas skills `squad-*` geradas para o Claude Code, cobrado pelo `check-plugin`; só `/spectree:invoker` fica no menu, [proposta](changes/archive/2026-10-25-skills-fora-do-menu/proposal.md) | — |
 | 24 | Painel do Invoker no Claude Code | Integrada, v1.63.0: `hooks/invoker-desk/` mostra a orquestração num painel lateral, o Invoker com seis orbs (Quas, Wex, Exort) que giram enquanto um subagente roda, custo, tokens e passos por subagente, [proposta](changes/archive/2026-10-25-painel-invoker/proposal.md) | — |
+| 25 | Retrato do Invoker e tempo da sessão no painel | Integrada, v1.64.0: a arte enviada pelo Founder no avatar, com os orbs por cima, e o tempo contado desde esta abertura da sessão, [proposta](changes/archive/2026-10-25-retrato-invoker/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
@@ -104,6 +105,8 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-25:** Founder autorizou a tarefa 25: a imagem que ele mandou vira o avatar do painel, como
+  está, com o risco de licença aceito por ele, e o tempo passa a contar desde esta abertura.
 - **2026-10-25:** Founder autorizou a tarefa 24: o painel do Invoker entra no plugin principal, não
   como plugin separado, aceitando a dependência dos function hooks em early access.
 - **2026-10-25:** Founder autorizou a tarefa 23: as skills do squad saem do menu `/` dele, e só

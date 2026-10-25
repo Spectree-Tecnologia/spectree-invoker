@@ -40,9 +40,11 @@ lugar; cada correção entra por uma mudança própria.
 | R-008 | `information-access · ambiente · node-abaixo-do-piso` | 7 | Aberto: a sessão da tarefa 11d voltou ao Node 22.22.0; o script de ambiente não vale para toda sessão nova |
 | R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única e na tarefa 22 para o núcleo (`core_normative`); cards seguem no [D-017](../DEFERRED.md) |
 | R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
+| R-011 | `information-access · mod · sem-superficie-real` | 1 | Aberto: a tarefa 25 corrigiu os dois defeitos; ver o app antes do merge de um mod segue com a próxima mudança de mod |
 
 ## Retros
 
+- [2026-10-25 — `painel-invoker` (#96)](2026-10-25-painel-invoker.md)
 - [2026-10-25 — `skills-fora-do-menu` (#95)](2026-10-25-skills-fora-do-menu.md)
 - [2026-10-25 — `regras-de-volta-ao-nucleo` (#94)](2026-10-25-regras-de-volta-ao-nucleo.md)
 - [2026-10-25 — `retro-tendencias` (#93)](2026-10-25-retro-tendencias.md)

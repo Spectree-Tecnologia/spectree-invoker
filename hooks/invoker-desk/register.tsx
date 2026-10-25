@@ -102,8 +102,11 @@ export const register: Register = on => {
       name: 'invoker-desk',
       description: 'Abre o painel do Invoker: subagentes, custo, tokens e tempo',
     })
+    // Time counts from this launch: a resumed session's own start is its
+    // first launch, days back, and the panel would show hundreds of hours.
+    const launchedAt = await $.clock.now()
+    await update($, startedAt, () => launchedAt)
     const usage = await $.session.usage()
-    await update($, startedAt, () => usage.startedAt)
     if (usage.cost) await update($, costUsd, () => usage.cost?.usd ?? null)
     // The clock starts here only in a squad project; elsewhere the first
     // dispatch starts it, so a session that never orchestrates pays nothing.
