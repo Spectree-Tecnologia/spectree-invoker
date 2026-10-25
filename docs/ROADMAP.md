@@ -86,9 +86,13 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 18 | TAP aninhado do Vitest | Integrada, PR #89 / v1.56.0: resultado de grupo antes dos filhos, com chaves e tempo, lido como árvore, [proposta](changes/archive/2026-10-24-tap-vitest-aninhado/proposal.md) | — |
 | 19 | Emenda de caminhos | Integrada, PR #90 / v1.57.0: `state.mjs amend-paths` amplia a posse com motivo na trilha e recusa módulo não nomeado, [proposta](changes/archive/2026-10-24-emenda-caminhos/proposal.md) | — |
 | 20 | Baseline a partir de uma rodada de CI | Integrada, v1.58.0: `verification.mjs baseline <change> ci --from-run <id>` lê a rodada existente como `observed_ci_run`, [proposta](changes/archive/2026-10-24-baseline-rodada-ci/proposal.md) | — |
+| 21 | Revisão independente nos PRs deste repositório | Integrada, v1.59.0: `REVIEW.md` na raiz, revisor em contexto limpo por head no `CONTRIBUTING.md` e no template de PR, provado sobre o diff do #76, [proposta](changes/archive/2026-10-25-revisao-independente/proposal.md) | D-016, D-017 (registrados) |
 
 ## Histórico de decisões
 
+- **2026-10-25:** Founder autorizou a tarefa 21, a lacuna 1 do discovery do `REVIEW.md`: todo PR
+  deste repositório passa por um revisor em contexto limpo. A lacuna 2, integração por política de
+  risco, fica no D-016 até a decisão dele.
 - **2026-10-24:** Founder autorizou os itens 3 a 8 da análise do custo de verificação do SYND C3a,
   como as tarefas 15 a 20, uma mudança por item, na ordem da análise.
 - **2026-10-24:** Founder autorizou a tarefa 14: o consumidor fica sabendo, pelo relatório de

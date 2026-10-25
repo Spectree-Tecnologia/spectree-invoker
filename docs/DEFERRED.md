@@ -137,3 +137,20 @@
 - Due: A próxima release de segurança do Node, ou a próxima mudança que tocar capabilities.mjs
 - Closure condition: capabilities.mjs compara a versão do Node com um piso declarado num lugar só e relata o runtime abaixo dele como degradado, com teste.
 
+## D-016 — Aprovação de integração não escala com o risco
+
+- Status: open
+- Owner: founder
+- Impact: ceiling
+- Decision: Visto no discovery do REVIEW.md (2026-10-25): scope-policy.mjs recusa founder_policy em qualquer gate que não seja scope, então toda ida à main espera o OK do Founder na thread, seja documentação ou runtime. A retro em lote do #58 ao #78 mediu PRs verdes parados 51 h (#76), 10 h (#67) e 9 h (#74) só esperando esse OK, e o Founder já contorna com OK permanente por lote. Fica fora porque muda o significado do gate da main, que é decisão do Founder.
+- Due: A decisão do Founder sobre integração por política, ou o próximo OK permanente por lote
+- Closure condition: Um item do ROADMAP marcado pelo Founder autoriza integração por política só para candidato cujo ci-treatment não seja full, salvo se o item disser que cobre runtime, com recusa testada no record-approval.
+
+## D-017 — Regras do núcleo que o #76 deixou só na justificativa
+
+- Status: open
+- Owner: own_change
+- Impact: defect
+- Decision: Visto pela verificação da mudança revisao-independente: os dois revisores em contexto limpo sobre o diff do #76 acharam frases normativas que saíram do núcleo e ficaram só em docs/protocol-rationale.md, que se declara não vinculante. Na main 4a51738 continuam fora do CLAUDE.md, entre outras: at most three attempts, up to ten total; no successful rerun erases an unresolved failure; all completed Scenarios must pass again; Changed inputs invalidate their evidence; a reviewed complete test inventory; negative control first. O inventário de protocol/rules.json casa só a frase de abertura de cada regra, então um corpo esvaziado passa no check-plugin (é a causa do R-009). Fica fora porque devolver regra ao núcleo muda o protocolo e esbarra no teto do D-013.
+- Due: A próxima mudança que tocar protocol/07-pipeline-and-method.md ou protocol/rules.json
+- Closure condition: Cada frase normativa do núcleo anterior ao #76 está de volta ao núcleo ou nomeada como removida numa proposta, e o check-plugin recusa uma regra cujo corpo normativo sumiu, visto rejeitando o diff do #76.

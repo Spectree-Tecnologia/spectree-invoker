@@ -180,6 +180,30 @@
       "current_decision": "Visto na tarefa 12: o piso de engines e o engine-strict valem para quem instala este repositório, mas os scripts que o instalador entrega rodam no Node do consumidor, e capabilities.mjs só relata a versão. Um consumidor em Node 22.22.0 roda a Presence com o decodificador Brotli vulnerável sem aviso. Fica fora porque muda o comportamento do runtime instalado e merece mudança própria. Entregue pela mudança seguranca-piso-consumidor (v1.52.0): satisfiesFloor no shared e o fato runtime.floor no capabilities.mjs, provados num consumidor instalado. Continua aberto só porque fechar exige evidência observada (D-009).",
       "reevaluation_trigger": "A próxima release de segurança do Node, ou a próxima mudança que tocar capabilities.mjs",
       "closure_condition": "capabilities.mjs compara a versão do Node com um piso declarado num lugar só e relata o runtime abaixo dele como degradado, com teste."
+    },
+    {
+      "schema_version": "1.0.0",
+      "stable_id": 16,
+      "title": "Aprovação de integração não escala com o risco",
+      "owner": "founder",
+      "status": "open",
+      "impact": "ceiling",
+      "current_decision": "Visto no discovery do REVIEW.md (2026-10-25): scope-policy.mjs recusa founder_policy em qualquer gate que não seja scope, então toda ida à main espera o OK do Founder na thread, seja documentação ou runtime. A retro em lote do #58 ao #78 mediu PRs verdes parados 51 h (#76), 10 h (#67) e 9 h (#74) só esperando esse OK, e o Founder já contorna com OK permanente por lote. Fica fora porque muda o significado do gate da main, que é decisão do Founder.",
+      "reevaluation_trigger": "A decisão do Founder sobre integração por política, ou o próximo OK permanente por lote",
+      "closure_condition": "Um item do ROADMAP marcado pelo Founder autoriza integração por política só para candidato cujo ci-treatment não seja full, salvo se o item disser que cobre runtime, com recusa testada no record-approval.",
+      "opened_by_change": "revisao-independente"
+    },
+    {
+      "schema_version": "1.0.0",
+      "stable_id": 17,
+      "title": "Regras do núcleo que o #76 deixou só na justificativa",
+      "owner": "own_change",
+      "status": "open",
+      "impact": "defect",
+      "current_decision": "Visto pela verificação da mudança revisao-independente: os dois revisores em contexto limpo sobre o diff do #76 acharam frases normativas que saíram do núcleo e ficaram só em docs/protocol-rationale.md, que se declara não vinculante. Na main 4a51738 continuam fora do CLAUDE.md, entre outras: at most three attempts, up to ten total; no successful rerun erases an unresolved failure; all completed Scenarios must pass again; Changed inputs invalidate their evidence; a reviewed complete test inventory; negative control first. O inventário de protocol/rules.json casa só a frase de abertura de cada regra, então um corpo esvaziado passa no check-plugin (é a causa do R-009). Fica fora porque devolver regra ao núcleo muda o protocolo e esbarra no teto do D-013.",
+      "reevaluation_trigger": "A próxima mudança que tocar protocol/07-pipeline-and-method.md ou protocol/rules.json",
+      "closure_condition": "Cada frase normativa do núcleo anterior ao #76 está de volta ao núcleo ou nomeada como removida numa proposta, e o check-plugin recusa uma regra cujo corpo normativo sumiu, visto rejeitando o diff do #76.",
+      "opened_by_change": "revisao-independente"
     }
   ]
 }
