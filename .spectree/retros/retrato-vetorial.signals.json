@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 98,
+    "title": "Painel: retrato e orbs em vetor, que o app desktop desenha (tarefa 26) — v1.65.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/98",
+    "opened": "2026-10-25T05:09:47Z",
+    "merged": "2026-10-25T05:26:19Z"
+  },
+  "signals": {
+    "open_minutes": 17,
+    "commits": 4,
+    "ci_heads": 4,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.65.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-retrato-vetorial/proposal.md"
+    ]
+  },
+  "friction": "- O app desktop não roda aqui, então a prova de que o vetor e o `<use>` aparecem lá fica com o Founder. Está registrado no R-011.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

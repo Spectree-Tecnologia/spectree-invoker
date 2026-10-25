@@ -93,6 +93,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 24 | Painel do Invoker no Claude Code | Integrada, v1.63.0: `hooks/invoker-desk/` mostra a orquestração num painel lateral, o Invoker com seis orbs (Quas, Wex, Exort) que giram enquanto um subagente roda, custo, tokens e passos por subagente, [proposta](changes/archive/2026-10-25-painel-invoker/proposal.md) | — |
 | 25 | Retrato do Invoker e tempo da sessão no painel | Integrada, v1.64.0: o avatar e os orbs pintados pelo Founder, nos cards e na órbita, e o tempo contado desde esta abertura da sessão, [proposta](changes/archive/2026-10-25-retrato-invoker/proposal.md) | — |
 | 26 | Retrato e orbs em vetor no painel | Integrada, v1.65.0: o retrato e os orbs traçados em polígonos, porque o app desktop apaga `<image>` de um `Svg`, e o CI recusa bitmap ali, [proposta](changes/archive/2026-10-25-retrato-vetorial/proposal.md) | — |
+| 27 | Cores dos orbs nos cards e sites nos passos | Integrada, v1.66.0: borda do card na cor do orb, faixas de Em execução (Quas) e Concluídos (Exort), e `Opening <site>` e `Searching: <busca>` nos passos de web, [proposta](changes/archive/2026-10-25-painel-cores-e-sites/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
@@ -106,6 +107,8 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-25:** Founder pediu a tarefa 27 ao comparar o painel com o Helper Desk: borda na cor do orb,
+  faixas coloridas nas seções e o site aberto em cada WebFetch.
 - **2026-10-25:** Founder pediu a tarefa 26 ao ver o v1.64.0 no app desktop sem o retrato e sem as
   pinturas dos orbs: as imagens passam a ser vetor traçado.
 - **2026-10-25:** Founder autorizou a tarefa 25: um avatar próprio, gerado por ele, vira o retrato do

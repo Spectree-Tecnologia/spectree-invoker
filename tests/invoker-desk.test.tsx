@@ -137,3 +137,20 @@ test('in a resumed squad session the time counts from this launch and runs on wi
   expect(await ui.find({ type: 'Text', text: /^1:05$/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a card is bordered in its orb colour, the sections in Quas and Exort, and a fetch shows its site', async ($, on) => {
+  engine(on, 'i1')
+  await spawn($, 'i1', 'spectree:integration-engineer', 'IE: WebAuthn research')
+  await $.tool.call({ tool: 'WebFetch', url: 'https://www.w3.org/TR/webauthn-3/', prompt: 'read', agentId: 'i1' } as any)
+  await $.tool.call({ tool: 'WebSearch', query: 'passkeys conditional ui', agentId: 'i1' } as any)
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect(await ui.find({ type: 'Text', text: /Opening www\.w3\.org$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Searching: passkeys conditional ui/ })).toBeDefined()
+    const boxes = ((await (ui as any).findAll({ type: 'Box' })) as any[]).map(one => one?.props ?? {})
+    expect(boxes.some(one => one.borderColor === '#38b6ff')).toBe(true)
+    expect(boxes.some(one => one.backgroundColor === '#38b6ff')).toBe(true)
+    await ui.unmount()
+  }
+})

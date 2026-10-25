@@ -28,11 +28,20 @@ function clip(text: string, max: number): string {
   return line.length > max ? `${line.slice(0, max - 1)}…` : line
 }
 
+// The host of an address, `https://www.w3.org/TR/x` → `www.w3.org`, or the
+// address itself when it has none.
+function hostOf(url: string): string {
+  return url.match(/^[a-z][a-z0-9+.-]*:\/\/([^/?#]+)/i)?.[1] ?? url
+}
+
 // What a step of a subagent reads as on its card: the command a Bash call
-// runs, the file a file tool touches, else the tool's name.
+// runs, the site a fetch opens, what a search asks, the file a file tool
+// touches, else the tool's name.
 export function stepLabel(tool: string, input: Record<string, unknown>): string {
   const field = (key: string) => (typeof input[key] === 'string' ? (input[key] as string) : '')
   if (tool === 'Bash') return `Running: ${clip(field('command'), 120)}`
+  if (tool === 'WebFetch' && field('url')) return `Opening ${clip(hostOf(field('url')), 100)}`
+  if (tool === 'WebSearch' && field('query')) return `Searching: ${clip(field('query'), 100)}`
   const path = field('file_path') || field('path') || field('pattern')
   return path ? `Using ${tool}: ${clip(path, 100)}` : `Using ${tool}`
 }

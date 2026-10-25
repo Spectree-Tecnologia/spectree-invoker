@@ -229,7 +229,7 @@ export const register: Register = on => {
       const headColor = row.status === 'completed' ? 'success' : row.status === 'running' ? color : 'error'
 
       return (
-        <Box flexDirection="row" borderStyle="round" borderDimColor paddingX={1} gap={1}>
+        <Box flexDirection="row" borderStyle="round" borderColor={ORB_COLOR[kind].mid} paddingX={1} gap={1}>
           <Box flexDirection="column" justifyContent="center">
             {Svg ? (
               <Svg source={orbAvatar(kind, row.status === 'running')} alt={labelOf(row.type)} width={40} height={40} isInteractive />
@@ -282,11 +282,13 @@ export const register: Register = on => {
     ) =>
       rows.length > 0 && (
         <Box flexDirection="column" gap={1}>
-          <Button key={field} plain onPress={toggle(field)}>
-            <Text color={color} weight="semibold">
-              {view[field] ? '▸' : '▾'} {name} · {rows.length}
-            </Text>
-          </Button>
+          <Box backgroundColor={color} paddingX={1}>
+            <Button key={field} plain onPress={toggle(field)}>
+              <Text color="#ffffff" weight="semibold">
+                {view[field] ? '▸' : '▾'} {name} · {rows.length}
+              </Text>
+            </Button>
+          </Box>
           {!view[field] && rows.map(card)}
         </Box>
       )
@@ -326,8 +328,8 @@ export const register: Register = on => {
         </Box>
 
         {list.length === 0 && <Text dimColor>Nenhum subagente despachado ainda.</Text>}
-        {section('Em execução', running, 'isRunningCollapsed', '#ffb347')}
-        {section('Concluídos', finished, 'isFinishedCollapsed', '#e3b341')}
+        {section('Em execução', running, 'isRunningCollapsed', ORB_COLOR.quas.mid)}
+        {section('Concluídos', finished, 'isFinishedCollapsed', ORB_COLOR.exort.mid)}
       </Box>
     )
   })
