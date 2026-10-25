@@ -89,6 +89,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 21 | Revisão independente nos PRs deste repositório | Integrada, v1.59.0: `REVIEW.md` na raiz, revisor em contexto limpo por head no `CONTRIBUTING.md` e no template de PR, provado sobre o diff do #76, [proposta](changes/archive/2026-10-25-revisao-independente/proposal.md) | D-016, D-017 (registrados) |
 | 11d | Retro pós-merge: tendências e leitura do Architect | Integrada, v1.60.0: `retro.mjs trends` aponta achados recorrentes e quietos, o Solutions Architect os lê antes da proposta, e o item `retro-melhorias` abaixo, [proposta](changes/archive/2026-10-25-retro-tendencias/proposal.md) | — |
 | 22 | Regras do #76 de volta ao núcleo | Integrada, v1.61.0: frases normativas perdidas de volta ao §7, `core_normative` no `check-plugin` visto recusando o #76, teto do núcleo em 49.152 bytes, [proposta](changes/archive/2026-10-25-regras-de-volta-ao-nucleo/proposal.md) | D-017 (entregue); D-018, D-019 (registrados) |
+| 23 | Skills do squad fora do menu de slash | Integrada, v1.62.0: `user-invocable: false` nas skills `squad-*` geradas para o Claude Code, cobrado pelo `check-plugin`; só `/spectree:invoker` fica no menu, [proposta](changes/archive/2026-10-25-skills-fora-do-menu/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
@@ -102,6 +103,8 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-25:** Founder autorizou a tarefa 23: as skills do squad saem do menu `/` dele, e só
+  `/spectree:invoker` fica visível.
 - **2026-10-25:** Founder autorizou a tarefa 22, o D-017: as regras que o #76 deixou só na justificativa
   voltam ao núcleo, e o `check-plugin` passa a listar cada frase normativa. Inclui D-018 e D-019 como gatilhos.
 - **2026-10-25:** Founder autorizou a tarefa 11d: `retro.mjs trends`, a leitura das tendências pelo

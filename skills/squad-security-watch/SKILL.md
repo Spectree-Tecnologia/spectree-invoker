@@ -1,6 +1,7 @@
 ---
 name: squad-security-watch
 description: How the Integration Engineer turns published security advisories into cited facts about this project — which advisory touches which component the project actually runs, whether it is exploited, and what version fixes it. Load when the Invoker dispatches a security watch: a red security-watch run, an advisory someone raised, or before the first internet-reachable environment.
+user-invocable: false
 ---
 
 <!-- GENERATED FILE — do not edit.

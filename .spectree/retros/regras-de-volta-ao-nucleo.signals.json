@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 94,
+    "title": "Protocolo: regras do #76 de volta ao núcleo e frases normativas inventariadas (tarefa 22) — v1.61.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/94",
+    "opened": "2026-10-25T03:27:22Z",
+    "merged": "2026-10-25T03:43:11Z"
+  },
+  "signals": {
+    "open_minutes": 16,
+    "commits": 3,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.61.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-regras-de-volta-ao-nucleo/proposal.md"
+    ]
+  },
+  "friction": "- Não coube no teto antigo; o Gilson decidiu subir para 49.152 no cartão da thread.\n- A classificação das 258 frases só confere frases com marca normativa; regra sem marca pode ter ficado só na justificativa (declarado no D-017).",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

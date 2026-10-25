@@ -30,19 +30,20 @@ lugar; cada correção entra por uma mudança própria.
 
 | Id | Assinatura | Ocorrências | Situação |
 |---|---|---|---|
-| R-001 | `tool-economy · release · identificador-sequencial-disputado` | 16 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 |
+| R-001 | `tool-economy · release · identificador-sequencial-disputado` | 17 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 e de novo no #94/#95 |
 | R-002 | `automated-checks · docs · fechamento-depois-do-merge` | 12 | Pago na tarefa 11 |
 | R-003 | `information-access · retro · rastro-apagado` | todos os PRs | Curto prazo pago na tarefa 11; longo prazo é o D-009 |
-| R-004 | `automated-checks · protocol · teto-sem-folga` | 3 | Aberto, [D-013](../DEFERRED.md); a segunda ocorrência pede mudança própria |
+| R-004 | `automated-checks · protocol · teto-sem-folga` | 4 | Aberto, [D-013](../DEFERRED.md); o #94 subiu o teto do núcleo, a mudança própria segue devida |
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 | R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |
 | R-008 | `information-access · ambiente · node-abaixo-do-piso` | 7 | Aberto: a sessão da tarefa 11d voltou ao Node 22.22.0; o script de ambiente não vale para toda sessão nova |
-| R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única; frases normativas fora do inventário seguem no [D-017](../DEFERRED.md) |
+| R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única e na tarefa 22 para o núcleo (`core_normative`); cards seguem no [D-017](../DEFERRED.md) |
 | R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
 
 ## Retros
 
+- [2026-10-25 — `regras-de-volta-ao-nucleo` (#94)](2026-10-25-regras-de-volta-ao-nucleo.md)
 - [2026-10-25 — `retro-tendencias` (#93)](2026-10-25-retro-tendencias.md)
 - [2026-10-25 — `revisao-independente` (#92)](2026-10-25-revisao-independente.md)
 - [2026-10-25 — `baseline-rodada-ci` (#91)](2026-10-25-baseline-rodada-ci.md)

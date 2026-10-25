@@ -1,6 +1,7 @@
 ---
 name: squad-human-step-wizard
 description: What the Platform Engineer delivers when a step genuinely needs the Founder's own hands — a credential in a third-party dashboard, a consent click, a cutover — an interactive script that walks him through it and checks each stage, never a list of instructions. Load when a step is human by nature.
+user-invocable: false
 ---
 
 <!-- GENERATED FILE — do not edit.

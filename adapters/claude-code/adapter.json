@@ -26,6 +26,9 @@
     "TOOL_SURFACE": " and MCP servers",
     "RATIONALE_LOCATION": "the plugin's `docs/protocol-rationale.md`"
   },
+  "skill_frontmatter": {
+    "user-invocable": false
+  },
   "targets": {
     "core": "CLAUDE.md",
     "roles_dir": "agents",

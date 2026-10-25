@@ -1,6 +1,7 @@
 ---
 name: squad-deepening-scan
 description: How the Solutions Architect scans a project for deepening opportunities — shallow code inside a module that makes the next change harder — and returns ranked candidates, each one a deltaless change waiting for its gate 1. Load when the Invoker dispatches a deepening scan.
+user-invocable: false
 ---
 
 <!-- GENERATED FILE — do not edit.

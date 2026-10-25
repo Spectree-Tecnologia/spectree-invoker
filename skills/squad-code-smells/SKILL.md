@@ -1,6 +1,7 @@
 ---
 name: squad-code-smells
 description: The baseline the squad's review applies on the standards axis when the project's own conventions say nothing — twelve code smells, each a labelled suggestion with its fix. Load for the standards axis of Quality Engineer pass 2 and of any review.
+user-invocable: false
 ---
 
 <!-- GENERATED FILE — do not edit.

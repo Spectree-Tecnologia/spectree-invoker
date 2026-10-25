@@ -1,6 +1,7 @@
 ---
 name: squad-closure-retro
 description: The retrospective the Invoker runs after a change reaches `closed` — what in the project's environment let a mistake through or cost an attempt, ranked by severity, each with its evidence, its fix and its owner. Load once the change is closed, never inside the post-merge confirmation.
+user-invocable: false
 ---
 
 <!-- GENERATED FILE — do not edit.
