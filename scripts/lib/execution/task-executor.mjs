@@ -185,7 +185,10 @@ function guard(root, doc) {
 }
 // A repair or a reverification is also accepted while the change sits in `implemented`: pass 2
 // attacks the prepared closure from there, and its findings are repaired through this executor,
-// with the same budget and trail. Nothing here advances the state or touches an approval.
+// with the same budget and trail. Nothing here advances the state or touches an approval. Only
+// the recommendations that wait on pass 2 or on its preparation open it: unreadable authority, a
+// pending lifecycle operation, a delivery problem or a missing approval keep it closed.
+const PASS2_WAITS = ['produce_evidence', 'prepare_closure', 'resolve_qa_independence', 'record_transition'];
 function implementationGate(root, id, { afterImplemented = false } = {}) {
   const result = launch([process.execPath, join(packageRoot, 'scripts/state.mjs'), 'plan', id, '--json'], {
     cwd: root, env: { ...process.env, SPECTREE_PROJECT_ROOT: root }, encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024 });
@@ -194,7 +197,8 @@ function implementationGate(root, id, { afterImplemented = false } = {}) {
   // Task eligibility is checked by run/repair/verify themselves. Advisory frontier
   // actions must not deadlock verification, including repair of missing evidence.
   const open = plan.target_state === 'implemented' && plan.gate?.ok;
-  const repairWindow = afterImplemented && plan.preconditions?.state === 'implemented';
+  const repairWindow = afterImplemented && plan.preconditions?.state === 'implemented' &&
+    plan.target_state === 'pass2_complete' && PASS2_WAITS.includes(plan.action);
   if (result.status !== 0 || !(open || repairWindow)) refuse('E_TASK_GATE', `${plan.code ?? plan.action}: ${plan.reason}`);
   const current = snapshot(root);
   if (!current.branch || /^(main|master)$/.test(current.branch)) refuse('E_TASK_BRANCH', 'A dedicated implementation branch is required.');

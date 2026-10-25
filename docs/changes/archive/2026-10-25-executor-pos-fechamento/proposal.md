@@ -29,7 +29,8 @@ orçamento de tentativas e da trilha do executor.
    contexto e o `required_reading` do despacho apontam o caminho arquivado.
 2. **`repair` e `verify` aceitos em `implemented`.** Nada avança estado nem toca aprovação; um `run`
    comum segue exigindo a change antes de `implemented`, e depois de `pass2_complete` o executor
-   segue fechado.
+   segue fechado. A janela só abre quando o planner espera o pass 2 ou a preparação dele: autoridade
+   ilegível, operação de fechamento pendente, problema de entrega ou aprovação faltando a mantêm fechada.
 3. **O núcleo diz que os achados do pass 2 passam por `tasks.mjs run/repair`.**
 4. **Teste discriminante**, `tests/task-executor-closure.test.mjs`: vermelho no código do #103 com
    `E_WORK_REFS`, e de novo vermelho com `E_TASK_GATE` quando só a primeira camada é corrigida.
@@ -44,3 +45,5 @@ orçamento de tentativas e da trilha do executor.
 
 - D-020: pass 2 por tarefa durante a execução, adiado porque contradiz a regra da 1.54.0.
 - D-021: uma correção pedida depois de `pass2_complete` (CI vermelho) segue fora do executor.
+- Só as referências e os arquivos de aceitação seguem a pasta arquivada; um `check.command` que cite
+  um caminho de `docs/changes/<id>/` no argv roda o caminho literal. Nenhum plano conhecido faz isso.

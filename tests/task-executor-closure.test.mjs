@@ -7,6 +7,7 @@ import { mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { cleanup, writeFiles } from './helpers.mjs';
 import { initTasks, taskStatus, runTask, verifyTasks } from '../scripts/lib/execution/task-executor.mjs';
+import { beginOperation } from '../scripts/lib/change/lifecycle.mjs';
 import { fixture } from './task-executor-fixture.mjs';
 
 function preparedForPass2() {
@@ -53,10 +54,24 @@ test('a pass 2 finding is repaired through the executor while the change is impl
   } finally { cleanup(r.root); }
 });
 
-test('past implemented the executor stays closed', () => {
+const inspection = { cause: 'Pass 2 attacked B on the prepared closure.', new_hypothesis: 'Rewrite B and keep A.', refs: ['src/value.cjs'], processes_stopped: true };
+
+test('an ordinary run stays closed in implemented, and everything stays closed past it', () => {
   const r = preparedForPass2();
   try {
+    assert.throws(() => runTask(r.root, 'c1', 'B', r.good()), { code: 'E_TASK_NOT_READY' });
     r.s.putChange({ ...r.s.change('c1'), state: 'pass2_complete' });
     assert.throws(() => verifyTasks(r.root, 'c1'), { code: 'E_TASK_GATE' });
+    assert.throws(() => runTask(r.root, 'c1', 'B', r.good(), inspection), { code: 'E_TASK_GATE' });
+  } finally { cleanup(r.root); }
+});
+
+// The executor's lock already takes the closure authority idle-only; this proves the window keeps it.
+test('a pending lifecycle operation keeps the repair window closed', () => {
+  const r = preparedForPass2();
+  try {
+    beginOperation(r.root, 'c1', { kind: 'prepare', operationId: 'op-prepare-interrupted', detail: {} });
+    assert.throws(() => verifyTasks(r.root, 'c1'), { code: 'E_OPERATION_PENDING' });
+    assert.throws(() => runTask(r.root, 'c1', 'B', r.good(), inspection), { code: 'E_OPERATION_PENDING' });
   } finally { cleanup(r.root); }
 });
