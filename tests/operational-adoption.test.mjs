@@ -57,6 +57,24 @@ test('Claude requires one successful terminal result and never treats quota, per
   assert.throws(() => agentCommand('/tmp', { kind: 'claude-code', read_only: true, allowed_tools: ['Bash'] }), { code: 'E_AGENT_CONFIG' });
   assert.throws(() => agentCommand('/tmp', { kind: 'claude-code', timeout_seconds: 0 }), { code: 'E_AGENT_CONFIG' });
 });
+test('Claude accepts system events after its single result, as Claude Code 2.1.302 emits task_summary', () => {
+  const ok = { type: 'result', subtype: 'success', is_error: false, result: 'done', usage: { input_tokens: 3 } };
+  const summary = { type: 'system', subtype: 'task_summary', detail: null, uuid: 'u-1', session_id: 's-1' };
+  const parse = (events, result = { status: 0 }) => claudeEvents(events.map((e) => typeof e === 'string' ? e : JSON.stringify(e)).join('\n'), result);
+  const trailed = parse([{ type: 'system', subtype: 'init' }, ok, summary]);
+  assert.equal(trailed.status, 'reported_success'); assert.equal(trailed.classification, 'delivery_reported');
+  assert.equal(trailed.usage.input_tokens, 3);
+  assert.equal(parse([ok, summary, summary]).status, 'reported_success');
+  const claim = JSON.stringify({ spectree_result: 1, status: 'blocked', reason: 'Required tool is unavailable.' });
+  assert.equal(parse([{ ...ok, result: claim }, summary]).status, 'failed');
+  assert.equal(parse([{ ...ok, result: claim }, summary]).classification, 'blocked');
+  // Only system events may trail: anything else after the result is still unknown.
+  assert.equal(parse([ok, { type: 'assistant', message: {} }]).status, 'unknown');
+  assert.equal(parse([ok, summary, { type: 'user', message: {} }]).status, 'unknown');
+  assert.equal(parse([ok, summary, ok]).status, 'unknown'); assert.equal(parse([ok, summary, 'malformed']).status, 'unknown');
+  assert.equal(parse([{ ...ok, is_error: true }, summary]).status, 'failed');
+  assert.equal(parse([ok, summary], { status: 1 }).status, 'failed');
+});
 test('supervised commands preserve stdin/argv and record observed shutdown', () => {
   const root = tempDir();
   try {
