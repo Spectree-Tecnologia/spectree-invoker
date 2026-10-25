@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { AgentRow, AgentStatus, DeskUi } from './state'
 import { barMarkup, invokerMarkup } from './avatar'
-import { formatDuration, formatTokens, formatUsd, plural, stepLabel, tokensOf } from './format'
+import { formatDuration, formatTokens, formatUsd, modelLabel, plural, stepLabel, tokensOf } from './format'
 import { labelOf, ORB_COLOR, orbAvatar, orbOf, roleOf, ROLES } from './orbs'
 import type { Role } from './orbs'
 
@@ -59,13 +59,13 @@ async function isSpectreeProject($: EngineInterface, cwd: string) {
   return (await $.fs.exists(`${cwd}/.spectree`)) || (await $.fs.exists(`${cwd}/docs/changes`))
 }
 
-async function recordSpawn($: EngineInterface, id: string, description: string, type: string) {
+async function recordSpawn($: EngineInterface, id: string, description: string, type: string, model: string) {
   const at = await $.clock.now()
   const list = await update($, agents, all => {
     const known = all[id]
     const row: AgentRow = known
-      ? { ...known, status: 'running', endedAt: null }
-      : { id, description: description || labelOf(type), type, status: 'running', startedAt: at, endedAt: null, tokens: 0, steps: [], stepCount: 0 }
+      ? { ...known, status: 'running', endedAt: null, model }
+      : { id, description: description || labelOf(type), type, model, status: 'running', startedAt: at, endedAt: null, tokens: 0, steps: [], stepCount: 0 }
     return { ...all, [id]: row }
   })
   await syncClock($, list)
@@ -78,6 +78,12 @@ async function recordStep($: EngineInterface, id: string, label: string) {
     if (!row) return all
     return { ...all, [id]: { ...row, steps: [...row.steps, label].slice(-STEPS_KEPT), stepCount: row.stepCount + 1 } }
   })
+}
+
+async function recordEffort($: EngineInterface, id: string, effort: string) {
+  const row = (await read($, agents))[id]
+  if (!row || row.effort === effort) return
+  await update($, agents, all => (all[id] ? { ...all, [id]: { ...all[id], effort } } : all))
 }
 
 async function recordEnd($: EngineInterface, id: string, status: AgentStatus, tokens: number) {
@@ -136,7 +142,7 @@ export const register: Register = on => {
     const id = started.agentId
     if (!id) return started
 
-    await recordSpawn($, id, e.description, e.subagentType).catch(error => logFailure($, error))
+    await recordSpawn($, id, e.description, e.subagentType, started.model).catch(error => logFailure($, error))
 
     return started
   })
@@ -147,6 +153,12 @@ export const register: Register = on => {
     if (id) await recordStep($, id, stepLabel(String(e.tool), e as unknown as Record<string, unknown>)).catch(error => logFailure($, error))
 
     return next(e)
+  })
+
+  // A subagent's effort is known only from its requests: the first one names it.
+  on('turn.step', async function* ($, e, next) {
+    if (e.agentId && e.effort !== undefined) await recordEffort($, e.agentId, String(e.effort)).catch(error => logFailure($, error))
+    return yield* next(e)
   })
 
   on('turn.complete', async ($, e, next) => {
@@ -238,19 +250,27 @@ export const register: Register = on => {
             )}
           </Box>
           <Box flexDirection="column" flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
-            <Box flexDirection="row" justifyContent="space-between">
-              <Text weight="semibold" wrap="truncate-end">
-                {row.description}
-              </Text>
-              <Text color={headColor}>{row.status === 'completed' ? '✓' : row.status === 'running' ? '…' : '✗'}</Text>
+            <Box flexDirection="row" justifyContent="space-between" gap={1}>
+              <Box flexShrink={1} minWidth={0}>
+                <Text weight="semibold" wrap="truncate-end">
+                  {row.description}
+                </Text>
+              </Box>
+              <Box flexShrink={0}>
+                <Text color={headColor}>{row.status === 'completed' ? '✓' : row.status === 'running' ? '…' : '✗'}</Text>
+              </Box>
             </Box>
-            <Box flexDirection="row" justifyContent="space-between">
-              <Text dimColor wrap="truncate-end">
-                {labelOf(row.type)}
-              </Text>
-              <Text dimColor tabular>
-                {formatTokens(row.tokens)} tokens · {formatDuration(elapsed)}
-              </Text>
+            <Box flexDirection="row" justifyContent="space-between" gap={1}>
+              <Box flexShrink={1} minWidth={0}>
+                <Text dimColor wrap="truncate-end">
+                  {[row.type, row.model && modelLabel(row.model), row.effort].filter(Boolean).join(' · ')}
+                </Text>
+              </Box>
+              <Box flexShrink={0}>
+                <Text dimColor tabular>
+                  {formatTokens(row.tokens)} tokens · {formatDuration(elapsed)}
+                </Text>
+              </Box>
             </Box>
             <Text color={headColor}>{headline}</Text>
             {steps.map(step => (

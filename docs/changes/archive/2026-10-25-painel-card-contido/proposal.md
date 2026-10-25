@@ -1,6 +1,6 @@
-# Passos longos cortados dentro do card do painel
+# Card do painel contido na borda e com o modelo do subagente
 
-Tarefa 28, pedida pelo Gilson em 2026-10-25 ao ver o v1.66.0 no app desktop.
+Tarefa 28, pedida pelo Gilson em 2026-10-25 ao ver o v1.66.0 no app desktop ao lado do Helper Desk.
 Release: v1.67.0.
 
 **Mudança deltaless.** Esta mudança não carrega delta em `specs/`. Ela muda só como o painel do
@@ -12,13 +12,19 @@ A borda do card marca a área dele. Um passo com um caminho longo passava da bor
 crescia até empurrar o avatar do subagente para fora do card; o avatar voltava quando os passos
 ficavam curtos de novo.
 
+O card também dizia só o papel (`Solutions Architect`). O Helper Desk diz o tipo do subagente, o
+modelo em que ele roda e o esforço.
+
 ## Escopo
 
 1. **O card corta o que não cabe**: o card esconde o que passa da borda, a coluna de texto pode
    encolher abaixo da largura do seu texto mais longo, e o avatar nunca encolhe.
-2. **O passo é um texto só**, cortado com reticências no fim.
-3. **Teste no kit**, visto falhando no código do #99.
-4. A retro de `painel-cores-e-sites` (#99), devida por esta.
+2. **O passo é um texto só**, cortado com reticências no fim; na linha do título e na do tipo, o texto da
+   esquerda encolhe e o da direita (status, tokens e tempo) não.
+3. **O card identifica o subagente**: `spectree:solutions-architect · Opus 5.5 · medium`. O modelo vem
+   do início do subagente; o esforço, do primeiro pedido que ele faz ao modelo, e falta enquanto não houver um.
+4. **Teste no kit**, visto falhando no código do #99.
+5. A retro de `painel-cores-e-sites` (#99), devida por esta.
 
 ## Fora do escopo
 

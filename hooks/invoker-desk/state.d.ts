@@ -12,6 +12,9 @@ export type AgentRow = {
   tokens: number
   steps: string[]
   stepCount: number
+  // What the subagent runs on, as the engine resolved it, and its effort, once a request names one.
+  model?: string
+  effort?: string
 }
 
 export type DeskUi = {
