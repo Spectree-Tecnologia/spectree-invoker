@@ -20,7 +20,7 @@ arquivada. Nenhuma assinatura conhecida casou; a seção Atrito trouxe duas.
   própria pelo `retro-melhorias`.
 - **R-004 · 6 · checagens automáticas** · `automated-checks · protocol · teto-sem-folga` · a regra do
   brief ficou fora do núcleo porque sobravam 58 bytes. Na mudança seguinte (37) o card do Architect
-  ficou a 15 bytes do teto, no Codex. Segue aberto no [D-013](../DEFERRED.md).
+  ficou a 16 bytes do teto, no Codex. Segue aberto no [D-013](../DEFERRED.md).
 
 ## O que funcionou
 

@@ -33,7 +33,7 @@ lugar; cada correção entra por uma mudança própria.
 | R-001 | `tool-economy · release · identificador-sequencial-disputado` | 17 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 e de novo no #94/#95 |
 | R-002 | `automated-checks · docs · fechamento-depois-do-merge` | 12 | Pago na tarefa 11 |
 | R-003 | `information-access · retro · rastro-apagado` | todos os PRs | Curto prazo pago na tarefa 11; longo prazo é o D-009 |
-| R-004 | `automated-checks · protocol · teto-sem-folga` | 6 | Aberto, [D-013](../DEFERRED.md); o #94 subiu o teto do núcleo; no #105 o núcleo ficou a 58 bytes e a tarefa 36 deixou a regra do brief fora dele; na tarefa 37 o card do Architect, no Codex, ficou a 15 bytes do teto; a mudança própria segue devida |
+| R-004 | `automated-checks · protocol · teto-sem-folga` | 6 | Aberto, [D-013](../DEFERRED.md); o #94 subiu o teto do núcleo; no #105 o núcleo ficou a 58 bytes e a tarefa 36 deixou a regra do brief fora dele; na tarefa 37 o card do Architect, no Codex, ficou a 16 bytes do teto; a mudança própria segue devida |
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 | R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |

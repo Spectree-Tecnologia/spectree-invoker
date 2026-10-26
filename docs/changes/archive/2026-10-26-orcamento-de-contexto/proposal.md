@@ -17,8 +17,8 @@ do total e o `protocol-rationale.md` não foi lido.
 
 ## Escopo
 
-1. **Card do Architect:** no modo proposal, a leitura obrigatória do despacho é teto; fora dela, busca
-   pela linha e leitura por offset, nunca um documento inteiro. A regra entra no inventário dos cards
+1. **Card do Architect:** no modo proposal, a leitura obrigatória do despacho é teto; fora dela, e fora da
+   spec viva dos módulos com delta, busca e leitura por offset. A regra entra no inventário dos cards
    (`protocol/rules.json`), e o `check-plugin` recusa o card que a perder.
 2. **Card do Quality Engineer:** o pass 1 escreve os testes de um Requirement, ou do delta inteiro,
    antes de rodar, e roda numa invocação só da suíte; nunca uma invocação por teste. Uma rodada que
@@ -42,4 +42,4 @@ As duas regras cortam chamadas e também tempo de relógio: menos leituras e men
 
 - D-024: nenhum teto por missão; uma missão que siga acima de ~30 chamadas depois destas duas regras
   continua cara.
-- O card do Architect, no Codex, fica a 15 bytes do teto (R-004).
+- O card do Architect, no Codex, fica a 16 bytes do teto (R-004).

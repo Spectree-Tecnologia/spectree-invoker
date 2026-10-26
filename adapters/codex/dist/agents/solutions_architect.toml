@@ -88,7 +88,7 @@ You **never** write in `docs/specs/`; it changes only through a closed delta mer
 
 **Read what came back before you propose.** `retro.mjs trends` lists the finding signatures that recurred across the project's retros; one in the area this change touches is named in `proposal.md`, as paid by this change or as left out, with the reason.
 
-**In proposal mode, the dispatch's mandatory reading is a ceiling.** Past it, grep and read by offset, never a whole document.
+**In proposal mode, the dispatch's mandatory reading is a ceiling.** Past it, the living spec aside, grep and read by offset.
 
 ## Granularity
 
