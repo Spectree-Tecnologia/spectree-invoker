@@ -20,8 +20,10 @@ própria ferramenta sem passar adiante, então a chamada nem sempre chega ao pai
    passos em ordem, cada um `pending`, `in_progress` ou `completed`, a lista inteira a cada chamada.
    O painel responde a ela no próprio processo; a chamada de um subagente é recusada.
 2. **A instrução vai no prompt do laço principal** (não no de um teammate nem no modo `bare`): planejar
-   com a ferramenta antes de agir quando houver dois passos ou mais, e atualizar a cada passo.
-3. **A barra mostra o título do plano** no lugar de `Plano`, cortado em 40 caracteres.
+   com a ferramenta antes de agir quando houver dois passos ou mais, e atualizar a cada passo. Se o
+   registro da ferramenta falhar, a instrução não vai.
+3. **A barra mostra o título do plano** no lugar de `Plano`, cortado em 40 caracteres. Um plano sem
+   título depois de um concluído, ou uma lista do TodoWrite, não herda o título anterior.
 4. **O plano do Helper Desk também entra** quando a chamada dele chega ao painel.
 5. **A guarda de rede do painel aceita `$.tool.register`**: registrar a ferramenta não executa nada;
    `$.tool.call` continua recusado, com auto-teste dos dois lados.

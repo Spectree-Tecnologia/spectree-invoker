@@ -38,8 +38,8 @@ export function applyToPlan(plan: Plan, tool: string, input: Field, result: unkn
   if (tool === 'TodoWrite') {
     const todos = input('todos')
     if (!Array.isArray(todos)) return plan
+    // A todo list has no title: it does not carry the last plan's.
     return {
-      ...plan,
       tasks: todos.flatMap((todo, i) => {
         const subject = text(todo?.content)
         const status = text(todo?.status)
@@ -70,7 +70,9 @@ export function planFromTool(plan: Plan, input: Field): { plan: Plan; said: stri
   // A title is a label beside the bar, a few words: past 40 characters it is cut.
   const title = typeof input('title') === 'string' ? String(input('title')).replace(/\s+/g, ' ').trim().slice(0, 40) : ''
   const done = tasks.filter(one => one.status === 'completed').length
-  return { plan: { title: title || plan.title, tasks }, said: `Plan saved: ${done} of ${tasks.length} steps done.` }
+  // An untitled list carries on the plan under way; after a finished one it starts untitled.
+  const isOver = plan.tasks.length === 0 || plan.tasks.every(one => one.status === 'completed')
+  return { plan: { title: title || (isOver ? undefined : plan.title), tasks }, said: `Plan saved: ${done} of ${tasks.length} steps done.` }
 }
 
 // What the plan bar reads: tasks done of all, and the line under it — the task

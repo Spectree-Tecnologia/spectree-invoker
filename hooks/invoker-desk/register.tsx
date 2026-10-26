@@ -36,6 +36,9 @@ const now = atom({ plugin: 'spectree', key: 'now' } as const, 0)
 
 type Agents = Record<string, AgentRow>
 
+// Set once the plan tool is registered; the prompt names it only then.
+let hasPlanTool = false
+
 const isRunning = (row: AgentRow) => row.status === 'running'
 
 // A reload starts the module over; the next event that needs the clock
@@ -144,7 +147,11 @@ export const register: Register = on => {
       },
       // In the prompt's tool list: a tool behind ToolSearch never gets called.
       isDeferred: false,
-    }).catch(error => logFailure($, error))
+    })
+      .then(() => {
+        hasPlanTool = true
+      })
+      .catch(error => logFailure($, error))
     // The clock starts here only in a squad project; elsewhere the first
     // dispatch starts it, so a session that never orchestrates pays nothing.
     if (await isSpectreeProject($, e.cwd)) {
@@ -176,7 +183,7 @@ export const register: Register = on => {
   on('tool.call', async ($, e, next) => {
     const id = e.agentId
     if (e.tool === PLAN_TOOL) {
-      if (id) return { result: 'Only the main loop keeps a plan. Carry on with your task.' }
+      if (id) return { deny: 'Only the main loop keeps a plan. Carry on with your task.' }
       const input = (key: string) => (e as unknown as Record<string, unknown>)[key]
       let said = 'Plan not saved: something went wrong. Carry on.'
       await update($, plan, current => {
@@ -205,7 +212,8 @@ export const register: Register = on => {
   // The plan tool's instruction, for the main loop only.
   on('prompt.compose', async ($, e, next) => {
     const composed = await next(e)
-    if (e.traits.includes('teammate') || e.traits.includes('bare')) return composed
+    // No tool, no instruction: the model would open every task with a call that fails.
+    if (!hasPlanTool || e.traits.includes('teammate') || e.traits.includes('bare')) return composed
     return { sections: [...composed.sections, { id: 'spectree:plan', text: PLAN_PROMPT, scope: 'session' as const }] }
   })
 

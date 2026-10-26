@@ -44,7 +44,7 @@ function orbProblems(orbsSource, cards) {
 // a tool does.
 const networkProblems = (sources) =>
   Object.entries(sources)
-    .filter(([, s]) => /\$\.(http|process|mcp|model|telemetry)\b|\$\.tool\.(?!register\()|\bfetch\(/.test(s))
+    .filter(([, s]) => /\$\.(http|process|mcp|model|telemetry)\b|\$\.tool\b(?!\.register\()|\bfetch\(/.test(s))
     .map(([f]) => `${f}: reaches the network, a process or a tool`);
 
 // The portrait and the three orb paintings ride inside the avatar's SVG as traced drawings: each is
@@ -94,6 +94,8 @@ test('each guard rejects the state it exists to catch', () => {
   assert.ok(orbProblems("{ role: 'quality-engineer', label: 'QE', orb: 'wex' }", ['quality-engineer', 'platform-engineer']).includes('orbs.ts: no orb for agents/platform-engineer.md'));
   assert.deepEqual(networkProblems({ 'a.ts': 'await $.http.fetch(url)' }), ['a.ts: reaches the network, a process or a tool']);
   assert.deepEqual(networkProblems({ 'a.ts': 'await $.tool.call({ tool: "Bash" })' }), ['a.ts: reaches the network, a process or a tool']);
+  assert.deepEqual(networkProblems({ 'a.ts': 'const { call } = $.tool; await call({ tool: "Bash" })' }), ['a.ts: reaches the network, a process or a tool']);
+  assert.deepEqual(networkProblems({ 'a.ts': 'await $.tool.registerX({ name: "plan" })' }), ['a.ts: reaches the network, a process or a tool']);
   assert.deepEqual(networkProblems({ 'a.ts': 'await $.tool.register({ name: "plan" })' }), []);
   assert.equal(networkProblems({ 'b.ts': "await $.tool.call({ tool: 'Bash' })", 'c.ts': '$.telemetry.log(x)' }).length, 2);
   const portrait = (v) => artProblems(v, ORBS_OK).length;
