@@ -18,11 +18,11 @@ do total e o `protocol-rationale.md` não foi lido.
 ## Escopo
 
 1. **Card do Architect:** no modo proposal, a leitura obrigatória do despacho é teto; fora dela, e fora da
-   spec viva dos módulos com delta, busca e leitura por offset. A regra entra no inventário dos cards
+   spec viva, busca e leitura por offset. A regra entra no inventário dos cards
    (`protocol/rules.json`), e o `check-plugin` recusa o card que a perder.
 2. **Card do Quality Engineer:** o pass 1 escreve os testes de um Requirement, ou do delta inteiro,
    antes de rodar, e roda numa invocação só da suíte; nunca uma invocação por teste. Uma rodada que
-   caiu antes da asserção roda de novo só os testes que atingiu.
+   caiu roda de novo só os testes que não alcançou, e o registro do pass 1 segue numa rodada só.
 3. **O porquê** em `docs/protocol-rationale.md`, com os números do C3b.
 4. **Teste** `21d14` em `tests/acceptance-regressions.test.mjs`, visto vermelho sem os cards gerados.
 5. A retro de `despacho-pass2` (#108), devida por esta.

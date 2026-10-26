@@ -30,7 +30,7 @@ If you **cannot write the test from a `Scenario`**, it is ambiguous: report it a
 
 Record pass 1 in **one run**: list every test you made red under `failing` and every preserved regression under `passing` in a JSON file beside the tests, and run `state.mjs run <change> pass1.tests_failing --role quality_engineer --expect-from <that file> -- <the suite emitting TAP>`. The runner refuses a red whose diagnostic is not an assertion and a preserved regression that went red. Your report still lists each test with the assertion it fails at.
 
-**Write in batches, run in batches.** Write the tests of a Requirement, or of the whole delta, before running any, then run them in one suite invocation; never one invocation per test. A run that crashed before an assertion is rerun for the tests it hit, not test by test.
+**Write in batches, run in batches.** Write the tests of a Requirement, or of the whole delta, before running any, then run them in one suite invocation; never one invocation per test. A run that crashed reruns only the tests it did not reach; pass 1 is still recorded in the one run above.
 
 This is the only mechanical validation the spec gets, and it is yours. Until pass 1 closes, no Developer starts — except the one who stubbed the surface, and that one only wrote signatures.
 
