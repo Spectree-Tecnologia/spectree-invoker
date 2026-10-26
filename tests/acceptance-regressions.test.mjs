@@ -1354,3 +1354,14 @@ test('21e. the TypeSafe Engineer exists on both harnesses, optional and fenced',
   assert.doesNotMatch(readFileSync(join(REPO, 'agents/integration-engineer.md'), 'utf8'),
     /squad's only route/, 'the Integration Engineer is no longer the only route to the network');
 });
+
+test('21d14. a long serial mission is cut by its calls, not by segmenting it', () => {
+  // In the SYND passkeys change two subagents spent 24M of 33M tokens: the Architect read 44 files
+  // for a proposal and pass 1 ran its tests one invocation at a time. Both rules cut calls and time.
+  for (const f of ['agents/solutions-architect.md', 'adapters/codex/dist/agents/solutions_architect.toml']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /mandatory reading is a ceiling/, `${f}: the proposal reads the dispatch list, then greps`);
+  }
+  for (const f of ['agents/quality-engineer.md', 'adapters/codex/dist/agents/quality_engineer.toml']) {
+    assert.match(readFileSync(join(REPO, f), 'utf8'), /never one invocation per test/, `${f}: pass 1 runs its tests in batches`);
+  }
+});

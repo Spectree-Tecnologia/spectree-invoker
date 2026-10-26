@@ -209,3 +209,12 @@
 - Due: Uma retro de projeto consumidor registra um pass 2 cuja missão não carregava o que o brief declarou, ou uma evidência pass2.attack sem operação pass2 por trás
 - Closure condition: pass2_complete exige uma operação pass2 terminada com brief cujo conteúdo é o do candidato, visto recusando o caso do incidente.
 
+## D-024 — Missão longa sem teto de contexto, de chamadas ou de tempo
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: A mudança orcamento-de-contexto corta chamadas por duas regras de card: a leitura obrigatória como teto no proposal do Architect e o pass 1 em lote. Não põe teto por missão: segmentar em despachos de contexto zerado, ao bater um teto de contexto, de chamadas ou o timeout_seconds do despacho, repaga o prefixo e a leitura obrigatória em sequência e pode deixar o pipeline mais lento, que o Founder recusou em 2026-10-26.
+- Due: Uma missão de subagente de projeto consumidor passa de 30 chamadas ou de 150k de contexto depois das duas regras, medida com o analisador de transcripts
+- Closure condition: Um teto por missão com checkpoint e novo despacho, segmento contado à parte das tentativas, medido mais barato e não mais lento no mesmo tipo de missão.
+

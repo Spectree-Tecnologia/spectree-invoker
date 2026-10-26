@@ -276,6 +276,18 @@
       "current_decision": "A mudança despacho-pass2 exige o brief para abrir uma operação pass2 e recusa fechá-la com o escopo movido. O brief prova o que o Invoker declarou, não o texto que o Quality Engineer recebeu, e state.mjs run pass2.attack ainda aceita --independent-of sem uma operação pass2 com brief. Fica fora porque ligar a evidência à operação muda o portão de pass2_complete para projetos que ainda não abrem rodadas com work.mjs.",
       "reevaluation_trigger": "Uma retro de projeto consumidor registra um pass 2 cuja missão não carregava o que o brief declarou, ou uma evidência pass2.attack sem operação pass2 por trás",
       "closure_condition": "pass2_complete exige uma operação pass2 terminada com brief cujo conteúdo é o do candidato, visto recusando o caso do incidente."
+    },
+    {
+      "schema_version": "1.0.0",
+      "owner": "own_change",
+      "status": "open",
+      "opened_by_change": "orcamento-de-contexto",
+      "stable_id": 24,
+      "title": "Missão longa sem teto de contexto, de chamadas ou de tempo",
+      "impact": "ceiling",
+      "current_decision": "A mudança orcamento-de-contexto corta chamadas por duas regras de card: a leitura obrigatória como teto no proposal do Architect e o pass 1 em lote. Não põe teto por missão: segmentar em despachos de contexto zerado, ao bater um teto de contexto, de chamadas ou o timeout_seconds do despacho, repaga o prefixo e a leitura obrigatória em sequência e pode deixar o pipeline mais lento, que o Founder recusou em 2026-10-26.",
+      "reevaluation_trigger": "Uma missão de subagente de projeto consumidor passa de 30 chamadas ou de 150k de contexto depois das duas regras, medida com o analisador de transcripts",
+      "closure_condition": "Um teto por missão com checkpoint e novo despacho, segmento contado à parte das tentativas, medido mais barato e não mais lento no mesmo tipo de missão."
     }
   ]
 }

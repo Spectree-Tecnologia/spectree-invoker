@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 108,
+    "title": "Despacho do pass 2 com independência e escopo final (tarefa 36) — v1.75.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/108",
+    "opened": "2026-10-25T22:07:26Z",
+    "merged": "2026-10-25T22:09:09Z"
+  },
+  "signals": {
+    "open_minutes": 2,
+    "commits": 4,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.75.0",
+    "archived": [
+      "docs/changes/archive/2026-10-25-despacho-pass2/proposal.md"
+    ]
+  },
+  "friction": "- O núcleo está a 58 bytes do teto, por isso a regra ficou no comando, no perfil e no runtime (R-004).\n- A terceira rodada achou um defeito de identidade de entrada, o mesmo padrão de R-015. A proposta não dizia de onde viria o escopo de uma rodada posterior.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
