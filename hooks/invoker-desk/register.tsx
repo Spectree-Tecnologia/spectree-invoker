@@ -109,11 +109,17 @@ async function recordEnd($: EngineInterface, id: string, status: AgentStatus, to
     const row = all[id]
     if (!row) return all
     const next = { ...all, [id]: { ...row, status, endedAt: at, tokens: row.tokens + tokens } }
-    // Rows sit in the order they were dispatched: the oldest finished go first.
-    const finished = Object.values(next).filter(one => !isRunning(one))
+    // The first to end go first, a card that just ended never.
+    const finished = Object.values(next)
+      .filter(one => !isRunning(one))
+      .sort((a, b) => (a.endedAt ?? 0) - (b.endedAt ?? 0) || a.startedAt - b.startedAt)
     for (const one of finished.slice(0, Math.max(0, finished.length - FINISHED_KEPT))) delete next[one.id]
     return next
   })
+  // A card that left takes its open steps along.
+  if (Object.keys(list).length > FINISHED_KEPT) {
+    await update($, ui, v => (v.expanded.every(one => one in list) ? v : { ...v, expanded: v.expanded.filter(one => one in list) }))
+  }
   await syncClock($, list)
 }
 
@@ -252,7 +258,8 @@ export const register: Register = on => {
     const at = (await read($, now)) || Date.now()
 
     const running = list.filter(isRunning)
-    const finished = list.filter(row => !isRunning(row)).reverse()
+    // The last to end on top.
+    const finished = list.filter(row => !isRunning(row)).sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0) || b.startedAt - a.startedAt)
     const active = [...new Set(running.map(row => roleOf(row.type)).filter((r): r is Role => r !== null))]
     const isOrchestrating = running.length > 0
 

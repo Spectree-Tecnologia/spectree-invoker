@@ -18,8 +18,10 @@ inferida pela medida e pelo sintoma, que cresce com a sessão; o log do app não
 
 1. **Card concluído leva a pintura pequena do orbe** (uns 8 mil caracteres); a grande fica com o card em
    execução e com o retrato do Invoker.
-2. **A seção Concluídos mostra os últimos 5**, com um botão para ver todos e voltar.
-3. **O estado guarda no máximo 50 concluídos**; o mais antigo despachado sai primeiro.
+2. **A seção Concluídos mostra os 5 que terminaram por último**, no topo o mais recente, com um botão
+   para ver todos e voltar.
+3. **O estado guarda no máximo 50 concluídos**; o que terminou primeiro sai primeiro, e com ele os passos
+   abertos do card.
 4. **Teste no kit** com 60 subagentes concluídos e um em execução, visto falhando no código do #110.
 5. A retro de `painel-plano-proprio` (#110), devida por esta.
 

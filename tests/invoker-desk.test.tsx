@@ -36,7 +36,7 @@ async function spawn($: any, agentId: string, subagentType: string, description:
 }
 
 function engine(on: any, agentId: string, model = 'model') {
-  mock.clock(on, { now: 1_000_000 })
+  const clock = mock.clock(on, { now: 1_000_000 })
   // Each spawn answers the agent id its tool_use_id names (`tu-<id>`), the first one by default.
   on('agent.spawn', (_: unknown, e: any) => ({ model, agentId: String(e.tool_use_id ?? '').replace(/^tu-/, '') || agentId }))
   // A TaskCreate answers the id of the task it made, numbered from 1.
@@ -54,6 +54,7 @@ function engine(on: any, agentId: string, model = 'model') {
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('ui.status', () => ({ value: {} }))
   on('session.surfaces', () => ({ value: ['terminal'] }))
+  return clock
 }
 
 test('a finished subagent is a card with its role, steps, tokens and status', async ($, on) => {
@@ -129,11 +130,16 @@ test('a section collapses and the steps of a card expand', async ($, on) => {
 })
 
 test('a long session draws the last finished cards, light, and keeps a bounded list', async ($, on) => {
-  engine(on, 'f0')
+  const clock = engine(on, 'f0')
+  // Dispatched first, it ends last: the card that just ended stays.
+  await spawn($, 'early', 'spectree:solutions-architect', 'early run')
   for (let i = 0; i < 60; i++) {
     await spawn($, `f${i}`, 'spectree:full-stack-developer', `module ${i}`)
+    await clock.advance(1000)
     await $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId: `t${i}`, agentId: `f${i}`, reason: 'answer' } as any)
   }
+  await clock.advance(1000)
+  await $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId: 'te', agentId: 'early', reason: 'answer' } as any)
   await spawn($, 'r1', 'spectree:quality-engineer', 'QE pass 2')
 
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
@@ -142,11 +148,12 @@ test('a long session draws the last finished cards, light, and keeps a bounded l
   expect(svgs.filter(source => source.length > 20_000).length).toBe(2)
   expect(svgs.reduce((sum, source) => sum + source.length, 0)).toBeLessThan(250_000)
   expect(await ui.find({ type: 'Text', text: /Concluídos · 50/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^early run$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^module 59$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /^module 54$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^module 55$/ })).toBeUndefined()
   await ui.press({ key: 'finished-whole' })
-  expect(await ui.find({ type: 'Text', text: /^module 10$/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /^module 9$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^module 11$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^module 10$/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /^QE pass 2$/ })).toBeDefined()
   await ui.unmount()
 })
