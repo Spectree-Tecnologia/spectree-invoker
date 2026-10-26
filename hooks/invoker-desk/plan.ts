@@ -12,7 +12,7 @@ export function applyToPlan(plan: Plan, tool: string, input: Field, result: unkn
     const subject = text(input('subject'))
     if (!id || !subject) return plan
     const task: PlanTask = { id, subject, activeForm: text(input('activeForm')), status: 'pending' }
-    return { tasks: [...plan.tasks.filter(one => one.id !== id), task] }
+    return { ...plan, tasks: [...plan.tasks.filter(one => one.id !== id), task] }
   }
   if (tool === 'TaskUpdate') {
     // An update the tool refused leaves the task as it was.
@@ -20,8 +20,9 @@ export function applyToPlan(plan: Plan, tool: string, input: Field, result: unkn
     const id = text(input('taskId'))
     const status = text(input('status'))
     if (!id || !plan.tasks.some(one => one.id === id)) return plan
-    if (status === 'deleted') return { tasks: plan.tasks.filter(one => one.id !== id) }
+    if (status === 'deleted') return { ...plan, tasks: plan.tasks.filter(one => one.id !== id) }
     return {
+      ...plan,
       tasks: plan.tasks.map(one =>
         one.id === id
           ? {
@@ -38,6 +39,7 @@ export function applyToPlan(plan: Plan, tool: string, input: Field, result: unkn
     const todos = input('todos')
     if (!Array.isArray(todos)) return plan
     return {
+      ...plan,
       tasks: todos.flatMap((todo, i) => {
         const subject = text(todo?.content)
         const status = text(todo?.status)
@@ -49,9 +51,31 @@ export function applyToPlan(plan: Plan, tool: string, input: Field, result: unkn
   return plan
 }
 
+const STATUSES = ['pending', 'in_progress', 'completed'] as const
+
+// The plan tool's call, whole list each time: the new plan, or why it was not
+// taken, and the one line the model reads back.
+export function planFromTool(plan: Plan, input: Field): { plan: Plan; said: string } {
+  const steps = input('steps')
+  if (!Array.isArray(steps)) return { plan, said: 'Plan not saved: send steps as a list of { text, status }.' }
+  const tasks: PlanTask[] = []
+  for (const [i, step] of steps.entries()) {
+    const subject = typeof step?.text === 'string' ? step.text.replace(/\s+/g, ' ').trim() : ''
+    if (!subject) return { plan, said: 'Plan not saved: every step needs its text.' }
+    if (!STATUSES.includes(step?.status)) {
+      return { plan, said: `Plan not saved: "${subject.slice(0, 40)}" needs a status of pending, in_progress or completed.` }
+    }
+    tasks.push({ id: `step-${i}`, subject, status: step.status })
+  }
+  // A title is a label beside the bar, a few words: past 40 characters it is cut.
+  const title = typeof input('title') === 'string' ? String(input('title')).replace(/\s+/g, ' ').trim().slice(0, 40) : ''
+  const done = tasks.filter(one => one.status === 'completed').length
+  return { plan: { title: title || plan.title, tasks }, said: `Plan saved: ${done} of ${tasks.length} steps done.` }
+}
+
 // What the plan bar reads: tasks done of all, and the line under it — the task
 // under way in its present-continuous form, else the next one, else done.
-export function planProgress(plan: Plan): { done: number; total: number; percent: number; now: string } {
+export function planProgress(plan: Plan): { title: string; done: number; total: number; percent: number; now: string } {
   const total = plan.tasks.length
   const done = plan.tasks.filter(one => one.status === 'completed').length
   const current = plan.tasks.find(one => one.status === 'in_progress')
@@ -61,5 +85,5 @@ export function planProgress(plan: Plan): { done: number; total: number; percent
     : next
       ? `A seguir: ${next.subject}`
       : 'Plano concluído'
-  return { done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100), now }
+  return { title: plan.title || 'Plano', done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100), now }
 }

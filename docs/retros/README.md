@@ -49,6 +49,7 @@ lugar; cada correção entra por uma mudança própria.
 
 ## Retros
 
+- [2026-10-26 — `orcamento-de-contexto` (#109)](2026-10-26-orcamento-de-contexto.md)
 - [2026-10-25 — `despacho-pass2` (#108)](2026-10-25-despacho-pass2.md)
 - [2026-10-25 — `contraexemplo-concorrente` (#105)](2026-10-25-contraexemplo-concorrente.md)
 - [2026-10-25 — `harness-pass2` (#107)](2026-10-25-harness-pass2.md)

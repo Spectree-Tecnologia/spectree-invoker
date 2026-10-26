@@ -4,7 +4,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { AgentRow, AgentStatus, DeskUi } from './state'
 import { barMarkup, invokerMarkup, planBarMarkup, spinnerMarkup } from './avatar'
 import { formatDuration, formatTokens, modelLabel, plural, stepLabel, tokensOf } from './format'
-import { applyToPlan, planProgress } from './plan'
+import { applyToPlan, planFromTool, planProgress } from './plan'
 import { labelOf, ORB_COLOR, orbAvatar, orbOf, roleOf, ROLES } from './orbs'
 import type { Role } from './orbs'
 
@@ -13,6 +13,15 @@ const TITLE = 'Invoker'
 const STEPS_KEPT = 100
 const SHOWN_STEPS = 3
 const PLAN_TOOLS = ['TaskCreate', 'TaskUpdate', 'TodoWrite']
+// The desktop app has no TodoWrite: the Invoker brings its own plan tool, and
+// reads Helper Desk's too when that one reaches it.
+const PLAN_TOOL = 'mcp__spectree__plan'
+const HELPER_PLAN_TOOL = 'mcp__helper-desk__plan'
+const PLAN_PROMPT =
+  'Your to-do list is the mcp__spectree__plan tool; the user watches it as a progress bar in the Invoker panel. ' +
+  'For any task that needs 2 or more steps or tool calls, call it first, before other tools, with a short title and every step in order, the first one in_progress. ' +
+  'Call it again with the full list each time a step finishes or a new one starts, and mark the last step completed before your final answer. ' +
+  'A step that dispatches subagents is one step. Skip it only for a one-line answer with no tool calls.'
 
 // Change a tag when the stored shape changes: an earlier value is then read
 // as the initial one instead of breaking the drawing.
@@ -109,6 +118,33 @@ export const register: Register = on => {
       name: 'invoker-desk',
       description: 'Abre o painel do Invoker: o plano em andamento e os subagentes',
     })
+    await $.tool.register({
+      name: 'plan',
+      description:
+        'Save the plan for the job in front of you: a short title and the steps in order, each pending, in_progress or completed. ' +
+        'It draws the progress bar of the Invoker panel. Send the whole list every time.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'A short name for the job, a few words.' },
+          steps: {
+            type: 'array',
+            description: 'Every step, in order.',
+            items: {
+              type: 'object',
+              properties: {
+                text: { type: 'string', description: 'The step in a few plain words.' },
+                status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
+              },
+              required: ['text', 'status'],
+            },
+          },
+        },
+        required: ['steps'],
+      },
+      // In the prompt's tool list: a tool behind ToolSearch never gets called.
+      isDeferred: false,
+    }).catch(error => logFailure($, error))
     // The clock starts here only in a squad project; elsewhere the first
     // dispatch starts it, so a session that never orchestrates pays nothing.
     if (await isSpectreeProject($, e.cwd)) {
@@ -139,16 +175,38 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     const id = e.agentId
+    if (e.tool === PLAN_TOOL) {
+      if (id) return { result: 'Only the main loop keeps a plan. Carry on with your task.' }
+      const input = (key: string) => (e as unknown as Record<string, unknown>)[key]
+      let said = 'Plan not saved: something went wrong. Carry on.'
+      await update($, plan, current => {
+        const taken = planFromTool(current, input)
+        said = taken.said
+        return taken.plan
+      }).catch(error => logFailure($, error))
+      return { result: said }
+    }
     // An observer: whatever happens to the bookkeeping, the call goes on.
     if (id) await recordStep($, id, stepLabel(String(e.tool), e as unknown as Record<string, unknown>)).catch(error => logFailure($, error))
 
     const answered = await next(e)
     // The plan bar follows the main loop's own task list; a subagent's is its own.
-    if (!id && PLAN_TOOLS.includes(String(e.tool)) && answered.result !== undefined && !answered.isError) {
+    if (!id && answered.result !== undefined && !answered.isError) {
       const input = (key: string) => (e as unknown as Record<string, unknown>)[key]
-      await update($, plan, current => applyToPlan(current, String(e.tool), input, answered.result)).catch(error => logFailure($, error))
+      if (PLAN_TOOLS.includes(String(e.tool))) {
+        await update($, plan, current => applyToPlan(current, String(e.tool), input, answered.result)).catch(error => logFailure($, error))
+      } else if (e.tool === HELPER_PLAN_TOOL && /^Plan saved/.test(String(answered.result))) {
+        await update($, plan, current => planFromTool(current, input).plan).catch(error => logFailure($, error))
+      }
     }
     return answered
+  })
+
+  // The plan tool's instruction, for the main loop only.
+  on('prompt.compose', async ($, e, next) => {
+    const composed = await next(e)
+    if (e.traits.includes('teammate') || e.traits.includes('bare')) return composed
+    return { sections: [...composed.sections, { id: 'spectree:plan', text: PLAN_PROMPT, scope: 'session' as const }] }
   })
 
   // A subagent's effort is known only from its requests: the card shows the last one's.
@@ -213,9 +271,9 @@ export const register: Register = on => {
       ) : (
         <Box flexDirection="column" borderStyle="round" borderColor={ORB_COLOR.wex.mid} paddingX={1}>
           <Box flexDirection="row" gap={1} alignItems="center">
-            <Box flexShrink={0}>
-              <Text color={ORB_COLOR.wex.text} weight="semibold">
-                Plano
+            <Box flexShrink={1} minWidth={0}>
+              <Text color={ORB_COLOR.wex.text} weight="semibold" wrap="truncate-end">
+                {progress.title}
               </Text>
             </Box>
             <Box flexGrow={1} flexShrink={1} minWidth={0}>
