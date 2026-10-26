@@ -64,7 +64,16 @@ export function nest(art: string, x: number, y: number, w: number, h: number): s
 // One orb drawn at (cx, cy): a glow, then the Founder's painting of the orb,
 // traced, cut round. Without a painting, a sphere and a swirl that tells the three
 // apart without colour (a spiral, a bolt, a flame).
-export function orbMarkup(kind: OrbKind, cx: number, cy: number, r: number, gid: string, isActive: boolean, size: ArtSize = 'small'): string {
+export function orbMarkup(
+  kind: OrbKind,
+  cx: number,
+  cy: number,
+  r: number,
+  gid: string,
+  isActive: boolean,
+  size: ArtSize = 'small',
+  isShared = size === 'small',
+): string {
   const c = ORB_COLOR[kind]
   const s = r / 10
   const mark =
@@ -86,7 +95,7 @@ export function orbMarkup(kind: OrbKind, cx: number, cy: number, r: number, gid:
     // defs, so six orbs cost three drawings; the vector sphere beneath shows
     // only if a surface drops the reference.
     const drawn =
-      size === 'small'
+      isShared
         ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/><use href="#art-${kind}" transform="translate(${cx - d / 2} ${cy - d / 2}) scale(${d})"/>`
         : nest(art, cx - d / 2, cy - d / 2, d, d)
     return glow + `<g clip-path="url(#round)" filter="url(#soften)">${drawn}</g>`
@@ -100,12 +109,14 @@ const BLUR =
   '<filter id="soften"><feGaussianBlur stdDeviation="0.35"/></filter>' +
   '<clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.5"/></clipPath>'
 
-// The small avatar of one subagent's card.
-export function orbAvatar(kind: OrbKind, isActive: boolean): string {
+// The small avatar of one subagent's card. A finished card takes the small
+// tracing, some 8 thousand characters against 50: the pane redraws every card
+// each second, and a long session finishes dozens.
+export function orbAvatar(kind: OrbKind, isActive: boolean, size: ArtSize = 'large'): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="40" height="40">` +
     `<defs>${BLUR}${gradient(kind, `g-${kind}`)}</defs>` +
-    orbMarkup(kind, 24, 24, artOf(kind, 'large') ? 14 : 9, `g-${kind}`, isActive, 'large') +
+    orbMarkup(kind, 24, 24, artOf(kind, 'large') ? 14 : 9, `g-${kind}`, isActive, size, false) +
     `</svg>`
   )
 }

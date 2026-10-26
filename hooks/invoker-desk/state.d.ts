@@ -30,6 +30,8 @@ export type Plan = { title?: string; tasks: PlanTask[] }
 export type DeskUi = {
   isRunningCollapsed: boolean
   isFinishedCollapsed: boolean
+  // Every finished card shown, not only the last few.
+  isFinishedWhole: boolean
   expanded: string[]
   isAutoOpened: boolean
 }
