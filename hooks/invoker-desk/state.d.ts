@@ -24,7 +24,8 @@ export type PlanTask = {
   status: 'pending' | 'in_progress' | 'completed'
 }
 
-export type Plan = { tasks: PlanTask[] }
+// The title is what the plan tool names the job; a task tool's list has none.
+export type Plan = { title?: string; tasks: PlanTask[] }
 
 export type DeskUi = {
   isRunningCollapsed: boolean

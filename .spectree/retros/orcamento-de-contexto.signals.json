@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 109,
+    "title": "Orçamento de contexto: menos chamadas por missão (tarefa 37) — v1.76.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/109",
+    "opened": "2026-10-26T11:28:25Z",
+    "merged": "2026-10-26T11:32:10Z"
+  },
+  "signals": {
+    "open_minutes": 4,
+    "commits": 3,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.76.0",
+    "archived": [
+      "docs/changes/archive/2026-10-26-orcamento-de-contexto/proposal.md"
+    ]
+  },
+  "friction": "- O card do Architect no Codex estourou o teto por 7 bytes na primeira build. A frase foi encurtada, e o card fica a 16 bytes do teto (R-004, sexta ocorrência).\n- Depois da primeira revisão houve dois commits, ambos de redação, para responder a Nits.\n- A medição que motivou a mudança está fora do git: discovery na thread do projeto, com o analisador de transcripts rodado pelo Founder na máquina dele.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

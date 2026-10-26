@@ -41,7 +41,15 @@ function engine(on: any, agentId: string, model = 'model') {
   on('agent.spawn', (_: unknown, e: any) => ({ model, agentId: String(e.tool_use_id ?? '').replace(/^tu-/, '') || agentId }))
   // A TaskCreate answers the id of the task it made, numbered from 1.
   let created = 0
-  on('tool.call', (_: unknown, e: any) => ({ result: e.tool === 'TaskCreate' ? { task: { id: String(++created), subject: e.subject } } : {} }))
+  // Helper Desk's plan tool answers as that plugin does.
+  on('tool.call', (_: unknown, e: any) => ({
+    result:
+      e.tool === 'TaskCreate'
+        ? { task: { id: String(++created), subject: e.subject } }
+        : e.tool === 'mcp__helper-desk__plan'
+          ? `Plan saved: 0 of ${e.steps.length} steps done.`
+          : {},
+  }))
   on('turn.complete', (_: unknown, e: any) => ({ text: e.answer }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('ui.status', () => ({ value: {} }))
@@ -261,5 +269,85 @@ test('a running card heads with the step under way and the three orbs turning', 
   expect(spinner).toContain('viewBox="0 0 16 16"')
   expect(spinner).toContain('animateTransform')
   for (const mid of ['#38b6ff', '#e040fb', '#ff8a1f']) expect(spinner).toContain(mid)
+  await ui.unmount()
+})
+
+test('the Invoker keeps its own plan tool: the main loop saves a titled plan, a subagent is told no', async ($, on) => {
+  engine(on, 'x')
+  on('prompt.compose', () => ({ sections: [] }))
+  on('command.register', () => ({ value: { command: 'invoker-desk' } }))
+  on('tool.register', () => ({ value: { tool: 'mcp__spectree__plan' } }))
+  on('fs.exists', () => ({ value: false }))
+  on('session.start', (_: unknown, e: any) => ({ cwd: e.cwd }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true } as any)
+  const steps = [
+    { text: 'Branch from main', status: 'completed' },
+    { text: 'Architect proposal', status: 'in_progress' },
+    { text: 'Gate 1', status: 'pending' },
+  ]
+  const said = await $.tool.call({ tool: 'mcp__spectree__plan', title: 'role-integrity — início', steps } as any)
+  expect(String((said as any).result)).toBe('Plan saved: 1 of 3 steps done.')
+  const refused = await $.tool.call({ tool: 'mcp__spectree__plan', steps: [{ text: 'x' }] } as any)
+  expect(String((refused as any).result)).toMatch(/^Plan not saved: "x" needs a status/)
+  const inner = await $.tool.call({ tool: 'mcp__spectree__plan', steps: [], agentId: 'd1' } as any)
+  expect(String((inner as any).deny)).toMatch(/^Only the main loop keeps a plan/)
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect(await ui.find({ type: 'Text', text: /^role-integrity — início$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Tarefas 1\/3 · 33%$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Agora: Architect proposal$/ })).toBeDefined()
+    await ui.unmount()
+  }
+
+  // The model is told to keep it, on the main loop and not on a teammate's.
+  const main = await ($ as any).prompt.compose({ model: 'm', promptModel: 'm', surfaces: ['desktop'], tools: [], outputStyle: null, traits: [] })
+  expect(main.sections.map((one: any) => one.id)).toContain('spectree:plan')
+  const mate = await ($ as any).prompt.compose({ model: 'm', promptModel: 'm', surfaces: ['desktop'], tools: [], outputStyle: null, traits: ['teammate'] })
+  expect(mate.sections).toHaveLength(0)
+})
+
+test("Helper Desk's plan tool feeds the bar when its call reaches the panel", async ($, on) => {
+  engine(on, 'x')
+  const steps = [
+    { text: 'Pull the numbers', status: 'completed' },
+    { text: 'Write the summary', status: 'pending' },
+  ]
+  await $.tool.call({ tool: 'mcp__helper-desk__plan', title: 'Weekly report', steps } as any)
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /^Weekly report$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^A seguir: Write the summary$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('with no plan tool registered, the prompt does not name one', async ($, on) => {
+  engine(on, 'x')
+  on('prompt.compose', () => ({ sections: [] }))
+  on('command.register', () => ({ value: { command: 'invoker-desk' } }))
+  on('tool.register', () => {
+    throw new Error('refused')
+  })
+  on('fs.exists', () => ({ value: false }))
+  on('session.start', (_: unknown, e: any) => ({ cwd: e.cwd }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true } as any)
+
+  const composed = await ($ as any).prompt.compose({ model: 'm', promptModel: 'm', surfaces: ['desktop'], tools: [], outputStyle: null, traits: [] })
+  expect(composed.sections).toHaveLength(0)
+})
+
+test('a plan after a finished one starts untitled, and a todo list carries no title', async ($, on) => {
+  engine(on, 'x')
+  await $.tool.call({ tool: 'mcp__spectree__plan', title: 'role-integrity', steps: [{ text: 'a', status: 'completed' }] } as any)
+  await $.tool.call({ tool: 'mcp__spectree__plan', steps: [{ text: 'b', status: 'in_progress' }] } as any)
+  let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /^Plano$/ })).toBeDefined()
+  await ui.unmount()
+
+  await $.tool.call({ tool: 'mcp__spectree__plan', title: 'deck', steps: [{ text: 'c', status: 'in_progress' }] } as any)
+  await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'd', status: 'pending', activeForm: 'Doing d' }] } as any)
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /^deck$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^Plano$/ })).toBeDefined()
   await ui.unmount()
 })

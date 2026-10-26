@@ -39,9 +39,13 @@ function orbProblems(orbsSource, cards) {
   return problems;
 }
 
-// The panel only watches the session: nothing it sees leaves it.
+// The panel only watches the session: nothing it sees leaves it. Declaring its
+// own plan tool runs nothing (the panel's hook answers it in process); calling
+// a tool does.
 const networkProblems = (sources) =>
-  Object.entries(sources).filter(([, s]) => /\$\.(http|process|tool|mcp|model|telemetry)\b|\bfetch\(/.test(s)).map(([f]) => `${f}: reaches the network, a process or a tool`);
+  Object.entries(sources)
+    .filter(([, s]) => /\$\.(http|process|mcp|model|telemetry)\b|\$\.tool\b(?!\.register\()|\bfetch\(/.test(s))
+    .map(([f]) => `${f}: reaches the network, a process or a tool`);
 
 // The portrait and the three orb paintings ride inside the avatar's SVG as traced drawings: each is
 // empty (the vector drawing) or `<svg viewBox="0 0 W H">` holding only filled paths. The desktop app
@@ -89,6 +93,10 @@ test('each guard rejects the state it exists to catch', () => {
   assert.equal(stateProblems('spectree', "atom({ plugin: 'invoker-desk', key: 'x' })", "\n    'invoker-desk': {").length, 2);
   assert.ok(orbProblems("{ role: 'quality-engineer', label: 'QE', orb: 'wex' }", ['quality-engineer', 'platform-engineer']).includes('orbs.ts: no orb for agents/platform-engineer.md'));
   assert.deepEqual(networkProblems({ 'a.ts': 'await $.http.fetch(url)' }), ['a.ts: reaches the network, a process or a tool']);
+  assert.deepEqual(networkProblems({ 'a.ts': 'await $.tool.call({ tool: "Bash" })' }), ['a.ts: reaches the network, a process or a tool']);
+  assert.deepEqual(networkProblems({ 'a.ts': 'const { call } = $.tool; await call({ tool: "Bash" })' }), ['a.ts: reaches the network, a process or a tool']);
+  assert.deepEqual(networkProblems({ 'a.ts': 'await $.tool.registerX({ name: "plan" })' }), ['a.ts: reaches the network, a process or a tool']);
+  assert.deepEqual(networkProblems({ 'a.ts': 'await $.tool.register({ name: "plan" })' }), []);
   assert.equal(networkProblems({ 'b.ts': "await $.tool.call({ tool: 'Bash' })", 'c.ts': '$.telemetry.log(x)' }).length, 2);
   const portrait = (v) => artProblems(v, ORBS_OK).length;
   assert.equal(portrait("export const PORTRAIT = 'data:image/jpeg;base64,/9j/AA=='"), 1);
