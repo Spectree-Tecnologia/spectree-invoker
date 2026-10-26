@@ -103,6 +103,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 34 | Harness do pass 2 | Integrada, v1.73.0: `setup_cache` na prova de mutação copia a instalação de uma entrada fora do checkout, com a baseline rodando sempre; `docs/reliability.md` mostra o banco por template, [proposta](changes/archive/2026-10-25-harness-pass2/proposal.md) | — |
 | 35 | Contraexemplo concorrente no plano de verificação | Integrada, v1.74.0: o plano em desenho declara as regras de unicidade e de contador em `concurrent_invariants`, cada uma provada por um check com contraexemplo concorrente, [proposta](changes/archive/2026-10-25-contraexemplo-concorrente/proposal.md) | D-022 |
 | 36 | Despacho do pass 2 com independência e escopo final | Integrada, v1.75.0: `work.mjs start --phase pass2` exige o brief com a independência e o escopo final, e `finish` recusa um escopo que mudou depois do início, [proposta](changes/archive/2026-10-25-despacho-pass2/proposal.md) | D-023 |
+| 37 | Orçamento de contexto: menos chamadas por missão | Integrada, v1.76.0: no proposal a leitura obrigatória do despacho é teto para o Architect, e o pass 1 do Quality Engineer escreve e roda os testes em lote, [proposta](changes/archive/2026-10-26-orcamento-de-contexto/proposal.md) | D-024 |
 
 ## Itens com aprovação permanente
 
@@ -116,6 +117,8 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-26:** Founder autorizou a tarefa 37, a partir da discovery de custo de tokens dos subagentes,
+  só com as regras que cortam chamadas sem deixar o pipeline mais lento; a segmentação de missões ficou no D-024.
 - **2026-10-25:** Founder autorizou as tarefas 35 e 36, nessa ordem e depois da série 32 a 34, a partir
   dos desvios da retro da change passkeys do SYND: contraexemplo concorrente no plano e despacho do pass 2.
 - **2026-10-25:** Founder autorizou as tarefas 32 a 34 em série, a partir do relatório do Invoker do SYND
