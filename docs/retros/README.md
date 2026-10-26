@@ -40,15 +40,17 @@ lugar; cada correção entra por uma mudança própria.
 | R-008 | `information-access · ambiente · node-abaixo-do-piso` | 7 | Aberto: a sessão da tarefa 11d voltou ao Node 22.22.0; o script de ambiente não vale para toda sessão nova |
 | R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única e na tarefa 22 para o núcleo (`core_normative`); cards seguem no [D-017](../DEFERRED.md) |
 | R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
-| R-011 | `information-access · mod · sem-superficie-real` | 7 | Aberto: o v1.67.0 foi conferido pelo Founder no app desktop depois do merge; o giro do v1.68.0 e o brilho da barra do v1.70.0 seguem sem conferência; ver o app antes do merge de um mod segue devido |
+| R-011 | `information-access · mod · sem-superficie-real` | 8 | Aberto: o v1.67.0 foi conferido pelo Founder no app desktop depois do merge; o giro do v1.68.0, o brilho da barra do v1.70.0 e o plano próprio do v1.77.0 seguem sem conferência; ver o app antes do merge de um mod segue devido |
 | R-012 | `information-access · executor · fixture-sem-run-real` | 3 | Aberto: o trailer `system` do 2.1.302, o registro de cobertura do pass 2 (#106) e o cache da prova de mutação (#107) foram testados em fixture; a confirmação é o próximo run real do consumidor |
 | R-013 | `information-access · ambiente · dependencias-nao-instaladas` | 2 | Aberto: as sessões do #104 e do #105 rodaram o check sem `npm ci`; primo do R-008 |
 | R-014 | `automated-checks · executor · janela-sem-teste-discriminante` | 1 | Aberto: a lista de ações da janela de repair do #104 não tem teste que a discrimine |
 | R-015 | `review-standards · proposta · identidade-depois-do-codigo` | 3 | Aberto, terceira recorrência: a terceira rodada do #108 refez a identidade do escopo depois do código; pede mudança própria pelo `retro-melhorias` |
 | R-016 | `automated-checks · pass2 · nits-da-revisao-final` | 2 | Aberto: três Nits da revisão final do #106 e três do #107 |
+| R-017 | `automated-checks · mod · sessao-longa-sem-teste` | 1 | Pago na tarefa 39: o painel em sessão longa tem teste com 60 subagentes |
 
 ## Retros
 
+- [2026-10-26 — `painel-plano-proprio` (#110)](2026-10-26-painel-plano-proprio.md)
 - [2026-10-26 — `orcamento-de-contexto` (#109)](2026-10-26-orcamento-de-contexto.md)
 - [2026-10-25 — `despacho-pass2` (#108)](2026-10-25-despacho-pass2.md)
 - [2026-10-25 — `contraexemplo-concorrente` (#105)](2026-10-25-contraexemplo-concorrente.md)

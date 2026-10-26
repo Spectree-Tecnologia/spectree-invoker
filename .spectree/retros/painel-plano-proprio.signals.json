@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 110,
+    "title": "Painel: plano próprio do Invoker, com ferramenta, instrução no prompt e título na barra (tarefa 38) — v1.77.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/110",
+    "opened": "2026-10-26T11:55:44Z",
+    "merged": "2026-10-26T21:31:05Z"
+  },
+  "signals": {
+    "open_minutes": 575,
+    "commits": 2,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.77.0",
+    "archived": [
+      "docs/changes/archive/2026-10-26-painel-plano-proprio/proposal.md"
+    ]
+  },
+  "friction": "- Não se sabe se o modelo usa a ferramenta sem os lembretes que o Helper Desk envia. A prova é a próxima sessão do Founder com o Helper Desk desligado (R-011).",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

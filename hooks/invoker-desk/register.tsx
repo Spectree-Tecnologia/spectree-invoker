@@ -12,6 +12,10 @@ const PANE = 'invoker-desk'
 const TITLE = 'Invoker'
 const STEPS_KEPT = 100
 const SHOWN_STEPS = 3
+// The pane redraws whole every second: a long session's finished cards are
+// shown the last few at a time and kept up to a bound.
+const SHOWN_FINISHED = 5
+const FINISHED_KEPT = 50
 const PLAN_TOOLS = ['TaskCreate', 'TaskUpdate', 'TodoWrite']
 // The desktop app has no TodoWrite: the Invoker brings its own plan tool, and
 // reads Helper Desk's too when that one reaches it.
@@ -28,8 +32,8 @@ const PLAN_PROMPT =
 const agents = atom({ plugin: 'spectree', key: 'agents' } as const, {}, { shape: 'agents-1' })
 const ui = atom(
   { plugin: 'spectree', key: 'ui' } as const,
-  { isRunningCollapsed: false, isFinishedCollapsed: false, expanded: [], isAutoOpened: false },
-  { shape: 'ui-2' },
+  { isRunningCollapsed: false, isFinishedCollapsed: false, isFinishedWhole: false, expanded: [], isAutoOpened: false },
+  { shape: 'ui-3' },
 )
 const plan = atom({ plugin: 'spectree', key: 'plan' } as const, { tasks: [] }, { shape: 'plan-1' })
 const now = atom({ plugin: 'spectree', key: 'now' } as const, 0)
@@ -104,7 +108,11 @@ async function recordEnd($: EngineInterface, id: string, status: AgentStatus, to
   const list = await update($, agents, all => {
     const row = all[id]
     if (!row) return all
-    return { ...all, [id]: { ...row, status, endedAt: at, tokens: row.tokens + tokens } }
+    const next = { ...all, [id]: { ...row, status, endedAt: at, tokens: row.tokens + tokens } }
+    // Rows sit in the order they were dispatched: the oldest finished go first.
+    const finished = Object.values(next).filter(one => !isRunning(one))
+    for (const one of finished.slice(0, Math.max(0, finished.length - FINISHED_KEPT))) delete next[one.id]
+    return next
   })
   await syncClock($, list)
 }
@@ -248,7 +256,7 @@ export const register: Register = on => {
     const active = [...new Set(running.map(row => roleOf(row.type)).filter((r): r is Role => r !== null))]
     const isOrchestrating = running.length > 0
 
-    const toggle = (field: 'isRunningCollapsed' | 'isFinishedCollapsed') => () =>
+    const toggle = (field: 'isRunningCollapsed' | 'isFinishedCollapsed' | 'isFinishedWhole') => () =>
       update($, ui, v => ({ ...v, [field]: !v[field] }))
     const toggleSteps = (id: string) => () =>
       update($, ui, v => ({
@@ -329,7 +337,7 @@ export const register: Register = on => {
         <Box flexDirection="row" borderStyle="round" borderColor={ORB_COLOR[kind].mid} paddingX={1} gap={1} overflow="hidden">
           <Box flexDirection="column" justifyContent="center" flexShrink={0}>
             {Svg ? (
-              <Svg source={orbAvatar(kind, row.status === 'running')} alt={labelOf(row.type)} width={40} height={40} isInteractive />
+              <Svg source={orbAvatar(kind, row.status === 'running', row.status === 'running' ? 'large' : 'small')} alt={labelOf(row.type)} width={40} height={40} isInteractive />
             ) : (
               <Text color={color}>◉</Text>
             )}
@@ -396,6 +404,7 @@ export const register: Register = on => {
       rows: AgentRow[],
       field: 'isRunningCollapsed' | 'isFinishedCollapsed',
       color: string,
+      shown = rows.length,
     ) =>
       rows.length > 0 && (
         <Box flexDirection="column" gap={1}>
@@ -406,7 +415,12 @@ export const register: Register = on => {
               </Text>
             </Button>
           </Box>
-          {!view[field] && rows.map(card)}
+          {!view[field] && rows.slice(0, shown).map(card)}
+          {!view[field] && rows.length > SHOWN_FINISHED && field === 'isFinishedCollapsed' && (
+            <Button key="finished-whole" plain dimColor onPress={toggle('isFinishedWhole')}>
+              {view.isFinishedWhole ? `▾ Só os últimos ${SHOWN_FINISHED}` : `▸ Todos os ${rows.length} concluídos`}
+            </Button>
+          )}
         </Box>
       )
 
@@ -442,7 +456,7 @@ export const register: Register = on => {
 
         {list.length === 0 && <Text dimColor>Nenhum subagente despachado ainda.</Text>}
         {section('Em execução', running, 'isRunningCollapsed', ORB_COLOR.quas.mid)}
-        {section('Concluídos', finished, 'isFinishedCollapsed', ORB_COLOR.exort.mid)}
+        {section('Concluídos', finished, 'isFinishedCollapsed', ORB_COLOR.exort.mid, view.isFinishedWhole ? finished.length : SHOWN_FINISHED)}
       </Box>
     )
   })
