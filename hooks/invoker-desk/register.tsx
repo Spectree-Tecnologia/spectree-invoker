@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { AgentRow, AgentStatus, AgentSteps, DeskUi } from './state'
-import { barMarkup, invokerMarkup, planBarMarkup, spinnerMarkup } from './avatar'
+import { invokerMarkup, planBarMarkup, spinnerMarkup } from './avatar'
 import { formatDuration, formatTokens, modelLabel, plural, stepLabel, tokensOf } from './format'
 import { applyToPlan, planFromTool, planProgress } from './plan'
 import { labelOf, ORB_COLOR, orbAvatar, orbOf, roleOf, ROLES } from './orbs'
@@ -358,8 +358,7 @@ export const register: Register = on => {
       const steps = isOpen ? done : done.slice(-SHOWN_STEPS)
       const current = labels[labels.length - 1]
       const elapsed = (row.endedAt ?? at) - row.startedAt
-      const state = row.status === 'running' ? 'running' : row.status === 'completed' ? 'done' : 'failed'
-      // A frame per drawing is only for what moves: a finished card's avatar and bar are images.
+      // A frame per drawing is only for what moves: a finished card's avatar is an image.
       const isMoving = row.status === 'running'
       const headline =
         row.status === 'running'
@@ -374,7 +373,8 @@ export const register: Register = on => {
       const headColor = row.status === 'completed' ? 'success' : row.status === 'running' ? color : 'error'
 
       return (
-        <Box flexDirection="row" borderStyle="round" borderColor={ORB_COLOR[kind].mid} paddingX={1} gap={1} overflow="hidden">
+        // Clean: every card is framed in the dim text colour; the orb alone says the role.
+        <Box flexDirection="row" borderStyle="round" borderColor="inactive" paddingX={1} gap={1} overflow="hidden">
           <Box flexDirection="column" justifyContent="center" flexShrink={0}>
             {Svg ? (
               <Svg source={orbAvatar(kind, isMoving, 'small')} alt={labelOf(row.type)} width={40} height={40} isInteractive={isMoving} />
@@ -424,11 +424,6 @@ export const register: Register = on => {
                 {`  ${step}`}
               </Text>
             ))}
-            {Svg ? (
-              <Svg source={barMarkup(color, state)} alt={isMoving ? 'Progresso' : headline} height={6} isInteractive={isMoving} />
-            ) : (
-              <Text color={state === 'failed' ? 'error' : color}>{state === 'running' ? '━━━━━━━━──────' : '━━━━━━━━━━━━━━'}</Text>
-            )}
             {done.length > SHOWN_STEPS && (
               <Button key={`steps-${row.id}`} plain dimColor onPress={toggleSteps(row.id)}>
                 {isOpen ? '▾ Menos passos' : `▸ Mais ${done.length - SHOWN_STEPS} passos`}
@@ -493,7 +488,7 @@ export const register: Register = on => {
 
         {list.length === 0 && <Text dimColor>Nenhum subagente despachado ainda.</Text>}
         {section('Em execução', running, 'isRunningCollapsed', ORB_COLOR.quas.mid)}
-        {section('Concluídos', finished, 'isFinishedCollapsed', ORB_COLOR.exort.mid, shownFinished)}
+        {section('Concluídos', finished, 'isFinishedCollapsed', 'success', shownFinished)}
       </Box>
     )
   }).catch(($, e, next) => {

@@ -163,7 +163,7 @@ test('a long session stays in budget: each step writes its own subagent, the pan
   expect(sources.filter(source => source.length > 20_000).length).toBe(1)
   expect(sources.reduce((sum, source) => sum + source.length, 0)).toBeLessThan(250_000)
   // A frame only for what moves: the Invoker and the avatar, spinner and bar of each running card.
-  expect(svgs.filter(one => one?.props?.isInteractive).length).toBe(1 + 3 * 8)
+  expect(svgs.filter(one => one?.props?.isInteractive).length).toBe(1 + 2 * 8)
   expect(await ui.find({ type: 'Text', text: /Concluídos · 50/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^early run$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^module 59$/ })).toBeDefined()
@@ -261,7 +261,7 @@ test('a todo list fills the plan bar too, the next task named while none is unde
   await ui.unmount()
 })
 
-test('a card is bordered in its orb colour, the sections in Quas and Exort, and a fetch shows its site', async ($, on) => {
+test('a card is bordered in the dim text colour, the finished section in the done green, and a fetch shows its site', async ($, on) => {
   engine(on, 'i1')
   await spawn($, 'i1', 'spectree:integration-engineer', 'IE: WebAuthn research')
   await $.tool.call({ tool: 'WebFetch', url: 'https://www.w3.org/TR/webauthn-3/', prompt: 'read', agentId: 'i1' } as any)
@@ -275,10 +275,15 @@ test('a card is bordered in its orb colour, the sections in Quas and Exort, and 
     expect(await ui.find({ type: 'Text', text: /Opening www\.w3\.org$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Searching: passkeys conditional ui/ })).toBeDefined()
     const boxes = ((await (ui as any).findAll({ type: 'Box' })) as any[]).map(one => one?.props ?? {})
-    expect(boxes.some(one => one.borderColor === '#38b6ff')).toBe(true)
+    // Clean: every card in the dim text colour, the running section in Quas, the finished one in the done green.
+    const borders = boxes.filter(one => one.borderStyle).map(one => one.borderColor)
+    expect(borders.length).toBe(2)
+    expect(borders.every(color => color === 'inactive')).toBe(true)
     expect(boxes.some(one => one.backgroundColor === '#38b6ff')).toBe(true)
-    expect(boxes.some(one => one.borderColor === '#e040fb')).toBe(true)
-    expect(boxes.some(one => one.backgroundColor === '#ff8a1f')).toBe(true)
+    expect(boxes.some(one => one.backgroundColor === 'success')).toBe(true)
+    // No progress bar on a card.
+    expect(((await (ui as any).findAll({ type: 'Svg' })) as any[]).some(one => /Progresso|Concluído ·/.test(one?.props?.alt ?? ''))).toBe(false)
+    expect(await ui.find({ type: 'Text', text: /━━━/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /Opening example\.com$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /secret/ })).toBeUndefined()
     await ui.unmount()
@@ -294,7 +299,7 @@ test('a long step is cut inside its card and the avatar keeps its place', async 
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   const boxes = ((await (ui as any).findAll({ type: 'Box' })) as any[]).map(one => one?.props ?? {})
   // The card clips what does not fit, the avatar never shrinks, the text column may.
-  expect(boxes.some(one => one.borderColor === '#38b6ff' && one.overflow === 'hidden')).toBe(true)
+  expect(boxes.some(one => one.borderColor === 'inactive' && one.overflow === 'hidden')).toBe(true)
   const avatar = ((await (ui as any).findAll({ type: 'Box' })) as any[]).find(one =>
     (one?.children ?? []).some((child: any) => child?.type === 'Svg' && child?.props?.alt === 'Solutions Architect'),
   )
