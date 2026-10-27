@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, AgentStatus, DeskUi } from './state'
+import type { AgentRow, AgentStatus, AgentSteps, DeskUi } from './state'
 import { barMarkup, invokerMarkup, planBarMarkup, spinnerMarkup } from './avatar'
 import { formatDuration, formatTokens, modelLabel, plural, stepLabel, tokensOf } from './format'
 import { applyToPlan, planFromTool, planProgress } from './plan'
@@ -10,7 +10,8 @@ import type { Role } from './orbs'
 
 const PANE = 'invoker-desk'
 const TITLE = 'Invoker'
-const STEPS_KEPT = 100
+// Steps past the last few show only when a card is expanded.
+const STEPS_KEPT = 30
 const SHOWN_STEPS = 3
 // The pane redraws whole every second: a long session's finished cards are
 // shown the last few at a time and kept up to a bound.
@@ -29,7 +30,8 @@ const PLAN_PROMPT =
 
 // Change a tag when the stored shape changes: an earlier value is then read
 // as the initial one instead of breaking the drawing.
-const agents = atom({ plugin: 'spectree', key: 'agents' } as const, {}, { shape: 'agents-1' })
+const agents = atom({ plugin: 'spectree', key: 'agents' } as const, {}, { shape: 'agents-2' })
+const NO_STEPS: AgentSteps = { count: 0, labels: [] }
 const ui = atom(
   { plugin: 'spectree', key: 'ui' } as const,
   { isRunningCollapsed: false, isFinishedCollapsed: false, isFinishedWhole: false, expanded: [], isAutoOpened: false },
@@ -46,15 +48,22 @@ let hasPlanTool = false
 const isRunning = (row: AgentRow) => row.status === 'running'
 
 // A reload starts the module over; the next event that needs the clock
-// starts it again. It ticks once a second for the session time and the
-// running cards' durations.
+// starts it again. It ticks once a second for the running cards' durations,
+// and only while one runs: each tick redraws the whole pane.
 let tick: { cancel: () => void } | null = null
+
+// The last effort recorded per subagent, so a request that repeats it reads nothing.
+const efforts = new Map<string, string>()
 
 async function syncClock($: EngineInterface, list: Agents) {
   const at = await $.clock.now()
   await update($, now, () => at)
-  if (!tick) tick = $.clock.every(1000, () => void $.clock.now().then(t => update($, now, () => t)))
   const running = Object.values(list).filter(isRunning).length
+  if (running > 0 && !tick) tick = $.clock.every(1000, () => void $.clock.now().then(t => update($, now, () => t)))
+  if (running === 0 && tick) {
+    tick.cancel()
+    tick = null
+  }
   $.ui.status(running > 0 ? `Invoker orquestrando ${plural(running, 'subagente', 'subagentes')}` : undefined)
 }
 
@@ -82,29 +91,31 @@ async function recordSpawn($: EngineInterface, id: string, description: string, 
     const known = all[id]
     const row: AgentRow = known
       ? { ...known, status: 'running', endedAt: null, model }
-      : { id, description: description || labelOf(type), type, model, status: 'running', startedAt: at, endedAt: null, tokens: 0, steps: [], stepCount: 0 }
+      : { id, description: description || labelOf(type), type, model, status: 'running', startedAt: at, endedAt: null, tokens: 0 }
     return { ...all, [id]: row }
   })
   await syncClock($, list)
   if (roleOf(type)) await openWhereSidebar($)
 }
 
+// A step writes its own subagent's steps and nothing else, whatever the session has done.
 async function recordStep($: EngineInterface, id: string, label: string) {
-  await update($, agents, all => {
-    const row = all[id]
-    if (!row) return all
-    return { ...all, [id]: { ...row, steps: [...row.steps, label].slice(-STEPS_KEPT), stepCount: row.stepCount + 1 } }
-  })
+  await update($, { plugin: 'spectree', key: 'steps', id } as const, (steps = NO_STEPS) => ({
+    count: steps.count + 1,
+    labels: [...steps.labels, label].slice(-STEPS_KEPT),
+  }))
 }
 
 async function recordEffort($: EngineInterface, id: string, effort: string) {
+  if (efforts.get(id) === effort) return
   const row = (await read($, agents))[id]
-  if (!row || row.effort === effort) return
-  await update($, agents, all => (all[id] ? { ...all, [id]: { ...all[id], effort } } : all))
+  if (row && row.effort !== effort) await update($, agents, all => (all[id] ? { ...all, [id]: { ...all[id], effort } } : all))
+  efforts.set(id, effort)
 }
 
 async function recordEnd($: EngineInterface, id: string, status: AgentStatus, tokens: number) {
   const at = await $.clock.now()
+  const before = await read($, agents)
   const list = await update($, agents, all => {
     const row = all[id]
     if (!row) return all
@@ -116,8 +127,13 @@ async function recordEnd($: EngineInterface, id: string, status: AgentStatus, to
     for (const one of finished.slice(0, Math.max(0, finished.length - FINISHED_KEPT))) delete next[one.id]
     return next
   })
-  // A card that left takes its open steps along.
-  if (Object.keys(list).length > FINISHED_KEPT) {
+  // A card that left takes its steps and its open toggle along.
+  const gone = Object.keys(before).filter(one => !(one in list))
+  for (const one of gone) {
+    await update($, { plugin: 'spectree', key: 'steps', id: one } as const, () => NO_STEPS)
+    efforts.delete(one)
+  }
+  if (gone.length > 0) {
     await update($, ui, v => (v.expanded.every(one => one in list) ? v : { ...v, expanded: v.expanded.filter(one => one in list) }))
   }
   await syncClock($, list)
@@ -262,6 +278,12 @@ export const register: Register = on => {
     const finished = list.filter(row => !isRunning(row)).sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0) || b.startedAt - a.startedAt)
     const active = [...new Set(running.map(row => roleOf(row.type)).filter((r): r is Role => r !== null))]
     const isOrchestrating = running.length > 0
+    const shownFinished = view.isFinishedWhole ? finished.length : SHOWN_FINISHED
+    // Only the cards on screen read their steps.
+    const shown = [...(view.isRunningCollapsed ? [] : running), ...(view.isFinishedCollapsed ? [] : finished.slice(0, shownFinished))]
+    const stepsBy = new Map(
+      await Promise.all(shown.map(async row => [row.id, (await read($, { plugin: 'spectree', key: 'steps', id: row.id } as const)) ?? NO_STEPS] as const)),
+    )
 
     const toggle = (field: 'isRunningCollapsed' | 'isFinishedCollapsed' | 'isFinishedWhole') => () =>
       update($, ui, v => ({ ...v, [field]: !v[field] }))
@@ -301,7 +323,12 @@ export const register: Register = on => {
             </Box>
             <Box flexGrow={1} flexShrink={1} minWidth={0}>
               {Svg ? (
-                <Svg source={planBarMarkup(progress.done, progress.total)} alt={`Tarefas ${progress.done} de ${progress.total}`} height={14} isInteractive />
+                <Svg
+                  source={planBarMarkup(progress.done, progress.total)}
+                  alt={`Tarefas ${progress.done} de ${progress.total}`}
+                  height={14}
+                  isInteractive={progress.done < progress.total}
+                />
               ) : (
                 <Text color={ORB_COLOR.wex.text}>{'━'.repeat(Math.round(progress.percent / 10)) + '─'.repeat(10 - Math.round(progress.percent / 10))}</Text>
               )}
@@ -323,28 +350,31 @@ export const register: Register = on => {
       const color = ORB_COLOR[kind].text
       const isOpen = view.expanded.includes(row.id)
       // A running card heads with the step under way; the list holds the ones before it.
-      const done = row.status === 'running' ? row.steps.slice(0, -1) : row.steps
+      const { count, labels } = stepsBy.get(row.id) ?? NO_STEPS
+      const done = row.status === 'running' ? labels.slice(0, -1) : labels
       const steps = isOpen ? done : done.slice(-SHOWN_STEPS)
-      const current = row.steps[row.steps.length - 1]
+      const current = labels[labels.length - 1]
       const elapsed = (row.endedAt ?? at) - row.startedAt
       const state = row.status === 'running' ? 'running' : row.status === 'completed' ? 'done' : 'failed'
+      // A frame per drawing is only for what moves: a finished card's avatar and bar are images.
+      const isMoving = row.status === 'running'
       const headline =
         row.status === 'running'
           ? current
-            ? `Passo ${row.stepCount} · ${current}`
+            ? `Passo ${count} · ${current}`
             : 'Invocando…'
           : row.status === 'completed'
-            ? `Concluído · ${plural(row.stepCount, 'passo', 'passos')}`
+            ? `Concluído · ${plural(count, 'passo', 'passos')}`
             : row.status === 'killed'
-              ? `Interrompido · ${plural(row.stepCount, 'passo', 'passos')}`
-              : `Falhou · ${plural(row.stepCount, 'passo', 'passos')}`
+              ? `Interrompido · ${plural(count, 'passo', 'passos')}`
+              : `Falhou · ${plural(count, 'passo', 'passos')}`
       const headColor = row.status === 'completed' ? 'success' : row.status === 'running' ? color : 'error'
 
       return (
         <Box flexDirection="row" borderStyle="round" borderColor={ORB_COLOR[kind].mid} paddingX={1} gap={1} overflow="hidden">
           <Box flexDirection="column" justifyContent="center" flexShrink={0}>
             {Svg ? (
-              <Svg source={orbAvatar(kind, row.status === 'running', row.status === 'running' ? 'large' : 'small')} alt={labelOf(row.type)} width={40} height={40} isInteractive />
+              <Svg source={orbAvatar(kind, isMoving, 'small')} alt={labelOf(row.type)} width={40} height={40} isInteractive={isMoving} />
             ) : (
               <Text color={color}>◉</Text>
             )}
@@ -392,13 +422,13 @@ export const register: Register = on => {
               </Text>
             ))}
             {Svg ? (
-              <Svg source={barMarkup(color, state)} alt={row.status === 'running' ? 'Progresso' : headline} height={6} isInteractive />
+              <Svg source={barMarkup(color, state)} alt={isMoving ? 'Progresso' : headline} height={6} isInteractive={isMoving} />
             ) : (
               <Text color={state === 'failed' ? 'error' : color}>{state === 'running' ? '━━━━━━━━──────' : '━━━━━━━━━━━━━━'}</Text>
             )}
             {done.length > SHOWN_STEPS && (
               <Button key={`steps-${row.id}`} plain dimColor onPress={toggleSteps(row.id)}>
-                {isOpen ? '▾ Menos passos' : `▸ Todos os ${row.stepCount} passos`}
+                {isOpen ? '▾ Menos passos' : `▸ Mais ${done.length - SHOWN_STEPS} passos`}
               </Button>
             )}
           </Box>
@@ -411,7 +441,7 @@ export const register: Register = on => {
       rows: AgentRow[],
       field: 'isRunningCollapsed' | 'isFinishedCollapsed',
       color: string,
-      shown = rows.length,
+      limit = rows.length,
     ) =>
       rows.length > 0 && (
         <Box flexDirection="column" gap={1}>
@@ -422,7 +452,7 @@ export const register: Register = on => {
               </Text>
             </Button>
           </Box>
-          {!view[field] && rows.slice(0, shown).map(card)}
+          {!view[field] && rows.slice(0, limit).map(card)}
           {!view[field] && rows.length > SHOWN_FINISHED && field === 'isFinishedCollapsed' && (
             <Button key="finished-whole" plain dimColor onPress={toggle('isFinishedWhole')}>
               {view.isFinishedWhole ? `▾ Só os últimos ${SHOWN_FINISHED}` : `▸ Todos os ${rows.length} concluídos`}
@@ -463,7 +493,17 @@ export const register: Register = on => {
 
         {list.length === 0 && <Text dimColor>Nenhum subagente despachado ainda.</Text>}
         {section('Em execução', running, 'isRunningCollapsed', ORB_COLOR.quas.mid)}
-        {section('Concluídos', finished, 'isFinishedCollapsed', ORB_COLOR.exort.mid, view.isFinishedWhole ? finished.length : SHOWN_FINISHED)}
+        {section('Concluídos', finished, 'isFinishedCollapsed', ORB_COLOR.exort.mid, shownFinished)}
+      </Box>
+    )
+  }).catch(($, e, next) => {
+    // A drawing that failed leaves a pane that says so, never a blank one.
+    logFailure($, `drawing failed (${next.error.kind}${next.error.message ? `: ${next.error.message}` : ''})`)
+    const { Box, Text } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="column" gap={1} paddingX={1}>
+        <Text weight="semibold">Painel do Invoker em recuperação</Text>
+        <Text dimColor>Os subagentes seguem rodando; o painel volta no próximo evento.</Text>
       </Box>
     )
   })

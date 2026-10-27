@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 111,
+    "title": "Painel do Invoker em sessão longa: cards concluídos leves, últimos 5 à vista, 50 guardados (tarefa 39) — v1.78.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/111",
+    "opened": "2026-10-26T23:40:31Z",
+    "merged": "2026-10-26T23:52:38Z"
+  },
+  "signals": {
+    "open_minutes": 12,
+    "commits": 2,
+    "ci_heads": 2,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.78.0",
+    "archived": [
+      "docs/changes/archive/2026-10-26-painel-sessao-longa/proposal.md"
+    ]
+  },
+  "friction": "- O primeiro push foi recusado porque faltava a autorização explícita do Founder. Ele autorizou na thread e o push seguiu.\n- A primeira versão trocava a pintura do card concluído por uma esfera vetorial. Voltei atrás para manter o visual que o Founder aprovou, usando a pintura pequena que já existia.\n- Com o relógio fixo do kit, o empate na ordem de inserção escondeu o Nit 3. O teste agora avança o relógio a cada fim.\n- A causa não foi confirmada no log do app desktop (R-011). A prova é a próxima sessão longa.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01TbzdKTcqdV5Hm7BS1sTJub",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

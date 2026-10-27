@@ -65,7 +65,7 @@ function orbArtOf(source) {
 }
 
 // The engine refuses an Svg source past 131072 characters. The avatar carries the portrait and each
-// small orb once (the six orbits point at them), a card one large orb, and the drawing around them takes about 12k: a CI
+// small orb once (the six orbits point at them), a card one small orb, and the drawing around them takes about 12k: a CI
 // proxy, since invoker-desk.test.tsx measures the SVG itself where Claude Code runs.
 function artProblems(portraitSource, orbSource) {
   const portrait = portraitOf(portraitSource);
@@ -84,6 +84,17 @@ function artProblems(portraitSource, orbSource) {
 
 const DRAWING = '<svg viewBox="0 0 4 4"><path d="M0 0 4 0 4 4Z" fill="#ff8800"/></svg>';
 const ORBS_OK = `export const ORB_ART = {\n  quas: {\n    small:\n      '${DRAWING}',\n    large:\n      '',\n  },\n  wex: {\n    small:\n      '',\n    large:\n      '',\n  },\n  exort: {\n    small:\n      '',\n    large:\n      '',\n  },\n} as const\n`;
+
+// The engine draws the whole pane at every tick (tarefa 40): a drawing that never moves goes as an image,
+// not a frame, and no card carries the large orb painting. Always a frame: the Invoker and the spinner.
+function drawingProblems(source) {
+  const problems = [];
+  for (const svg of source.match(/<Svg\b[^>]*>/gs) ?? []) {
+    if (/\bisInteractive(?!=)/.test(svg) && !/invokerMarkup\(|spinnerMarkup\(/.test(svg)) problems.push('register.tsx: an Svg is a frame whether or not it moves');
+  }
+  if (/orbAvatar\([^)]*'large'/.test(source)) problems.push("register.tsx: a card avatar carries the large orb painting");
+  return problems;
+}
 
 const commandProblems = (source) =>
   [...source.matchAll(/name: '([^']+)'/g)].map((m) => m[1]).filter((n) => n === 'invoker').map(() => 'register.tsx: registers /invoker, which commands/invoker.md already is');
@@ -117,6 +128,10 @@ test('each guard rejects the state it exists to catch', () => {
   const largeBig = `<svg viewBox="0 0 4 4">${'<path d="M0 0 4 0 4 4Z" fill="#ff8800"/>'.repeat(3_200)}</svg>`;
   assert.match(artProblems("export const PORTRAIT = ''", ORBS_OK.replace("large:\n      '',\n  },\n  wex", `large:\n      '${largeBig}',\n  },\n  wex`))[0], /quas\.large would push a card/);
   assert.equal(commandProblems("$.command.register({ name: 'invoker' })").length, 1);
+  assert.deepEqual(drawingProblems('<Svg source={barMarkup(c, s)} alt="x" height={6} isInteractive />'), ['register.tsx: an Svg is a frame whether or not it moves']);
+  assert.deepEqual(drawingProblems('<Svg source={barMarkup(c, s)} alt="x" height={6} isInteractive={isMoving} />'), []);
+  assert.deepEqual(drawingProblems('<Svg\n  source={invokerMarkup(a, b)}\n  isInteractive\n/>'), []);
+  assert.deepEqual(drawingProblems("<Svg source={orbAvatar(kind, true, 'large')} alt={a} isInteractive={x} />"), ['register.tsx: a card avatar carries the large orb painting']);
 });
 
 test('the panel module is wired, keyed, mapped and offline', () => {
@@ -133,6 +148,7 @@ test('the panel module is wired, keyed, mapped and offline', () => {
       ...orbProblems(read(join(DESK, 'orbs.ts')), cards),
       ...networkProblems(sources),
       ...commandProblems(register),
+      ...drawingProblems(register),
       ...artProblems(read(join(DESK, 'portrait.ts')), read(join(DESK, 'orb-art.ts'))),
     ],
     [],
