@@ -306,6 +306,8 @@ test('a card names the subagent type, its model and its effort', async ($, on) =
   on('turn.step', async function* (_: unknown, e: any) {
     return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null } as any
   })
+  // The first request can come before the spawn is recorded: the effort still reaches the card.
+  for await (const _ of ($ as any).turn.step({ turnId: 't0', index: 0, model: 'claude-opus-5-5', effort: 'medium', messageCount: 1, agentId: 'a1' })) void _
   await spawn($, 'a1', 'spectree:solutions-architect', 'Architect: exploration round 3')
   for await (const _ of ($ as any).turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', effort: 'medium', messageCount: 1, agentId: 'a1' })) void _
 

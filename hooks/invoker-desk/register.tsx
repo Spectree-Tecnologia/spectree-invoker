@@ -109,13 +109,15 @@ async function recordStep($: EngineInterface, id: string, label: string) {
 async function recordEffort($: EngineInterface, id: string, effort: string) {
   if (efforts.get(id) === effort) return
   const row = (await read($, agents))[id]
-  if (row && row.effort !== effort) await update($, agents, all => (all[id] ? { ...all, [id]: { ...all[id], effort } } : all))
+  // A step that comes before its spawn is recorded has no row yet: the next one tries again.
+  if (!row) return
+  if (row.effort !== effort) await update($, agents, all => (all[id] ? { ...all, [id]: { ...all[id], effort } } : all))
   efforts.set(id, effort)
 }
 
 async function recordEnd($: EngineInterface, id: string, status: AgentStatus, tokens: number) {
   const at = await $.clock.now()
-  const before = await read($, agents)
+  let gone: string[] = []
   const list = await update($, agents, all => {
     const row = all[id]
     if (!row) return all
@@ -124,11 +126,11 @@ async function recordEnd($: EngineInterface, id: string, status: AgentStatus, to
     const finished = Object.values(next)
       .filter(one => !isRunning(one))
       .sort((a, b) => (a.endedAt ?? 0) - (b.endedAt ?? 0) || a.startedAt - b.startedAt)
-    for (const one of finished.slice(0, Math.max(0, finished.length - FINISHED_KEPT))) delete next[one.id]
+    gone = finished.slice(0, Math.max(0, finished.length - FINISHED_KEPT)).map(one => one.id)
+    for (const one of gone) delete next[one]
     return next
   })
   // A card that left takes its steps and its open toggle along.
-  const gone = Object.keys(before).filter(one => !(one in list))
   for (const one of gone) {
     await update($, { plugin: 'spectree', key: 'steps', id: one } as const, () => NO_STEPS)
     efforts.delete(one)
