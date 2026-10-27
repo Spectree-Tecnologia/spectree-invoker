@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { REPO, cleanup } from './helpers.mjs';
 import { playwrightBrowsers, playwrightCacheRoot } from '../scripts/lib/shared/browser.mjs';
@@ -38,7 +38,12 @@ test('the Chromium builds Playwright installs by default are present, absent by 
     assert.equal(playwrightBrowsers(old.project, { env: old.env }).status, 'absent', 'a build of another revision is not the one asked for');
     assert.equal(playwrightBrowsers(present.project, { env: present.env }).status, 'present');
     assert.equal(playwrightBrowsers(broken.project, { env: broken.env }).status, 'unknown');
-    assert.equal(playwrightBrowsers(present.project, { env: {}, platform: 'win32' }).status, 'unknown', 'no LOCALAPPDATA: no cache to read');
+    // A relative cache path is the project's: present read from another working directory too.
+    assert.equal(playwrightBrowsers(present.project, { env: { PLAYWRIGHT_BROWSERS_PATH: '../cache' } }).status, 'present');
+    const override = fixture({ manifest: { browsers: [{ name: 'chromium', revision: '1243', installByDefault: true, revisionOverrides: { mac14: '1200' } }] },
+      installed: ['chromium-1243'] });
+    assert.equal(playwrightBrowsers(override.project, { env: override.env }).status, 'unknown', 'a per-platform revision is not guessed');
+    cleanup(override.root);
   } finally { for (const f of [none, absent, old, present, broken]) cleanup(f.root); }
 });
 
@@ -47,7 +52,9 @@ test('the cache is found where Playwright installs it', () => {
   assert.equal(playwrightCacheRoot({ env: { XDG_CACHE_HOME: '/x' }, platform: 'linux', home: '/h' }), join('/x', 'ms-playwright'));
   assert.equal(playwrightCacheRoot({ env: {}, platform: 'darwin', home: '/h' }), join('/h', 'Library', 'Caches', 'ms-playwright'));
   assert.equal(playwrightCacheRoot({ env: { LOCALAPPDATA: 'C:\\L' }, platform: 'win32', home: '/h' }), join('C:\\L', 'ms-playwright'));
+  assert.equal(playwrightCacheRoot({ env: {}, platform: 'win32', home: '/h' }), join('/h', 'AppData', 'Local', 'ms-playwright'));
   assert.equal(playwrightCacheRoot({ env: { PLAYWRIGHT_BROWSERS_PATH: '/p' } }), '/p');
+  assert.equal(playwrightCacheRoot({ env: { PLAYWRIGHT_BROWSERS_PATH: 'b' }, cwd: '/proj' }), resolve('/proj', 'b'));
   assert.equal(playwrightCacheRoot({ env: { PLAYWRIGHT_BROWSERS_PATH: '0' }, core: '/c' }), join('/c', '.local-browsers'));
 });
 

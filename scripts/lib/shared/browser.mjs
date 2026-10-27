@@ -3,19 +3,20 @@
 // is launched, installed or downloaded, and no code of the project's dependencies runs.
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
 // The folders Playwright installs each Chromium build into: `<name with _>-<revision>`.
 const CHROMIUM = ['chromium', 'chromium-headless-shell'];
 
 /** Where Playwright keeps its browsers, by the same rules it uses to install them. */
-export function playwrightCacheRoot({ env = process.env, platform = process.platform, home = homedir(), core } = {}) {
+// A relative PLAYWRIGHT_BROWSERS_PATH is read from where the suite runs, the project root.
+export function playwrightCacheRoot({ env = process.env, platform = process.platform, home = homedir(), core, cwd = process.cwd() } = {}) {
   const declared = env.PLAYWRIGHT_BROWSERS_PATH;
   if (declared === '0') return core ? join(core, '.local-browsers') : null;
-  if (declared) return declared;
+  if (declared) return isAbsolute(declared) ? declared : resolve(cwd, declared);
   if (platform === 'darwin') return join(home, 'Library', 'Caches', 'ms-playwright');
-  if (platform === 'win32') return env.LOCALAPPDATA ? join(env.LOCALAPPDATA, 'ms-playwright') : null;
+  if (platform === 'win32') return join(env.LOCALAPPDATA || join(home, 'AppData', 'Local'), 'ms-playwright');
   return join(env.XDG_CACHE_HOME || join(home, '.cache'), 'ms-playwright');
 }
 
@@ -30,11 +31,17 @@ export function playwrightBrowsers(projectRoot, options = {}) {
   if (!core) return { status: 'none' };
   let manifest;
   try { manifest = JSON.parse(readFileSync(join(core, 'browsers.json'), 'utf8')); } catch { return { status: 'unknown', reason: `${join(core, 'browsers.json')} is not readable JSON` }; }
-  const wanted = (Array.isArray(manifest?.browsers) ? manifest.browsers : [])
-    .filter((b) => CHROMIUM.includes(b?.name) && b.installByDefault !== false && typeof b.revision === 'string' && b.revision)
+  const chromium = (Array.isArray(manifest?.browsers) ? manifest.browsers : [])
+    .filter((b) => CHROMIUM.includes(b?.name) && b.installByDefault !== false);
+  // A per-platform revision is chosen by Playwright's host detection, which this does not repeat:
+  // guessing it would report a build that is there as absent.
+  if (chromium.some((b) => b.revisionOverrides && Object.keys(b.revisionOverrides).length)) {
+    return { status: 'unknown', reason: 'browsers.json gives Chromium a per-platform revision this does not resolve' };
+  }
+  const wanted = chromium.filter((b) => typeof b.revision === 'string' && b.revision)
     .map((b) => `${b.name.replaceAll('-', '_')}-${b.revision}`);
   if (!wanted.length) return { status: 'unknown', reason: 'browsers.json names no Chromium build' };
-  const root = playwrightCacheRoot({ ...options, core });
+  const root = playwrightCacheRoot({ cwd: projectRoot, ...options, core });
   if (!root) return { status: 'unknown', reason: 'the Playwright browser cache has no resolvable location here' };
   const missing = wanted.filter((dir) => !existsSync(join(root, dir)));
   return { status: missing.length ? 'absent' : 'present', root, wanted, missing };

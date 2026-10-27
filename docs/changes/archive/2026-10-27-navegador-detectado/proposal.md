@@ -22,7 +22,7 @@ disco: a revisão está no `browsers.json` do Playwright do projeto, e a pasta n
    por suposição.
 2. **O cache é achado pelas regras do Playwright**: `PLAYWRIGHT_BROWSERS_PATH` (e `0`, dentro do pacote),
    senão `~/.cache/ms-playwright` (ou `XDG_CACHE_HOME`), `~/Library/Caches/ms-playwright` e
-   `%LOCALAPPDATA%\ms-playwright`.
+   `%LOCALAPPDATA%\ms-playwright` (ou `~/AppData/Local`); um caminho relativo é lido a partir da raiz do projeto.
 3. **Nada roda**: nenhum browser lançado, nenhum código das dependências do projeto executado, nenhuma rede.
 4. **Card do Platform Engineer**: com suíte de navegador, ler essa linha antes do baseline e instalar o build
    que falta antes dele, nunca como vermelho do pass 2.
@@ -32,7 +32,9 @@ disco: a revisão está no `browsers.json` do Playwright do projeto, e a pasta n
 ## Identidade
 
 - **O build pedido** é `<nome com _>-<revisão>` de cada entrada `chromium` e `chromium-headless-shell` do
-  `browsers.json` com `installByDefault` diferente de `false`. Um build de outra revisão é ausente.
+  `browsers.json` com `installByDefault` diferente de `false`. Um build de outra revisão é ausente. Uma
+  entrada com `revisionOverrides` dá `unknown`: a revisão por plataforma é escolha do Playwright, e
+  adivinhá-la daria `absent` para um build que está lá.
 - **Em quem confia:** no `browsers.json` do projeto e no cache que o Playwright usa, ambos lidos, nunca
   executados. Uma pasta presente não prova que o binário dentro dela abre.
 
