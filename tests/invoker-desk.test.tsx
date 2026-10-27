@@ -162,7 +162,7 @@ test('a long session stays in budget: each step writes its own subagent, the pan
   // The engine draws the whole pane at every tick: the large painting rides on the Invoker alone.
   expect(sources.filter(source => source.length > 20_000).length).toBe(1)
   expect(sources.reduce((sum, source) => sum + source.length, 0)).toBeLessThan(250_000)
-  // A frame only for what moves: the Invoker and the avatar, spinner and bar of each running card.
+  // A frame only for what moves: the Invoker and the avatar and spinner of each running card.
   expect(svgs.filter(one => one?.props?.isInteractive).length).toBe(1 + 2 * 8)
   expect(await ui.find({ type: 'Text', text: /Concluídos · 50/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^early run$/ })).toBeDefined()
