@@ -21,14 +21,24 @@ export function playwrightCacheRoot({ env = process.env, platform = process.plat
 }
 
 /**
- * `none`: the project has no Playwright. `present`: every Chromium build it installs by default is
+ * `none`: the project neither has nor declares Playwright. `present`: every Chromium build it installs by default is
  * on disk. `absent`: at least one is missing, named in `missing`. `unknown`: the manifest or the
  * cache cannot be read; never reported as present.
  */
 export function playwrightBrowsers(projectRoot, options = {}) {
   const core = [join(projectRoot, 'node_modules', 'playwright-core'),
     join(projectRoot, 'node_modules', 'playwright', 'node_modules', 'playwright-core')].find((p) => existsSync(join(p, 'browsers.json')));
-  if (!core) return { status: 'none' };
+  if (!core) {
+    // A project that declares Playwright and keeps it where this does not look (pnpm's store, a
+    // workspace root) has a browser suite all the same: not found is unknown, never "no Playwright".
+    let pkg = null;
+    try { pkg = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8')); } catch { /* no manifest, or unreadable */ }
+    const deps = { ...pkg?.dependencies, ...pkg?.devDependencies, ...pkg?.optionalDependencies };
+    if (['playwright', '@playwright/test', 'playwright-core'].some((name) => name in deps)) {
+      return { status: 'unknown', reason: 'package.json declares Playwright, but no playwright-core/browsers.json is in node_modules where this reads it' };
+    }
+    return { status: 'none' };
+  }
   let manifest;
   try { manifest = JSON.parse(readFileSync(join(core, 'browsers.json'), 'utf8')); } catch { return { status: 'unknown', reason: `${join(core, 'browsers.json')} is not readable JSON` }; }
   const chromium = (Array.isArray(manifest?.browsers) ? manifest.browsers : [])

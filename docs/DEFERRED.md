@@ -223,7 +223,7 @@
 - Status: open
 - Owner: own_change
 - Impact: ceiling
-- Decision: A mudança navegador-detectado lê se a pasta do build Chromium pedido existe no cache do Playwright. Não abre o binário, porque capabilities.mjs não executa nada; uma instalação corrompida aparece como present, e um Playwright fora do node_modules do projeto (global ou num workspace aninhado) não é lido.
+- Decision: A mudança navegador-detectado lê se a pasta do build Chromium pedido existe no cache do Playwright. Não abre o binário, porque capabilities.mjs não executa nada; uma instalação corrompida aparece como present; um Playwright declarado mas fora do node_modules do projeto (store do pnpm, workspace aninhado) dá unknown, um global não declarado não é lido, e um build instalado só com --only-shell ou --no-shell dá absent.
 - Due: Um projeto consumidor registra uma suíte de navegador vermelha por build ausente ou corrompido com browser.playwright_chromium present, ou um Playwright que a linha não achou
 - Closure condition: A linha distingue o caso do incidente sem executar o binário, ou o Platform Engineer tem um passo de baseline que o abre, visto recusando o caso.
 

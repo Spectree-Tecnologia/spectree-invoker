@@ -31,6 +31,9 @@ test('the Chromium builds Playwright installs by default are present, absent by 
   const old = fixture({ installed: ['chromium-1200', 'chromium_headless_shell-1200'] });
   const present = fixture({ installed: ['chromium-1243', 'chromium_headless_shell-1243'] });
   const broken = fixture({ manifest: '{not json' });
+  const override = fixture({ manifest: { browsers: [{ name: 'chromium', revision: '1243', installByDefault: true, revisionOverrides: { mac14: '1200' } }] },
+    installed: ['chromium-1243'] });
+  const pnpm = fixture({ manifest: null });
   try {
     assert.equal(playwrightBrowsers(none.project, { env: none.env }).status, 'none');
     const a = playwrightBrowsers(absent.project, { env: absent.env });
@@ -40,11 +43,11 @@ test('the Chromium builds Playwright installs by default are present, absent by 
     assert.equal(playwrightBrowsers(broken.project, { env: broken.env }).status, 'unknown');
     // A relative cache path is the project's: present read from another working directory too.
     assert.equal(playwrightBrowsers(present.project, { env: { PLAYWRIGHT_BROWSERS_PATH: '../cache' } }).status, 'present');
-    const override = fixture({ manifest: { browsers: [{ name: 'chromium', revision: '1243', installByDefault: true, revisionOverrides: { mac14: '1200' } }] },
-      installed: ['chromium-1243'] });
     assert.equal(playwrightBrowsers(override.project, { env: override.env }).status, 'unknown', 'a per-platform revision is not guessed');
-    cleanup(override.root);
-  } finally { for (const f of [none, absent, old, present, broken]) cleanup(f.root); }
+    // Declared but kept where this does not read it (pnpm's store): unknown, never "no Playwright".
+    writeFileSync(join(pnpm.project, 'package.json'), JSON.stringify({ devDependencies: { '@playwright/test': '^1.63.0' } }));
+    assert.equal(playwrightBrowsers(pnpm.project, { env: pnpm.env }).status, 'unknown');
+  } finally { for (const f of [none, absent, old, present, broken, override, pnpm]) cleanup(f.root); }
 });
 
 test('the cache is found where Playwright installs it', () => {

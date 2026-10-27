@@ -15,8 +15,9 @@ disco: a revisão está no `browsers.json` do Playwright do projeto, e a pasta n
 
 ## Escopo
 
-1. **`browser.playwright_chromium`** em `capabilities.mjs`, só quando o projeto tem `playwright-core` em
-   `node_modules`: `present` (VERIFIED) quando todo build Chromium que o Playwright instala por padrão
+1. **`browser.playwright_chromium`** em `capabilities.mjs`, quando o projeto tem `playwright-core` em
+   `node_modules` ou declara Playwright no `package.json` (sem o manifesto onde esta linha lê, como no
+   store do pnpm, a resposta é `unknown`, nunca "sem Playwright"): `present` (VERIFIED) quando todo build Chromium que o Playwright instala por padrão
    está no cache; `absent` (VERIFIED) com o nome de cada pasta que falta e o comando
    `npx playwright install chromium`; `unknown` quando o manifesto ou o cache não se lê. Nunca presente
    por suposição.
@@ -46,5 +47,6 @@ disco: a revisão está no `browsers.json` do Playwright do projeto, e a pasta n
 
 ## O que esta mudança deve e não paga
 
-- D-025: a linha lê a pasta, não abre o binário; uma instalação corrompida aparece como `present`, e um
-  Playwright fora de `node_modules` do projeto (global ou num workspace aninhado) não é lido.
+- D-025: a linha lê a pasta, não abre o binário; uma instalação corrompida aparece como `present`, um
+  Playwright fora de `node_modules` do projeto (global, store do pnpm, workspace aninhado) dá `unknown`
+  ou nada, e um build instalado só com `--only-shell` ou `--no-shell` dá `absent`.
