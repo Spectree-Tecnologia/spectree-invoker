@@ -288,6 +288,18 @@
       "current_decision": "A mudança orcamento-de-contexto corta chamadas por duas regras de card: a leitura obrigatória como teto no proposal do Architect e o pass 1 em lote. Não põe teto por missão: segmentar em despachos de contexto zerado, ao bater um teto de contexto, de chamadas ou o timeout_seconds do despacho, repaga o prefixo e a leitura obrigatória em sequência e pode deixar o pipeline mais lento, que o Founder recusou em 2026-10-26.",
       "reevaluation_trigger": "Uma missão de subagente de projeto consumidor passa de 30 chamadas ou de 150k de contexto depois das duas regras, medida com o analisador de transcripts",
       "closure_condition": "Um teto por missão com checkpoint e novo despacho, segmento contado à parte das tentativas, medido mais barato e não mais lento no mesmo tipo de missão."
+    },
+    {
+      "schema_version": "1.0.0",
+      "owner": "own_change",
+      "status": "open",
+      "opened_by_change": "navegador-detectado",
+      "stable_id": 25,
+      "title": "Build do navegador presente na pasta e quebrado no binário",
+      "impact": "ceiling",
+      "current_decision": "A mudança navegador-detectado lê se a pasta do build Chromium pedido existe no cache do Playwright. Não abre o binário, porque capabilities.mjs não executa nada; uma instalação corrompida aparece como present; um Playwright declarado mas fora do node_modules do projeto (store do pnpm, workspace aninhado) dá unknown, um global não declarado não é lido, e um build instalado só com --only-shell ou --no-shell dá absent.",
+      "reevaluation_trigger": "Um projeto consumidor registra uma suíte de navegador vermelha por build ausente ou corrompido com browser.playwright_chromium present, ou um Playwright que a linha não achou",
+      "closure_condition": "A linha distingue o caso do incidente sem executar o binário, ou o Platform Engineer tem um passo de baseline que o abre, visto recusando o caso."
     }
   ]
 }

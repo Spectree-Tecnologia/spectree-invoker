@@ -18,7 +18,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { detectHarness, observedIsolationSignal, satisfiesFloor } from './lib/shared/index.mjs';
+import { detectHarness, observedIsolationSignal, playwrightBrowsers, satisfiesFloor } from './lib/shared/index.mjs';
 
 const pkgRoot = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'));
 const projectRoot = process.env.SPECTREE_PROJECT_ROOT ?? process.cwd();
@@ -114,6 +114,14 @@ add('network', 'unknown', U,
 
 // --- browser -----------------------------------------------------------------
 add('browser', 'unknown', U, 'a browser driver is a harness tool, not a filesystem fact; the adapter declares it and nothing here confirms it');
+// The build a browser test launches IS a filesystem fact. A missing one used to surface only when
+// pass 2 ran the browser suite (SYND, passkeys): read it before the baseline instead.
+const pw = playwrightBrowsers(projectRoot);
+if (pw.status !== 'none') {
+  add('browser.playwright_chromium', pw.status, pw.status === 'unknown' ? U : V,
+    pw.status === 'absent' ? `missing ${pw.missing.join(', ')} under ${pw.root}. Install before the baseline: npx playwright install chromium`
+      : pw.status === 'present' ? `${pw.wanted.join(', ')} under ${pw.root}` : pw.reason);
+}
 
 // --- adapters: what they declare ---------------------------------------------
 const declared = {};

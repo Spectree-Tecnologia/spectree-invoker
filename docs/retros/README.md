@@ -40,7 +40,7 @@ lugar; cada correção entra por uma mudança própria.
 | R-008 | `information-access · ambiente · node-abaixo-do-piso` | 7 | Aberto: a sessão da tarefa 11d voltou ao Node 22.22.0; o script de ambiente não vale para toda sessão nova |
 | R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única e na tarefa 22 para o núcleo (`core_normative`); cards seguem no [D-017](../DEFERRED.md) |
 | R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
-| R-011 | `information-access · mod · sem-superficie-real` | 9 | Aberto: o v1.67.0 foi conferido pelo Founder no app desktop depois do merge; o giro do v1.68.0, o brilho da barra do v1.70.0, o plano próprio do v1.77.0 e a sessão longa do v1.78.0 seguem sem conferência; ver o app antes do merge de um mod segue devido |
+| R-011 | `information-access · mod · sem-superficie-real` | 10 | Aberto: o v1.67.0 foi conferido pelo Founder no app desktop depois do merge; o giro do v1.68.0, o brilho da barra do v1.70.0, o plano próprio do v1.77.0, a sessão longa do v1.78.0 e o desempenho do v1.79.0 seguem sem conferência; ver o app antes do merge de um mod segue devido |
 | R-012 | `information-access · executor · fixture-sem-run-real` | 3 | Aberto: o trailer `system` do 2.1.302, o registro de cobertura do pass 2 (#106) e o cache da prova de mutação (#107) foram testados em fixture; a confirmação é o próximo run real do consumidor |
 | R-013 | `information-access · ambiente · dependencias-nao-instaladas` | 2 | Aberto: as sessões do #104 e do #105 rodaram o check sem `npm ci`; primo do R-008 |
 | R-014 | `automated-checks · executor · janela-sem-teste-discriminante` | 1 | Aberto: a lista de ações da janela de repair do #104 não tem teste que a discrimine |
@@ -50,6 +50,7 @@ lugar; cada correção entra por uma mudança própria.
 
 ## Retros
 
+- [2026-10-27 — `painel-desempenho` (#112)](2026-10-27-painel-desempenho.md)
 - [2026-10-27 — `painel-sessao-longa` (#111)](2026-10-27-painel-sessao-longa.md)
 - [2026-10-26 — `painel-plano-proprio` (#110)](2026-10-26-painel-plano-proprio.md)
 - [2026-10-26 — `orcamento-de-contexto` (#109)](2026-10-26-orcamento-de-contexto.md)
