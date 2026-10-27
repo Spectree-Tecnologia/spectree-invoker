@@ -74,7 +74,8 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
 
   for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface })
-    expect((await ui.find({ type: 'Text', text: /subagente nesta conversa/ }))?.text).toBe('1 subagente nesta conversa')
+    // The count of subagents is not drawn: the sections say how many run and how many ended.
+    expect(await ui.find({ type: 'Text', text: /nesta conversa/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /Concluído · 2 passos/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^spectree:quality-engineer · model$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /6\.2M tokens/ })).toBeDefined()
@@ -223,6 +224,10 @@ test('the main loop adds no card and its task list fills the plan bar in place o
     ui = await $.ui.mount({ ...PANE, surface })
     expect(await ui.find({ type: 'Text', text: /^Tarefas 1\/3 · 33%$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^Agora: Doing T-ID-REG$/ })).toBeDefined()
+    // Clean: the plan has no frame of its own (a card's is a row), and its title takes the text colour.
+    const boxes = ((await (ui as any).findAll({ type: 'Box' })) as any[]).map(one => one?.props ?? {})
+    expect(boxes.some(one => one.borderStyle && one.flexDirection === 'column')).toBe(false)
+    expect((await ui.find({ type: 'Text', text: /^Plano$/ }))?.props?.color).toBeUndefined()
     await ui.unmount()
   }
   ui = await $.ui.mount({ ...PANE, surface: 'desktop' })

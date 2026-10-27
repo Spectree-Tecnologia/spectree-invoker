@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 113,
+    "title": "Chromium do Playwright detectado antes do baseline (tarefa 41) — v1.80.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/113",
+    "opened": "2026-10-27T00:35:18Z",
+    "merged": "2026-10-27T00:36:56Z"
+  },
+  "signals": {
+    "open_minutes": 2,
+    "commits": 3,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.80.0",
+    "archived": [
+      "docs/changes/archive/2026-10-27-navegador-detectado/proposal.md"
+    ]
+  },
+  "friction": "- O formato do `browsers.json` foi lido de uma instalação real (`/opt/node-tools`), não da documentação.\n- A segunda rodada achou um caso de ausência tratada como \"não tem\", o padrão de `absence-is-unknown`. A proposta não falava em gerenciador de pacotes.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
