@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 114,
+    "title": "Painel do Invoker mais limpo: sem a contagem verde e sem a moldura do plano (tarefa 42) — v1.81.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/114",
+    "opened": "2026-10-27T00:39:59Z",
+    "merged": "2026-10-27T11:03:04Z"
+  },
+  "signals": {
+    "open_minutes": 623,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.81.0",
+    "archived": [
+      "docs/changes/archive/2026-10-27-painel-limpo/proposal.md"
+    ]
+  },
+  "friction": "- A navegador-detectado (#113) levou a v1.80.0 e a tarefa 41. Esta mudança esperou o merge dela e foi refeita sobre a main nova, como tarefa 42 e v1.81.0.\n- O primeiro teste do plano procurava qualquer moldura e pegou a moldura de um card. Agora ele procura só a moldura em coluna, que era a do plano.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01TbzdKTcqdV5Hm7BS1sTJub",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

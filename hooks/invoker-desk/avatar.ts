@@ -135,21 +135,3 @@ export function planBarMarkup(done: number, total: number): string {
     `</svg>`
   )
 }
-
-// A card's progress: finished is a full bar in the orb's colour, running is a
-// bar whose light sweeps across it, failed or stopped is red.
-export function barMarkup(color: string, state: 'running' | 'done' | 'failed'): string {
-  const fill = state === 'failed' ? '#d64545' : color
-  const sweep =
-    state === 'running'
-      ? `<rect x="-80" y="0" width="80" height="6" rx="3" fill="url(#shine)"><animate attributeName="x" from="-80" to="300" dur="1.6s" repeatCount="indefinite"/></rect>`
-      : ''
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 6" width="300" height="6" preserveAspectRatio="none">` +
-    `<defs><linearGradient id="shine"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/>` +
-    `<stop offset="0.5" stop-color="#ffffff" stop-opacity="0.7"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient></defs>` +
-    `<rect x="0" y="0" width="300" height="6" rx="3" fill="${fill}" opacity="${state === 'running' ? 0.45 : 0.9}"/>` +
-    sweep +
-    `</svg>`
-  )
-}
