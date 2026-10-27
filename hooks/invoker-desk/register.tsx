@@ -316,10 +316,11 @@ export const register: Register = on => {
       progress.total === 0 ? (
         <Text dimColor>Nenhum plano em andamento.</Text>
       ) : (
-        <Box flexDirection="column" borderStyle="round" borderColor={ORB_COLOR.wex.mid} paddingX={1}>
+        // Clean: no frame around the plan, the title in the text colour; the bar alone carries the orbs.
+        <Box flexDirection="column">
           <Box flexDirection="row" gap={1} alignItems="center">
             <Box flexShrink={1} minWidth={0}>
-              <Text color={ORB_COLOR.wex.text} weight="semibold" wrap="truncate-end">
+              <Text weight="semibold" wrap="truncate-end">
                 {progress.title}
               </Text>
             </Box>
@@ -465,10 +466,7 @@ export const register: Register = on => {
 
     return (
       <Box flexDirection="column" gap={1} paddingX={1}>
-        <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-          <Text color="success" weight="semibold">
-            {plural(list.length, 'subagente nesta conversa', 'subagentes nesta conversa')}
-          </Text>
+        <Box flexDirection="row" justifyContent="flex-end" alignItems="center">
           <Button key="hide" label="Ocultar" onPress={() => $.ui.close({ id: PANE })} />
         </Box>
 

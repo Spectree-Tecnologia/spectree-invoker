@@ -50,6 +50,7 @@ lugar; cada correção entra por uma mudança própria.
 
 ## Retros
 
+- [2026-10-27 — `navegador-detectado` (#113)](2026-10-27-navegador-detectado.md)
 - [2026-10-27 — `painel-desempenho` (#112)](2026-10-27-painel-desempenho.md)
 - [2026-10-27 — `painel-sessao-longa` (#111)](2026-10-27-painel-sessao-longa.md)
 - [2026-10-26 — `painel-plano-proprio` (#110)](2026-10-26-painel-plano-proprio.md)
