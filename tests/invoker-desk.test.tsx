@@ -129,24 +129,40 @@ test('a section collapses and the steps of a card expand', async ($, on) => {
   await ui.unmount()
 })
 
-test('a long session draws the last finished cards, light, and keeps a bounded list', async ($, on) => {
+test('a long session stays in budget: each step writes its own subagent, the pane draws a bounded tree', { timeoutMs: 60_000 }, async ($, on) => {
   const clock = engine(on, 'f0')
+  // What each write puts in the state, by key.
+  const written: Record<string, number> = {}
+  on('state.set', (_: unknown, e: any, next: any) => {
+    written[e.key] = (written[e.key] ?? 0) + JSON.stringify(e.value ?? null).length
+    return next(e)
+  })
   // Dispatched first, it ends last: the card that just ended stays.
   await spawn($, 'early', 'spectree:solutions-architect', 'early run')
   for (let i = 0; i < 60; i++) {
     await spawn($, `f${i}`, 'spectree:full-stack-developer', `module ${i}`)
+    for (let s = 0; s < 40; s++) await $.tool.call({ tool: 'Bash', command: `npm test step ${s} ${'x'.repeat(80)}`, agentId: `f${i}` } as any)
     await clock.advance(1000)
     await $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId: `t${i}`, agentId: `f${i}`, reason: 'answer' } as any)
   }
   await clock.advance(1000)
   await $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId: 'te', agentId: 'early', reason: 'answer' } as any)
-  await spawn($, 'r1', 'spectree:quality-engineer', 'QE pass 2')
+  for (let r = 0; r < 8; r++) await spawn($, `r${r}`, 'spectree:quality-engineer', `QE ${r}`)
+
+  // A step late in a long session writes its own steps, never the list of subagents.
+  for (const key of Object.keys(written)) delete written[key]
+  for (let s = 0; s < 10; s++) await $.tool.call({ tool: 'Bash', command: `late ${s}`, agentId: 'r0' } as any)
+  expect(written.agents ?? 0).toBe(0)
+  expect(written.steps ?? 0).toBeLessThan(10 * 5_000)
 
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  // The pane redraws whole every second: the large painting rides on the Invoker and the running card alone.
-  const svgs = ((await ui.findAll({ type: 'Svg' })) as any[]).map(one => String(one?.props?.source ?? ''))
-  expect(svgs.filter(source => source.length > 20_000).length).toBe(2)
-  expect(svgs.reduce((sum, source) => sum + source.length, 0)).toBeLessThan(250_000)
+  const svgs = (await ui.findAll({ type: 'Svg' })) as any[]
+  const sources = svgs.map(one => String(one?.props?.source ?? ''))
+  // The engine draws the whole pane at every tick: the large painting rides on the Invoker alone.
+  expect(sources.filter(source => source.length > 20_000).length).toBe(1)
+  expect(sources.reduce((sum, source) => sum + source.length, 0)).toBeLessThan(250_000)
+  // A frame only for what moves: the Invoker and the avatar, spinner and bar of each running card.
+  expect(svgs.filter(one => one?.props?.isInteractive).length).toBe(1 + 3 * 8)
   expect(await ui.find({ type: 'Text', text: /Concluídos · 50/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^early run$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^module 59$/ })).toBeDefined()
@@ -154,7 +170,32 @@ test('a long session draws the last finished cards, light, and keeps a bounded l
   await ui.press({ key: 'finished-whole' })
   expect(await ui.find({ type: 'Text', text: /^module 11$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /^module 10$/ })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /^QE pass 2$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('the clock runs only while a subagent runs', async ($, on) => {
+  const clock = engine(on, 'c1')
+  let ticks = 0
+  on('state.set', (_: unknown, e: any, next: any) => {
+    if (e.key === 'now') ticks++
+    return next(e)
+  })
+  await spawn($, 'c1', 'spectree:platform-engineer', 'PE')
+  ticks = 0
+  await clock.advance(3000)
+  expect(ticks).toBeGreaterThanOrEqual(3)
+  await $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId: 't', agentId: 'c1', reason: 'answer' } as any)
+  ticks = 0
+  await clock.advance(5000)
+  expect(ticks).toBe(0)
+})
+
+test('a drawing that fails leaves a pane that says so', async ($, on) => {
+  engine(on, 'x1')
+  // A row the drawing cannot read: no type to name its orb by.
+  await spawn($, 'x1', undefined as any, 'PE')
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /Painel do Invoker em recuperação/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -265,6 +306,8 @@ test('a card names the subagent type, its model and its effort', async ($, on) =
   on('turn.step', async function* (_: unknown, e: any) {
     return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null } as any
   })
+  // The first request can come before the spawn is recorded: the effort still reaches the card.
+  for await (const _ of ($ as any).turn.step({ turnId: 't0', index: 0, model: 'claude-opus-5-5', effort: 'medium', messageCount: 1, agentId: 'a1' })) void _
   await spawn($, 'a1', 'spectree:solutions-architect', 'Architect: exploration round 3')
   for await (const _ of ($ as any).turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', effort: 'medium', messageCount: 1, agentId: 'a1' })) void _
 

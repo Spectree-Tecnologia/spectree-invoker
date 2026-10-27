@@ -106,6 +106,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 37 | Orçamento de contexto: menos chamadas por missão | Integrada, v1.76.0: no proposal a leitura obrigatória do despacho é teto para o Architect, e o pass 1 do Quality Engineer escreve e roda os testes em lote, [proposta](changes/archive/2026-10-26-orcamento-de-contexto/proposal.md) | D-024 |
 | 38 | Plano próprio do Invoker no painel | Integrada, v1.77.0: a ferramenta `mcp__spectree__plan` e a instrução no prompt alimentam a barra do painel, com o título do plano, [proposta](changes/archive/2026-10-26-painel-plano-proprio/proposal.md) | — |
 | 39 | Painel do Invoker em sessão longa | Integrada, v1.78.0: card concluído com a pintura pequena, os últimos 5 concluídos à vista e no máximo 50 guardados, [proposta](changes/archive/2026-10-26-painel-sessao-longa/proposal.md) | — |
+| 40 | Desempenho do painel do Invoker | Integrada, v1.79.0: um passo escreve só o seu subagente, o relógio para sem nada rodando, quadro só no que se mexe e painel em recuperação no lugar do branco, [proposta](changes/archive/2026-10-27-painel-desempenho/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
@@ -119,6 +120,7 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-27:** Founder autorizou a tarefa 40 a partir do levantamento de performance do painel.
 - **2026-10-26:** Founder relatou o painel sem desenho numa sessão longa; a tarefa 39 corrige pelo mesmo
   pedido, sem cartão, por ser defeito do painel que ele já aprovou.
 - **2026-10-26:** Founder escolheu o plano próprio do Invoker (tarefa 38) no lugar de seguir o do Helper
