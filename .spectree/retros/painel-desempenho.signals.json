@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 112,
+    "title": "Desempenho do painel do Invoker: passo com custo constante, relógio só com subagente rodando, quadro só no que se mexe (tarefa 40) — v1.79.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/112",
+    "opened": "2026-10-27T00:11:51Z",
+    "merged": "2026-10-27T00:18:20Z"
+  },
+  "signals": {
+    "open_minutes": 6,
+    "commits": 2,
+    "ci_heads": 2,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.79.0",
+    "archived": [
+      "docs/changes/archive/2026-10-27-painel-desempenho/proposal.md"
+    ]
+  },
+  "friction": "- O validador do plugin recusou o primeiro desenho, que guardava os passos com `atom` criado em tempo de execução para cada id, porque o scan só lê referências literais. Troquei por referências literais com `id`, e a família ficou sem `shape`.\n- No kit, o `$` dos testes não tem `$.state`, e um stub de `state.get` não alcança `read`. Medi as escritas observando `state.set` e provoquei a falha de desenho com um subagente sem tipo.\n- O ganho foi medido no kit; o app desktop não foi visto (R-011).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01TbzdKTcqdV5Hm7BS1sTJub",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

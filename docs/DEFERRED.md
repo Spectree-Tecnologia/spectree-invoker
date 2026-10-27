@@ -218,3 +218,12 @@
 - Due: Uma missão de subagente de projeto consumidor passa de 30 chamadas ou de 150k de contexto depois das duas regras, medida com o analisador de transcripts
 - Closure condition: Um teto por missão com checkpoint e novo despacho, segmento contado à parte das tentativas, medido mais barato e não mais lento no mesmo tipo de missão.
 
+## D-025 — Build do navegador presente na pasta e quebrado no binário
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: A mudança navegador-detectado lê se a pasta do build Chromium pedido existe no cache do Playwright. Não abre o binário, porque capabilities.mjs não executa nada; uma instalação corrompida aparece como present, e um Playwright fora do node_modules do projeto (global ou num workspace aninhado) não é lido.
+- Due: Um projeto consumidor registra uma suíte de navegador vermelha por build ausente ou corrompido com browser.playwright_chromium present, ou um Playwright que a linha não achou
+- Closure condition: A linha distingue o caso do incidente sem executar o binário, ou o Platform Engineer tem um passo de baseline que o abre, visto recusando o caso.
+

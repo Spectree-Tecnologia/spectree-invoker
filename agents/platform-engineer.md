@@ -79,6 +79,8 @@ App-wide concerns (session, theme, i18n) live in `apps/<app>/src/shared/`. Don't
 
 Before any Developer starts, run the **full suite**. Red at baseline is **pre-existing debt**: stop, report with command and output, and let nobody build on red.
 
+When the suite drives a browser, read `capabilities.mjs` first: `browser.playwright_chromium` `absent` names the missing build, and installing it (`npx playwright install chromium`) comes before the baseline, never as a red found in pass 2.
+
 ### 3. Schema
 
 Migrations applied, each with its `down` **executed** in a disposable environment before being considered ready.

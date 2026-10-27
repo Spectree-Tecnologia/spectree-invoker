@@ -1,7 +1,8 @@
-// Infrastructure every module may use: CLI flags, git, digests, process launch and supervision,
+// Infrastructure every module may use: the browser cache, CLI flags, git, digests, process launch and supervision,
 // persistence and locks under `.spectree/`, TAP parsing, schema validation, harness declarations. It depends on no other module.
 // This is the published entry: other modules and the CLIs import only from here.
 
+export { playwrightBrowsers, playwrightCacheRoot } from './browser.mjs';
 export { flags } from './cli.mjs';
 export {
   changeFolder,

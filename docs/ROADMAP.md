@@ -107,6 +107,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 38 | Plano próprio do Invoker no painel | Integrada, v1.77.0: a ferramenta `mcp__spectree__plan` e a instrução no prompt alimentam a barra do painel, com o título do plano, [proposta](changes/archive/2026-10-26-painel-plano-proprio/proposal.md) | — |
 | 39 | Painel do Invoker em sessão longa | Integrada, v1.78.0: card concluído com a pintura pequena, os últimos 5 concluídos à vista e no máximo 50 guardados, [proposta](changes/archive/2026-10-26-painel-sessao-longa/proposal.md) | — |
 | 40 | Desempenho do painel do Invoker | Integrada, v1.79.0: um passo escreve só o seu subagente, o relógio para sem nada rodando, quadro só no que se mexe e painel em recuperação no lugar do branco, [proposta](changes/archive/2026-10-27-painel-desempenho/proposal.md) | — |
+| 41 | Chromium do Playwright detectado antes do baseline | Integrada, v1.80.0: `capabilities.mjs` lê do disco se o build Chromium que o Playwright do projeto pede está instalado, e o Platform Engineer o instala antes do baseline, [proposta](changes/archive/2026-10-27-navegador-detectado/proposal.md) | D-025 |
 
 ## Itens com aprovação permanente
 
@@ -120,6 +121,8 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-27:** Founder deu GO na tarefa 41, a terceira proposta dos desvios da retro da change passkeys
+  do SYND: o Chromium do Playwright detectado antes do baseline.
 - **2026-10-27:** Founder autorizou a tarefa 40 a partir do levantamento de performance do painel.
 - **2026-10-26:** Founder relatou o painel sem desenho numa sessão longa; a tarefa 39 corrige pelo mesmo
   pedido, sem cartão, por ser defeito do painel que ele já aprovou.
