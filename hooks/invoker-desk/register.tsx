@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, AgentStatus, AgentSteps, DeskUi } from './state'
-import { invokerMarkup, planBarMarkup, spinnerMarkup } from './avatar'
+import type { AgentRow, AgentStatus, AgentSteps, DeskUi, Plan } from './state'
+import { invokerMarkup, planBarMarkup, planCellColors, spinnerMarkup } from './avatar'
 import { formatDuration, formatTokens, modelLabel, plural, stepLabel, tokensOf } from './format'
 import { applyToPlan, planFromTool, planProgress } from './plan'
 import { labelOf, ORB_COLOR, orbAvatar, orbOf, roleOf, ROLES } from './orbs'
@@ -141,6 +141,27 @@ async function recordEnd($: EngineInterface, id: string, status: AgentStatus, to
   await syncClock($, list)
 }
 
+// The plan on the terminal, where nothing is drawn as a vector: a row of
+// blocks in the orbs' gradient, the task under way shimmering once a second
+// while the clock runs, and a light track for the rest.
+function planBlocks(Text: any, progress: ReturnType<typeof planProgress>, cells: number, at: number) {
+  const filled = progress.total === 0 ? 0 : Math.round((cells * progress.done) / progress.total)
+  const live = progress.isLive ? Math.max(0, Math.round((cells * Math.min(progress.total, progress.done + 1)) / progress.total) - filled) : 0
+  return (
+    <Text>
+      {planCellColors(filled).map(color => (
+        <Text color={color}>█</Text>
+      ))}
+      {live > 0 && <Text color={Math.floor(at / 1000) % 2 ? ORB_COLOR.wex.mid : ORB_COLOR.quas.mid}>{'▓'.repeat(live)}</Text>}
+      <Text dimColor>{'░'.repeat(Math.max(0, cells - filled - live))}</Text>
+    </Text>
+  )
+}
+
+// A plan shows above the terminal's prompt until it is done and the person has written again.
+const isBandPlan = (current: Plan) =>
+  current.tasks.length > 0 && !(current.isSettled && current.tasks.every(one => one.status === 'completed'))
+
 // The panel only watches: a failure in its bookkeeping is logged and never
 // stops a spawn, a tool call or a turn.
 function logFailure($: EngineInterface, error: unknown) {
@@ -265,6 +286,59 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // A plan done stays above the prompt for the turn that finished it, not the next one.
+  on('prompt.submit', async ($, e, next) => {
+    await update($, plan, current =>
+      current.tasks.length > 0 && !current.isSettled && current.tasks.every(one => one.status === 'completed')
+        ? { ...current, isSettled: true }
+        : current,
+    ).catch(error => logFailure($, error))
+    return next(e)
+  })
+
+  // The terminal has no sidebar: the plan bar sits above the prompt, under any other plugin's band.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.surface !== 'terminal' || e.props.hasSurvey) return next(e)
+    const current = await read($, plan)
+    if (!isBandPlan(current)) return next(e)
+    const drawn = await next(e)
+    const rest = drawn && typeof drawn === 'object' && (drawn as { type?: string }).type !== 'engine' ? drawn : null
+    const { Box, Text } = $.ui.resolve(e)
+    const progress = planProgress(current)
+    const at = (await read($, now)) || Date.now()
+    const label = `Tarefas ${progress.done}/${progress.total}`
+    const percent = `${progress.percent}%`
+    const columns = e.props.bodyColumns > 0 ? Math.floor(e.props.bodyColumns) : 80
+    const titleWidth = Math.max(6, Math.min(28, progress.title.length, Math.floor(columns / 3)))
+    // Gaps between the five parts, and the dot.
+    const cells = Math.max(6, columns - titleWidth - label.length - percent.length - 6)
+    return (
+      <Box flexDirection="column">
+        {rest as never}
+        <Box flexDirection="row" gap={1}>
+          <Text color={ORB_COLOR.wex.mid}>●</Text>
+          <Box width={titleWidth} flexShrink={0}>
+            <Text weight="semibold" wrap="truncate-end">
+              {progress.title}
+            </Text>
+          </Box>
+          {planBlocks(Text, progress, cells, at)}
+          <Text weight="semibold">{label}</Text>
+          <Text dimColor tabular>
+            {percent}
+          </Text>
+        </Box>
+        <Text dimColor wrap="truncate-end">
+          {progress.now}
+        </Text>
+      </Box>
+    )
+  }).catch(($, e, next) => {
+    // A band that fails to draw leaves the prompt as it was.
+    logFailure($, `band failed (${next.error.kind}${next.error.message ? `: ${next.error.message}` : ''})`)
+    return next(e)
+  })
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const els = $.ui.resolve(e)
     const { Box, Text, Button } = els
@@ -327,13 +401,13 @@ export const register: Register = on => {
             <Box flexGrow={1} flexShrink={1} minWidth={0}>
               {Svg ? (
                 <Svg
-                  source={planBarMarkup(progress.done, progress.total)}
+                  source={planBarMarkup(progress.done, progress.total, progress.isLive)}
                   alt={`Tarefas ${progress.done} de ${progress.total}`}
                   height={14}
                   isInteractive={progress.done < progress.total}
                 />
               ) : (
-                <Text color={ORB_COLOR.wex.text}>{'━'.repeat(Math.round(progress.percent / 10)) + '─'.repeat(10 - Math.round(progress.percent / 10))}</Text>
+                planBlocks(Text, progress, 12, at)
               )}
             </Box>
             <Box flexShrink={0}>

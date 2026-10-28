@@ -27,7 +27,9 @@ export type PlanTask = {
 }
 
 // The title is what the plan tool names the job; a task tool's list has none.
-export type Plan = { title?: string; tasks: PlanTask[] }
+// A plan done is settled once the person writes again: the band above the
+// prompt then lets it go, and the next plan or task brings it back.
+export type Plan = { title?: string; tasks: PlanTask[]; isSettled?: boolean }
 
 export type DeskUi = {
   isRunningCollapsed: boolean

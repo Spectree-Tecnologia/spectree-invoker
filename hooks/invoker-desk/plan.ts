@@ -77,7 +77,14 @@ export function planFromTool(plan: Plan, input: Field): { plan: Plan; said: stri
 
 // What the plan bar reads: tasks done of all, and the line under it — the task
 // under way in its present-continuous form, else the next one, else done.
-export function planProgress(plan: Plan): { title: string; done: number; total: number; percent: number; now: string } {
+export function planProgress(plan: Plan): {
+  title: string
+  done: number
+  total: number
+  percent: number
+  now: string
+  isLive: boolean
+} {
   const total = plan.tasks.length
   const done = plan.tasks.filter(one => one.status === 'completed').length
   const current = plan.tasks.find(one => one.status === 'in_progress')
@@ -87,5 +94,12 @@ export function planProgress(plan: Plan): { title: string; done: number; total: 
     : next
       ? `A seguir: ${next.subject}`
       : 'Plano concluído'
-  return { title: plan.title || 'Plano', done, total, percent: total === 0 ? 0 : Math.round((done / total) * 100), now }
+  return {
+    title: plan.title || 'Plano',
+    done,
+    total,
+    percent: total === 0 ? 0 : Math.round((done / total) * 100),
+    now,
+    isLive: current !== undefined,
+  }
 }

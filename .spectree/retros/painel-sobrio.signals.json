@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 115,
+    "title": "Painel do Invoker sóbrio: cards em cinza, sem barra de progresso, Concluídos em verde (tarefa 43) — v1.82.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/115",
+    "opened": "2026-10-27T11:21:17Z",
+    "merged": "2026-10-27T23:58:23Z"
+  },
+  "signals": {
+    "open_minutes": 757,
+    "commits": 2,
+    "ci_heads": 2,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.82.0",
+    "archived": [
+      "docs/changes/archive/2026-10-27-painel-sobrio/proposal.md"
+    ]
+  },
+  "friction": "Nenhum.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
