@@ -108,30 +108,79 @@ export function spinnerMarkup(kind: OrbKind): string {
   )
 }
 
+// Fixed noise, so the sparkles sit still between redraws and only their twinkle moves.
+const noise = (x: number, y: number) => {
+  const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453
+  return v - Math.floor(v)
+}
+
+// Sparkles over the fill: a dither of tiny squares, sparse where the fill
+// starts and dense at its head, each twinkling out of phase with its neighbours.
+function sparkles(width: number): string {
+  const out: string[] = []
+  const cols = Math.floor(width / 3)
+  for (let c = 0; c < cols; c++) {
+    const density = 0.12 + 0.4 * Math.pow(c / Math.max(1, cols), 1.3)
+    for (let r = 0; r < 4; r++) {
+      if (noise(c, r) < density) out.push(`<rect class="s${Math.floor(noise(r, c) * 4)}" x="${c * 3 + 0.5}" y="${r * 3 + 1.5}" width="1.6" height="1.6"/>`)
+    }
+  }
+  return out.join('')
+}
+
 // The plan's progress: a track cut into one segment per task, filled from
-// Quas through Wex to Exort as tasks close, with sparks drifting through the
-// fill while any task remains.
-export function planBarMarkup(done: number, total: number): string {
+// Quas through Wex to Exort as tasks close and dusted with sparkles. While a
+// task remains a light sweeps the fill and the task under way glows; a plan
+// done is a still image.
+export function planBarMarkup(done: number, total: number, isLive = false): string {
   const width = total === 0 ? 0 : Math.round((done / total) * 300)
-  const ticks = Array.from({ length: Math.max(0, total - 1) }, (_, i) => {
-    const x = Math.round(((i + 1) * 300) / total)
-    return `<rect x="${x}" y="3" width="1" height="8" fill="#ffffff" opacity="0.18"/>`
-  }).join('')
-  const sparks =
-    done < total
-      ? `<g clip-path="url(#plan-clip)"><rect x="-90" y="0" width="90" height="14" fill="url(#plan-shine)"><animate attributeName="x" from="-90" to="${width}" dur="2.2s" repeatCount="indefinite"/></rect></g>`
-      : ''
+  const isMoving = done < total
+  const liveWidth = isLive && isMoving ? Math.round((Math.min(total, done + 1) * 300) / total) - width : 0
+  // A tick under the fill would cut it: only the segments still to go are marked.
+  const ticks = Array.from({ length: Math.max(0, total - 1) }, (_, i) => Math.round(((i + 1) * 300) / total))
+    .filter(x => x > width + 3)
+    .map(x => `<rect x="${x}" y="3" width="1" height="8" fill="#ffffff" opacity="0.18"/>`)
+    .join('')
+  const motion = isMoving
+    ? `<style>.s0,.s1,.s2,.s3{animation:tw 2.1s ease-in-out infinite}.s1{animation-duration:2.7s;animation-delay:-.7s}` +
+      `.s2{animation-duration:1.8s;animation-delay:-1.3s}.s3{animation-duration:3.1s;animation-delay:-.4s}` +
+      `@keyframes tw{0%,100%{opacity:.95}50%{opacity:.15}}` +
+      `.lv{animation:gl 1.6s ease-in-out infinite}@keyframes gl{0%,100%{opacity:.18}50%{opacity:.5}}` +
+      `.sh{animation:sw 2.6s linear infinite}@keyframes sw{from{transform:translateX(-70px)}to{transform:translateX(${width + 70}px)}}` +
+      `@media (prefers-reduced-motion: reduce){.s0,.s1,.s2,.s3,.lv,.sh{animation:none}}</style>`
+    : ''
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 14" width="300" height="14" preserveAspectRatio="none">` +
+    motion +
     `<defs><linearGradient id="plan-fill"><stop offset="0" stop-color="${ORB_COLOR.quas.mid}"/>` +
     `<stop offset="0.5" stop-color="${ORB_COLOR.wex.mid}"/><stop offset="1" stop-color="${ORB_COLOR.exort.mid}"/></linearGradient>` +
     `<linearGradient id="plan-shine"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/>` +
-    `<stop offset="0.5" stop-color="#ffffff" stop-opacity="0.55"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>` +
-    `<clipPath id="plan-clip"><rect x="0" y="0" width="${width}" height="14" rx="7"/></clipPath></defs>` +
+    `<stop offset="0.5" stop-color="#ffffff" stop-opacity="0.5"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>` +
+    `<clipPath id="plan-track"><rect x="0" y="0" width="300" height="14" rx="7"/></clipPath>` +
+    `<clipPath id="plan-clip"><rect x="0" y="0" width="${width}" height="14"/></clipPath></defs>` +
     `<rect x="0" y="0" width="300" height="14" rx="7" fill="#ffffff" opacity="0.08"/>` +
-    `<rect x="0" y="0" width="${width}" height="14" rx="7" fill="url(#plan-fill)"/>` +
-    sparks +
+    `<g clip-path="url(#plan-track)">` +
+    (liveWidth > 0 ? `<rect class="lv" x="${width}" y="0" width="${liveWidth}" height="14" fill="${ORB_COLOR.wex.mid}"/>` : '') +
+    (width > 0 ? `<rect x="0" y="0" width="${width}" height="14" fill="url(#plan-fill)"/>` : '') +
+    `<g fill="#ffffff">${sparkles(width)}</g>` +
+    (width > 0 && isMoving ? `<g clip-path="url(#plan-clip)"><rect class="sh" x="0" y="0" width="70" height="14" fill="url(#plan-shine)"/></g>` : '') +
     ticks +
-    `</svg>`
+    `</g></svg>`
   )
+}
+
+// A colour between `a` and `b`, both #rrggbb; `t` from 0 to 1.
+function mix(a: string, b: string, t: number): string {
+  const at = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16)
+  return `#${[0, 1, 2].map(i => Math.round(at(a, i) + (at(b, i) - at(a, i)) * t).toString(16).padStart(2, '0')).join('')}`
+}
+
+// The terminal's plan bar, a colour per filled cell: the same Quas, Wex and
+// Exort gradient as the drawing, spread over however many cells are full, in
+// twelve shades so a wide bar is a dozen texts and not one per cell.
+export function planCellColors(cells: number): string[] {
+  return Array.from({ length: cells }, (_, i) => {
+    const t = Math.round((cells > 1 ? i / (cells - 1) : 1) * 11) / 11
+    return t < 0.5 ? mix(ORB_COLOR.quas.mid, ORB_COLOR.wex.mid, t * 2) : mix(ORB_COLOR.wex.mid, ORB_COLOR.exort.mid, (t - 0.5) * 2)
+  })
 }

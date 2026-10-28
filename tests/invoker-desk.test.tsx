@@ -51,9 +51,15 @@ function engine(on: any, agentId: string, model = 'model') {
           : {},
   }))
   on('turn.complete', (_: unknown, e: any) => ({ text: e.answer }))
+  on('prompt.submit', (_: unknown, e: any) => e)
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('ui.status', () => ({ value: {} }))
   on('session.surfaces', () => ({ value: ['terminal'] }))
+  // What the engine draws above the prompt when no plugin draws there.
+  on('ui.render', ($: any, e: any) => {
+    const { Box } = $.ui.resolve(e)
+    return <Box />
+  })
   return clock
 }
 
@@ -233,7 +239,10 @@ test('the main loop adds no card and its task list fills the plan bar in place o
   ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   const bar = await svgSource(ui, 'Tarefas 1 de 3')
   expect(bar).toContain('viewBox="0 0 300 14"')
-  expect(bar).toContain('<animate')
+  // Sparkles twinkle over the fill, a light sweeps it and the task under way glows.
+  expect(bar).toContain('@keyframes tw')
+  expect(bar).toContain('class="sh"')
+  expect(bar).toContain('class="lv"')
   for (const mid of ['#38b6ff', '#e040fb', '#ff8a1f']) expect(bar).toContain(mid)
   await ui.unmount()
 
@@ -243,7 +252,10 @@ test('the main loop adds no card and its task list fills the plan bar in place o
   expect(await ui.find({ type: 'Text', text: /^Plano concluído$/ })).toBeDefined()
   const full = await svgSource(ui, 'Tarefas 3 de 3')
   expect(full).toContain('viewBox="0 0 300 14"')
-  expect(full).not.toContain('<animate')
+  // A plan done is still: its sparkles stay, nothing moves.
+  expect(full).toContain('class="s')
+  expect(full).not.toContain('@keyframes')
+  expect(full).not.toContain('class="lv"')
   await ui.unmount()
 })
 
@@ -434,4 +446,82 @@ test('a plan after a finished one starts untitled, and a todo list carries no ti
   expect(await ui.find({ type: 'Text', text: /^deck$/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /^Plano$/ })).toBeDefined()
   await ui.unmount()
+})
+
+const BAND = {
+  plugin: 'spectree',
+  component: 'AbovePrompt',
+  props: { isWorking: true, hasSurvey: false, maxRows: 20, bodyColumns: 80, scroll: { offset: 0, bodyRows: 20 }, view: {} },
+} as const
+
+test('the terminal shows the plan above the prompt in the orbs\' blocks until the person writes after it is done', async ($, on) => {
+  engine(on, 'x')
+  const steps = (done: number) =>
+    ['Ler o brief', 'Escrever o delta', 'Rodar o passe 1', 'Fechar'].map((text, i) => ({
+      text,
+      status: i < done ? 'completed' : i === done ? 'in_progress' : 'pending',
+    }))
+  await $.tool.call({ tool: 'mcp__spectree__plan', title: 'C3d abertura', steps: steps(2) } as any)
+
+  let band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^C3d abertura$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^Tarefas 2\/4$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^50%$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^Agora: Rodar o passe 1$/ })).toBeDefined()
+  // Half the cells full, from Quas blue at the start to Exort orange at the head; the task under way shimmers.
+  const runs = (await (band as any).findAll({ type: 'Text', text: /^█+$/ })) as any[]
+  expect(runs.map(one => String(one.props.children ?? one.text ?? '')).join('').length).toBeGreaterThan(20)
+  expect(runs.length).toBeLessThanOrEqual(12)
+  expect(runs[0].props.color).toBe('#38b6ff')
+  expect(runs[runs.length - 1].props.color).toBe('#ff8a1f')
+  expect(await band.find({ type: 'Text', text: /^▓+$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^░+$/ })).toBeDefined()
+  await band.unmount()
+
+  // The desktop and the editor keep the plan in the panel.
+  band = await $.ui.mount({ ...BAND, surface: 'desktop' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
+  await band.unmount()
+
+  // Done, it stays for the turn that finished it and goes once the person writes.
+  await $.tool.call({ tool: 'mcp__spectree__plan', steps: steps(4) } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas 4\/4$/ })).toBeDefined()
+  expect(await band.find({ type: 'Text', text: /^▓+$/ })).toBeUndefined()
+  await band.unmount()
+  // A notification is not the person writing.
+  await $.prompt.submit({ text: 'tarefa em segundo plano terminou', origin: { kind: 'task-notification' } } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas 4\/4$/ })).toBeDefined()
+  await band.unmount()
+  await $.prompt.submit({ text: 'próximo', origin: { kind: 'composer' } } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
+  await band.unmount()
+
+  // The next plan brings it back.
+  await $.tool.call({ tool: 'mcp__spectree__plan', title: 'Outra', steps: steps(0) } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas 0\/4$/ })).toBeDefined()
+  await band.unmount()
+})
+
+test('a task list that changes after a settled plan shows until the person writes again, and a survey keeps the band', async ($, on) => {
+  engine(on, 'x')
+  for (const subject of ['a', 'b']) await $.tool.call({ tool: 'TaskCreate', subject, description: subject } as any)
+  for (const taskId of ['1', '2']) await $.tool.call({ tool: 'TaskUpdate', taskId, status: 'completed' } as any)
+  await $.prompt.submit({ text: 'ok', origin: { kind: 'composer' } } as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
+  await band.unmount()
+
+  await $.tool.call({ tool: 'TaskCreate', subject: 'c', description: 'c' } as any)
+  await $.tool.call({ tool: 'TaskUpdate', taskId: '3', status: 'completed' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas 3\/3$/ })).toBeDefined()
+  await band.unmount()
+
+  band = await $.ui.mount({ ...BAND, props: { ...BAND.props, hasSurvey: true }, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
+  await band.unmount()
 })

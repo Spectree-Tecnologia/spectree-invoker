@@ -110,6 +110,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 41 | Chromium do Playwright detectado antes do baseline | Integrada, v1.80.0: `capabilities.mjs` lê do disco se o build Chromium que o Playwright do projeto pede está instalado, e o Platform Engineer o instala antes do baseline, [proposta](changes/archive/2026-10-27-navegador-detectado/proposal.md) | D-025 |
 | 42 | Painel do Invoker mais limpo | Integrada, v1.81.0: sem a linha verde da contagem de subagentes, e o plano sem moldura, com o título na cor do texto, [proposta](changes/archive/2026-10-27-painel-limpo/proposal.md) | — |
 | 43 | Painel do Invoker sóbrio | Integrada, v1.82.0: cards com moldura na cor do texto apagado e sem barra de progresso, e a seção Concluídos no verde de concluído, [proposta](changes/archive/2026-10-27-painel-sobrio/proposal.md) | — |
+| 44 | Barra do plano no terminal | Integrada, v1.83.0: o plano acima do prompt no terminal, em blocos no degradê dos orbes, e a barra do painel com faíscas, brilho e a tarefa em andamento acesa, [proposta](changes/archive/2026-10-28-barra-plano-terminal/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
@@ -123,6 +124,7 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-28:** Founder pediu a barra do plano no CLI e no estilo do Helper Desk (tarefa 44).
 - **2026-10-27:** Founder pediu o painel ainda mais sóbrio (tarefa 43): cards em cinza, sem barra de progresso, Concluídos em verde.
 - **2026-10-27:** Founder pediu o painel mais limpo (tarefa 42): sem a contagem verde e sem a moldura do plano.
 - **2026-10-27:** Founder deu GO na tarefa 41, a terceira proposta dos desvios da retro da change passkeys
