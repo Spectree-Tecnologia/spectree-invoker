@@ -141,6 +141,17 @@ async function recordEnd($: EngineInterface, id: string, status: AgentStatus, to
   await syncClock($, list)
 }
 
+// Neighbouring cells of one colour drawn as one text.
+function runs(colors: string[]): [string, number][] {
+  const out: [string, number][] = []
+  for (const color of colors) {
+    const last = out[out.length - 1]
+    if (last && last[0] === color) last[1] += 1
+    else out.push([color, 1])
+  }
+  return out
+}
+
 // The plan on the terminal, where nothing is drawn as a vector: a row of
 // blocks in the orbs' gradient, the task under way shimmering once a second
 // while the clock runs, and a light track for the rest.
@@ -149,8 +160,8 @@ function planBlocks(Text: any, progress: ReturnType<typeof planProgress>, cells:
   const live = progress.isLive ? Math.max(0, Math.round((cells * Math.min(progress.total, progress.done + 1)) / progress.total) - filled) : 0
   return (
     <Text>
-      {planCellColors(filled).map(color => (
-        <Text color={color}>█</Text>
+      {runs(planCellColors(filled)).map(([color, count]) => (
+        <Text color={color}>{'█'.repeat(count)}</Text>
       ))}
       {live > 0 && <Text color={Math.floor(at / 1000) % 2 ? ORB_COLOR.wex.mid : ORB_COLOR.quas.mid}>{'▓'.repeat(live)}</Text>}
       <Text dimColor>{'░'.repeat(Math.max(0, cells - filled - live))}</Text>
@@ -286,14 +297,17 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // A plan done stays above the prompt for the turn that finished it, not the next one.
+  // A plan done stays above the prompt for the turn that finished it, until the person writes again:
+  // a notification, a trigger or a dropped prompt leaves it there.
   on('prompt.submit', async ($, e, next) => {
+    const entered = await next(e)
+    if (e.origin.kind !== 'composer' || e.isMeta || entered.drop !== undefined) return entered
     await update($, plan, current =>
       current.tasks.length > 0 && !current.isSettled && current.tasks.every(one => one.status === 'completed')
         ? { ...current, isSettled: true }
         : current,
     ).catch(error => logFailure($, error))
-    return next(e)
+    return entered
   })
 
   // The terminal has no sidebar: the plan bar sits above the prompt, under any other plugin's band.
@@ -305,7 +319,8 @@ export const register: Register = on => {
     const rest = drawn && typeof drawn === 'object' && (drawn as { type?: string }).type !== 'engine' ? drawn : null
     const { Box, Text } = $.ui.resolve(e)
     const progress = planProgress(current)
-    const at = (await read($, now)) || Date.now()
+    // Only a task under way shimmers, so only then does the band follow the clock.
+    const at = progress.isLive ? (await read($, now)) || Date.now() : 0
     const label = `Tarefas ${progress.done}/${progress.total}`
     const percent = `${progress.percent}%`
     const columns = e.props.bodyColumns > 0 ? Math.floor(e.props.bodyColumns) : 80

@@ -469,10 +469,11 @@ test('the terminal shows the plan above the prompt in the orbs\' blocks until th
   expect(await band.find({ type: 'Text', text: /^50%$/ })).toBeDefined()
   expect(await band.find({ type: 'Text', text: /^Agora: Rodar o passe 1$/ })).toBeDefined()
   // Half the cells full, from Quas blue at the start to Exort orange at the head; the task under way shimmers.
-  const cells = (await (band as any).findAll({ type: 'Text', text: /^█$/ })) as any[]
-  expect(cells.length).toBeGreaterThan(20)
-  expect(cells[0].props.color).toBe('#38b6ff')
-  expect(cells[cells.length - 1].props.color).toBe('#ff8a1f')
+  const runs = (await (band as any).findAll({ type: 'Text', text: /^█+$/ })) as any[]
+  expect(runs.map(one => String(one.props.children ?? one.text ?? '')).join('').length).toBeGreaterThan(20)
+  expect(runs.length).toBeLessThanOrEqual(12)
+  expect(runs[0].props.color).toBe('#38b6ff')
+  expect(runs[runs.length - 1].props.color).toBe('#ff8a1f')
   expect(await band.find({ type: 'Text', text: /^▓+$/ })).toBeDefined()
   expect(await band.find({ type: 'Text', text: /^░+$/ })).toBeDefined()
   await band.unmount()
@@ -488,7 +489,12 @@ test('the terminal shows the plan above the prompt in the orbs\' blocks until th
   expect(await band.find({ type: 'Text', text: /^Tarefas 4\/4$/ })).toBeDefined()
   expect(await band.find({ type: 'Text', text: /^▓+$/ })).toBeUndefined()
   await band.unmount()
-  await $.prompt.submit({ text: 'próximo' } as any)
+  // A notification is not the person writing.
+  await $.prompt.submit({ text: 'tarefa em segundo plano terminou', origin: { kind: 'task-notification' } } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas 4\/4$/ })).toBeDefined()
+  await band.unmount()
+  await $.prompt.submit({ text: 'próximo', origin: { kind: 'composer' } } as any)
   band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
   expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
   await band.unmount()
@@ -497,5 +503,25 @@ test('the terminal shows the plan above the prompt in the orbs\' blocks until th
   await $.tool.call({ tool: 'mcp__spectree__plan', title: 'Outra', steps: steps(0) } as any)
   band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
   expect(await band.find({ type: 'Text', text: /^Tarefas 0\/4$/ })).toBeDefined()
+  await band.unmount()
+})
+
+test('a task list that changes after a settled plan shows until the person writes again, and a survey keeps the band', async ($, on) => {
+  engine(on, 'x')
+  for (const subject of ['a', 'b']) await $.tool.call({ tool: 'TaskCreate', subject, description: subject } as any)
+  for (const taskId of ['1', '2']) await $.tool.call({ tool: 'TaskUpdate', taskId, status: 'completed' } as any)
+  await $.prompt.submit({ text: 'ok', origin: { kind: 'composer' } } as any)
+  let band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
+  await band.unmount()
+
+  await $.tool.call({ tool: 'TaskCreate', subject: 'c', description: 'c' } as any)
+  await $.tool.call({ tool: 'TaskUpdate', taskId: '3', status: 'completed' } as any)
+  band = await $.ui.mount({ ...BAND, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas 3\/3$/ })).toBeDefined()
+  await band.unmount()
+
+  band = await $.ui.mount({ ...BAND, props: { ...BAND.props, hasSurvey: true }, surface: 'terminal' } as any)
+  expect(await band.find({ type: 'Text', text: /^Tarefas/ })).toBeUndefined()
   await band.unmount()
 })

@@ -5,21 +5,23 @@ type Field = (key: string) => unknown
 // The main loop's plan as its task tools leave it: TaskCreate adds a task under
 // the id its result gives, TaskUpdate changes or deletes one, TodoWrite replaces
 // the whole list. Any other tool leaves the plan as it is.
-export function applyToPlan(plan: Plan, tool: string, input: Field, result: unknown): Plan {
+export function applyToPlan(current: Plan, tool: string, input: Field, result: unknown): Plan {
   const text = (value: unknown) => (typeof value === 'string' ? value : undefined)
+  // A list that changes is no longer the settled one: the band shows it until the person writes again.
+  const { isSettled: _settled, ...plan } = current
   if (tool === 'TaskCreate') {
     const id = text((result as { task?: { id?: unknown } } | undefined)?.task?.id)
     const subject = text(input('subject'))
-    if (!id || !subject) return plan
+    if (!id || !subject) return current
     const task: PlanTask = { id, subject, activeForm: text(input('activeForm')), status: 'pending' }
     return { ...plan, tasks: [...plan.tasks.filter(one => one.id !== id), task] }
   }
   if (tool === 'TaskUpdate') {
     // An update the tool refused leaves the task as it was.
-    if ((result as { success?: unknown } | undefined)?.success === false) return plan
+    if ((result as { success?: unknown } | undefined)?.success === false) return current
     const id = text(input('taskId'))
     const status = text(input('status'))
-    if (!id || !plan.tasks.some(one => one.id === id)) return plan
+    if (!id || !plan.tasks.some(one => one.id === id)) return current
     if (status === 'deleted') return { ...plan, tasks: plan.tasks.filter(one => one.id !== id) }
     return {
       ...plan,
@@ -37,7 +39,7 @@ export function applyToPlan(plan: Plan, tool: string, input: Field, result: unkn
   }
   if (tool === 'TodoWrite') {
     const todos = input('todos')
-    if (!Array.isArray(todos)) return plan
+    if (!Array.isArray(todos)) return current
     // A todo list has no title: it does not carry the last plan's.
     return {
       tasks: todos.flatMap((todo, i) => {
@@ -48,7 +50,7 @@ export function applyToPlan(plan: Plan, tool: string, input: Field, result: unkn
       }),
     }
   }
-  return plan
+  return current
 }
 
 const STATUSES = ['pending', 'in_progress', 'completed'] as const

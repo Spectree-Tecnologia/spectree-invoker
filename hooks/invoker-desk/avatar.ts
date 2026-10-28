@@ -176,10 +176,11 @@ function mix(a: string, b: string, t: number): string {
 }
 
 // The terminal's plan bar, a colour per filled cell: the same Quas, Wex and
-// Exort gradient as the drawing, spread over however many cells are full.
+// Exort gradient as the drawing, spread over however many cells are full, in
+// twelve shades so a wide bar is a dozen texts and not one per cell.
 export function planCellColors(cells: number): string[] {
   return Array.from({ length: cells }, (_, i) => {
-    const t = cells > 1 ? i / (cells - 1) : 1
+    const t = Math.round((cells > 1 ? i / (cells - 1) : 1) * 11) / 11
     return t < 0.5 ? mix(ORB_COLOR.quas.mid, ORB_COLOR.wex.mid, t * 2) : mix(ORB_COLOR.wex.mid, ORB_COLOR.exort.mid, (t - 0.5) * 2)
   })
 }
