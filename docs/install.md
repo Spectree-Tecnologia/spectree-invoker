@@ -22,8 +22,8 @@ The plugin also ships a Claude Code hooks module, `hooks/invoker-desk/`: a side 
 orchestration, in the Spectree palette (Void, Surface, Mist, Spirit, Depth). The Spectree mascot floats in
 the middle; while a subagent runs, that specialist's own drawing takes its place, the last one dispatched
 in front, and the mascot smiles over a plan done. Below: the plan's progress bar, and one card per
-subagent with the mascot small (its eyes open while it works, smiling once done, frowning when it
-failed), its role, model, tokens, duration, status and steps. In the terminal the plan also sits above
+subagent with the mascot small (its role's expression from the mascot's sheet while it works,
+smiling once done, frowning when it failed), its role, model, tokens, duration, status and steps. In the terminal the plan also sits above
 the prompt.
 
 It opens by itself once per session on the desktop app and in VS Code, in a folder with `.spectree/`

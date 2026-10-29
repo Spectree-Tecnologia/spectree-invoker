@@ -22,8 +22,12 @@ nenhum comportamento do runtime muda.
    - O spinner usa pontos Spirit.
    - A seção Em execução fica em Depth.
    - A seção Concluídos segue no verde de concluído, que é o pedido da tarefa 43.
-4. **O avatar do card é o mascote pequeno.** Os olhos acesos indicam que o subagente trabalha, o sorriso
-   indica que concluiu e a testa franzida indica que falhou ou foi interrompido.
+4. **O avatar do card é o mascote pequeno.**
+   - Enquanto o subagente roda, o card mostra a expressão do papel na folha do mascote: o Architect
+     curioso, o Developer sorrindo, o Platform sério, o Integration e o TypeSafe piscando, e o Quality
+     bravo. É o pedido de 2026-10-29.
+   - Terminado, o card mostra o capuz pequeno, sorrindo quando concluiu e com a testa franzida quando
+     falhou ou foi interrompido.
 5. **No terminal**, o mascote é desenhado só como os dois olhos.
 6. **A guarda do CI troca os orbs pelos papéis e pela arte do mascote.** Cada card tem a sua arte, cada
    arte é um traçado só de caminhos, e cada uma cabe no limite do Svg.

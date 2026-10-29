@@ -5,7 +5,7 @@ import type { AgentRow, AgentStatus, AgentSteps, DeskUi, Plan } from './state'
 import { heroMarkup, mascotAvatar, planBarMarkup, planCellColors, spinnerMarkup } from './avatar'
 import { formatDuration, formatTokens, modelLabel, plural, stepLabel, tokensOf } from './format'
 import { applyToPlan, planFromTool, planProgress } from './plan'
-import { artOf, labelOf, PALETTE, roleOf } from './roles'
+import { artOf, faceOf, labelOf, PALETTE, roleOf } from './roles'
 import type { Art } from './roles'
 
 const PANE = 'invoker-desk'
@@ -450,11 +450,11 @@ export const register: Register = on => {
       const headColor = row.status === 'completed' ? 'success' : row.status === 'running' ? color : 'error'
 
       return (
-        // Clean: every card is framed in the dim text colour; the mascot's eyes say how it went.
+        // Clean: every card is framed in the dim text colour; the mascot's face says how it goes.
         <Box flexDirection="row" borderStyle="round" borderColor="inactive" paddingX={1} gap={1} overflow="hidden">
           <Box flexDirection="column" justifyContent="center" flexShrink={0}>
             {Svg ? (
-              <Svg source={mascotAvatar(row.status)} alt={labelOf(row.type)} width={40} height={40} isInteractive={isMoving} />
+              <Svg source={mascotAvatar(row.status, faceOf(row.type))} alt={labelOf(row.type)} width={40} height={40} isInteractive={isMoving} />
             ) : (
               <Text color={color}>◉</Text>
             )}

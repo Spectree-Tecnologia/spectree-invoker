@@ -1,7 +1,7 @@
 import { MASCOT_ART } from './mascot-art'
 import { PALETTE } from './roles'
 import type { AgentStatus } from './state'
-import type { Art } from './roles'
+import type { Art, Face } from './roles'
 
 // The panel's centre: the mascot, or the specialist that took its place, in a
 // Spirit aura with its own glow laid over it. Drawn floating, so it is always
@@ -25,24 +25,29 @@ export function heroMarkup(art: Art): string {
   )
 }
 
-// A card's avatar: the mascot's hood and eyes, drawn small. Its eyes say how
-// the subagent is: open and glowing while it works, smiling once done, frowning
-// when it failed or was stopped.
-export function mascotAvatar(status: AgentStatus): string {
+// A card's avatar. While the subagent runs, its role's expression from the
+// mascot's sheet, glowing softly; once it ends, the mascot's hood drawn small,
+// smiling when done and frowning when it failed or was stopped.
+export function mascotAvatar(status: AgentStatus, face: Face = 'focused'): string {
+  if (status === 'running') {
+    const drawing = MASCOT_ART[`face_${face}`].replace('<svg ', '<svg x="0" y="0" width="48" height="48" ')
+    return (
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="40" height="40">` +
+      `<style>.gl{animation:gl 1.6s ease-in-out infinite}@keyframes gl{0%,100%{opacity:.25}50%{opacity:.6}}` +
+      `@media (prefers-reduced-motion: reduce){.gl{animation:none}}</style>` +
+      `<defs><filter id="m-glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.4"/></filter>` +
+      `<filter id="m-soft"><feGaussianBlur stdDeviation="0.25"/></filter></defs>` +
+      `<g id="face" filter="url(#m-soft)">${drawing}</g>` +
+      `<use href="#face" class="gl" filter="url(#m-glow)" style="mix-blend-mode:screen"/>` +
+      `</svg>`
+    )
+  }
   const eyes =
-    status === 'running'
-      ? `<g class="ey"><ellipse cx="18.5" cy="27" rx="3.4" ry="2.6"/><ellipse cx="29.5" cy="27" rx="3.4" ry="2.6"/></g>`
-      : status === 'completed'
-        ? `<path d="M15.5 28 Q18.5 24 21.5 28 M26.5 28 Q29.5 24 32.5 28" fill="none" stroke="${PALETTE.spirit}" stroke-width="1.8" stroke-linecap="round"/>`
-        : `<path d="M15.5 25.5 L21.5 27.5 L15.5 29 Z M32.5 25.5 L26.5 27.5 L32.5 29 Z"/>`
-  const motion =
-    status === 'running'
-      ? `<style>.ey{animation:ey 1.6s ease-in-out infinite}@keyframes ey{0%,100%{opacity:1}50%{opacity:.45}}` +
-        `@media (prefers-reduced-motion: reduce){.ey{animation:none}}</style>`
-      : ''
+    status === 'completed'
+      ? `<path d="M15.5 28 Q18.5 24 21.5 28 M26.5 28 Q29.5 24 32.5 28" fill="none" stroke="${PALETTE.spirit}" stroke-width="1.8" stroke-linecap="round"/>`
+      : `<path d="M15.5 25.5 L21.5 27.5 L15.5 29 Z M32.5 25.5 L26.5 27.5 L32.5 29 Z"/>`
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="40" height="40">` +
-    motion +
     `<defs><filter id="m-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6"/></filter></defs>` +
     `<circle cx="24" cy="24" r="23" fill="${PALETTE.surface}"/>` +
     `<path d="M24 5 C14 9 8 17 8.5 27 C9 36 15.5 41 24 41 C32.5 41 39 36 39.5 27 C40 17 34 9 24 5 Z" fill="${PALETTE.void}" stroke="${PALETTE.depth}" stroke-width="1.6"/>` +

@@ -379,6 +379,14 @@ test('a running card heads with the step under way and the Spirit dots turning',
   expect(spinner).toContain('viewBox="0 0 16 16"')
   expect(spinner).toContain('animateTransform')
   expect(spinner).toContain('#58e5d4')
+  // The running card wears its role's expression from the mascot's sheet, glowing: the developer smiles.
+  const avatar = ((await (ui as any).findAll({ type: 'Svg' })) as any[]).find(one => one?.props?.alt === 'Full Stack Developer' && one?.props?.width === 40)
+  const face = String(avatar?.props?.source ?? '')
+  expect(face).toContain('<svg x="0" y="0" width="48" height="48" viewBox="0 0 96 96">')
+  expect(face).toContain('@keyframes gl')
+  expect(face).not.toContain('<ellipse')
+  expect(face.length).toBeLessThan(20_000)
+  expect(avatar?.props?.isInteractive).toBe(true)
   await ui.unmount()
 })
 

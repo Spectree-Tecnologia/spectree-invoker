@@ -26,13 +26,15 @@ function stateProblems(pluginName, source, contract) {
   return problems;
 }
 
-// Six specialist cards, each with the drawing that takes the mascot's place while it works.
+// Six specialist cards, each with the drawing that takes the mascot's place while it works and the
+// expression its running card wears.
 function roleProblems(rolesSource, cards, arts) {
-  const roles = [...rolesSource.matchAll(/\{ role: '([^']+)', label: '[^']+', art: '(\w+)' \}/g)].map((m) => ({ role: m[1], art: m[2] }));
+  const roles = [...rolesSource.matchAll(/\{ role: '([^']+)', label: '[^']+', art: '(\w+)', face: '(\w+)' \}/g)].map((m) => ({ role: m[1], art: m[2], face: m[3] }));
   const problems = [];
   for (const card of cards) if (!roles.some((r) => r.role === card)) problems.push(`roles.ts: no drawing for agents/${card}.md`);
   for (const r of roles) if (!cards.includes(r.role)) problems.push(`roles.ts: drawing for ${r.role}, which has no card`);
   for (const r of roles) if (!arts.includes(r.art)) problems.push(`roles.ts: ${r.role} names ${r.art}, which mascot-art.ts does not draw`);
+  for (const r of roles) if (!arts.includes(`face_${r.face}`)) problems.push(`roles.ts: ${r.role} wears face_${r.face}, which mascot-art.ts does not draw`);
   return problems;
 }
 
@@ -88,8 +90,9 @@ const commandProblems = (source) =>
 test('each guard rejects the state it exists to catch', () => {
   assert.deepEqual(moduleProblems('{ "modules": ["./gone.tsx"] }', () => false), ['hooks/hooks.json: names ./gone.tsx, which does not exist']);
   assert.equal(stateProblems('spectree', "atom({ plugin: 'invoker-desk', key: 'x' })", "\n    'invoker-desk': {").length, 2);
-  assert.ok(roleProblems("{ role: 'quality-engineer', label: 'QE', art: 'quality' }", ['quality-engineer', 'platform-engineer'], ['quality']).includes('roles.ts: no drawing for agents/platform-engineer.md'));
-  assert.deepEqual(roleProblems("{ role: 'quality-engineer', label: 'QE', art: 'quality' }", ['quality-engineer'], ['mascot']), ['roles.ts: quality-engineer names quality, which mascot-art.ts does not draw']);
+  assert.ok(roleProblems("{ role: 'quality-engineer', label: 'QE', art: 'quality', face: 'angry' }", ['quality-engineer', 'platform-engineer'], ['quality', 'face_angry']).includes('roles.ts: no drawing for agents/platform-engineer.md'));
+  assert.deepEqual(roleProblems("{ role: 'quality-engineer', label: 'QE', art: 'quality', face: 'angry' }", ['quality-engineer'], ['mascot', 'face_angry']), ['roles.ts: quality-engineer names quality, which mascot-art.ts does not draw']);
+  assert.deepEqual(roleProblems("{ role: 'quality-engineer', label: 'QE', art: 'quality', face: 'angry' }", ['quality-engineer'], ['quality']), ['roles.ts: quality-engineer wears face_angry, which mascot-art.ts does not draw']);
   assert.deepEqual(networkProblems({ 'a.ts': 'await $.http.fetch(url)' }), ['a.ts: reaches the network, a process or a tool']);
   assert.deepEqual(networkProblems({ 'a.ts': 'await $.tool.call({ tool: "Bash" })' }), ['a.ts: reaches the network, a process or a tool']);
   assert.deepEqual(networkProblems({ 'a.ts': 'const { call } = $.tool; await call({ tool: "Bash" })' }), ['a.ts: reaches the network, a process or a tool']);
