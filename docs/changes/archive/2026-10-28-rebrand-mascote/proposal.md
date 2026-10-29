@@ -26,8 +26,8 @@ nenhum comportamento do runtime muda.
    - Enquanto o subagente roda, o card mostra a expressão do papel na folha do mascote: o Architect
      curioso, o Developer sorrindo, o Platform sério, o Integration e o TypeSafe piscando, e o Quality
      bravo. É o pedido de 2026-10-29.
-   - Terminado, o card mostra o capuz pequeno, sorrindo quando concluiu e com a testa franzida quando
-     falhou ou foi interrompido.
+   - Terminado, o card mostra o rosto da folha sorrindo quando concluiu, e bravo quando falhou ou foi
+     interrompido. Os dois ficam parados.
 5. **No terminal**, o mascote é desenhado só como os dois olhos.
 6. **A guarda do CI troca os orbs pelos papéis e pela arte do mascote.** Cada card tem a sua arte, cada
    arte é um traçado só de caminhos, e cada uma cabe no limite do Svg.

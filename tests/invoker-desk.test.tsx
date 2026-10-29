@@ -1,5 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
+import { MASCOT_ART } from '../hooks/invoker-desk/mascot-art'
+
 const PANE = {
   plugin: 'spectree',
   component: 'Pane',
@@ -19,6 +21,9 @@ async function svgSource(ui: any, alt: string): Promise<string> {
   const svgs = (await ui.findAll({ type: 'Svg' })) as any[]
   return String(svgs.find(one => one?.props?.alt === alt)?.props?.source ?? '')
 }
+
+// The smiling face of the mascot's sheet, as a card draws it: its first path picks it out.
+const happyFace = (MASCOT_ART.face_happy.match(/<path [^>]+>/) ?? [''])[0]
 
 const ENGINE = { plugin: 'engine', tier: 'core' } as const
 
@@ -89,12 +94,12 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
     expect(await ui.find({ type: 'Text', text: /Using Read: \/repo\/docs\/specs/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Invoker em repouso/ })).toBeDefined()
     if (surface !== 'terminal') {
-      // The card's avatar is the mascot small, smiling once done, and still: no frame.
+      // The card's avatar is the mascot's smiling face from its sheet once done, and still: no frame.
       const svgs = (await (ui as any).findAll({ type: 'Svg' })) as any[]
       const avatar = svgs.find(one => one?.props?.alt === 'Quality Engineer')
       const source = String(avatar?.props?.source ?? '')
       expect(source).toContain('viewBox="0 0 48 48"')
-      expect(source).toContain('Q18.5 24 21.5 28')
+      expect(source).toContain(happyFace)
       expect(source).not.toContain('@keyframes')
       expect(avatar?.props?.isInteractive).toBe(false)
       expect(source).not.toContain('<image')
