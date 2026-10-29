@@ -300,6 +300,18 @@
       "current_decision": "A mudança navegador-detectado lê se a pasta do build Chromium pedido existe no cache do Playwright. Não abre o binário, porque capabilities.mjs não executa nada; uma instalação corrompida aparece como present; um Playwright declarado mas fora do node_modules do projeto (store do pnpm, workspace aninhado) dá unknown, um global não declarado não é lido, e um build instalado só com --only-shell ou --no-shell dá absent.",
       "reevaluation_trigger": "Um projeto consumidor registra uma suíte de navegador vermelha por build ausente ou corrompido com browser.playwright_chromium present, ou um Playwright que a linha não achou",
       "closure_condition": "A linha distingue o caso do incidente sem executar o binário, ou o Platform Engineer tem um passo de baseline que o abre, visto recusando o caso."
+    },
+    {
+      "schema_version": "1.0.0",
+      "owner": "own_change",
+      "status": "open",
+      "opened_by_change": "inventario-sem-processos",
+      "stable_id": 26,
+      "title": "Observação do Console lista os registros de processo",
+      "impact": "ceiling",
+      "current_decision": "A mudança inventario-sem-processos tira .spectree do inventário do executor. A observação do Console (console/observation.mjs) lista o candidato com git ls-files --cached --others, .spectree/processes incluído, com maxBuffer de 4 MiB e recusa E_OBSERVATION_LIMIT acima de 50.000 caminhos; não foi mudada porque nenhum incidente a atingiu e o que ela precisa observar de .spectree não foi medido.",
+      "reevaluation_trigger": "Um projeto consumidor passa de 3 MiB na listagem do candidato ou de 40.000 caminhos, ou o Console recusa com ENOBUFS ou E_OBSERVATION_LIMIT",
+      "closure_condition": "A observação do Console exclui o que não é candidato pelo pathspec, ou mede o próprio teto contra um projeto do tamanho do incidente, visto recusando o caso antigo."
     }
   ]
 }

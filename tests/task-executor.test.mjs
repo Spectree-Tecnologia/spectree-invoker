@@ -56,6 +56,19 @@ test('quota in completed envelope is interrupted even if code was written', () =
   } finally { cleanup(r.root); }
 });
 
+test('process records past the default 1 MiB listing neither break the inventory nor enter it', () => {
+  const r = fixture();
+  try {
+    initTasks(r.root, 'c1', r.plan);
+    // About 1.3 MiB of untracked paths under .spectree/processes, the shape a long-lived consumer reaches.
+    const segment = 'p'.repeat(200);
+    for (let i = 0; i < 6000; i++) writeFiles(r.root, { [`.spectree/processes/op-${i}/${segment}`]: '{}' });
+    const out = runTask(r.root, 'c1', 'A', r.good());
+    assert.equal(out.ok, true, readFileSync(join(r.root, out.attempt.result_ref), 'utf8'));
+    assert.deepEqual(JSON.parse(readFileSync(join(r.root, out.attempt.result_ref), 'utf8')).changed, ['src/value.cjs']);
+  } finally { cleanup(r.root); }
+});
+
 test('whole candidate evidence becomes stale after external edits and can be reverified', () => {
   const r = fixture();
   try {
