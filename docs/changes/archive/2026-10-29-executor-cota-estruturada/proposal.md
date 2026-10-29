@@ -25,7 +25,8 @@ O leitor de resultado de `tasks.mjs run/repair` (Codex e Claude Code) confundia 
 ## Escopo
 
 1. **A declaração é o objeto que fecha a mensagem final.** Prosa antes dela e um bloco de código em
-   volta são aceitos; um objeto citado no meio do texto não é declaração.
+   volta são aceitos; um objeto citado no meio do texto não é declaração. O início do objeto é achado
+   numa só passada de trás para frente, casando as chaves fora das strings JSON, em tempo linear.
 2. **Cota só vem do que é estruturado:** os eventos de falha do próprio harness (`turn.failed` e
    `error` no Codex; `error` e os erros do `result` no Claude Code), a razão de uma declaração
    `interrupted`, e a prosa só quando não houve declaração nenhuma. Nunca a saída de uma ferramenta,
@@ -45,8 +46,5 @@ O leitor de resultado de `tasks.mjs run/repair` (Codex e Claude Code) confundia 
 - Prosa sem declaração que cite uma cota continua classificada como cota. Isso é conservador de
   propósito: sem declaração, a tentativa nunca seria sucesso, e a recusa custa uma tentativa, não uma
   entrega falsa.
-- A declaração é procurada a partir do início da mensagem, do início de cada linha e das últimas 64
-  chaves, com um limite em cada uma dessas buscas. Uma declaração que começa no meio de uma linha de
-  prosa e carrega mais de 64 chaves não é achada.
 - No Codex, um item com erro (`item.error`, ou um item do tipo `error`) é tratado como trabalho do
   agente e não conta como cota. Só `error` e `turn.failed` no nível do turno contam.

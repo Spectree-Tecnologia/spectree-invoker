@@ -45,18 +45,28 @@ const isMission = (doc) => doc?.spectree_result === 1 && ['completed', 'blocked'
  */
 function missionResult(messages) {
   const text = String(messages.at(-1) ?? '').trim().replace(/\n?```\s*$/, '').trimEnd();
-  if (!text.endsWith('}')) return null;
-  // Where a claim can open: the message start, a line start, then any brace from the end. Each kind
-  // is bounded, so a deeply nested message never costs a parse per brace, and a claim with many
-  // braces inside it is still found from its own line.
-  const lineStarts = [...text.matchAll(/(?:^|\n)[ \t]*(?:```json[ \t]*\n[ \t]*)?(?=\{)/g)].map((m) => m.index + m[0].length).slice(-64).reverse();
-  const braces = [];
-  for (let i = text.lastIndexOf('{'); i >= 0 && braces.length < 64; i = i ? text.lastIndexOf('{', i - 1) : -1) braces.push(i);
-  for (const i of new Set([...lineStarts, ...braces])) {
-    try { const doc = JSON.parse(text.slice(i)); return isMission(doc) ? doc : null; }
-    catch { /* Not the start of the trailing object. */ }
+  const start = trailingObjectStart(text);
+  if (start < 0) return null;
+  try { const doc = JSON.parse(text.slice(start)); return isMission(doc) ? doc : null; }
+  catch { return null; /* The trailing braces are not one JSON object. */ }
+}
+/**
+ * Where the object that closes `text` opens: one backward pass matching braces outside JSON
+ * strings, so prose before it never matters and the cost is linear. -1 when no object closes it.
+ */
+function trailingObjectStart(text) {
+  if (!text.endsWith('}')) return -1;
+  let depth = 0; let quoted = false;
+  for (let i = text.length - 1; i >= 0; i--) {
+    const c = text[i];
+    if (c === '"') {
+      let slashes = 0;
+      while (text[i - 1 - slashes] === '\\') slashes++;
+      if (slashes % 2 === 0) quoted = !quoted;
+    } else if (!quoted && c === '}') depth++;
+    else if (!quoted && c === '{' && --depth === 0) return i;
   }
-  return null;
+  return -1;
 }
 /**
  * What may say "quota": the harness's own failure records, the reason of a claim the agent itself
