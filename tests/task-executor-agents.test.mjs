@@ -10,7 +10,7 @@ import { spawnSync } from 'node:child_process';
 import { cleanup, writeFiles, REPO, closureCli } from './helpers.mjs';
 import { snapshot } from '../scripts/lib/change/work.mjs';
 import { initTasks, taskStatus, runTask, recoverTask, planTaskBudget, applyTaskBudget } from '../scripts/lib/execution/task-executor.mjs';
-import { codexEvents, preflightAgent, runAgent } from '../scripts/lib/execution/agent-runner.mjs';
+import { codexEvents, claudeEvents, preflightAgent, runAgent } from '../scripts/lib/execution/agent-runner.mjs';
 import { phaseContext, contextPacket, hash } from '../scripts/lib/execution/context.mjs';
 import { engineeringReport } from '../scripts/lib/evaluation/engineering-reports.mjs';
 import { fixture } from './task-executor-fixture.mjs';
@@ -172,4 +172,28 @@ test('bridge timeout wins over exit one and terminal observation persists before
     const delivered = runAgent(r.root, {}, r.bridge("console.log(JSON.stringify({status:'completed',summary:'Implemented quota handling.'}));"));
     assert.equal(delivered.status, 'reported_success'); assert.equal(delivered.classification, 'delivery_reported');
   } finally { cleanup(r.root); }
+});
+
+test('a completed claim after prose, in a fence, or after a red run about rate limits is no quota', () => {
+  const claim = (status, reason) => JSON.stringify({ spectree_result: 1, status, reason });
+  const done = claim('completed', 'T-HTTP implemented.');
+  const codex = (message, extra = []) => codexEvents([...extra, { type: 'item.completed', item: { type: 'agent_message', text: message } }, { type: 'turn.completed' }].map(JSON.stringify).join('\n'), { status: 0 });
+  const claude = (message) => claudeEvents(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: message }), { status: 0 });
+  const red = [{ type: 'item.completed', item: { type: 'command_execution', exit_code: 1, aggregated_output: 'not ok 3 - rate limit returns 429' } }];
+  for (const message of [`The HTTP rate limit now answers 429 after ten requests.\n\n${done}`, 'Done.\n```json\n' + done + '\n```']) {
+    for (const parsed of [codex(message), claude(message)]) {
+      assert.equal(parsed.status, 'reported_success'); assert.equal(parsed.classification, 'delivery_reported');
+      assert.equal(parsed.mission.status, 'completed');
+    }
+  }
+  const afterRed = codex(done, red);
+  assert.equal(afterRed.status, 'reported_success'); assert.equal(afterRed.classification, 'delivery_reported');
+  // A failed claim about a rate-limit task is a failure; only an interrupted claim or the harness says quota.
+  const failed = codex(`Notes.\n${claim('failed', 'The rate limit test still fails.')}`);
+  assert.equal(failed.status, 'failed'); assert.equal(failed.classification, 'agent_failure');
+  const interrupted = claude(claim('interrupted', 'Hit the usage limit.'));
+  assert.equal(interrupted.status, 'interrupted'); assert.equal(interrupted.classification, 'quota');
+  assert.equal(codex('Done', [{ type: 'turn.failed', error: { message: 'rate limit exceeded' } }]).classification, 'quota');
+  // A claim must end the message; an object quoted mid-prose is not one.
+  assert.equal(codex(`${done}\nThen I stopped.`).mission, null);
 });

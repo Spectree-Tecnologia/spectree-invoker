@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 118,
+    "title": "Avatar principal espectral: o centro visto por outra dimensão (tarefa 46) — v1.85.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/118",
+    "opened": "2026-10-29T11:56:32Z",
+    "merged": "2026-10-29T12:01:10Z"
+  },
+  "signals": {
+    "open_minutes": 5,
+    "commits": 3,
+    "ci_heads": 2,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.85.0",
+    "archived": [
+      "docs/changes/archive/2026-10-29-avatar-espectral/proposal.md"
+    ]
+  },
+  "friction": "Nenhum. O efeito foi aprovado no primeiro preview.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01TbzdKTcqdV5Hm7BS1sTJub",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

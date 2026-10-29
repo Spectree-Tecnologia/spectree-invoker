@@ -36,16 +36,33 @@ function unreadableEvents(result, harness) {
     reason: `Malformed JSONL from ${harness}.` };
 }
 
+const LIMIT = /rate.?limit|quota|session limit|usage limit/i;
+const isMission = (doc) => doc?.spectree_result === 1 && ['completed', 'blocked', 'failed', 'interrupted'].includes(doc.status) &&
+  typeof doc.reason === 'string' && doc.reason.trim();
+/**
+ * The structured claim is the object that ends the final message. Prose before it, or a code fence
+ * around it, is narration: it neither hides the claim nor gets read as one.
+ */
 function missionResult(messages) {
-  try {
-    const doc = JSON.parse(messages.at(-1));
-    if (doc?.spectree_result === 1 && ['completed', 'blocked', 'failed', 'interrupted'].includes(doc.status) &&
-        typeof doc.reason === 'string' && doc.reason.trim()) return doc;
-  } catch { /* Prose is not a structured delivery claim. */ }
+  const text = String(messages.at(-1) ?? '').trim().replace(/\n?```\s*$/, '').trimEnd();
+  if (!text.endsWith('}')) return null;
+  for (let i = text.lastIndexOf('{'); i >= 0; i = text.lastIndexOf('{', i - 1)) {
+    try { const doc = JSON.parse(text.slice(i)); return isMission(doc) ? doc : null; }
+    catch { /* Not the start of the trailing object yet. */ }
+    if (i === 0) break;
+  }
   return null;
 }
-function classification(result, text, status, mission = null) {
-  if (!['reported_success', 'turn_completed'].includes(status) && /rate.?limit|quota|session limit|usage limit/i.test(text)) return 'quota';
+/**
+ * What may say "quota": the harness's own failure records, the reason of a claim the agent itself
+ * marked interrupted, and prose only where no claim was made. Never tool output, never the reason of
+ * a completed, failed or blocked claim: a task about rate limits names them while it works.
+ */
+function limitText(failures, mission, finalText) {
+  return JSON.stringify(failures) + (mission ? mission.status === 'interrupted' ? mission.reason : '' : finalText ?? '');
+}
+function classification(result, text, status, mission = null, limits = text) {
+  if (!['reported_success', 'turn_completed'].includes(status) && LIMIT.test(limits)) return 'quota';
   if (result.error?.code === 'ETIMEDOUT' || /"(?:error|status)":"(?:timeout|timed_out)"/.test(text)) return 'timeout';
   if (result.signal) return 'interruption';
   if (/helper_unknown_error|trusted tool process.*died|tool_unavailable/.test(text)) return 'tool_unavailable';
@@ -68,15 +85,17 @@ export function codexEvents(stdout, result) {
     e.item?.status === 'failed' || (Number.isInteger(e.item?.exit_code) && e.item.exit_code !== 0));
   const mission = missionResult(messages);
   const failureText = JSON.stringify(errors) + (mission?.status === 'completed' ? '' : messages.at(-1) ?? '');
-  const limit = /rate.?limit|quota|session limit|usage limit/i.test(failureText);
+  // A failed command is the agent's work (a red test may be named "rate limit"), not the harness's.
+  const limits = limitText(events.filter(e => e.type === 'error' || e.type === 'turn.failed'), mission, messages.at(-1));
+  const limit = LIMIT.test(limits);
   let status = result.error || result.signal || limit ? 'interrupted' : failed || result.status !== 0 ? 'failed'
     : completed.length === 1 && events.at(-1)?.type === 'turn.completed' ? 'turn_completed' : 'unknown';
-  const kind = classification(result, failureText, status, mission);
+  const kind = classification(result, failureText, status, mission, limits);
   if (['quota', 'timeout'].includes(kind)) status = 'interrupted';
   if (kind === 'tool_unavailable') status = 'failed';
   if (status === 'turn_completed' && mission) status = mission.status === 'completed' ? 'reported_success'
     : mission.status === 'interrupted' ? 'interrupted' : 'failed';
-  return { status, classification: classification(result, failureText, status, mission), mission,
+  return { status, classification: classification(result, failureText, status, mission, limits), mission,
     events, messages, usage: completed.at(-1)?.usage ?? null };
 }
 export function claudeEvents(stdout, result) {
@@ -89,7 +108,9 @@ export function claudeEvents(stdout, result) {
   const errors = events.filter(e => e.type === 'error');
   const failureText = JSON.stringify([errors, last?.errors ?? [], last?.permission_denials ?? []]) +
     (mission?.status === 'completed' ? '' : last?.result ?? '');
-  const limit = /rate.?limit|quota|usage limit|session limit/i.test(failureText);
+  // A denied tool call quotes its input, which can name anything; it fails the run, it is no quota.
+  const limits = limitText([errors, last?.errors ?? []], mission, last?.result);
+  const limit = LIMIT.test(limits);
   const failed = errors.length > 0 || last?.is_error || (last?.permission_denials?.length ?? 0) > 0;
   // Claude Code 2.1.302 emits system events (task_summary) after the result;
   // any other event after it still leaves the run unknown.
@@ -98,7 +119,7 @@ export function claudeEvents(stdout, result) {
     : terminal.length === 1 && settled && last.subtype === 'success' && last.is_error === false ? 'reported_success' : 'unknown';
   let finalStatus = status === 'reported_success' && mission && mission.status !== 'completed'
     ? mission.status === 'interrupted' ? 'interrupted' : 'failed' : status;
-  const kind = classification(result, failureText, finalStatus, mission);
+  const kind = classification(result, failureText, finalStatus, mission, limits);
   if (kind === 'tool_unavailable' && finalStatus === 'reported_success') finalStatus = 'failed';
   return { status: finalStatus, classification: kind, mission,
     events, messages: last?.result ? [last.result] : [], usage: last?.usage ?? null,
