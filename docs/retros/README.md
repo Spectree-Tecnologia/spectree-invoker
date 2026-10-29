@@ -30,7 +30,7 @@ lugar; cada correção entra por uma mudança própria.
 
 | Id | Assinatura | Ocorrências | Situação |
 |---|---|---|---|
-| R-001 | `tool-economy · release · identificador-sequencial-disputado` | 17 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 e de novo no #94/#95 |
+| R-001 | `tool-economy · release · identificador-sequencial-disputado` | 18 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 e de novo no #94/#95 e no #119/#120 |
 | R-002 | `automated-checks · docs · fechamento-depois-do-merge` | 12 | Pago na tarefa 11 |
 | R-003 | `information-access · retro · rastro-apagado` | todos os PRs | Curto prazo pago na tarefa 11; longo prazo é o D-009 |
 | R-004 | `automated-checks · protocol · teto-sem-folga` | 6 | Aberto, [D-013](../DEFERRED.md); o #94 subiu o teto do núcleo; no #105 o núcleo ficou a 58 bytes e a tarefa 36 deixou a regra do brief fora dele; na tarefa 37 o card do Architect, no Codex, ficou a 16 bytes do teto; a mudança própria segue devida |
@@ -48,10 +48,11 @@ lugar; cada correção entra por uma mudança própria.
 | R-016 | `automated-checks · pass2 · nits-da-revisao-final` | 2 | Aberto: três Nits da revisão final do #106 e três do #107 |
 | R-017 | `automated-checks · mod · sessao-longa-sem-teste` | 2 | Pago na tarefa 40: o teste de orçamento mede o desenho e as escritas de uma sessão com 60 subagentes, e o CI guarda os quadros e a pintura dos cards |
 | R-018 | `automated-checks · mod · marca-herdada-no-spread` | 1 | Pago na tarefa 44: `applyToPlan` zera o `isSettled` quando a lista muda, e um teste troca a lista depois do settle |
-| R-019 | `information-access · retro · coleta-sem-gh` | 1 | Aberto: a retro de `avatar-espectral` leu os sinais pela API do GitHub, sem `gh` autenticado na sessão e sem o registro em `.spectree/retros/` |
+| R-019 | `information-access · retro · coleta-sem-gh` | 2 | Aberto: a retro de `avatar-espectral` leu os sinais pela API do GitHub, sem `gh` autenticado na sessão e sem o registro em `.spectree/retros/`; na retro de `inventario-sem-processos` o `gh` estava autenticado e a coleta rodou, então a falta é de ambiente |
 
 ## Retros
 
+- [2026-10-29 — `inventario-sem-processos` (#120)](2026-10-29-inventario-sem-processos.md)
 - [2026-10-29 — `avatar-espectral` (#118)](2026-10-29-avatar-espectral.md)
 - [2026-10-29 — `rebrand-mascote` (#117)](2026-10-29-rebrand-mascote.md)
 - [2026-10-28 — `barra-plano-terminal` (#116)](2026-10-28-barra-plano-terminal.md)
