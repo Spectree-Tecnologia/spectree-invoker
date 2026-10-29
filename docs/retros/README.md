@@ -41,7 +41,7 @@ lugar; cada correção entra por uma mudança própria.
 | R-009 | `automated-checks · protocol · regra-fora-do-inventario` | 1 | Pago na tarefa 13 para a regra da suíte única e na tarefa 22 para o núcleo (`core_normative`); cards seguem no [D-017](../DEFERRED.md) |
 | R-010 | `review-standards · pr · sem-revisao-independente` | 1 | Pago na tarefa 21: `REVIEW.md` e revisor em contexto limpo por head |
 | R-011 | `information-access · mod · sem-superficie-real` | 15 | Aberto: o v1.67.0 foi conferido pelo Founder no app desktop depois do merge; o giro do v1.68.0, o brilho da barra do v1.70.0, o plano próprio do v1.77.0, a sessão longa do v1.78.0 e o desempenho do v1.79.0 seguem sem conferência; o v1.81.0 e o v1.82.0 foram vistos pelo Founder depois do merge e geraram as tarefas 43 e 44; a faixa do terminal do v1.83.0 só foi montada no kit; o rebrand do v1.84.0 e o espectral do v1.85.0 só foram vistos em preview no navegador; ver o app antes do merge de um mod segue devido |
-| R-012 | `information-access · executor · fixture-sem-run-real` | 3 | Aberto: o trailer `system` do 2.1.302, o registro de cobertura do pass 2 (#106) e o cache da prova de mutação (#107) foram testados em fixture; a confirmação é o próximo run real do consumidor |
+| R-012 | `information-access · executor · fixture-sem-run-real` | 4 | Aberto: o trailer `system` do 2.1.302, o registro de cobertura do pass 2 (#106), o cache da prova de mutação (#107) e a cota estruturada (#119) foram testados em fixture; a confirmação é o próximo run real do consumidor |
 | R-013 | `information-access · ambiente · dependencias-nao-instaladas` | 2 | Aberto: as sessões do #104 e do #105 rodaram o check sem `npm ci`; primo do R-008 |
 | R-014 | `automated-checks · executor · janela-sem-teste-discriminante` | 1 | Aberto: a lista de ações da janela de repair do #104 não tem teste que a discrimine |
 | R-015 | `review-standards · proposta · identidade-depois-do-codigo` | 3 | Aberto, terceira recorrência: a terceira rodada do #108 refez a identidade do escopo depois do código; pede mudança própria pelo `retro-melhorias` |
@@ -49,9 +49,11 @@ lugar; cada correção entra por uma mudança própria.
 | R-017 | `automated-checks · mod · sessao-longa-sem-teste` | 2 | Pago na tarefa 40: o teste de orçamento mede o desenho e as escritas de uma sessão com 60 subagentes, e o CI guarda os quadros e a pintura dos cards |
 | R-018 | `automated-checks · mod · marca-herdada-no-spread` | 1 | Pago na tarefa 44: `applyToPlan` zera o `isSettled` quando a lista muda, e um teste troca a lista depois do settle |
 | R-019 | `information-access · retro · coleta-sem-gh` | 2 | Aberto: a retro de `avatar-espectral` leu os sinais pela API do GitHub, sem `gh` autenticado na sessão e sem o registro em `.spectree/retros/`; na retro de `inventario-sem-processos` o `gh` estava autenticado e a coleta rodou, então a falta é de ambiente |
+| R-020 | `review-standards · proposta · heuristica-antes-do-desenho-exato` | 1 | Aberto: no #119, a busca por candidatos com limite caiu em três rodadas de revisão antes da localização exata |
 
 ## Retros
 
+- [2026-10-29 — `executor-cota-estruturada` (#119)](2026-10-29-executor-cota-estruturada.md)
 - [2026-10-29 — `inventario-sem-processos` (#120)](2026-10-29-inventario-sem-processos.md)
 - [2026-10-29 — `avatar-espectral` (#118)](2026-10-29-avatar-espectral.md)
 - [2026-10-29 — `rebrand-mascote` (#117)](2026-10-29-rebrand-mascote.md)

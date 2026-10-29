@@ -6,7 +6,7 @@
 //   node scripts/state.mjs resume --json
 //   node scripts/state.mjs plan [change-id] [--json] [--observe-ci --pr <number>]
 //   node scripts/state.mjs open <change-id> --type <t> --base <rev> --scope <s> --paths a,b
-//                                [--modules a,b] [--closure-mode prepared|legacy] [--deltaless]
+//                                (--modules a,b | --deltaless) [--closure-mode prepared|legacy]
 //   node scripts/state.mjs amend-paths <change-id> --add <path>[,<path>] --reason "<why>"
 //   node scripts/state.mjs digest <change-id> [--gate scope|integration]
 //   node scripts/state.mjs can <change-id> <to-state>

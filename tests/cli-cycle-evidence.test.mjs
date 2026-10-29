@@ -168,7 +168,7 @@ test('the runner executes the launcher this platform actually has', (t) => {
   const c = consumer();
   try {
     c.cli('init', 'proj');
-    c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy');
+    c.cli('open', 'c1', '--modules', 'account', '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy');
     // On Windows `npm` is `npm.cmd`, which Node refuses to spawn without a shell. Reading that
     // as INFRA_ERROR is true and useless: the command works in the operator's own terminal.
     writeFileSync(join(c.root, 'package.json'),

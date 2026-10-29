@@ -4,7 +4,7 @@
 // on the whole current candidate. The next round reads `scope` and attacks only what moved since.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { Store, identifier, references, snapshot, workRecords } from '../change/index.mjs';
+import { Store, identifier, markPass2Recorded, references, snapshot, workRecords } from '../change/index.mjs';
 import { fileMode, flags, git, inside, publishOnce, refuse } from '../shared/index.mjs';
 
 const OPERATIONAL = /^(?:\.spectree|docs\/changes)(?:\/|$)/;
@@ -52,7 +52,12 @@ export function recordPass2Round(root, id, report, { operation }) {
   if (op.finished.status !== 'reported_success') refuse('E_PASS2_UNFINISHED', `The round ended ${op.finished.status}; only a completed round is coverage. Run it again.`);
   const rounds = pass2Rounds(root, id);
   const already = rounds.find((r) => r.operation.operation_id === op.operation_id);
-  if (already) refuse('E_PASS2_DUPLICATE', `Operation ${op.operation_id} is already round ${already.round}.`);
+  if (already) {
+    // A round published before its operation was marked (an older version, or a crash between the
+    // two writes) is marked now; it is not recorded twice.
+    if (!op.recorded) { markPass2Recorded(root, id, op.operation_id, already.round); return already; }
+    refuse('E_PASS2_DUPLICATE', `Operation ${op.operation_id} is already round ${already.round}.`);
+  }
   // Rounds are numbered in the order they finished, so "the latest result" of a mutant is the latest observed.
   const last = rounds.at(-1);
   if (last && op.finished.at < last.operation.finished_at) refuse('E_PASS2_ORDER', `Operation ${op.operation_id} finished before round ${last.round}; record rounds in the order they finished.`);
@@ -80,6 +85,7 @@ export function recordPass2Round(root, id, report, { operation }) {
       elapsed_ms: Date.parse(op.finished.at) - Date.parse(op.started.at), status: op.finished.status, usage: op.finished.usage ?? null } };
   try { publishOnce(join(folder(root, id), `${String(doc.round).padStart(3, '0')}.json`), `${JSON.stringify(doc, null, 2)}\n`); }
   catch (e) { if (e.code === 'EEXIST') refuse('E_PASS2_CONFLICT', `Round ${doc.round} was recorded concurrently; read scope and record again.`); throw e; }
+  markPass2Recorded(root, id, op.operation_id, doc.round);
   return doc;
 }
 

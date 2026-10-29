@@ -7,7 +7,8 @@ import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gitRepo, writeFiles, cleanup, change, writePass2Brief } from './helpers.mjs';
 import { Store } from '../scripts/lib/change/store.mjs';
-import { startWork, finishWork, envelopeUsage } from '../scripts/lib/change/work.mjs';
+import { startWork, finishWork, reconcileWork, envelopeUsage } from '../scripts/lib/change/work.mjs';
+import { rmSync } from 'node:fs';
 import { contentDigest } from '../scripts/lib/shared/digest.mjs';
 import { recordPass2Round, pass2Scope, pass2Command } from '../scripts/lib/evidence/pass2.mjs';
 import { consumer, upToImplemented } from './cli-cycle-fixture.mjs';
@@ -192,4 +193,35 @@ test('evidence records when its command started and how long it ran', () => {
     assert.match(stored.started_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
     assert.ok(stored.elapsed_ms >= 40, `elapsed_ms ${stored.elapsed_ms}`);
   } finally { c.drop(); }
+});
+
+test('a finished round must be recorded before any repair starts, and a new round may start meanwhile', () => {
+  const r = repo();
+  const repair = (op) => () => startWork(r.root, 'c1', op, { phase: 'implement', task: 'repair a pass 2 finding', next: 'Verify.' });
+  try {
+    startWork(r.root, 'c1', 'pass2-r1', { phase: 'pass2', task: 'attack', next: 'Record the round.', brief: writePass2Brief(r.root, 'pass2-r1') });
+    finishWork(r.root, 'c1', 'pass2-r1', { result: { status: 'completed' }, next: 'Record the round.' });
+    assert.throws(repair('fix-1'), { code: 'E_PASS2_UNRECORDED' });
+    startWork(r.root, 'c1', 'pass2-r2', { phase: 'pass2', task: 'attack again', next: 'Record the round.', brief: writePass2Brief(r.root, 'pass2-r2') });
+    recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'] }, { operation: 'pass2-r1' });
+    repair('fix-1')();
+    // A round whose content already moved can no longer be recorded: reconciling it unblocks the repair.
+    finishWork(r.root, 'c1', 'pass2-r2', { result: { status: 'completed' }, next: 'Record the round.' });
+    assert.throws(repair('fix-2'), { code: 'E_PASS2_UNRECORDED' });
+    writeFiles(r.root, { '.spectree/inspected.txt': 'the repair already moved the attacked bytes' });
+    reconcileWork(r.root, 'c1', 'pass2-r2', { note: 'content moved before the record', next: 'Attack the whole change again.', refs: ['.spectree/inspected.txt'] });
+    repair('fix-2')();
+  } finally { cleanup(r.root); }
+});
+
+test('a round recorded before its operation was marked is marked on a second record, never recorded twice', () => {
+  const r = repo();
+  try {
+    const first = round(r, 'pass2-r1', { attacked: ['src/a.cjs'] });
+    rmSync(join(r.root, '.spectree/work/c1/pass2-r1/recorded.json'));
+    assert.throws(() => startWork(r.root, 'c1', 'fix-1', { phase: 'implement', task: 'repair', next: 'Verify.' }), { code: 'E_PASS2_UNRECORDED' });
+    assert.equal(recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'] }, { operation: 'pass2-r1' }).round, first.round);
+    assert.throws(() => recordPass2Round(r.root, 'c1', { attacked: ['src/a.cjs'] }, { operation: 'pass2-r1' }), { code: 'E_PASS2_DUPLICATE' });
+    startWork(r.root, 'c1', 'fix-1', { phase: 'implement', task: 'repair', next: 'Verify.' });
+  } finally { cleanup(r.root); }
 });

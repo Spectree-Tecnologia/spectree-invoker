@@ -115,6 +115,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 46 | Avatar principal espectral | Integrada, v1.85.0: o centro visto como se por outra dimensão, com o ar ondulando, dois fantasmas em Spirit e Depth fora de fase e um flicker, [proposta](changes/archive/2026-10-29-avatar-espectral/proposal.md) | — |
 | 47 | Inventário do executor sem os registros de processo | Integrada, v1.86.0: `tasks.mjs run` deixa de quebrar com `ENOBUFS` quando `.spectree/processes` passa de 1 MiB, e a listagem do candidato fica 16 vezes mais rápida, [proposta](changes/archive/2026-10-29-inventario-sem-processos/proposal.md) | D-026 (registrado) |
 | 48 | Cota lida só do que é estruturado no executor | Integrada, v1.87.0: a declaração `spectree_result` vale no fim da mensagem final, com prosa antes, e a cota só vem das falhas do harness ou de uma declaração `interrupted`, nunca da saída de ferramenta, [proposta](changes/archive/2026-10-29-executor-cota-estruturada/proposal.md) | — |
+| 49 | Guardas da retro do SYND | Integrada, v1.88.0: `state.mjs open` recusa a change sem módulos nomeados e sem `--deltaless`, e `work.mjs start` recusa o reparo enquanto uma rodada do pass 2 terminada não foi gravada, [proposta](changes/archive/2026-10-29-retro-synd-guardas/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
