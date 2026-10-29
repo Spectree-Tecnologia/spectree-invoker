@@ -227,3 +227,12 @@
 - Due: Um projeto consumidor registra uma suíte de navegador vermelha por build ausente ou corrompido com browser.playwright_chromium present, ou um Playwright que a linha não achou
 - Closure condition: A linha distingue o caso do incidente sem executar o binário, ou o Platform Engineer tem um passo de baseline que o abre, visto recusando o caso.
 
+## D-026 — Observação do Console lista os registros de processo
+
+- Status: open
+- Owner: own_change
+- Impact: ceiling
+- Decision: A mudança inventario-sem-processos tira .spectree do inventário do executor. A observação do Console (console/observation.mjs) lista o candidato com git ls-files --cached --others, .spectree/processes incluído, com maxBuffer de 4 MiB e recusa E_OBSERVATION_LIMIT acima de 50.000 caminhos; não foi mudada porque nenhum incidente a atingiu e o que ela precisa observar de .spectree não foi medido.
+- Due: Um projeto consumidor passa de 3 MiB na listagem do candidato ou de 40.000 caminhos, ou o Console recusa com ENOBUFS ou E_OBSERVATION_LIMIT
+- Closure condition: A observação do Console exclui o que não é candidato pelo pathspec, ou mede o próprio teto contra um projeto do tamanho do incidente, visto recusando o caso antigo.
+

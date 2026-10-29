@@ -28,6 +28,7 @@ import {
   refuse,
   launch,
   supervisedLaunch,
+  git,
   inspectProcesses,
   parseTap,
   judgePassingRun,
@@ -251,8 +252,10 @@ export function requireTasksComplete(root, id) {
   const status = taskStatus(root, id);
   if (!status.complete || status.pending.length || status.process_block || pendingWork(root, id)) refuse('E_TASK_INCOMPLETE', 'All registered tasks require current verified evidence before implemented.');
 }
+// `.spectree/` is the executor's own trail, never the candidate, and its process records grow with
+// every run: the pathspec keeps git from walking them, so neither the listing nor its time grows too.
 function inventory(root) {
-  const names = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8', stdio: 'pipe' }).split('\0').filter(Boolean);
+  const names = git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '.', ':(exclude).spectree']).split('\0').filter(Boolean);
   return Object.fromEntries([...new Set(names)].filter((p) => !p.startsWith('.spectree/')).sort().map((p) => {
     const f = inside(root, p); return [p, existsSync(f) ? hash(readFileSync(f)) : null];
   }));
