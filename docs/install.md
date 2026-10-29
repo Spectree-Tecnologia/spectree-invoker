@@ -20,7 +20,8 @@ That is the only entry in the slash menu. The squad skills (`squad-*`) ship with
 
 The plugin also ships a Claude Code hooks module, `hooks/invoker-desk/`: a side panel that follows the
 orchestration, in the Spectree palette (Void, Surface, Mist, Spirit, Depth). The Spectree mascot floats in
-the middle; while a subagent runs, that specialist's own drawing takes its place, the last one dispatched
+the middle, seen as if through another dimension: the air around it ripples, two ghosts of its glow
+drift out of phase, and it flickers now and then; while a subagent runs, that specialist's own drawing takes its place, the last one dispatched
 in front, and the mascot smiles over a plan done. Below: the plan's progress bar, and one card per
 subagent with the mascot small, a face from its sheet (its role's while it works, smiling once
 done, frowning when it failed), its role, model, tokens, duration, status and steps. In the terminal the plan also sits above
