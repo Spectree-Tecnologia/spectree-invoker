@@ -547,8 +547,8 @@ export const register: Register = on => {
             <Svg
               source={heroMarkup(hero)}
               alt={latest ? labelOf(latest.type) : 'Invoker em repouso'}
-              width={260}
-              height={240}
+              width={130}
+              height={120}
               isInteractive
             />
           ) : (

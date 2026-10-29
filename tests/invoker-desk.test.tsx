@@ -116,7 +116,7 @@ test('the specialist at work takes the mascot\'s place, the last one dispatched 
   await spawn($, 'p1', 'spectree:platform-engineer', 'PE: merge PR 4 and close')
 
   let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  const platform = String(((await (ui as any).findAll({ type: 'Svg' })) as any[]).find(one => one?.props?.alt === 'Platform Engineer' && one?.props?.width === 260)?.props?.source ?? '')
+  const platform = String(((await (ui as any).findAll({ type: 'Svg' })) as any[]).find(one => one?.props?.alt === 'Platform Engineer' && one?.props?.width === 130)?.props?.source ?? '')
   expect(await ui.find({ type: 'Text', text: /Invocando Platform Engineer/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /Em execução · 1/ })).toBeDefined()
   // No orbs: one drawing, floating, in the Spirit aura.
@@ -132,8 +132,10 @@ test('the specialist at work takes the mascot\'s place, the last one dispatched 
   await clock.advance(1000)
   await spawn($, 'a1', 'spectree:solutions-architect', 'Architect: proposal')
   ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  const hero = ((await (ui as any).findAll({ type: 'Svg' })) as any[]).find(one => one?.props?.width === 260)
+  const hero = ((await (ui as any).findAll({ type: 'Svg' })) as any[]).find(one => one?.props?.width === 130)
   expect(hero?.props?.alt).toBe('Solutions Architect')
+  // Half the old 260 by 240: the centre is a presence, not the panel.
+  expect(hero?.props?.height).toBe(120)
   expect(String(hero?.props?.source ?? '')).not.toBe(platform)
   expect(await ui.find({ type: 'Text', text: /Invocando Platform Engineer, Solutions Architect/ })).toBeDefined()
   await ui.unmount()
