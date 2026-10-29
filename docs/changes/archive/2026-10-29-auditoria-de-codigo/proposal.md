@@ -42,6 +42,7 @@ O piloto `quick` sobre este repositório (`fa64575`) mostrou três coisas:
    rotina, sempre com `budget` fixo. Nenhuma mudança espera por ela.
 3. **O Quality Engineer é dono do resultado.** O card dele ganha um parágrafo com quatro regras:
    - um registro `confirmed` ou `needs_validation` é risco fundamentado até virar teste falhando;
+   - todo registro que ainda não é teste entra no `docs/DEFERRED.md` pelo Platform Engineer, citando a revisão da rodada; é dali que o gate de exposição lê a última auditoria;
    - a rodada só é citada depois de vista reportando: falha plantada achada e os dois validadores
      recusando um arquivo quebrado;
    - um perfil `quick` ou com escopo é passe parcial;

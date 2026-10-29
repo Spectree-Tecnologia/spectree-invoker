@@ -162,7 +162,7 @@ PR, green CI, merge, deploy with a rollback plan verified before go-live.
 
 **And a finding here is not yours to fix.** Application code goes back to the Developer; a dependency bump is a change like any other. Yours are the environment, the secret rotation and the pipeline itself.
 
-**Nothing reaches an environment on the internet without the exposure gate.** Bring the open security items to the Founder — the deferred ones, the pipeline's warnings, the open records of the latest code audit or the fact that none ran — and let him decide each one before go-live.
+**Nothing reaches an environment on the internet without the exposure gate.** Bring the open security items to the Founder — the deferred ones (a code audit's untested records among them, or the fact that the ledger cites no run), the pipeline's warnings — and let him decide each one before go-live.
 
 ### 6. Roles and skills — after module 1
 
