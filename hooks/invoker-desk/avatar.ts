@@ -18,18 +18,18 @@ export function heroMarkup(art: Art): string {
     `.fk{animation:fk 5.3s linear infinite}@keyframes fk{0%,57%,60%,86%,88%,100%{opacity:1}58%{opacity:.62}87%{opacity:.78}}` +
     `.ga{animation:ga 4.1s ease-in-out infinite}@keyframes ga{0%,100%{transform:translate(-7px,2px);opacity:.18}50%{transform:translate(6px,-3px);opacity:.42}}` +
     `.gb{animation:gb 4.1s ease-in-out infinite}@keyframes gb{0%,100%{transform:translate(7px,-2px);opacity:.42}50%{transform:translate(-6px,3px);opacity:.16}}` +
-    `@media (prefers-reduced-motion: reduce){.fl,.gl,.fk,.ga,.gb{animation:none}}</style>` +
+    `.rp{filter:url(#rift)}@media (prefers-reduced-motion: reduce){.fl,.gl,.fk,.ga,.gb{animation:none}.rp{filter:none}}</style>` +
     `<defs><radialGradient id="aura" cx="50%" cy="48%" r="50%"><stop offset="0" stop-color="${PALETTE.spirit}" stop-opacity="0.22"/>` +
     `<stop offset="1" stop-color="${PALETTE.spirit}" stop-opacity="0"/></radialGradient>` +
     `<filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter>` +
     `<filter id="soften"><feGaussianBlur stdDeviation="0.45"/></filter>` +
-    `<filter id="rift" x="-5%" y="-5%" width="110%" height="110%">` +
+    `<filter id="rift" x="-15%" y="-15%" width="130%" height="130%">` +
     `<feTurbulence type="fractalNoise" baseFrequency="0.01 0.05" numOctaves="1" seed="7" result="n">` +
     `<animate attributeName="baseFrequency" dur="6s" values="0.01 0.05;0.014 0.08;0.01 0.05" repeatCount="indefinite"/></feTurbulence>` +
     `<feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G"/></filter>` +
     `${ghost('spirit', PALETTE.spirit)}${ghost('depth', PALETTE.depth)}</defs>` +
     `<circle cx="130" cy="120" r="112" fill="url(#aura)"/>` +
-    `<g filter="url(#rift)"><g class="fl">` +
+    `<g class="rp"><g class="fl">` +
     `<use href="#hero" class="gb" filter="url(#ghost-depth)" style="mix-blend-mode:screen"/>` +
     `<use href="#hero" class="ga" filter="url(#ghost-spirit)" style="mix-blend-mode:screen"/>` +
     `<g class="fk"><g id="hero" filter="url(#soften)">${drawing}</g></g>` +
@@ -43,7 +43,7 @@ export function heroMarkup(art: Art): string {
 function ghost(name: string, color: string): string {
   const [r, g, b] = [1, 3, 5].map(i => Math.round((parseInt(color.slice(i, i + 2), 16) / 255) * 1000) / 1000)
   return (
-    `<filter id="ghost-${name}" x="-10%" y="-10%" width="120%" height="120%">` +
+    `<filter id="ghost-${name}" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">` +
     `<feColorMatrix values="0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${b} 0.3 0.6 0.1 0 0"/><feGaussianBlur stdDeviation="1.5"/></filter>`
   )
 }

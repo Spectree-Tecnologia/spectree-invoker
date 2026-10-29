@@ -129,7 +129,10 @@ test('the specialist at work takes the mascot\'s place, the last one dispatched 
   expect(platform).toContain('filter="url(#ghost-spirit)"')
   expect(platform).toContain('filter="url(#ghost-depth)"')
   expect(platform).toContain('@keyframes fk')
-  expect(platform).toContain('.fl,.gl,.fk,.ga,.gb{animation:none}')
+  expect(platform).toContain('.fl,.gl,.fk,.ga,.gb{animation:none}.rp{filter:none}')
+  // The ripple's own SMIL clock does not obey CSS, so the filter is attached by a class reduced motion removes.
+  expect(platform).toContain('<g class="rp">')
+  expect(platform).not.toContain('filter="url(#rift)"')
   // The desktop app strips an <image> from an Svg: every picture in it is traced paths.
   expect(platform).not.toContain('<image')
   // The engine refuses an Svg source past 131072 characters.
