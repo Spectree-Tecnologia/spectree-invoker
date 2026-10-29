@@ -130,7 +130,7 @@ Only what changes. `## ADDED` / `## MODIFIED` / `## REMOVED` / `## RENAMED Requi
 
 **`MODIFIED` is the one that loses things.** The block **replaces the Requirement whole**, so it carries the Requirement as it will read afterwards, with **every `Scenario` it keeps written out again**. Read the Requirement in `docs/specs/` before writing the block and copy forward what you are not touching.
 
-Read the **current** living spec, not your memory of it: another change may have closed since.
+Read the **current** living spec, never your memory: another change may have closed since.
 
 **`proposal.md` names the modules that will carry a delta, and you write exactly those files.** Reconcile the two before delivering.
 
@@ -153,6 +153,7 @@ The system SHALL reject account creation with an empty or blank name.
 - **Errors are codes, not messages.** `INVALID_AMOUNT`, never "Invalid amount".
 - **State what is true, never what changed.** Never "The system SHALL **now also** accept…"; the section header says the operation.
 - **Every `Scenario` is a test**, and the edge case is mandatory beside the happy path.
+- **A rule that holds on several paths gets its own `Requirement`, with one `Scenario` per path.**
 - **A `Scenario` asserting derived state has no `WHEN`, and that is correct.** `GIVEN an entry of 100 with one settlement of 40` / `THEN its status is partially_settled`. Never manufacture a `WHEN the entry is read`.
 
 ## Content boundary
@@ -285,8 +286,8 @@ Be opinionated: where two words exist for one concept, pick one and put the othe
 - Ambiguity detection: if you would write "adequate", "proper", "reasonable", "user-friendly", "gracefully" or "optimized", stop — there's a hidden gate there.
 - Irreversible decisions in `proposal.md`: only what is expensive to reverse, surprising without context, and the result of a real trade-off. One paragraph is enough.
 - **What the change deliberately does not do, as a named list.** The Quality Engineer checks it item by item on pass 2, so each entry is something one can confirm is absent: not "keep it focused" but "no chart, no theme toggle, no delete control on a register row". Name the ones a Developer's instinct would fill in.
-- `tasks.md` as dispatch: per agent, with paths, **mandatory reading** (3 to 6 files from the project that already are the pattern) and a **loop ceiling** (max attempts + timeout). On the first module there is nothing to point at; say so in the task. Load the squad skill `squad-task-slicing` before writing `tasks.md`: it cuts the change into vertical slices by `Scenario`, names what blocks each one, and sequences a wide refactor as expand–contract. When a `Scenario` calls exports that do not exist yet, the first task after the baseline is the **surface** (`T-SURFACE`): one Developer stubs exactly the exports, signatures and CLI subcommands the later tasks name, bodies returning `NOT_IMPLEMENTED`, exit typecheck, lint and guards green. Pass 1 follows it; no other Developer task precedes pass 1.
-- **A deepening scan, when the Invoker dispatches one.** Load the squad skill `squad-deepening-scan` and return ranked candidates: shallow code inside a module that makes the next change harder. Each candidate taken becomes a deltaless change with its own gate 1. A boundary violation is never a candidate.
+- `tasks.md` as dispatch: per agent, with paths, **mandatory reading** (3 to 6 files from the project that already are the pattern) and a **loop ceiling** (max attempts + timeout). On the first module there is nothing to point at; say so in the task. Load the squad skill `squad-task-slicing` before writing `tasks.md`: vertical slices by `Scenario`, a wide refactor as expand–contract. When a `Scenario` calls exports that do not exist yet, the first task after the baseline is the **surface** (`T-SURFACE`): one Developer stubs exactly the exports, signatures and CLI subcommands the later tasks name, bodies returning `NOT_IMPLEMENTED`, exit typecheck, lint and guards green. Pass 1 follows it; no other Developer task precedes pass 1.
+- **A deepening scan, when the Invoker dispatches one.** Load the squad skill `squad-deepening-scan` and return ranked candidates. Each candidate taken becomes a deltaless change with its own gate 1. A boundary violation is never a candidate.
 
 ## Deciding, and recording the decision
 

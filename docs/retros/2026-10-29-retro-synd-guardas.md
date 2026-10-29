@@ -3,7 +3,7 @@
 Change: `retro-synd-guardas`
 
 Escrita em 2026-10-29, depois do merge `51a0b2f`, a partir de `retro.mjs collect 121 --apply`
-(`.spectree/retros/retro-synd-guardas.signals.json`), na mudança seguinte (51).
+(`.spectree/retros/retro-synd-guardas.signals.json`), na mudança seguinte (50).
 
 ## O que foi lido
 
@@ -15,16 +15,14 @@ O registro da coleta:
 
 Nenhuma assinatura conhecida casou.
 
-O Atrito diz que houve três rodadas de revisão. A primeira achou uma tentativa fantasma no executor,
-que os testes diretos de `startWork` não cobriam.
-
 ## Achados
 
-- **R-021 · guarda testada só pela função** · `automated-checks · executor ·
-  guarda-testada-so-pela-funcao` · a guarda nova foi provada chamando `startWork` direto. O caminho
-  pelo executor, que registra a tentativa antes, só apareceu na revisão. Primeira ocorrência.
+- **R-021 · guarda testada só na função** · `automated-checks · executor · guarda-testada-so-na-funcao`
+  · os primeiros testes da recusa `E_PASS2_UNRECORDED` chamavam `startWork` direto. A primeira rodada
+  de revisão achou que o executor salvava a tentativa antes de chamar `startWork`, então a recusa
+  gastava orçamento. O teste do caminho do executor só entrou depois. Primeira ocorrência.
 
 ## O que funcionou
 
-O revisor em contexto limpo pegou o caminho que os testes não cobriam antes do merge, e o PR
-mergeou sem CI vermelha.
+A revisão independente rodou uma mutação em cima da correção: tirou a guarda do executor e confirmou
+que o teste novo a pegava.

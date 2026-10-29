@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 123,
+    "title": "Regra multi-caminho no card do Architect, retro de retro-synd-guardas (tarefa 50) — v1.89.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/123",
+    "opened": "2026-10-29T23:11:53Z",
+    "merged": "2026-10-29T23:53:33Z"
+  },
+  "signals": {
+    "open_minutes": 42,
+    "commits": 1,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.89.0",
+    "archived": [
+      "docs/changes/archive/2026-10-29-regra-multi-caminho/proposal.md"
+    ]
+  },
+  "friction": "- O teto do card do Architect no Codex (R-004) obrigou a encurtar três trechos. O card fica a 51 bytes do teto.\n- O #122 (`auditoria-de-codigo`) disputa a v1.89.0. Quem mergear depois renumera.\n\nhttps://claude.ai/code/session_01HmcdNFUHr79UAQPCj8o7xR",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

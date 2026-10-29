@@ -4,7 +4,7 @@ Tarefa 51, autorizada pelo Gilson em 2026-10-29: ele pediu a skill
 [`cloudflare/security-audit-skill`](https://github.com/cloudflare/security-audit-skill) no squad, aceitou
 o encaixe proposto em `/mnt/project-files/analysis/security-audit-cloudflare-vs-squad.md` e o piloto
 que veio antes desta mudança (`/mnt/project-files/analysis/security-audit-piloto/REPORT.md`).
-Release: v1.89.0.
+Release: v1.90.0.
 
 **Mudança deltaless.** Esta mudança não carrega delta em `specs/`. Ela muda o protocolo do squad e a
 documentação de instalação. O runtime e o comportamento dos projetos consumidores não mudam.
@@ -57,7 +57,7 @@ O piloto `quick` sobre este repositório (`fa64575`) mostrou três coisas:
    - D-028: `record-evidence` aceita um `ci.green` forjado como observado;
    - D-029: o Console pode rodar um `git.exe` do projeto no Windows;
    - D-030: a cobertura que o piloto deixou adiada.
-7. A retro de `retro-synd-guardas` (#121).
+7. A retro de `regra-multi-caminho` (#123).
 
 ## Fora do escopo
 
@@ -69,7 +69,7 @@ O piloto `quick` sobre este repositório (`fa64575`) mostrou três coisas:
 
 ## O que esta mudança deve e não paga
 
-- O núcleo fica a 24 bytes do teto (49.128 de 49.152). É a sétima vez que o teto decide a redação
+- O núcleo fica a 24 bytes do teto (49.128 de 49.152). O teto decide a redação de novo
   (R-004, D-013).
 - A instalação documentada usa `git clone` fixado no commit. O Skills CLI (`npx skills add`) não foi
   verificado quanto a fixar uma revisão, então não é o caminho recomendado.

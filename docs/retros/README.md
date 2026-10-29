@@ -30,10 +30,10 @@ lugar; cada correção entra por uma mudança própria.
 
 | Id | Assinatura | Ocorrências | Situação |
 |---|---|---|---|
-| R-001 | `tool-economy · release · identificador-sequencial-disputado` | 18 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 e de novo no #94/#95 e no #119/#120 |
+| R-001 | `tool-economy · release · identificador-sequencial-disputado` | 19 | Aberto, [D-012](../DEFERRED.md); gatilho disparou em 2026-10-24 e de novo no #94/#95, no #119/#120 e no #122/#123 |
 | R-002 | `automated-checks · docs · fechamento-depois-do-merge` | 12 | Pago na tarefa 11 |
 | R-003 | `information-access · retro · rastro-apagado` | todos os PRs | Curto prazo pago na tarefa 11; longo prazo é o D-009 |
-| R-004 | `automated-checks · protocol · teto-sem-folga` | 6 | Aberto, [D-013](../DEFERRED.md); o #94 subiu o teto do núcleo; no #105 o núcleo ficou a 58 bytes e a tarefa 36 deixou a regra do brief fora dele; na tarefa 37 o card do Architect, no Codex, ficou a 16 bytes do teto; a mudança própria segue devida |
+| R-004 | `automated-checks · protocol · teto-sem-folga` | 7 | Aberto, [D-013](../DEFERRED.md); o #94 subiu o teto do núcleo; no #105 o núcleo ficou a 58 bytes e a tarefa 36 deixou a regra do brief fora dele; na tarefa 37 o card do Architect, no Codex, ficou a 16 bytes do teto; no #123 três trechos do card do Architect foram encurtados e o do Codex ficou a 51 bytes; a mudança própria segue devida |
 | R-005 | `information-access · retro · leitura-so-graphql` | 1 | Pago na tarefa 11b |
 | R-006 | `tool-economy · retro · contagem-manual` | 1 | Pago na tarefa 11b |
 | R-007 | `squad · thread · pedido-de-merge-atrasado` | 1 | Fora do projeto, registrado |
@@ -50,10 +50,11 @@ lugar; cada correção entra por uma mudança própria.
 | R-018 | `automated-checks · mod · marca-herdada-no-spread` | 1 | Pago na tarefa 44: `applyToPlan` zera o `isSettled` quando a lista muda, e um teste troca a lista depois do settle |
 | R-019 | `information-access · retro · coleta-sem-gh` | 2 | Aberto: a retro de `avatar-espectral` leu os sinais pela API do GitHub, sem `gh` autenticado na sessão e sem o registro em `.spectree/retros/`; na retro de `inventario-sem-processos` o `gh` estava autenticado e a coleta rodou, então a falta é de ambiente |
 | R-020 | `review-standards · proposta · heuristica-antes-do-desenho-exato` | 1 | Aberto: no #119, a busca por candidatos com limite caiu em três rodadas de revisão antes da localização exata |
-| R-021 | `automated-checks · executor · guarda-testada-so-pela-funcao` | 1 | Aberto: no #121 a guarda de `startWork` foi provada só pela chamada direta; a tentativa fantasma pelo executor apareceu na revisão |
+| R-021 | `automated-checks · executor · guarda-testada-so-na-funcao` | 1 | Aberto: no #121, a recusa `E_PASS2_UNRECORDED` foi testada só em `startWork`, e o caminho do executor gastava uma tentativa antes de recusar |
 
 ## Retros
 
+- [2026-10-29 — `regra-multi-caminho` (#123)](2026-10-29-regra-multi-caminho.md)
 - [2026-10-29 — `retro-synd-guardas` (#121)](2026-10-29-retro-synd-guardas.md)
 - [2026-10-29 — `executor-cota-estruturada` (#119)](2026-10-29-executor-cota-estruturada.md)
 - [2026-10-29 — `inventario-sem-processos` (#120)](2026-10-29-inventario-sem-processos.md)

@@ -858,6 +858,10 @@
         },
         {
           "section": "The delta",
+          "text": "A rule that holds on several paths gets its own `Requirement`, with one `Scenario` per path."
+        },
+        {
+          "section": "The delta",
           "text": "A `Scenario` asserting derived state has no `WHEN`, and that is correct."
         },
         {
