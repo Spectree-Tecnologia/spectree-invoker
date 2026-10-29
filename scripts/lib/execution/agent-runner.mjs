@@ -46,7 +46,9 @@ const isMission = (doc) => doc?.spectree_result === 1 && ['completed', 'blocked'
 function missionResult(messages) {
   const text = String(messages.at(-1) ?? '').trim().replace(/\n?```\s*$/, '').trimEnd();
   if (!text.endsWith('}')) return null;
-  for (let i = text.lastIndexOf('{'); i >= 0; i = text.lastIndexOf('{', i - 1)) {
+  // A claim is a flat object with a few fields; a bound on the openings tried keeps a deeply nested
+  // message from costing a parse per brace.
+  for (let i = text.lastIndexOf('{'), tries = 0; i >= 0 && tries < 64; i = text.lastIndexOf('{', i - 1), tries++) {
     try { const doc = JSON.parse(text.slice(i)); return isMission(doc) ? doc : null; }
     catch { /* Not the start of the trailing object yet. */ }
     if (i === 0) break;

@@ -194,6 +194,13 @@ test('a completed claim after prose, in a fence, or after a red run about rate l
   const interrupted = claude(claim('interrupted', 'Hit the usage limit.'));
   assert.equal(interrupted.status, 'interrupted'); assert.equal(interrupted.classification, 'quota');
   assert.equal(codex('Done', [{ type: 'turn.failed', error: { message: 'rate limit exceeded' } }]).classification, 'quota');
+  assert.equal(codex(claim('blocked', 'The rate limit fixture is missing.')).classification, 'blocked');
+  assert.equal(codex('Done', [{ type: 'error', message: 'usage limit reached' }]).classification, 'quota');
+  const denied = claudeEvents(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: done,
+    permission_denials: [{ tool_name: 'Bash', tool_input: { command: 'curl /rate-limit' } }] }), { status: 0 });
+  assert.equal(denied.status, 'failed'); assert.notEqual(denied.classification, 'quota');
+  const deep = '{"a":'.repeat(20000) + '1' + '}'.repeat(20000);
+  const started = performance.now(); assert.equal(codex(deep).mission, null); assert.ok(performance.now() - started < 2000);
   // A claim must end the message; an object quoted mid-prose is not one.
   assert.equal(codex(`${done}\nThen I stopped.`).mission, null);
 });
