@@ -4,24 +4,47 @@ import type { AgentStatus } from './state'
 import type { Art, Face } from './roles'
 
 // The panel's centre: the mascot, or the specialist that took its place, in a
-// Spirit aura with its own glow laid over it. Drawn floating, so it is always
-// a frame; the markup depends only on the drawing shown, so a redraw for a
-// timer sends the same source and the float runs on.
+// Spirit aura with its own glow laid over it. It is seen through another
+// dimension: the air it floats in ripples, two ghosts of it in Spirit and
+// Depth drift out of phase around it, and it flickers now and then as if the
+// signal slipped. Always a frame; the markup depends only on the drawing
+// shown, so a redraw for a timer sends the same source and the motion runs on.
 export function heroMarkup(art: Art): string {
   const drawing = MASCOT_ART[art].replace('<svg ', '<svg x="20" y="10" width="220" height="220" ')
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 240" width="260" height="240">` +
     `<style>.fl{animation:fl 3.2s ease-in-out infinite}@keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}` +
     `.gl{animation:gl 3.2s ease-in-out infinite}@keyframes gl{0%,100%{opacity:.35}50%{opacity:.7}}` +
-    `@media (prefers-reduced-motion: reduce){.fl,.gl{animation:none}}</style>` +
+    `.fk{animation:fk 5.3s linear infinite}@keyframes fk{0%,57%,60%,86%,88%,100%{opacity:1}58%{opacity:.62}87%{opacity:.78}}` +
+    `.ga{animation:ga 4.1s ease-in-out infinite}@keyframes ga{0%,100%{transform:translate(-7px,2px);opacity:.18}50%{transform:translate(6px,-3px);opacity:.42}}` +
+    `.gb{animation:gb 4.1s ease-in-out infinite}@keyframes gb{0%,100%{transform:translate(7px,-2px);opacity:.42}50%{transform:translate(-6px,3px);opacity:.16}}` +
+    `@media (prefers-reduced-motion: reduce){.fl,.gl,.fk,.ga,.gb{animation:none}}</style>` +
     `<defs><radialGradient id="aura" cx="50%" cy="48%" r="50%"><stop offset="0" stop-color="${PALETTE.spirit}" stop-opacity="0.22"/>` +
     `<stop offset="1" stop-color="${PALETTE.spirit}" stop-opacity="0"/></radialGradient>` +
     `<filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter>` +
-    `<filter id="soften"><feGaussianBlur stdDeviation="0.45"/></filter></defs>` +
+    `<filter id="soften"><feGaussianBlur stdDeviation="0.45"/></filter>` +
+    `<filter id="rift" x="-5%" y="-5%" width="110%" height="110%">` +
+    `<feTurbulence type="fractalNoise" baseFrequency="0.01 0.05" numOctaves="1" seed="7" result="n">` +
+    `<animate attributeName="baseFrequency" dur="6s" values="0.01 0.05;0.014 0.08;0.01 0.05" repeatCount="indefinite"/></feTurbulence>` +
+    `<feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G"/></filter>` +
+    `${ghost('spirit', PALETTE.spirit)}${ghost('depth', PALETTE.depth)}</defs>` +
     `<circle cx="130" cy="120" r="112" fill="url(#aura)"/>` +
-    `<g class="fl"><g id="hero" filter="url(#soften)">${drawing}</g>` +
-    `<use href="#hero" class="gl" filter="url(#glow)" style="mix-blend-mode:screen"/></g>` +
+    `<g filter="url(#rift)"><g class="fl">` +
+    `<use href="#hero" class="gb" filter="url(#ghost-depth)" style="mix-blend-mode:screen"/>` +
+    `<use href="#hero" class="ga" filter="url(#ghost-spirit)" style="mix-blend-mode:screen"/>` +
+    `<g class="fk"><g id="hero" filter="url(#soften)">${drawing}</g></g>` +
+    `<use href="#hero" class="gl" filter="url(#glow)" style="mix-blend-mode:screen"/></g></g>` +
     `</svg>`
+  )
+}
+
+// A ghost of the centre in one palette colour: only its light echoes, as
+// bright as the drawing is there, so the Void body leaves no blot behind.
+function ghost(name: string, color: string): string {
+  const [r, g, b] = [1, 3, 5].map(i => Math.round((parseInt(color.slice(i, i + 2), 16) / 255) * 1000) / 1000)
+  return (
+    `<filter id="ghost-${name}" x="-10%" y="-10%" width="120%" height="120%">` +
+    `<feColorMatrix values="0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${b} 0.3 0.6 0.1 0 0"/><feGaussianBlur stdDeviation="1.5"/></filter>`
   )
 }
 
