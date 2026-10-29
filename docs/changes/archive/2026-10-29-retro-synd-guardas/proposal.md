@@ -51,3 +51,6 @@ runtime do squad; o produto dos projetos consumidores não muda.
   vale para `state.mjs open`, e a adoção segue como estava.
 - Uma pasta de operação com o `started.json` incompleto, deixada por uma queda, agora recusa qualquer
   `start` com `E_WORK_CORRUPT`, como `resume` já recusava antes.
+- O executor confere a rodada antes de salvar a tentativa. Se uma rodada do pass 2 terminar em
+  paralelo, entre essa conferência e o `start`, a recusa sai depois da tentativa salva. Isso pede
+  pass 2 e reparo ao mesmo tempo na mesma change, o que o protocolo já não faz.

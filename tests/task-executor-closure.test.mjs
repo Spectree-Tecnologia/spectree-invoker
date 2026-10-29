@@ -46,7 +46,17 @@ test('a pass 2 finding is repaired through the executor while the change is impl
   const r = preparedForPass2();
   try {
     writeFiles(r.root, { 'pass2-finding.md': 'B returns 2 only by accident.\n' });
-    test('a repair over an unrecorded pass 2 round is refused before it consumes an attempt', () => {
+    const inspection = { cause: 'Pass 2 attacked B on the prepared closure.', new_hypothesis: 'Rewrite B and keep A.', refs: ['pass2-finding.md'], processes_stopped: true };
+    const repaired = runTask(r.root, 'c1', 'B', r.bridge("fs.writeFileSync('src/value.cjs','module.exports={a:1,b:2};\\n');console.log(JSON.stringify({status:'completed'}));"), inspection);
+    assert.equal(repaired.ok, true, readFileSync(join(r.root, repaired.attempt.result_ref), 'utf8'));
+    assert.equal(repaired.verification.checks.length, 2);
+    const packet = JSON.parse(readFileSync(join(r.root, repaired.attempt.packet_ref), 'utf8'));
+    assert.ok(packet.reading.some((x) => x.path === 'docs/changes/archive/2026-10-25-c1/tasks.md'));
+    assert.equal(r.s.change('c1').state, 'implemented');
+  } finally { cleanup(r.root); }
+});
+
+test('a repair over an unrecorded pass 2 round is refused before it consumes an attempt', () => {
   const r = preparedForPass2();
   try {
     startWork(r.root, 'c1', 'pass2-r1', { phase: 'pass2', task: 'attack the prepared closure', next: 'Record the round.', brief: writePass2Brief(r.root, 'pass2-r1') });
@@ -60,16 +70,6 @@ test('a pass 2 finding is repaired through the executor while the change is impl
     assert.equal(attempts(), before, 'no attempt was saved and nothing waits for reconciliation');
     recordPass2Round(r.root, 'c1', { attacked: ['src/value.cjs'] }, { operation: 'pass2-r1' });
     assert.equal(runTask(r.root, 'c1', 'B', fix, repair).ok, true);
-  } finally { cleanup(r.root); }
-});
-
-const inspection = { cause: 'Pass 2 attacked B on the prepared closure.', new_hypothesis: 'Rewrite B and keep A.', refs: ['pass2-finding.md'], processes_stopped: true };
-    const repaired = runTask(r.root, 'c1', 'B', r.bridge("fs.writeFileSync('src/value.cjs','module.exports={a:1,b:2};\\n');console.log(JSON.stringify({status:'completed'}));"), inspection);
-    assert.equal(repaired.ok, true, readFileSync(join(r.root, repaired.attempt.result_ref), 'utf8'));
-    assert.equal(repaired.verification.checks.length, 2);
-    const packet = JSON.parse(readFileSync(join(r.root, repaired.attempt.packet_ref), 'utf8'));
-    assert.ok(packet.reading.some((x) => x.path === 'docs/changes/archive/2026-10-25-c1/tasks.md'));
-    assert.equal(r.s.change('c1').state, 'implemented');
   } finally { cleanup(r.root); }
 });
 
