@@ -254,9 +254,10 @@ export function requireTasksComplete(root, id) {
 }
 // `.spectree/` is the executor's own trail, never the candidate, and its process records grow with
 // every run: the pathspec keeps git from walking them, so neither the listing nor its time grows too.
+// It is the only exclusion, so the scope test sees the records a run writes if it ever goes.
 function inventory(root) {
   const names = git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '.', ':(exclude).spectree']).split('\0').filter(Boolean);
-  return Object.fromEntries([...new Set(names)].filter((p) => !p.startsWith('.spectree/')).sort().map((p) => {
+  return Object.fromEntries([...new Set(names)].sort().map((p) => {
     const f = inside(root, p); return [p, existsSync(f) ? hash(readFileSync(f)) : null];
   }));
 }
