@@ -125,6 +125,11 @@ export function unrecordedPass2(root, changeId) {
   return workRecords(root, changeId).filter((r) => r.started.phase === 'pass2' && r.finished?.status === 'reported_success' &&
     !r.recorded && !r.reconciled).map((r) => r.operation_id);
 }
+/** Refuses while a finished pass 2 round is unrecorded. A caller that writes before `startWork` asks first. */
+export function requirePass2Recorded(root, changeId) {
+  const unrecorded = unrecordedPass2(root, changeId);
+  if (unrecorded.length) refuse('E_PASS2_UNRECORDED', `Pass 2 operation ${unrecorded.join(', ')} finished but was never recorded: run pass2.mjs record before any repair, or work.mjs reconcile it when its content already moved.`);
+}
 /** Marks a finished pass 2 operation as recorded round `round`. Called by the round record only. */
 export function markPass2Recorded(root, changeId, operationId, round) {
   return writeEvent(eventDir(root, changeId, operationId), 'recorded', { change_id: changeId, operation_id: operationId,
@@ -133,8 +138,7 @@ export function markPass2Recorded(root, changeId, operationId, round) {
 export function startWork(root, changeId, operationId, { phase, task, next, refs = [], brief }) {
   const dir = eventDir(root, changeId, operationId);
   // Another round reads nothing it would move; anything else may be the repair.
-  const unrecorded = phase === 'pass2' ? [] : unrecordedPass2(root, changeId);
-  if (unrecorded.length) refuse('E_PASS2_UNRECORDED', `Pass 2 operation ${unrecorded.join(', ')} finished but was never recorded: run pass2.mjs record before any repair, or work.mjs reconcile it when its content already moved.`);
+  if (phase !== 'pass2') requirePass2Recorded(root, changeId);
   const pinned = phase === 'pass2' ? { brief: pass2Brief(root, brief) } : {};
   return writeEvent(dir, 'started', { change_id: changeId, operation_id: operationId,
     phase: bounded(phase, 'phase', 80), task: bounded(task, 'task', 300), next: bounded(next, 'next'),

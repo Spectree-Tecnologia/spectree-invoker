@@ -59,6 +59,7 @@ export {
   pendingWork,
   reconcileWork,
   references,
+  requirePass2Recorded,
   snapshot,
   startWork,
   unrecordedPass2,

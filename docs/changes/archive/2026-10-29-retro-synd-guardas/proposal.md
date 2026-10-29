@@ -25,12 +25,13 @@ runtime do squad; o produto dos projetos consumidores não muda.
 2. **`work.mjs start` recusa com `E_PASS2_UNRECORDED`** qualquer operação que não seja outra rodada do
    pass 2 enquanto houver uma operação `pass2` terminada como `reported_success` que não foi gravada
    nem reconciliada. Outra rodada pode começar, porque não move o conteúdo. `pass2.mjs record` marca a
-   operação como gravada (evento `recorded`). O `tasks.mjs run/repair` passa pela mesma recusa.
+   operação como gravada (evento `recorded`). O `tasks.mjs run/repair` faz a mesma recusa antes de
+   salvar a tentativa, então ela não consome orçamento nem deixa nada para reconciliar.
 3. **Rodada gravada antes da marca.** Uma rodada publicada por uma versão anterior, ou por um registro
    interrompido entre as duas escritas, é marcada ao ser gravada de novo, sem virar uma segunda rodada.
    Uma rodada cujo conteúdo já mudou sai com `work.mjs reconcile`.
 4. **Testes discriminantes** em `tests/cli-cycle.test.mjs` e `tests/pass2-coverage.test.mjs`,
-   vermelhos no código do #119. Os testes que abriam changes sem módulos passam a nomear o módulo da
+   e `tests/task-executor-closure.test.mjs`, vermelhos no código do #119. Os testes que abriam changes sem módulos passam a nomear o módulo da
    fixture ou a declarar `--deltaless`.
 5. A retro de `executor-cota-estruturada` (#119), devida por esta.
 
@@ -46,3 +47,7 @@ runtime do squad; o produto dos projetos consumidores não muda.
 - Uma change aberta numa versão anterior sem `--modules` continua como está; a recusa vale para as novas.
 - Um consumidor no meio de um pass 2 com rodada terminada e não gravada é recusado no próximo `start`;
   a saída é gravar a rodada ou reconciliá-la.
+- `adopt.mjs` ainda registra a change de rascunho sem `modules_named` e sem `--deltaless`. A recusa
+  vale para `state.mjs open`, e a adoção segue como estava.
+- Uma pasta de operação com o `started.json` incompleto, deixada por uma queda, agora recusa qualquer
+  `start` com `E_WORK_CORRUPT`, como `resume` já recusava antes.

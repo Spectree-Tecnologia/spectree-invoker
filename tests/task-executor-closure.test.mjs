@@ -5,7 +5,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
-import { cleanup, writeFiles } from './helpers.mjs';
+import { cleanup, writeFiles, writePass2Brief } from './helpers.mjs';
+import { startWork, finishWork } from '../scripts/lib/change/work.mjs';
+import { recordPass2Round } from '../scripts/lib/evidence/pass2.mjs';
 import { initTasks, taskStatus, runTask, verifyTasks } from '../scripts/lib/execution/task-executor.mjs';
 import { beginOperation } from '../scripts/lib/change/lifecycle.mjs';
 import { fixture } from './task-executor-fixture.mjs';
@@ -44,7 +46,24 @@ test('a pass 2 finding is repaired through the executor while the change is impl
   const r = preparedForPass2();
   try {
     writeFiles(r.root, { 'pass2-finding.md': 'B returns 2 only by accident.\n' });
-    const inspection = { cause: 'Pass 2 attacked B on the prepared closure.', new_hypothesis: 'Rewrite B and keep A.', refs: ['pass2-finding.md'], processes_stopped: true };
+    test('a repair over an unrecorded pass 2 round is refused before it consumes an attempt', () => {
+  const r = preparedForPass2();
+  try {
+    startWork(r.root, 'c1', 'pass2-r1', { phase: 'pass2', task: 'attack the prepared closure', next: 'Record the round.', brief: writePass2Brief(r.root, 'pass2-r1') });
+    writeFiles(r.root, { '.spectree/pass2-finding.md': 'B returns 2 only by accident.\n' });
+    finishWork(r.root, 'c1', 'pass2-r1', { result: { status: 'completed' }, next: 'Record the round.' });
+    const repair = { cause: 'Pass 2 attacked B.', new_hypothesis: 'Rewrite B.', refs: ['.spectree/pass2-finding.md'], processes_stopped: true };
+    const fix = r.bridge("fs.writeFileSync('src/value.cjs','module.exports={a:1,b:2};\\n');console.log(JSON.stringify({status:'completed'}));");
+    const attempts = () => JSON.stringify(taskStatus(r.root, 'c1').tasks);
+    const before = attempts();
+    assert.throws(() => runTask(r.root, 'c1', 'B', fix, repair), { code: 'E_PASS2_UNRECORDED' });
+    assert.equal(attempts(), before, 'no attempt was saved and nothing waits for reconciliation');
+    recordPass2Round(r.root, 'c1', { attacked: ['src/value.cjs'] }, { operation: 'pass2-r1' });
+    assert.equal(runTask(r.root, 'c1', 'B', fix, repair).ok, true);
+  } finally { cleanup(r.root); }
+});
+
+const inspection = { cause: 'Pass 2 attacked B on the prepared closure.', new_hypothesis: 'Rewrite B and keep A.', refs: ['pass2-finding.md'], processes_stopped: true };
     const repaired = runTask(r.root, 'c1', 'B', r.bridge("fs.writeFileSync('src/value.cjs','module.exports={a:1,b:2};\\n');console.log(JSON.stringify({status:'completed'}));"), inspection);
     assert.equal(repaired.ok, true, readFileSync(join(r.root, repaired.attempt.result_ref), 'utf8'));
     assert.equal(repaired.verification.checks.length, 2);

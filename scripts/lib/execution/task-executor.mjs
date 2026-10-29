@@ -13,6 +13,7 @@ import {
   references,
   snapshot,
   startWork,
+  requirePass2Recorded,
   finishWork,
   reconcileWork,
   pendingWork,
@@ -309,6 +310,8 @@ export function runTask(root, id, taskId, config, repair = null) {
       if (!selected || !doc.attempts.some((a) => a.task_id === taskId) || frontier.pending.length || frontier.work_pending || frontier.process_block ||
           !frontier.tasks.some((t) => t.status === 'stale') || selected.depends_on.some((d) => !doc.results[d])) refuse('E_TASK_NOT_READY', 'Repair requires a previously attempted task, reconciled work and stale evidence; it cannot bypass missing dependencies.');
     } else if (!frontier.ready.includes(taskId)) refuse('E_TASK_NOT_READY', 'Task has unmet dependencies, stale evidence, pending work or exhausted attempts.');
+    // Before the attempt is saved: a refusal here consumes no budget and leaves nothing to reconcile.
+    requirePass2Recorded(root, id);
     const gate = implementationGate(root, id, { afterImplemented: !!repair }); const declared = doc.plan.tasks.find((t) => t.id === taskId);
     const task = { ...declared, refs: declared.refs.map((p) => located(root, id, p)) };
     const previous = doc.attempts.filter((a) => a.task_id === taskId); const operation = `task-${randomUUID()}`;
