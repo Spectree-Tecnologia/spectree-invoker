@@ -200,7 +200,7 @@ what it attacked, bound to the bytes, and the next round reads what moved since:
 node scripts/work.mjs start <change> <op> --phase pass2 --brief .spectree/pass2/<op>.json --task <ref> --next <action>   # before the dispatch; the brief pins independence and scope
 node scripts/work.mjs finish <change> <op> --result <envelope.json> --next <action>   # its duration and usage
 node scripts/mutation-probe.mjs <plan.json> --apply > .spectree/pass2/<change>-probe.json
-node scripts/pass2.mjs record <change> <report.json> --operation <op>   # before any repair; {"attacked": [...], "mutation_report": "..."}
+node scripts/pass2.mjs record <change> <report.json> --operation <op>   # before any repair (work.mjs start refuses one with E_PASS2_UNRECORDED); {"attacked": [...], "mutation_report": "..."}
 node scripts/pass2.mjs scope <change>   # files to attack, mutants carried and to rerun, past rounds' time and tokens
 ```
 
@@ -345,11 +345,15 @@ Without it, `prepare-closure` refuses with `E_NO_CONSOLIDATION` and writes nothi
 nothing. Such a project closes the legacy way, and says so out loud:
 
 ```bash
-node scripts/state.mjs open <id> --closure-mode legacy ...
+node scripts/state.mjs open <id> --modules a,b --closure-mode legacy ...
 ```
 
 That is an explicit statement on the change, never a silent fallback, and the post-merge
 confirmation reports it as legacy.
+
+`open` also refuses with `E_MODULES_UNNAMED` a change that names no module (`--modules a,b`) and
+does not declare itself `--deltaless`. The named modules are what the core-domain mutation, the delta
+contract and the scope policy read, so a change that names none would pass all three by silence.
 
 ## After the merge
 

@@ -56,7 +56,7 @@ O piloto `quick` sobre este repositório (`fa64575`) mostrou três coisas:
    - D-028: `record-evidence` aceita um `ci.green` forjado como observado;
    - D-029: o Console pode rodar um `git.exe` do projeto no Windows;
    - D-030: a cobertura que o piloto deixou adiada.
-7. A retro da mudança que entrar antes desta.
+7. A retro de `retro-synd-guardas` (#121).
 
 ## Fora do escopo
 

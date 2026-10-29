@@ -476,6 +476,12 @@ function run({ root, argv, print, warn }) {
           'or open with --retro-waived "<reason>".', 1);
     }
     if (waiver !== undefined && !String(waiver).trim()) die('--retro-waived needs a reason: a waiver nobody can read is not a decision');
+    // The named modules are what every later check reads: the core-domain mutation, the delta
+    // contract, the scope policy. A change that names none and is not deltaless would pass them all
+    // by saying nothing, so silence is refused here instead of discovered at the closure.
+    if (!String(flag('modules') ?? '').split(',').some((m) => m.trim()) && !has('deltaless')) {
+      die(`E_MODULES_UNNAMED: name the modules the proposal carries a delta for with --modules a,b, or declare the change --deltaless.`, 1);
+    }
     const g = gitSituation();
     const change = {
       schema_version: SCHEMA_VERSION,

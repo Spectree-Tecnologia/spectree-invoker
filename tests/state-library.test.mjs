@@ -94,7 +94,7 @@ test('a refusal inside an import keeps its own message instead of being swallowe
   const f = fixture();
   try {
     assert.equal(f.state('init', 'proj').code, 0);
-    assert.equal(f.state('open', 'c1', '--scope', 'fixture', '--paths', 'src', '--closure-mode', 'legacy').code, 0);
+    assert.equal(f.state('open', 'c1', '--deltaless', '--scope', 'fixture', '--paths', 'src', '--closure-mode', 'legacy').code, 0);
     const doc = f.file('ev.json', { evidence_id: 'ev-1', change_id: 'c1', property: 'ci.green', result: 'PASS', fingerprint: 'sha256:x' });
     const r = f.state('record-evidence', doc);
     assert.equal(r.code, 1);

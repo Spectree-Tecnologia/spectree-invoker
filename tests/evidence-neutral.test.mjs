@@ -72,7 +72,7 @@ test('state.mjs records the code fingerprint and reports a carried run as valid 
     assert.equal(cli('init', 'synthetic'), 0);
     r.git(['add', '-A']); r.git(['commit', '-qm', 'init']);
     const base = r.git(['rev-parse', 'HEAD']).trim();
-    assert.equal(cli('open', 'c1', '--type', 'feature', '--base', base, '--scope', 'neutral paths', '--paths', 'ok.test.cjs', '--closure-mode', 'legacy'), 0);
+    assert.equal(cli('open', 'c1', '--type', 'feature', '--base', base, '--deltaless', '--scope', 'neutral paths', '--paths', 'ok.test.cjs', '--closure-mode', 'legacy'), 0);
     // The run inherits this process's environment, and a nested runner reports to its parent.
     const context = process.env.NODE_TEST_CONTEXT; delete process.env.NODE_TEST_CONTEXT;
     try { assert.equal(cli('run', 'c1', 'suite.baseline', '--role', 'platform_engineer', '--', process.execPath, '--test', 'ok.test.cjs'), 0); }

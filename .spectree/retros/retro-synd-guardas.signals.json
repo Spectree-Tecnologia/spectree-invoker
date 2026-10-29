@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 121,
+    "title": "Guardas da retro do SYND: módulos na abertura e rodada do pass 2 antes do reparo, retro de executor-cota-estruturada (tarefa 49) — v1.88.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/121",
+    "opened": "2026-10-29T22:53:03Z",
+    "merged": "2026-10-29T23:06:58Z"
+  },
+  "signals": {
+    "open_minutes": 14,
+    "commits": 3,
+    "ci_heads": 3,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.88.0",
+    "archived": [
+      "docs/changes/archive/2026-10-29-retro-synd-guardas/proposal.md"
+    ]
+  },
+  "friction": "- Três rodadas de revisão. A primeira achou a tentativa fantasma no executor, que os testes diretos de `startWork` não cobriam.\n\nhttps://claude.ai/code/session_01HmcdNFUHr79UAQPCj8o7xR",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

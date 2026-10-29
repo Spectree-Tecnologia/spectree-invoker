@@ -64,7 +64,7 @@ test('verification.mjs baseline ci --from-run reads the run, records it and judg
   try {
     const state = (...argv) => stateCommand({ root: repo.root, argv, out: () => {}, err: () => {} });
     assert.equal(state('init', 'proj', '--repository', 'fixture/repo', '--ci-workflow', 'check', '--ci-jobs', 'classify,plugin'), 0);
-    assert.equal(state('open', 'c1', '--scope', 'baseline', '--paths', 'seed.txt', '--closure-mode', 'legacy'), 0);
+    assert.equal(state('open', 'c1', '--deltaless', '--scope', 'baseline', '--paths', 'seed.txt', '--closure-mode', 'legacy'), 0);
     const base = new Store(repo.root).change('c1').base_revision;
     const green = greenRun(base, { id: 7 }), other = greenRun('d'.repeat(40), { id: 8 });
     gh.set({ repo: 'fixture/repo', runs: [green.run, other.run], jobs: { 7: green.jobs, 8: other.jobs } });
