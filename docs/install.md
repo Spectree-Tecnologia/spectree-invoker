@@ -57,6 +57,25 @@ A skill's own `agents/` subfolder does **not** register custom agents; `.codex/a
 
 Other guarantees, each covered by a regression test: idempotent (a second `--apply` reports only `unchanged`), contained (a destination that escapes the project is refused, never clamped), no symlink anywhere, and nothing global unless `--global` is passed. An existing squad file is **not** overwritten without `--force`, and the refusal names every file it would have replaced.
 
+## Optional: the code audit
+
+The squad can use Cloudflare's [`security-audit`](https://github.com/cloudflare/security-audit-skill)
+skill (MIT) to hunt unknown vulnerabilities in a project's own code. It is **referenced, never
+shipped**: the plugin carries no copy of it, so a consumer that does not install it never sees it,
+and its automatic trigger on security questions stays out of their sessions. Install it at the
+user level, pinned to the commit the squad reviewed:
+
+```bash
+git clone https://github.com/cloudflare/security-audit-skill /tmp/security-audit-skill
+git -C /tmp/security-audit-skill checkout c1c8a8c1471069fb0e188eeaff69b8e8db6564a8
+cp -r /tmp/security-audit-skill/skills/security-audit ~/.claude/skills/security-audit
+```
+
+It never runs on a change's path. A full audit runs in a session of its own against a disposable
+copy, with an output directory outside the repository and a fixed `budget`, and the Quality
+Engineer turns each record into a failing test before it blocks anything (see its card). Without
+an OS-enforced sandbox it executes no target code and reports `needs_validation` only.
+
 ## Verify an installation
 
 From the package directory:
