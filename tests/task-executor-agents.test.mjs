@@ -201,6 +201,10 @@ test('a completed claim after prose, in a fence, or after a red run about rate l
   assert.equal(denied.status, 'failed'); assert.notEqual(denied.classification, 'quota');
   const deep = '{"a":'.repeat(20000) + '1' + '}'.repeat(20000);
   const started = performance.now(); assert.equal(codex(deep).mission, null); assert.ok(performance.now() - started < 2000);
+  // A claim with many braces inside it is still found, alone or after prose on its own line.
+  const braced = claim('completed', 'Rate limit middleware done: ' + '{x}'.repeat(70));
+  for (const message of [braced, `Rate limit notes.\n${braced}`]) assert.equal(codex(message).status, 'reported_success');
+  assert.equal(claude(`Inline: ${done}`).mission.status, 'completed');
   // A claim must end the message; an object quoted mid-prose is not one.
   assert.equal(codex(`${done}\nThen I stopped.`).mission, null);
 });

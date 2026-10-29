@@ -46,12 +46,15 @@ const isMission = (doc) => doc?.spectree_result === 1 && ['completed', 'blocked'
 function missionResult(messages) {
   const text = String(messages.at(-1) ?? '').trim().replace(/\n?```\s*$/, '').trimEnd();
   if (!text.endsWith('}')) return null;
-  // A claim is a flat object with a few fields; a bound on the openings tried keeps a deeply nested
-  // message from costing a parse per brace.
-  for (let i = text.lastIndexOf('{'), tries = 0; i >= 0 && tries < 64; i = text.lastIndexOf('{', i - 1), tries++) {
+  // Where a claim can open: the message start, a line start, then any brace from the end. Each kind
+  // is bounded, so a deeply nested message never costs a parse per brace, and a claim with many
+  // braces inside it is still found from its own line.
+  const lineStarts = [...text.matchAll(/(?:^|\n)[ \t]*(?:```json[ \t]*\n[ \t]*)?(?=\{)/g)].map((m) => m.index + m[0].length).slice(-64).reverse();
+  const braces = [];
+  for (let i = text.lastIndexOf('{'); i >= 0 && braces.length < 64; i = i ? text.lastIndexOf('{', i - 1) : -1) braces.push(i);
+  for (const i of new Set([...lineStarts, ...braces])) {
     try { const doc = JSON.parse(text.slice(i)); return isMission(doc) ? doc : null; }
-    catch { /* Not the start of the trailing object yet. */ }
-    if (i === 0) break;
+    catch { /* Not the start of the trailing object. */ }
   }
   return null;
 }
