@@ -117,6 +117,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 48 | Cota lida só do que é estruturado no executor | Integrada, v1.87.0: a declaração `spectree_result` vale no fim da mensagem final, com prosa antes, e a cota só vem das falhas do harness ou de uma declaração `interrupted`, nunca da saída de ferramenta, [proposta](changes/archive/2026-10-29-executor-cota-estruturada/proposal.md) | — |
 | 49 | Guardas da retro do SYND | Integrada, v1.88.0: `state.mjs open` recusa a change sem módulos nomeados e sem `--deltaless`, e `work.mjs start` recusa o reparo enquanto uma rodada do pass 2 terminada não foi gravada, [proposta](changes/archive/2026-10-29-retro-synd-guardas/proposal.md) | — |
 | 50 | Regra multi-caminho no Architect | Integrada, v1.89.0: uma regra que vale em vários caminhos ganha `Requirement` próprio, com um `Scenario` por caminho, no card do Solutions Architect, [proposta](changes/archive/2026-10-29-regra-multi-caminho/proposal.md) | — |
+| 51 | Auditoria de código com a skill da Cloudflare | Integrada, v1.90.0: a `security-audit` referenciada e fixada em commit, fora do caminho padrão, com o Quality Engineer dono do resultado e o gate de exposição mostrando a última rodada, [proposta](changes/archive/2026-10-29-auditoria-de-codigo/proposal.md) | D-027 a D-030 (registrados) |
 
 ## Itens com aprovação permanente
 
@@ -130,6 +131,7 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-29:** Founder pediu a skill `security-audit` da Cloudflare no squad e autorizou o piloto e a mudança (tarefa 51).
 - **2026-10-29:** Founder autorizou a série da retro do SYND (tarefas 48 a 50): cota estruturada no executor, guardas de abertura e do pass 2, regra multi-caminho no Architect.
 - **2026-10-29:** Founder autorizou a correção do `ENOBUFS` no inventário do executor, que travava o fechamento da C3e no SYND (tarefa 47).
 - **2026-10-29:** Founder pediu um motion espectral no avatar principal, como se visto em outra dimensão (tarefa 46).

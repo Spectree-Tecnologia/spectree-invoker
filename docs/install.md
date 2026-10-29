@@ -55,7 +55,30 @@ A skill's own `agents/` subfolder does **not** register custom agents; `.codex/a
 
 **It never rewrites the consumer's `AGENTS.md`.** If one exists, a short pointer is appended once, below whatever is already there — and a second run appends nothing. If none exists, one is created containing only the pointer. `AGENTS.md` stays the project's document; the squad's definition is `SQUAD.md`.
 
-Other guarantees, each covered by a regression test: idempotent (a second `--apply` reports only `unchanged`), contained (a destination that escapes the project is refused, never clamped), no symlink anywhere, and nothing global unless `--global` is passed. An existing squad file is **not** overwritten without `--force`, and the refusal names every file it would have replaced.
+Other guarantees, each covered by a regression test: idempotent (a second `--apply` reports only `unchanged`), contained (a destination that escapes the project is refused, never clamped; a symlink committed in the project still redirects writes until D-027 closes), no symlink anywhere, and nothing global unless `--global` is passed. An existing squad file is **not** overwritten without `--force`, and the refusal names every file it would have replaced.
+
+## Optional: the code audit
+
+The squad can use Cloudflare's [`security-audit`](https://github.com/cloudflare/security-audit-skill)
+skill (MIT) to hunt unknown vulnerabilities in a project's own code. It is **referenced, never
+shipped**: the plugin carries no copy of it, so a consumer that does not install it never sees it,
+and its automatic trigger on security questions stays out of their sessions. Install it at the
+user level, pinned to the commit the squad reviewed. For Claude Code (re-running it upgrades in place):
+
+```bash
+src=$(mktemp -d)
+git clone https://github.com/cloudflare/security-audit-skill "$src"
+git -C "$src" checkout c1c8a8c1471069fb0e188eeaff69b8e8db6564a8
+mkdir -p ~/.claude/skills && rm -rf ~/.claude/skills/security-audit
+cp -r "$src/skills/security-audit" ~/.claude/skills/security-audit
+```
+
+For Codex, copy the same `skills/security-audit` folder to `~/.agents/skills/security-audit`, the user-level skill root `install-codex.mjs --global` also uses.
+
+It never runs on a change's path. A full audit runs in a session of its own against a disposable
+copy, with an output directory outside the repository and a fixed `budget`, and the Quality
+Engineer turns each record into a failing test before it blocks anything (see its card). Without
+an OS-enforced sandbox it executes no target code and never reports `confirmed`. Each record not yet a failing test is recorded in `docs/DEFERRED.md` with the run's revision, which is where the exposure gate reads it.
 
 ## Verify an installation
 
