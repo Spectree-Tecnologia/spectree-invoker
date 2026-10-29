@@ -48,7 +48,8 @@ function readEvent(dir, name) {
       doc.change_id !== dir.split(/[\\/]/).at(-2) || doc.operation_id !== dir.split(/[\\/]/).at(-1) ||
       (name === 'started' && (!validText(doc.phase) || !validText(doc.task))) ||
       (name === 'finished' && !['reported_success', 'failed', 'interrupted', 'unknown'].includes(doc.status)) ||
-      (name === 'reconciled' && (!validText(doc.note) || !doc.refs.length))) refuse('E_WORK_CORRUPT', `Unsupported or incomplete event: ${f}`);
+      (name === 'reconciled' && (!validText(doc.note) || !doc.refs.length)) ||
+      (name === 'recorded' && !(Number.isInteger(doc.round) && doc.round > 0))) refuse('E_WORK_CORRUPT', `Unsupported or incomplete event: ${f}`);
   return doc;
 }
 function writeEvent(dir, name, payload) {
@@ -115,8 +116,25 @@ export function pass2Brief(root, path) {
   if (problems.length) refuse('E_PASS2_BRIEF', `${path} needs ${problems.join('; ')}.`);
   return { ...ref, independent_of: doc.independent_of, attack: doc.scope.attack.length, rerun: (doc.scope.rerun ?? []).length, excluded: doc.scope.excluded.length };
 }
+/**
+ * Pass 2 rounds that finished as coverage and were neither recorded nor reconciled. A round is
+ * recorded before anything changes the content it attacked; once a repair moves those bytes it can
+ * no longer be, and the next round has to attack the whole change again.
+ */
+export function unrecordedPass2(root, changeId) {
+  return workRecords(root, changeId).filter((r) => r.started.phase === 'pass2' && r.finished?.status === 'reported_success' &&
+    !r.recorded && !r.reconciled).map((r) => r.operation_id);
+}
+/** Marks a finished pass 2 operation as recorded round `round`. Called by the round record only. */
+export function markPass2Recorded(root, changeId, operationId, round) {
+  return writeEvent(eventDir(root, changeId, operationId), 'recorded', { change_id: changeId, operation_id: operationId,
+    round, next: 'Repair what the round found.', refs: [], snapshot: snapshot(root) });
+}
 export function startWork(root, changeId, operationId, { phase, task, next, refs = [], brief }) {
   const dir = eventDir(root, changeId, operationId);
+  // Another round reads nothing it would move; anything else may be the repair.
+  const unrecorded = phase === 'pass2' ? [] : unrecordedPass2(root, changeId);
+  if (unrecorded.length) refuse('E_PASS2_UNRECORDED', `Pass 2 operation ${unrecorded.join(', ')} finished but was never recorded: run pass2.mjs record before any repair, or work.mjs reconcile it when its content already moved.`);
   const pinned = phase === 'pass2' ? { brief: pass2Brief(root, brief) } : {};
   return writeEvent(dir, 'started', { change_id: changeId, operation_id: operationId,
     phase: bounded(phase, 'phase', 80), task: bounded(task, 'task', 300), next: bounded(next, 'next'),
@@ -152,7 +170,8 @@ export function workRecords(root, changeId) {
     const started = readEvent(op, 'started');
     if (!started) refuse('E_WORK_CORRUPT', `Operation ${id} has no start record.`);
     const finished = readEvent(op, 'finished'); const reconciled = readEvent(op, 'reconciled');
-    return { operation_id: id, started, finished, reconciled,
+    const recorded = readEvent(op, 'recorded');
+    return { operation_id: id, started, finished, reconciled, recorded,
       requires_reconciliation: !reconciled && finished?.status !== 'reported_success' };
   });
 }

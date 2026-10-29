@@ -44,9 +44,9 @@ test('diagnosis does not infer authority from script names, archived artifacts o
       allowed_paths: ['app.mjs'], refs: ['package.json'], adapter: 'codex', closure_mode: 'prepared' }), { code: 'E_CLOSURE_MECHANISM' });
     assert.equal(existsSync(join(r.root, '.spectree/changes/next.json')), false);
     const cli = (...args) => spawnSync(process.execPath, [join(REPO, 'scripts/state.mjs'), ...args], { cwd: r.root, encoding: 'utf8' });
-    const denied = cli('open', 'next', '--scope', 'next', '--paths', 'app.mjs');
+    const denied = cli('open', 'next', '--deltaless', '--scope', 'next', '--paths', 'app.mjs');
     assert.match(denied.stderr, /E_CLOSURE_SELECTION/);
-    assert.equal(cli('open', 'next', '--scope', 'next', '--paths', 'app.mjs', '--closure-mode', 'legacy').status, 0);
+    assert.equal(cli('open', 'next', '--deltaless', '--scope', 'next', '--paths', 'app.mjs', '--closure-mode', 'legacy').status, 0);
   } finally { cleanup(r.root); }
 });
 test('reviewed correction preserves blocked state and history, retires only integration approval authority', () => {

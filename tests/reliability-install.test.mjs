@@ -19,13 +19,13 @@ test('installed reliability commands run a checkpoint, a baseline and a mutation
     const ok = (script, ...args) => { const result = run(script, ...args); assert.equal(result.status, 0, result.stdout + result.stderr); return result.stdout; };
     assert.equal(JSON.parse(ok('work.mjs', 'doctor')).mode, 'uninitialized');
     ok('state.mjs', 'init', 'synthetic');
-    ok('state.mjs', 'open', 'c1', '--type', 'feature', '--base', r.base, '--scope', 'synthetic verification', '--paths', 'math.cjs', '--closure-mode', 'legacy');
+    ok('state.mjs', 'open', 'c1', '--type', 'feature', '--base', r.base, '--deltaless', '--scope', 'synthetic verification', '--paths', 'math.cjs', '--closure-mode', 'legacy');
     ok('state.mjs', 'run', 'c1', 'suite.baseline', '--role', 'platform_engineer', '--', process.execPath, '--test', 'math.test.cjs');
     // The installer can add AGENTS.md, so the baseline must refuse until that new candidate
     // is explicitly the recorded base. This prevents laundering a dirty baseline.
     assert.equal(run('verification.mjs', 'baseline', 'c1', 'local').status, 1);
     const adoptedBase = commitAll(r, 'install squad in synthetic consumer');
-    ok('state.mjs', 'open', 'c2', '--type', 'feature', '--base', adoptedBase, '--scope', 'baseline identity', '--paths', 'math.cjs', '--closure-mode', 'legacy');
+    ok('state.mjs', 'open', 'c2', '--type', 'feature', '--base', adoptedBase, '--deltaless', '--scope', 'baseline identity', '--paths', 'math.cjs', '--closure-mode', 'legacy');
     ok('state.mjs', 'run', 'c2', 'suite.baseline', '--role', 'platform_engineer', '--', process.execPath, '--test', 'math.test.cjs');
     assert.equal(JSON.parse(ok('verification.mjs', 'baseline', 'c2', 'local')).ok, true);
     assert.equal(run('verification.mjs', 'baseline', 'c2', 'ci').status, 1);

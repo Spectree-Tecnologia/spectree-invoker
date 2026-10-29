@@ -20,7 +20,7 @@ test('a gate is bound to the contract, and progress notes are not the contract',
   const c = consumer();
   try {
     assert.equal(c.cli('init', 'proj').code, 0);
-    assert.equal(c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy').code, 0);
+    assert.equal(c.cli('open', 'c1', '--modules', 'account', '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy').code, 0);
     contractOnDisk(c);
 
     // The CLI computes the digest from the artifact on disk. Nothing here reads an approval.
@@ -62,7 +62,7 @@ test('the CLI blocks a change and can bring it back, without hand-editing JSON',
   const c = consumer();
   try {
     c.cli('init', 'proj');
-    c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy');
+    c.cli('open', 'c1', '--modules', 'account', '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy');
     c.cli('transition', 'c1', 'proposed');
 
     const noReason = c.cli('transition', 'c1', 'blocked');
@@ -329,11 +329,11 @@ test('a consumer with no consolidation mechanism is told, not improvised for', (
     // Initialised WITHOUT --consolidate: there is no mechanism this squad may use, and editing
     // docs/specs/ by hand is not the fallback.
     c.cli('init', 'proj');
-    const refusedOpen = c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account,docs');
+    const refusedOpen = c.cli('open', 'c1', '--modules', 'account', '--scope', 'the account module', '--paths', 'modules/account,docs');
     assert.equal(refusedOpen.code, 1);
     assert.match(refusedOpen.err, /E_CLOSURE_SELECTION/);
     assert.equal(existsSync(join(c.root, '.spectree/changes/c1.json')), false);
-    assert.equal(c.cli('open', 'c1', '--scope', 'the account module', '--paths', 'modules/account,docs', '--closure-mode', 'legacy').code, 0);
+    assert.equal(c.cli('open', 'c1', '--modules', 'account', '--scope', 'the account module', '--paths', 'modules/account,docs', '--closure-mode', 'legacy').code, 0);
     contractOnDisk(c);
     c.git(['add', '-A']); c.git(['commit', '-qm', 'the proposal']);
 
@@ -374,5 +374,18 @@ test('a merge that changes the tree is a different candidate, and is refused', (
     assert.equal(r.code, 1);
     assert.match(r.err, /E_APPROVAL_DIGEST_MISMATCH|E_CONTENT_CHANGED/,
       'what was integrated is not what was approved and proven');
+  } finally { c.drop(); }
+});
+
+test('a change opens only naming its modules or declaring itself deltaless', () => {
+  const c = consumer();
+  try {
+    c.cli('init', 'proj', '--', process.execPath, '-e', '0');
+    for (const extra of [[], ['--modules', ' , ']]) {
+      const refused = c.cli('open', 'c1', ...extra, '--scope', 'the account module', '--paths', 'modules/account', '--closure-mode', 'legacy');
+      assert.equal(refused.code, 1); assert.match(refused.err, /E_MODULES_UNNAMED/);
+      assert.equal(existsSync(join(c.root, '.spectree/changes/c1.json')), false);
+    }
+    assert.equal(c.cli('open', 'c1', '--deltaless', '--scope', 'a refactor', '--paths', 'modules/account', '--closure-mode', 'legacy').code, 0);
   } finally { c.drop(); }
 });

@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 119,
+    "title": "Cota lida só do que é estruturado no executor, retro de inventario-sem-processos (tarefa 48) — v1.87.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/119",
+    "opened": "2026-10-29T22:29:08Z",
+    "merged": "2026-10-29T22:44:49Z"
+  },
+  "signals": {
+    "open_minutes": 16,
+    "commits": 6,
+    "ci_heads": 5,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.87.0",
+    "archived": [
+      "docs/changes/archive/2026-10-29-executor-cota-estruturada/proposal.md"
+    ]
+  },
+  "friction": "- O #120 abriu ao mesmo tempo como tarefa 47 e v1.86.0 e mergeou antes. Este PR foi renumerado para 48 e v1.87.0 e trocou a retro devida.\n- Foram quatro rodadas de revisão, com a volta à proposta depois da terceira.\n\nhttps://claude.ai/code/session_01HmcdNFUHr79UAQPCj8o7xR",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
