@@ -1,5 +1,3 @@
-export type OrbKind = 'quas' | 'wex' | 'exort' | 'neutral'
-
 export type AgentStatus = 'running' | 'completed' | 'failed' | 'killed'
 
 export type AgentRow = {

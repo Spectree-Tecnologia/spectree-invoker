@@ -19,15 +19,16 @@ That is the only entry in the slash menu. The squad skills (`squad-*`) ship with
 ### The Invoker panel
 
 The plugin also ships a Claude Code hooks module, `hooks/invoker-desk/`: a side panel that follows the
-orchestration. The Invoker's portrait sits in the middle with six orbs around him, two Quas (Solutions Architect,
-Integration Engineer), two Wex (Full Stack Developer, Quality Engineer) and two Exort (Platform
-Engineer, TypeSafe Engineer), and the orbs circle him while a subagent runs. Below: the session's
-cost, the subagents' tokens, the session time, and one card per subagent with its orb, role, tokens,
-duration, status and steps.
+orchestration, in the Spectree palette (Void, Surface, Mist, Spirit, Depth). The Spectree mascot floats in
+the middle; while a subagent runs, that specialist's own drawing takes its place, the last one dispatched
+in front, and the mascot smiles over a plan done. Below: the plan's progress bar, and one card per
+subagent with the mascot small, a face from its sheet (its role's while it works, smiling once
+done, frowning when it failed), its role, model, tokens, duration, status and steps. In the terminal the plan also sits above
+the prompt.
 
 It opens by itself once per session on the desktop app and in VS Code, in a folder with `.spectree/`
 or `docs/changes/`, or at the first specialist dispatch. `/invoker-desk` reopens it; in the terminal
-the orbs are drawn as glyphs. It only watches: it reaches no network and never refuses a dispatch, a
+the mascot is drawn as its two eyes. It only watches: it reaches no network and never refuses a dispatch, a
 tool call or a turn. Function hooks are an early-access Claude Code API; Codex ignores the module.
 
 ## OpenAI Codex

@@ -2,11 +2,11 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { AgentRow, AgentStatus, AgentSteps, DeskUi, Plan } from './state'
-import { invokerMarkup, planBarMarkup, planCellColors, spinnerMarkup } from './avatar'
+import { heroMarkup, mascotAvatar, planBarMarkup, planCellColors, spinnerMarkup } from './avatar'
 import { formatDuration, formatTokens, modelLabel, plural, stepLabel, tokensOf } from './format'
 import { applyToPlan, planFromTool, planProgress } from './plan'
-import { labelOf, ORB_COLOR, orbAvatar, orbOf, roleOf, ROLES } from './orbs'
-import type { Role } from './orbs'
+import { artOf, faceOf, labelOf, PALETTE, roleOf } from './roles'
+import type { Art } from './roles'
 
 const PANE = 'invoker-desk'
 const TITLE = 'Invoker'
@@ -153,7 +153,7 @@ function runs(colors: string[]): [string, number][] {
 }
 
 // The plan on the terminal, where nothing is drawn as a vector: a row of
-// blocks in the orbs' gradient, the task under way shimmering once a second
+// blocks from Depth to Spirit, the task under way shimmering once a second
 // while the clock runs, and a light track for the rest.
 function planBlocks(Text: any, progress: ReturnType<typeof planProgress>, cells: number, at: number) {
   const filled = progress.total === 0 ? 0 : Math.round((cells * progress.done) / progress.total)
@@ -163,7 +163,7 @@ function planBlocks(Text: any, progress: ReturnType<typeof planProgress>, cells:
       {runs(planCellColors(filled)).map(([color, count]) => (
         <Text color={color}>{'█'.repeat(count)}</Text>
       ))}
-      {live > 0 && <Text color={Math.floor(at / 1000) % 2 ? ORB_COLOR.wex.mid : ORB_COLOR.quas.mid}>{'▓'.repeat(live)}</Text>}
+      {live > 0 && <Text color={Math.floor(at / 1000) % 2 ? PALETTE.spirit : PALETTE.depth}>{'▓'.repeat(live)}</Text>}
       <Text dimColor>{'░'.repeat(Math.max(0, cells - filled - live))}</Text>
     </Text>
   )
@@ -331,7 +331,7 @@ export const register: Register = on => {
       <Box flexDirection="column">
         {rest as never}
         <Box flexDirection="row" gap={1}>
-          <Text color={ORB_COLOR.wex.mid}>●</Text>
+          <Text color={PALETTE.spirit}>●</Text>
           <Box width={titleWidth} flexShrink={0}>
             <Text weight="semibold" wrap="truncate-end">
               {progress.title}
@@ -367,8 +367,10 @@ export const register: Register = on => {
     const running = list.filter(isRunning)
     // The last to end on top.
     const finished = list.filter(row => !isRunning(row)).sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0) || b.startedAt - a.startedAt)
-    const active = [...new Set(running.map(row => roleOf(row.type)).filter((r): r is Role => r !== null))]
     const isOrchestrating = running.length > 0
+    // The specialist last dispatched takes the mascot's place; idle, the mascot smiles over a plan done.
+    const latest = running.reduce<AgentRow | null>((last, row) => (!last || row.startedAt >= last.startedAt ? row : last), null)
+    const hero: Art = latest ? artOf(latest.type) : progress.total > 0 && progress.done === progress.total ? 'happy' : 'mascot'
     const shownFinished = view.isFinishedWhole ? finished.length : SHOWN_FINISHED
     // Only the cards on screen read their steps.
     const shown = [...(view.isRunningCollapsed ? [] : running), ...(view.isFinishedCollapsed ? [] : finished.slice(0, shownFinished))]
@@ -384,28 +386,15 @@ export const register: Register = on => {
         expanded: v.expanded.includes(id) ? v.expanded.filter(one => one !== id) : [...v.expanded, id],
       }))
 
-    // Terminal: no vector drawing, so the orbs are glyphs, turning one seat
-    // a second while the Invoker orchestrates.
-    const glyphOrbs = () => {
-      const shift = isOrchestrating ? Math.floor(at / 1000) % ROLES.length : 0
-      const seats = ROLES.map((_, i) => ROLES[(i + shift) % ROLES.length]!)
-      return (
-        <Text>
-          {seats.map(one => (
-            <Text color={ORB_COLOR[one.orb].text} weight={active.includes(one.role) ? 'bold' : 'regular'}>
-              {active.includes(one.role) ? '◉ ' : '○ '}
-            </Text>
-          ))}
-        </Text>
-      )
-    }
+    // Terminal: no vector drawing, so the mascot is its two eyes, open while a specialist works.
+    const glyphMascot = () => <Text color={PALETTE.spirit}>{isOrchestrating ? '◉ ◉' : '● ●'}</Text>
 
     // The plan in progress, in place of the cost, token and time figures.
     const planBar = () =>
       progress.total === 0 ? (
         <Text dimColor>Nenhum plano em andamento.</Text>
       ) : (
-        // Clean: no frame around the plan, the title in the text colour; the bar alone carries the orbs.
+        // Clean: no frame around the plan, the title in the text colour; the bar alone carries the colour.
         <Box flexDirection="column">
           <Box flexDirection="row" gap={1} alignItems="center">
             <Box flexShrink={1} minWidth={0}>
@@ -438,8 +427,7 @@ export const register: Register = on => {
       )
 
     const card = (row: AgentRow) => {
-      const kind = orbOf(row.type)
-      const color = ORB_COLOR[kind].text
+      const color = PALETTE.spirit
       const isOpen = view.expanded.includes(row.id)
       // A running card heads with the step under way; the list holds the ones before it.
       const { count, labels } = stepsBy.get(row.id) ?? NO_STEPS
@@ -462,11 +450,11 @@ export const register: Register = on => {
       const headColor = row.status === 'completed' ? 'success' : row.status === 'running' ? color : 'error'
 
       return (
-        // Clean: every card is framed in the dim text colour; the orb alone says the role.
+        // Clean: every card is framed in the dim text colour; the mascot's face says how it goes.
         <Box flexDirection="row" borderStyle="round" borderColor="inactive" paddingX={1} gap={1} overflow="hidden">
           <Box flexDirection="column" justifyContent="center" flexShrink={0}>
             {Svg ? (
-              <Svg source={orbAvatar(kind, isMoving, 'small')} alt={labelOf(row.type)} width={40} height={40} isInteractive={isMoving} />
+              <Svg source={mascotAvatar(row.status, faceOf(row.type))} alt={labelOf(row.type)} width={40} height={40} isInteractive={isMoving} />
             ) : (
               <Text color={color}>◉</Text>
             )}
@@ -497,7 +485,7 @@ export const register: Register = on => {
             {row.status === 'running' ? (
               <Box flexDirection="row" gap={1} alignItems="center">
                 <Box flexShrink={0}>
-                  {Svg ? <Svg source={spinnerMarkup(kind)} alt="Em andamento" width={16} height={16} isInteractive /> : <Text color={color}>◐</Text>}
+                  {Svg ? <Svg source={spinnerMarkup()} alt="Em andamento" width={16} height={16} isInteractive /> : <Text color={color}>◐</Text>}
                 </Box>
                 <Box flexShrink={1} minWidth={0}>
                   <Text color={headColor} weight="semibold" wrap="truncate-end">
@@ -557,14 +545,14 @@ export const register: Register = on => {
         <Box flexDirection="column" alignItems="center">
           {Svg ? (
             <Svg
-              source={invokerMarkup(isOrchestrating, active)}
-              alt={isOrchestrating ? `Invoker orquestrando ${running.length} subagentes` : 'Invoker em repouso'}
-              width={260}
-              height={240}
+              source={heroMarkup(hero)}
+              alt={latest ? labelOf(latest.type) : 'Invoker em repouso'}
+              width={130}
+              height={120}
               isInteractive
             />
           ) : (
-            glyphOrbs()
+            glyphMascot()
           )}
           <Text dimColor>
             {isOrchestrating
@@ -576,7 +564,7 @@ export const register: Register = on => {
         {planBar()}
 
         {list.length === 0 && <Text dimColor>Nenhum subagente despachado ainda.</Text>}
-        {section('Em execução', running, 'isRunningCollapsed', ORB_COLOR.quas.mid)}
+        {section('Em execução', running, 'isRunningCollapsed', PALETTE.depth)}
         {section('Concluídos', finished, 'isFinishedCollapsed', 'success', shownFinished)}
       </Box>
     )

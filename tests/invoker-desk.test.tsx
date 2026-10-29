@@ -1,5 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
+import { MASCOT_ART } from '../hooks/invoker-desk/mascot-art'
+
 const PANE = {
   plugin: 'spectree',
   component: 'Pane',
@@ -19,6 +21,9 @@ async function svgSource(ui: any, alt: string): Promise<string> {
   const svgs = (await ui.findAll({ type: 'Svg' })) as any[]
   return String(svgs.find(one => one?.props?.alt === alt)?.props?.source ?? '')
 }
+
+// The smiling face of the mascot's sheet, as a card draws it: its first path picks it out.
+const happyFace = (MASCOT_ART.face_happy.match(/<path [^>]+>/) ?? [''])[0]
 
 const ENGINE = { plugin: 'engine', tier: 'core' } as const
 
@@ -89,34 +94,50 @@ test('a finished subagent is a card with its role, steps, tokens and status', as
     expect(await ui.find({ type: 'Text', text: /Using Read: \/repo\/docs\/specs/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Invoker em repouso/ })).toBeDefined()
     if (surface !== 'terminal') {
-      // The card's avatar is the orb painting, not the vector sphere: a finished card's the small tracing.
+      // The card's avatar is the mascot's smiling face from its sheet once done, and still: no frame.
       const svgs = (await (ui as any).findAll({ type: 'Svg' })) as any[]
-      const orb = svgs.find(one => one?.props?.alt === 'Quality Engineer')
-      expect(String(orb?.props?.source ?? '')).toContain('viewBox="0 0 56 56"')
-      expect(String(orb?.props?.source ?? '')).not.toContain('<use ')
-      expect(String(orb?.props?.source ?? '')).not.toContain('<image')
-      expect(String(orb?.props?.source ?? '').length).toBeLessThanOrEqual(131072)
+      const avatar = svgs.find(one => one?.props?.alt === 'Quality Engineer')
+      const source = String(avatar?.props?.source ?? '')
+      expect(source).toContain('viewBox="0 0 48 48"')
+      expect(source).toContain(happyFace)
+      expect(source).not.toContain('@keyframes')
+      expect(avatar?.props?.isInteractive).toBe(false)
+      expect(source).not.toContain('<image')
+      // Idle with no plan, the centre is the mascot itself.
+      const hero = String(svgs.find(one => one?.props?.alt === 'Invoker em repouso')?.props?.source ?? '')
+      expect(hero).toContain('viewBox="0 0 220 220"')
     }
     await ui.unmount()
   }
 })
 
-test('while a subagent runs the Invoker orchestrates and its orb pulses', async ($, on) => {
-  engine(on, 'p1')
+test('the specialist at work takes the mascot\'s place, the last one dispatched in front', async ($, on) => {
+  const clock = engine(on, 'p1')
   await spawn($, 'p1', 'spectree:platform-engineer', 'PE: merge PR 4 and close')
 
-  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  let ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const platform = String(((await (ui as any).findAll({ type: 'Svg' })) as any[]).find(one => one?.props?.alt === 'Platform Engineer' && one?.props?.width === 130)?.props?.source ?? '')
   expect(await ui.find({ type: 'Text', text: /Invocando Platform Engineer/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /Em execução · 1/ })).toBeDefined()
-  const avatar = await ui.find({ type: 'Svg', alt: /Invoker orquestrando 1/ } as any)
-  expect(avatar).toBeDefined()
-  expect(String((avatar as any)?.props?.source ?? '')).toContain('animateTransform')
-  expect(String((avatar as any)?.props?.source ?? '')).toContain('preserveAspectRatio="xMidYMid slice" viewBox="0 0 260 273"')
-  expect(String((avatar as any)?.props?.source ?? '')).toContain('<use href="#art-wex"')
+  // No orbs: one drawing, floating, in the Spirit aura.
+  expect(platform).toContain('@keyframes fl')
+  expect(platform).toContain('#58e5d4')
+  expect(platform).not.toContain('<use href="#art-')
   // The desktop app strips an <image> from an Svg: every picture in it is traced paths.
-  expect(String((avatar as any)?.props?.source ?? '')).not.toContain('<image')
-  // The engine refuses an Svg source past 131072 characters; the portrait and the orbs ride inside it.
-  expect(String((avatar as any)?.props?.source ?? '').length).toBeLessThanOrEqual(131072)
+  expect(platform).not.toContain('<image')
+  // The engine refuses an Svg source past 131072 characters.
+  expect(platform.length).toBeLessThanOrEqual(131072)
+  await ui.unmount()
+
+  await clock.advance(1000)
+  await spawn($, 'a1', 'spectree:solutions-architect', 'Architect: proposal')
+  ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const hero = ((await (ui as any).findAll({ type: 'Svg' })) as any[]).find(one => one?.props?.width === 130)
+  expect(hero?.props?.alt).toBe('Solutions Architect')
+  // Half the old 260 by 240: the centre is a presence, not the panel.
+  expect(hero?.props?.height).toBe(120)
+  expect(String(hero?.props?.source ?? '')).not.toBe(platform)
+  expect(await ui.find({ type: 'Text', text: /Invocando Platform Engineer, Solutions Architect/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -199,7 +220,7 @@ test('the clock runs only while a subagent runs', async ($, on) => {
 
 test('a drawing that fails leaves a pane that says so', async ($, on) => {
   engine(on, 'x1')
-  // A row the drawing cannot read: no type to name its orb by.
+  // A row the drawing cannot read: no type to name its drawing by.
   await spawn($, 'x1', undefined as any, 'PE')
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   expect(await ui.find({ type: 'Text', text: /Painel do Invoker em recuperação/ })).toBeDefined()
@@ -243,7 +264,7 @@ test('the main loop adds no card and its task list fills the plan bar in place o
   expect(bar).toContain('@keyframes tw')
   expect(bar).toContain('class="sh"')
   expect(bar).toContain('class="lv"')
-  for (const mid of ['#38b6ff', '#e040fb', '#ff8a1f']) expect(bar).toContain(mid)
+  for (const shade of ['#187e7d', '#58e5d4']) expect(bar).toContain(shade)
   await ui.unmount()
 
   await $.tool.call({ tool: 'TaskUpdate', taskId: '2', status: 'completed' } as any)
@@ -287,11 +308,11 @@ test('a card is bordered in the dim text colour, the finished section in the don
     expect(await ui.find({ type: 'Text', text: /Opening www\.w3\.org$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /Searching: passkeys conditional ui/ })).toBeDefined()
     const boxes = ((await (ui as any).findAll({ type: 'Box' })) as any[]).map(one => one?.props ?? {})
-    // Clean: every card in the dim text colour, the running section in Quas, the finished one in the done green.
+    // Clean: every card in the dim text colour, the running section in Depth, the finished one in the done green.
     const borders = boxes.filter(one => one.borderStyle).map(one => one.borderColor)
     expect(borders.length).toBe(2)
     expect(borders.every(color => color === 'inactive')).toBe(true)
-    expect(boxes.some(one => one.backgroundColor === '#38b6ff')).toBe(true)
+    expect(boxes.some(one => one.backgroundColor === '#187e7d')).toBe(true)
     expect(boxes.some(one => one.backgroundColor === 'success')).toBe(true)
     // No progress bar on a card.
     expect(((await (ui as any).findAll({ type: 'Svg' })) as any[]).some(one => /Progresso|Concluído ·/.test(one?.props?.alt ?? ''))).toBe(false)
@@ -313,7 +334,7 @@ test('a long step is cut inside its card and the avatar keeps its place', async 
   // The card clips what does not fit, the avatar never shrinks, the text column may.
   expect(boxes.some(one => one.borderColor === 'inactive' && one.overflow === 'hidden')).toBe(true)
   const avatar = ((await (ui as any).findAll({ type: 'Box' })) as any[]).find(one =>
-    (one?.children ?? []).some((child: any) => child?.type === 'Svg' && child?.props?.alt === 'Solutions Architect'),
+    (one?.children ?? []).some((child: any) => child?.type === 'Svg' && child?.props?.alt === 'Solutions Architect' && child?.props?.width === 40),
   )
   expect(avatar?.props?.flexShrink).toBe(0)
   expect(boxes.some(one => one.minWidth === 0 && one.overflow === 'hidden' && one.flexGrow === 1)).toBe(true)
@@ -340,7 +361,7 @@ test('a card names the subagent type, its model and its effort', async ($, on) =
   }
 })
 
-test('a running card heads with the step under way and the three orbs turning', async ($, on) => {
+test('a running card heads with the step under way and the Spirit dots turning', async ($, on) => {
   engine(on, 'd1')
   await spawn($, 'd1', 'spectree:full-stack-developer', 'Developer: surface')
 
@@ -364,7 +385,15 @@ test('a running card heads with the step under way and the three orbs turning', 
   const spinner = await svgSource(ui, 'Em andamento')
   expect(spinner).toContain('viewBox="0 0 16 16"')
   expect(spinner).toContain('animateTransform')
-  for (const mid of ['#38b6ff', '#e040fb', '#ff8a1f']) expect(spinner).toContain(mid)
+  expect(spinner).toContain('#58e5d4')
+  // The running card wears its role's expression from the mascot's sheet, glowing: the developer smiles.
+  const avatar = ((await (ui as any).findAll({ type: 'Svg' })) as any[]).find(one => one?.props?.alt === 'Full Stack Developer' && one?.props?.width === 40)
+  const face = String(avatar?.props?.source ?? '')
+  expect(face).toContain('<svg x="0" y="0" width="48" height="48" viewBox="0 0 96 96">')
+  expect(face).toContain('@keyframes gl')
+  expect(face).not.toContain('<ellipse')
+  expect(face.length).toBeLessThan(20_000)
+  expect(avatar?.props?.isInteractive).toBe(true)
   await ui.unmount()
 })
 
@@ -454,7 +483,7 @@ const BAND = {
   props: { isWorking: true, hasSurvey: false, maxRows: 20, bodyColumns: 80, scroll: { offset: 0, bodyRows: 20 }, view: {} },
 } as const
 
-test('the terminal shows the plan above the prompt in the orbs\' blocks until the person writes after it is done', async ($, on) => {
+test('the terminal shows the plan above the prompt in Depth to Spirit blocks until the person writes after it is done', async ($, on) => {
   engine(on, 'x')
   const steps = (done: number) =>
     ['Ler o brief', 'Escrever o delta', 'Rodar o passe 1', 'Fechar'].map((text, i) => ({
@@ -468,12 +497,12 @@ test('the terminal shows the plan above the prompt in the orbs\' blocks until th
   expect(await band.find({ type: 'Text', text: /^Tarefas 2\/4$/ })).toBeDefined()
   expect(await band.find({ type: 'Text', text: /^50%$/ })).toBeDefined()
   expect(await band.find({ type: 'Text', text: /^Agora: Rodar o passe 1$/ })).toBeDefined()
-  // Half the cells full, from Quas blue at the start to Exort orange at the head; the task under way shimmers.
+  // Half the cells full, from Depth at the start to Spirit at the head; the task under way shimmers.
   const runs = (await (band as any).findAll({ type: 'Text', text: /^█+$/ })) as any[]
   expect(runs.map(one => String(one.props.children ?? one.text ?? '')).join('').length).toBeGreaterThan(20)
   expect(runs.length).toBeLessThanOrEqual(12)
-  expect(runs[0].props.color).toBe('#38b6ff')
-  expect(runs[runs.length - 1].props.color).toBe('#ff8a1f')
+  expect(runs[0].props.color).toBe('#187e7d')
+  expect(runs[runs.length - 1].props.color).toBe('#58e5d4')
   expect(await band.find({ type: 'Text', text: /^▓+$/ })).toBeDefined()
   expect(await band.find({ type: 'Text', text: /^░+$/ })).toBeDefined()
   await band.unmount()
