@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 117,
+    "title": "Painel do Invoker no rebrand da Spectree: o mascote no centro (tarefa 45) — v1.84.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/117",
+    "opened": "2026-10-29T10:58:42Z",
+    "merged": "2026-10-29T11:02:00Z"
+  },
+  "signals": {
+    "open_minutes": 3,
+    "commits": 4,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.84.0",
+    "archived": [
+      "docs/changes/archive/2026-10-28-rebrand-mascote/proposal.md"
+    ]
+  },
+  "friction": "O Founder ajustou a mudança três vezes antes do PR, sempre vendo o preview: os rostos nos cards em execução, depois nos concluídos e o centro pela metade.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01TbzdKTcqdV5Hm7BS1sTJub",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
