@@ -50,9 +50,11 @@ lugar; cada correção entra por uma mudança própria.
 | R-018 | `automated-checks · mod · marca-herdada-no-spread` | 1 | Pago na tarefa 44: `applyToPlan` zera o `isSettled` quando a lista muda, e um teste troca a lista depois do settle |
 | R-019 | `information-access · retro · coleta-sem-gh` | 2 | Aberto: a retro de `avatar-espectral` leu os sinais pela API do GitHub, sem `gh` autenticado na sessão e sem o registro em `.spectree/retros/`; na retro de `inventario-sem-processos` o `gh` estava autenticado e a coleta rodou, então a falta é de ambiente |
 | R-020 | `review-standards · proposta · heuristica-antes-do-desenho-exato` | 1 | Aberto: no #119, a busca por candidatos com limite caiu em três rodadas de revisão antes da localização exata |
+| R-021 | `automated-checks · executor · guarda-testada-so-na-funcao` | 1 | Aberto: no #121, a recusa `E_PASS2_UNRECORDED` foi testada só em `startWork`, e o caminho do executor gastava uma tentativa antes de recusar |
 
 ## Retros
 
+- [2026-10-29 — `retro-synd-guardas` (#121)](2026-10-29-retro-synd-guardas.md)
 - [2026-10-29 — `executor-cota-estruturada` (#119)](2026-10-29-executor-cota-estruturada.md)
 - [2026-10-29 — `inventario-sem-processos` (#120)](2026-10-29-inventario-sem-processos.md)
 - [2026-10-29 — `avatar-espectral` (#118)](2026-10-29-avatar-espectral.md)
