@@ -73,7 +73,7 @@ mkdir -p ~/.claude/skills && rm -rf ~/.claude/skills/security-audit
 cp -r "$src/skills/security-audit" ~/.claude/skills/security-audit
 ```
 
-For Codex, copy the same `skills/security-audit` folder to `.agents/skills/security-audit` in the project.
+For Codex, copy the same `skills/security-audit` folder to `~/.agents/skills/security-audit`, the user-level skill root `install-codex.mjs --global` also uses.
 
 It never runs on a change's path. A full audit runs in a session of its own against a disposable
 copy, with an output directory outside the repository and a fixed `budget`, and the Quality
