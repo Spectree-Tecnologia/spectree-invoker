@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 120,
+    "title": "Inventário do executor sem os registros de processo (tarefa 47) — v1.86.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/120",
+    "opened": "2026-10-29T22:31:14Z",
+    "merged": "2026-10-29T22:36:45Z"
+  },
+  "signals": {
+    "open_minutes": 6,
+    "commits": 2,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.86.0",
+    "archived": [
+      "docs/changes/archive/2026-10-29-inventario-sem-processos/proposal.md"
+    ]
+  },
+  "friction": "- O `gh` desta sessão não tinha login, então a retro leu os sinais do #118 pela API do GitHub em vez de `retro.mjs collect` (R-019).\n- O #119 (`executor-cota-estruturada`) também está provisoriamente em v1.86.0, mas não toca em `task-executor.mjs`. Quem mergear depois leva a próxima versão e deve a retro do outro.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

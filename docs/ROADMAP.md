@@ -113,7 +113,8 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 44 | Barra do plano no terminal | Integrada, v1.83.0: o plano acima do prompt no terminal, em blocos no degradê dos orbes, e a barra do painel com faíscas, brilho e a tarefa em andamento acesa, [proposta](changes/archive/2026-10-28-barra-plano-terminal/proposal.md) | — |
 | 45 | Painel do Invoker no rebrand da Spectree | Integrada, v1.84.0: o mascote no centro sem os orbs, o especialista que trabalha no lugar dele, cards com o mascote pequeno e a paleta Void, Surface, Mist, Spirit e Depth, [proposta](changes/archive/2026-10-28-rebrand-mascote/proposal.md) | — |
 | 46 | Avatar principal espectral | Integrada, v1.85.0: o centro visto como se por outra dimensão, com o ar ondulando, dois fantasmas em Spirit e Depth fora de fase e um flicker, [proposta](changes/archive/2026-10-29-avatar-espectral/proposal.md) | — |
-| 47 | Cota lida só do que é estruturado no executor | Integrada, v1.86.0: a declaração `spectree_result` vale no fim da mensagem final, com prosa antes, e a cota só vem das falhas do harness ou de uma declaração `interrupted`, nunca da saída de ferramenta, [proposta](changes/archive/2026-10-29-executor-cota-estruturada/proposal.md) | — |
+| 47 | Inventário do executor sem os registros de processo | Integrada, v1.86.0: `tasks.mjs run` deixa de quebrar com `ENOBUFS` quando `.spectree/processes` passa de 1 MiB, e a listagem do candidato fica 16 vezes mais rápida, [proposta](changes/archive/2026-10-29-inventario-sem-processos/proposal.md) | D-026 (registrado) |
+| 48 | Cota lida só do que é estruturado no executor | Integrada, v1.87.0: a declaração `spectree_result` vale no fim da mensagem final, com prosa antes, e a cota só vem das falhas do harness ou de uma declaração `interrupted`, nunca da saída de ferramenta, [proposta](changes/archive/2026-10-29-executor-cota-estruturada/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
@@ -127,7 +128,8 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
-- **2026-10-29:** Founder autorizou a série da retro do SYND (tarefas 47 a 49): cota estruturada no executor, guardas de abertura e do pass 2, regra multi-caminho no Architect.
+- **2026-10-29:** Founder autorizou a série da retro do SYND (tarefas 48 a 50): cota estruturada no executor, guardas de abertura e do pass 2, regra multi-caminho no Architect.
+- **2026-10-29:** Founder autorizou a correção do `ENOBUFS` no inventário do executor, que travava o fechamento da C3e no SYND (tarefa 47).
 - **2026-10-29:** Founder pediu um motion espectral no avatar principal, como se visto em outra dimensão (tarefa 46).
 - **2026-10-28:** Founder trocou a identidade do painel para o rebrand da Spectree (tarefa 45): mascote no lugar do Invoker, especialista no lugar do mascote enquanto trabalha, paleta nova.
 - **2026-10-28:** Founder pediu a barra do plano no CLI e no estilo do Helper Desk (tarefa 44).
