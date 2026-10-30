@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 122,
+    "title": "Auditoria de código com a skill security-audit da Cloudflare, referenciada e fora do caminho padrão, retro de regra-multi-caminho (tarefa 51) — v1.90.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/122",
+    "opened": "2026-10-29T23:06:55Z",
+    "merged": "2026-10-29T23:59:43Z"
+  },
+  "signals": {
+    "open_minutes": 53,
+    "commits": 5,
+    "ci_heads": 5,
+    "ci_runs_complete": true,
+    "ci_red": [
+      {
+        "sha": "1b0e084",
+        "conclusion": "failure",
+        "run": 40970859164
+      }
+    ],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.90.0",
+    "archived": [
+      "docs/changes/archive/2026-10-29-auditoria-de-codigo/proposal.md"
+    ]
+  },
+  "friction": "- O núcleo ficou a 24 bytes do teto. A regra coube porque o detalhe foi para o card do QE (R-004, D-013).\n- O identificador foi disputado duas vezes (R-001):\n  - o #121 abriu como v1.88.0 enquanto esta mudança estava em preparo, e ela esperou o merge dele;\n  - depois o #123 mergeou primeiro na v1.89.0, então esta mudança passou para a v1.90.0 e trocou a retro de `retro-synd-guardas` pela de `regra-multi-caminho`.\n- O piloto rodou sem sandbox de SO, então nenhum achado chegou a `confirmed`.\n- O comando do primeiro push foi recusado pelo classificador. Passou na segunda tentativa, com o commit e o push separados.\n\nhttps://claude.ai/code/session_01HmcdNJVDF9kc3t86gLg12N\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01HmcdNJVDF9kc3t86gLg12N",
+  "candidates": [
+    {
+      "signature": "automated-checks · ci · vermelho-no-pr",
+      "evidence": [
+        "1b0e084 failure run 40970859164"
+      ]
+    }
+  ],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

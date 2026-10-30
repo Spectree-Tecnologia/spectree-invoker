@@ -799,7 +799,7 @@ function run({ root, argv, print, warn }) {
         // a content binding nor accepts one: a fingerprint is a statement about a run, and a
         // document cannot acquire the authority of an execution by describing itself as one.
         // The only thing that writes those fields is the runner that watched the command.
-        for (const field of ['fingerprint', 'contract_digest']) {
+        for (const field of ['fingerprint', 'contract_digest', 'code_fingerprint', 'neutral_paths']) {
           if (doc[field]) {
             die(`${field} is written by \`state.mjs run\`, which watches the command and measures what it ran against. ` +
                 `An imported document carrying it is claiming an observation this command did not make — drop the field, ` +

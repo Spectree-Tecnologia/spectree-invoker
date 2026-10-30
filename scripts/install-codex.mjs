@@ -9,7 +9,8 @@
 //
 //   * idempotent — running it twice changes nothing the second time;
 //   * contained — every destination is inside the project (or inside $HOME with --global);
-//     a path that escapes is refused, not clamped;
+//     a path that escapes is refused, not clamped, and so is a symlink in the project on the
+//     way to a destination;
 //   * never overwrites the consumer's own instructions — an existing AGENTS.md gets an
 //     appended pointer, once, and is never rewritten;
 //   * nothing global by default, and no symlink anywhere: plain file copies, so Windows
@@ -17,8 +18,8 @@
 //   * the scripts the skill calls travel with it, because a skill that tells the agent to
 //     run a file that was never copied is a broken install that looks complete.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, cpSync } from 'node:fs';
-import { join, resolve, dirname, relative, isAbsolute } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, cpSync, lstatSync } from 'node:fs';
+import { join, resolve, dirname, relative, isAbsolute, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 
@@ -137,6 +138,28 @@ const agentsMd = join(projectRoot, 'AGENTS.md');
 if (!existsSync(agentsMd)) plan.push({ op: 'create', to: agentsMd, label: 'AGENTS.md pointer (none existed)' });
 else if (readFileSync(agentsMd, 'utf8').includes(POINTER_MARK)) plan.push({ op: 'unchanged', to: agentsMd, label: 'pointer already present' });
 else plan.push({ op: 'append', to: agentsMd, label: 'pointer appended — the existing file is preserved in full' });
+
+// 5. a link inside the project redirects a write. The project is the consumer's content, and a
+// symlink committed there (AGENTS.md -> ~/.bashrc, .spectree -> elsewhere) would carry the copy
+// outside it while the plan prints an in-project path. Every existing component between the
+// project root and a destination must be a real entry, or nothing is written.
+/** The first symlinked component on the way from root to p, or null. */
+function linkOnTheWay(root, p) {
+  let cur = root;
+  for (const part of relative(root, p).split(sep)) {
+    cur = join(cur, part);
+    let st;
+    try { st = lstatSync(cur); } catch { return null; }
+    if (st.isSymbolicLink()) return cur;
+  }
+  return null;
+}
+const linked = [...new Set(plan.filter((p) => contained(projectRoot, p.to)).map((p) => linkOnTheWay(projectRoot, p.to)).filter(Boolean))];
+if (linked.length) {
+  console.error(`refusing: ${linked.length} path(s) in the project are symlinks, and a write through them would land outside it:`);
+  for (const l of linked) console.error(`  ${relative(projectRoot, l)}`);
+  process.exit(1);
+}
 
 // --- report ------------------------------------------------------------------
 const counts = plan.reduce((a, p) => ({ ...a, [p.op]: (a[p.op] ?? 0) + 1 }), {});
