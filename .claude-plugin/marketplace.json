@@ -3,12 +3,12 @@
   "owner": {
     "name": "Spectree Tecnologia"
   },
-  "description": "Marketplace da Spectree Tecnologia: o runtime e o squad Invoker para Claude Code.",
+  "description": "Spectree Tecnologia marketplace: the Invoker runtime and agent squad for Claude Code.",
   "plugins": [
     {
       "name": "spectree",
       "source": "./",
-      "description": "Runtime que só aceita como pronto o que um comando provou — o harness por cima do Claude Code e do Codex — e o squad de agentes que ele executa: o Invoker e seis especialistas, para monólitos modulares spec-driven."
+      "description": "A runtime that refuses to call work done until a command proves it: evidence bound to a content digest, isolated adversarial QA, a post-merge receipt and only three human gates. An agent squad for Claude Code and Codex, built for spec-driven modular monoliths."
     }
   ]
 }

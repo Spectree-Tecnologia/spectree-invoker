@@ -1,12 +1,12 @@
 {
   "name": "@spectree/invoker",
-  "version": "1.91.0",
+  "version": "1.92.0",
   "private": true,
   "type": "module",
   "workspaces": [
     "presence"
   ],
-  "description": "The Spectree Invoker squad: one protocol, two harness adapters, and the checks that refuse an invalid state.",
+  "description": "A runtime that refuses to call work done until a command proves it: evidence bound to a content digest, isolated adversarial QA, a post-merge receipt and only three human gates. An agent squad for Claude Code and Codex, built for spec-driven modular monoliths.",
   "license": "MIT",
   "engines": {
     "node": "^22.23.4 || ^24.22.1 || >=26.12.1"

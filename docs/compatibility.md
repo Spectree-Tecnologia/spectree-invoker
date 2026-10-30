@@ -7,8 +7,8 @@ a rendered file is not a harness that loaded it.
 
 | Surface | Version | How it was established |
 |---|---|---|
-| Node.js | 24.17.0 · 22.23.2 | the whole suite runs on both: 136 deterministic tests here, and the same suite in CI |
-| Ubuntu 24.04 | GitHub runner | CI ran the full suite at the last pushed revision: **188 tests, 187 pass, 0 fail, 1 skipped** — the skip is the `cmd.exe` argument-transport test, which says it is Windows-only |
+| Node.js | 24.17.0 · 22.23.2 · 22.23.4 | the whole suite ran on each; 22.23.4 at v1.91.0 |
+| Ubuntu 24.04 | GitHub runner | CI runs the full suite at every pushed revision; the `cmd.exe` argument-transport test is skipped there and says it is Windows-only |
 | Windows | win32/x64 | the suite ran here; the diff layer is exercised against real `git` with spaces and non-ASCII names |
 | git | 2.54.0 | `readDiff` is tested against a real repository, including rename, deletion and a `-z` round trip |
 | Protocol → adapters | — | `build.mjs --check` runs in CI; a hand edit to any generated file fails it |
@@ -49,7 +49,7 @@ a rendered file is not a harness that loaded it.
 
 `engines` declares `node ^22.23.4 || ^24.22.1 || >=26.12.1`, the releases carrying the Node.js security fixes of 2026-10-21, and `.npmrc` makes npm refuse anything below it. npm enforces it only on install, so `capabilities.mjs` reports `runtime.floor` as `BELOW FLOOR` when an installed copy runs on an older Node. 22.23.4 was exercised for v1.48.0.
 
-The suite is **258 deterministic tests**, and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
+The suite counted **692 deterministic tests** at v1.91.0 (689 pass, 3 skipped, after `npm ci --ignore-scripts`), and it writes nothing inside the package under test — a regression asserts that, because an earlier version of the drift test edited `CLAUDE.md` in place and made the suite unrunnable under read-only authorisation.
 
 ## Implemented, real validation pending
 
@@ -81,8 +81,9 @@ Record each as evidence with `source_kind: observed_execution` and the harness v
 
 ## Deliberate non-goals
 
-No MCP server, no dashboard, no external telemetry, no database, no cloud integration, and no
-mandatory paid API. The squad is not bound to any model: the model is the user's configuration,
+No network service of its own, no external telemetry, no database, no cloud integration, and no
+mandatory paid API. The [Console](console.md) and the Invoker panel are local, and neither sits on
+the path of a gate; the panel's `mcp__spectree__plan` tool lives inside the Claude Code session. The squad is not bound to any model: the model is the user's configuration,
 the harness is the execution mechanism, and neither is named in `protocol/`.
 
 The two supported surfaces are the **desktop experiences** of Claude Code and OpenAI Codex,

@@ -1,223 +1,223 @@
-# Spectree Invoker
+<p align="center">
+  <img src="docs/assets/spectree-mascot.svg" width="132" alt="The Spectree spectral mascot">
+</p>
 
-**O runtime que só aceita como pronto o que um comando provou — o harness que roda por cima do Claude Code e do OpenAI Codex, e o squad de agentes que ele executa.**
+<h1 align="center">Spectree Invoker</h1>
 
-[![CI](https://github.com/Spectree-Tecnologia/spectree-invoker/actions/workflows/check.yml/badge.svg?branch=main)](https://github.com/Spectree-Tecnologia/spectree-invoker/actions/workflows/check.yml)
-[![Versão](https://img.shields.io/github/v/tag/Spectree-Tecnologia/spectree-invoker?sort=semver&label=vers%C3%A3o)](https://github.com/Spectree-Tecnologia/spectree-invoker/tags)
-[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
-![Node.js ≥ 22.23.4](https://img.shields.io/badge/node-%E2%89%A5%2022.23.4-339933?logo=node.js&logoColor=white)
-![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-D97757)
-![OpenAI Codex](https://img.shields.io/badge/OpenAI%20Codex-skill%20%2B%20agentes-412991)
+<p align="center">
+  <b>The agent writes the code. The runtime only accepts as done what a command has proven.</b><br>
+  For teams that hand whole features to Claude Code or OpenAI Codex inside a modular monolith and need proof, not a "done".
+</p>
 
-Um agente de código escreve o código. O **runtime** do Spectree Invoker decide se aquilo está pronto: roda os agentes como sessões supervisionadas, verifica com os próprios comandos, guarda o estado em disco e **recusa avançar sem evidência** produzida por um comando e presa ao conteúdo em que rodou. Em cima dele trabalha o **squad**: o Invoker, um TechLead que entrevista antes de propor, e seis especialistas que levam a mudança da ideia ao merge.
+<p align="center">
+  <a href="https://github.com/Spectree-Tecnologia/spectree-invoker/actions/workflows/check.yml"><img src="https://github.com/Spectree-Tecnologia/spectree-invoker/actions/workflows/check.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/Spectree-Tecnologia/spectree-invoker/tags"><img src="https://img.shields.io/github/v/tag/Spectree-Tecnologia/spectree-invoker?sort=semver&label=version" alt="Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A5%2022.23.4-339933?logo=node.js&logoColor=white" alt="Node.js ≥ 22.23.4">
+  <img src="https://img.shields.io/badge/Claude%20Code-plugin-D97757" alt="Claude Code">
+  <img src="https://img.shields.io/badge/OpenAI%20Codex-skill%20%2B%20agents-412991" alt="OpenAI Codex">
+</p>
 
-O squad diz o que precisa acontecer. O runtime garante que aconteceu. Feito para monólitos modulares guiados por especificação, sem dependência de API paga para funcionar e sem amarra a um único fornecedor de modelo.
+## Quick start
 
----
+**Requirements:** Node.js 22.23.4+, 24.22.1+ or 26.12.1+, and Git. To confirm merges, an authenticated [GitHub CLI](https://cli.github.com/) (`gh`).
 
-## Por que existe
-
-Um agente de código sozinho é ansioso: transforma um pedido vago em código confiante e errado, declara "pronto" sobre o próprio trabalho, aprova o que ele mesmo construiu e, quando a sessão cai, leva o contexto junto. O Spectree Invoker troca confiança por prova.
-
-| Sem ele | Com o Spectree Invoker |
-|---|---|
-| O agente declara que terminou | O runtime só aceita evidência produzida por um comando, vinculada ao conteúdo em que rodou |
-| Pedido vago vira código confiante e errado | A exploração entrevista antes de propor — **uma pergunta por vez** |
-| Quem constrói é quem aprova | O Quality Engineer ataca em **contexto isolado** e entrega um teste que falha, nunca uma opinião |
-| A sessão cai e o trabalho se perde | Checkpoints em disco: a retomada lê o estado, não a conversa |
-| O requisito se perde entre a conversa e o código | Spec viva, alterada por delta; cada `Scenario` vira um teste |
-| O fechamento gera PRs e commits de "o CI passou" | **Um PR por mudança**; a confirmação pós-merge produz um recibo, não um commit |
-| O humano aprova tudo — e passa a aprovar sem ler | Você entra em **três gates**: escopo, ambiguidade comprovada e o que é irreversível |
-
-## Duas camadas
-
-```mermaid
-flowchart TB
-    V(["Você<br/><i>pede e decide nos três gates</i>"])
-    S["<b>Squad · o protocolo</b><br/>Invoker + seis especialistas<br/><i>o que precisa acontecer, e em que ordem</i>"]
-    R["<b>Runtime · o harness por cima</b><br/>estado com evidência · executor supervisionado<br/>checkpoints e retomada · trilha observada · fechamento com recibo<br/><i>garante que aconteceu</i>"]
-    A["<b>Claude Code · OpenAI Codex</b><br/><i>os agentes que escrevem o código</i>"]
-    G[("<b>git · testes · CI · GitHub</b><br/><i>onde a prova é produzida</i>")]
-    V --> S
-    S -->|cada passo vira um comando| R
-    R -->|abre e supervisiona sessões| A
-    A -.->|código e relatos| R
-    R -->|só aceita o que um comando provou| G
-    style R stroke-width:3px
-```
-
-O relato de um agente nunca é evidência. Evidência é o que o runtime observou: um teste que ele mesmo rodou, numa revisão que ele mesmo mediu.
-
-## O runtime
-
-- **Estado com evidência.** A máquina de estados (`state.mjs`) só transita com a evidência que o estado de destino exige. Um teste que passou antes de uma edição não vale depois dela, e um "pronto" num checklist não autoriza nada.
-- **Executor supervisionado.** O executor (`tasks.mjs`) abre sessões não interativas e efêmeras do Claude Code (`claude -p … --permission-mode dontAsk`) e do Codex (`codex exec --sandbox …`), uma tarefa por vez, com as ferramentas que a missão autoriza e um orçamento de tentativas. Quem roda os testes de aceite é o executor, nunca o agente.
-- **Checkpoints e retomada.** Cada operação registra suas fases em disco antes dos efeitos (`work.mjs`). Um efeito incerto é inspecionado e reconciliado antes de qualquer nova tentativa, e uma ponte persistente (`bridge.mjs`) guarda o resultado de um agente mesmo se o orquestrador cair no meio.
-- **Trilha observada.** Toda tentativa é registrada antes de o agente ser chamado. Custo ou modelo desconhecidos ficam como desconhecidos — nunca como zero. A [Console](docs/console.md) lê essa trilha.
-- **Fechamento com recibo.** A consolidação da spec acontece na própria branch, antes do merge; depois dele, a confirmação compara o que entrou com o candidato aprovado e só então grava o recibo que os estados finais exigem.
-- **Um runtime, dois fornecedores.** O mesmo protocolo é gerado para o Claude Code e para o Codex; nada no runtime depende de um modelo específico.
-
-## O squad — o protocolo
-
-Os papéis não seguem o organograma. Seguem três fronteiras com consequência física: **raio de destruição**, **isolamento de contexto** e **adversarialidade**.
-
-| Agente | Entrega | Fronteira |
-|---|---|---|
-| **Invoker** | despacho, verificação independente, o relatório para você | orquestra; não escreve código |
-| **Solutions Architect** | entrevista, proposta, delta da spec e mapa de módulos | descoberta, arquitetura e UX num papel só |
-| **Full Stack Developer** ×N | o módulo, com os testes que provam cada `Scenario` | um por módulo, em paralelo |
-| **Quality Engineer** | um teste que falha — nunca uma opinião | adversário, em contexto isolado |
-| **Platform Engineer** | branch, CI, banco, migração, merge e deploy | o único com raio de destruição em git, banco e produção |
-| **Integration Engineer** | um fato sobre um sistema externo, com fonte citada | a rota geral para a rede; não escreve nada |
-| **TypeSafe Engineer** | julgamentos tipados com o Jev, com calibração medida | opcional: só quando a stack aprovada inclui TypeSafe |
-
-## Como uma mudança anda
-
-O squad segue este pipeline; o runtime trava cada seta.
-
-```mermaid
-flowchart LR
-    subgraph D["1 · Definir"]
-        direction TB
-        A([Seu pedido]) --> B[Exploração<br/>uma pergunta por vez]
-        B --> C[Proposta + delta da spec<br/><i>Solutions Architect</i>]
-        C --> G1{{Gate 1 · escopo}}
-    end
-    subgraph B2["2 · Construir"]
-        direction TB
-        E1[Branch + baseline verde<br/><i>Platform Engineer</i>] --> E2[Passe 1 · um teste<br/>falhando por Scenario<br/><i>Quality Engineer</i>]
-        E2 --> E3[Implementação por módulo<br/><i>Full Stack Developers</i>]
-        E3 --> E4[Fechamento preparado<br/>na própria branch]
-    end
-    subgraph I["3 · Integrar"]
-        direction TB
-        I1[Passe 2 · ataque e<br/>auditoria de escopo<br/><i>Quality Engineer</i>] --> I2[CI verde]
-        I2 --> G2{{Aprovação de integração}}
-        G2 --> I3[Um merge]
-        I3 --> I4([Confirmação pós-merge<br/>recibo → closed])
-    end
-    D --> B2 --> I
-```
-
-O ciclo completo, com cada regra e o porquê dela, está em [docs/workflow.md](docs/workflow.md).
-
-## Início rápido
-
-**Requisitos:** Node.js 22.23.4+, 24.22.1+ ou 26.12.1+ (as versões com as correções de segurança de 2026-10-21) e Git. Para a confirmação pós-merge, a [GitHub CLI](https://cli.github.com/) (`gh`) autenticada.
-
-### Claude Code
+**Claude Code**
 
 ```bash
 claude plugin marketplace add Spectree-Tecnologia/spectree-invoker
 claude plugin install spectree@spectree-invoker
 ```
 
-Dentro de um projeto, rode `/spectree:invoker`. Sem argumento, ele relata o estado lido do disco; com argumento, leva o pedido para dentro do pipeline.
+Inside your project, run `/spectree:invoker`. With no argument it reports the state read from disk; with a request, it takes the request into the pipeline:
 
 ```text
-/spectree:invoker Quero um módulo de cobrança via Pix
+/spectree:invoker I want a Pix billing module
 ```
 
-Para atualizar: `claude plugin update spectree@spectree-invoker`. Cada merge na `main` publica uma tag `v<versão>`, então dá para saber exatamente qual commit um projeto está rodando.
-
-### OpenAI Codex
-
-O instalador roda em modo de simulação por padrão e só escreve com `--apply`:
+**OpenAI Codex** — the installer is a dry run by default and only writes with `--apply`:
 
 ```bash
 git clone https://github.com/Spectree-Tecnologia/spectree-invoker
-node spectree-invoker/scripts/install-codex.mjs /caminho/do/projeto            # mostra o plano
-node spectree-invoker/scripts/install-codex.mjs /caminho/do/projeto --apply    # instala
+node spectree-invoker/scripts/install-codex.mjs /path/to/project            # shows the plan
+node spectree-invoker/scripts/install-codex.mjs /path/to/project --apply    # installs
 ```
 
-Depois, invoque com `$spectree-invoker`. Os especialistas vão para `.codex/agents/`, onde o Codex procura agentes personalizados, e o runtime vai para `.spectree/squad/`. O instalador **nunca reescreve o seu `AGENTS.md`**: acrescenta um ponteiro, uma vez, abaixo do que já existe. Para atualizar, rode de novo com `--apply --force`. Detalhes em [docs/install.md](docs/install.md).
+Then invoke it with `$spectree-invoker`. The installer never rewrites your `AGENTS.md`; it appends a pointer, once. Update, verify and uninstall: [docs/install.md](docs/install.md).
 
-## Veja funcionando
+---
 
-Duas interfaces locais rodam a partir de um clone deste repositório.
+## The problem
+
+A coding agent on its own turns a vague request into confident code, declares its own work "done", approves what it built itself and, when the session drops, takes the context with it. Asking it to "verify before finishing" improves the behaviour, but it is still a request: the one checking the check is the same agent.
+
+Spectree Invoker replaces the request with a refusal. It has two layers:
+
+- **the squad** — a protocol: the Invoker, a tech lead that interviews before it proposes, and six specialists that take a change from idea to merge;
+- **the runtime** — Node CLIs with zero npm dependencies that keep the change's state on disk and **refuse every transition** whose evidence was not produced by a command against the current content.
+
+The squad says what has to happen. The runtime makes sure it did. It never pushes, merges or deploys on its own: it validates the flow and records it.
+
+## How the proof works
+
+**Evidence bound to content.** Every result (a test, a CI run, a QA attack) is recorded with the revision it ran at and two digests: the **contract** digest (the approved proposal and delta) and the **content** digest (the git tree plus every uncommitted change). At each transition the runtime recomputes both from disk, never from the record. A test that passed before an edit is worthless after it: `E_STALE_EVIDENCE`, `E_CONTENT_CHANGED`, `E_CONTRACT_CHANGED`.
+
+**A state machine that refuses.** A change moves through 12 states, from `draft` to `closed`, always to the next one and never skipping. Each state demands its own evidence, and an agent's report is never evidence (`E_SELF_REPORT_ONLY`). Being blocked is no shortcut: leaving `blocked` re-checks the requirements of the state it came from. There are 22 stable refusal codes.
+
+**A living spec, changed by delta.** The system's behaviour lives in `docs/specs/<module>/spec.md`, which nobody edits by hand. A change carries a **delta**: only what is added (`ADDED`), changed (`MODIFIED`), removed (`REMOVED`) or renamed (`RENAMED`). Each `Requirement` has exactly one `SHALL` and at least one **`Scenario`** — a Given/When/Then case observable from outside, which becomes a test. The delta is merged into the living spec at closure, on the change's own branch, before the merge.
+
+**Tests are born red.** In **pass 1** the Quality Engineer writes one test per `Scenario`, and the runtime only accepts the pass if each new test **fails at the named assertion** (read from the suite's TAP output, not from a report). Preserved behaviour must stay green. Only then do the Developers implement.
+
+**The adversary never sees the builder.** In **pass 2** the Quality Engineer attacks the candidate and audits its scope. It receives the spec and the target, never the builder's report, reasoning or PR, and never runs as a fork of the conversation. It delivers a failing test, not an opinion. The runtime requires that evidence to be independent of the Developer (`E_NOT_INDEPENDENT`). On a **core domain** module a green test is not enough: it takes a **killed mutation** — a defect planted in a disposable copy that the suite caught.
+
+**One merge, then a receipt.** Closure is prepared on the branch before the merge, with its own identity (`preparation_digest`). After the merge, the confirmation compares what landed with the approved candidate and writes a **receipt** — the document that proves integration, bound to the approval in force. Without a receipt, `integrated` and `closed` are refused (`E_INTEGRATION_NOT_OBSERVED`). No "CI passed" commits: a green is a recorded event, not a commit.
+
+**Resume without the conversation.** Every operation records its phases on disk before its effects. When the session drops, resuming reads the state, not the chat history; an uncertain effect is inspected and reconciled before any new attempt.
+
+## You decide at three gates
+
+A **gate** is a decision only the human makes. The protocol has three; outside them the Invoker decides and reports:
+
+1. **Scope** — you approve the proposal and the delta before anything is built. A roadmap item you approved in advance (`policy: scope`) skips the case-by-case question, and you can still veto it in the next report.
+2. **Proven ambiguity** — QA could not write a test from a `Scenario`. You get the exact phrase and both readings.
+3. **Irreversible or off-agreement** — production, `main`, destructive migrations, scope, budget. The first environment reachable from the internet is a gate of its own, even when the deploy is reversible.
+
+The runtime records two of these decisions as approvals that states require: **scope** and **integration** (the merge into `main`), each bound to the digest of what was approved — the agent records the approval but can never be the one granting it. The ambiguity and exposure gates are enforced by the protocol, not by a runtime state.
+
+Questions arrive one at a time, each with a recommendation. "ok" accepts it. What you already decided lives in `docs/DOMAIN.md` and `docs/DECISIONS.md` and is never asked again.
+
+## The squad
+
+Roles follow three boundaries with physical consequences — **blast radius**, **context isolation** and **adversariality** — not the org chart. More volume means more Developer instances, never a new role.
+
+| Agent | Delivers | Boundary |
+|---|---|---|
+| **Invoker** | dispatch, independent verification, the report to you | the main loop; writes no code |
+| **Solutions Architect** | interview, proposal, spec delta and module map | discovery, architecture and UX in one role |
+| **Full Stack Developer** ×N | the module, with the tests proving each `Scenario` | one per module, in parallel |
+| **Quality Engineer** | a failing test, never an opinion | adversarial, in an isolated context |
+| **Platform Engineer** | branch, CI, database, migration, merge and deploy | the only one with blast radius over git, database and production |
+| **Integration Engineer** | a fact about an external system, with a cited source | the only one with network access; writes nothing |
+| **TypeSafe Engineer** | typed judgments and a measured calibration | **optional and paid**: only when the approved stack includes TypeSafe |
+
+The boundaries are a protocol mandate plus after-the-fact verification of the paths each agent touched. They are not an operating-system sandbox, and this README does not promise one.
+
+## How a change moves
+
+```mermaid
+flowchart LR
+    subgraph D["1 · Define"]
+        direction TB
+        A([Your request]) --> B[Exploration<br/>one question at a time]
+        B --> C[Proposal + delta<br/><i>Solutions Architect</i>]
+        C --> G1{{Gate 1 · scope}}
+    end
+    subgraph B2["2 · Build"]
+        direction TB
+        E1[Branch + green baseline<br/><i>Platform Engineer</i>] --> E2[Pass 1 · red test<br/>per Scenario<br/><i>Quality Engineer</i>]
+        E2 --> E3[Implementation per module<br/><i>Full Stack Developers</i>]
+        E3 --> E4[Closure prepared<br/>on the branch]
+    end
+    subgraph I["3 · Integrate"]
+        direction TB
+        I1[Pass 2 · attack and<br/>scope audit<br/><i>Quality Engineer</i>] --> I2[CI green]
+        I2 --> G3{{Gate 3 · integration<br/>approval}}
+        G3 --> I3[One merge]
+        I3 --> I4([Receipt → closed])
+    end
+    D --> B2 --> I
+```
+
+Gate 2 is not drawn because it only exists when a `Scenario` cannot become a test. Deploy and first internet exposure are a separate gate 3, after `closed`. The full cycle, with every rule and the reason behind it: [docs/workflow.md](docs/workflow.md).
+
+## Built for modular monoliths
+
+A module is a business capability, never a layer: a pure domain package with no framework, plus its adapter in the backend and its UI in the frontend. The protocol fixes eight invariants, and the project's CI checks the ones that can be checked:
+
+- a module publishes only DTOs and query contracts; entities, use cases and value objects never cross its boundary — not in `modules/`, not inside `apps/`;
+- the module graph is declared and acyclic; a cycle is rejected at gate 1;
+- the domain knows no database, framework or network; the transaction boundary is a business decision;
+- a write that spans modules becomes a process with compensation, never loose writes;
+- `shared` is infrastructure, never business.
+
+## One protocol, two harnesses, no paid API
+
+`protocol/` is the squad's single source and names no model or harness. What Claude Code reads (`CLAUDE.md`, `agents/`) and what Codex reads (a skill and TOML agents) is **generated** from it deterministically, and CI fails if anything drifts or if the rendered core loses one of the listed rules.
+
+The squad runs on Claude Code's and Codex's native authentication: no API key, no paid API, no server. The runtime has zero npm dependencies. The only paid exception is opt-in and named: the TypeSafe Engineer is dispatched only when you approve a stack that includes TypeSafe.
+
+## Who it is not for
+
+The Invoker is heavier than a lightweight spec framework, on purpose. It pays that back with three human decisions instead of reviewing every markdown file, with deltaless changes for refactors, and with gate 1 by policy for what you already approved on the roadmap. Even so, it is not for:
+
+- one-line fixes that need no spec, branch or closure;
+- solo prototyping where nobody will read the proof;
+- projects that will not accept automated tests as the definition of done.
+
+| If you want… | You may prefer | What the Invoker adds |
+|---|---|---|
+| lightweight spec structure, any agent | Spec Kit, OpenSpec | a ready squad and a runtime that refuses states without evidence |
+| a skills methodology, "evidence over claims" | Superpowers | the same intent enforced by a state machine, not by a prompt |
+| agile personas with adversarial review | BMAD | an adversary isolated from the builder, delivering a red test |
+| lean orchestration against context rot | GSD | a living spec by delta, a merge receipt and module boundaries in CI |
+| an IDE with executable specs | Kiro | runs on Claude Code and Codex, no credits and no IDE of its own |
+
+## What is proven — and what is not
+
+This repository would rather write *implemented, real-world validation pending* than *compatible*. `capabilities.mjs` marks each harness capability as VERIFIED, DECLARED or UNKNOWN, without testing a permission by exercising it.
+
+**Observed in real runs**
+
+- ✅ **Claude Code desktop** loaded the squad, reported the state read from disk and refused to invent a first change.
+- ✅ **OpenAI Codex Desktop** (Windows) discovered the skill, dispatched a native specialist, and the gate refused with `E_MISSING_APPROVAL`, on native authentication and with no API key.
+- ✅ **A cycle against real GitHub**, on a disposable repository: one PR closed with a receipt; one PR with a commit pushed after approval refused without a receipt; one PR refused with CI in progress and then with CI red.
+- ✅ **Quality Engineer context isolation on Claude Code**, observed by a probe with a control arm. It is context isolation, not a sandbox: the QE still shares the file system, git history and model, and its prompt is written by the Invoker.
+- ✅ **Supervised executor**: opened a real Codex session in a synthetic project and verified acceptance by running the named test (preconditions set up in the fixture, not the full pipeline); the native Claude Code executor was validated on version 2.1.234.
+- ✅ **Real consumer projects** run the methodology, and many recent versions came from incidents measured there; this repository archives its own changes, keeps the deferral ledger and runs a retro on every closure.
+
+**Tested in the deterministic suite** — state machine, digests, receipt, recovery from processes killed mid-write, strict TAP parsing, concurrency between two processes, module boundaries. `npm run check` runs it, the same gate as CI; the Presence tests need `npm ci --ignore-scripts` first.
+
+**Pending**
+
+- ⏳ **Context isolation on Codex**: never probed, and the harness identity comes out as UNKNOWN. Until it is, pass 2 stays blocked on Codex.
+- ⏳ **A full pipeline**, from exploration to `closed`, driven by real agents in a consumer project and recorded end to end.
+- ⏳ **Delivery time**: the structure (one PR, one merge, nothing after) is tested; wall-clock savings are not promised.
+- ⏳ **macOS**: never run.
+- ⏳ **Invoker panel**: depends on Claude Code function hooks in early access; there is no compatibility line saying which versions load it.
+- ⏳ Squash, rebase and merge queues are **not supported**, and the runtime says so.
+
+Full record: [docs/compatibility.md](docs/compatibility.md) and [docs/maintenance.md](docs/maintenance.md).
+
+## Local interfaces
+
+None of them sits on the gate path: they show, they do not decide.
+
+- **Invoker panel** (Claude Code) — a panel beside the conversation with the Spectree spectral mascot, the specialist currently working, each one's model, effort and steps, and the plan bar. Ships with the plugin. It only observes.
+- **[Spectree Console](docs/console.md)** — the runtime's trail, read-only: pipeline, tasks, attempts, evidence. `npm run console -- --demo`, or `--project /path/to/project`. The printed URL carries a temporary credential; do not share it.
+- **[Spectree Presence](docs/presence.md)** — *experimental*: a 3D character and text or voice conversation. Realtime voice uses a separate, paid API. The runtime never depends on it.
+
+## Contributing
+
+`protocol/` is the source; `CLAUDE.md`, `agents/` and `adapters/codex/dist/` are generated and never edited by hand.
 
 ```bash
-npm run console -- --demo                     # Spectree Console com dados sintéticos
-npm ci --ignore-scripts && npm run presence   # Spectree Presence, demonstração
-npm run presence -- --codex                   # Presence P2, conversa textual com Codex
+npm ci --ignore-scripts   # Presence dependencies, needed for the full suite
+npm run build             # regenerates the artifacts from protocol/
+npm run check             # drift + integrity + suite, the same gate as CI
 ```
 
-- **[Spectree Console](docs/console.md)** — a trilha do runtime em modo somente leitura: pipeline, especialistas, tarefas, tentativas, evidências e histórico. Aponte para um projeto real com `npm run console -- --project /caminho/do/projeto`. O endereço impresso carrega uma credencial temporária da sessão; não o compartilhe.
-- **[Spectree Presence](docs/presence.md)** — personagem 3D, identidade por cor e estados explícitos. O modo demonstrativo usa áudio gravado; o [modo Codex](docs/presence-codex.md) oferece texto em canário isolado. [Voz por gravações](docs/presence-voice.md) e [conversa Realtime](docs/presence-realtime.md) acrescentam áudio com API separada, sem acesso a projetos.
+The runtime architecture and the list of CLIs are in [docs/architecture.md](docs/architecture.md); the contribution process is in [CONTRIBUTING.md](CONTRIBUTING.md). What the squad produces in your project (specs, code, commits) is in English; the Invoker's reports to you are in Portuguese by default.
 
-## O que está comprovado — e o que não está
+## Documentation
 
-Este repositório prefere escrever *implementado, validação real pendente* a escrever *compatível*.
+The guides below are in Portuguese.
 
-- ✅ **Claude Code desktop e OpenAI Codex Desktop** carregaram o squad em sessões reais: boot, despacho de especialista e recusa de gate.
-- ✅ **O executor abriu uma sessão real do Codex** num projeto sintético: o agente implementou, e o runtime verificou o aceite rodando o teste nomeado. As pré-condições do ciclo foram montadas no fixture — não foi o pipeline completo. O executor do Claude Code nativo foi validado com a versão 2.1.234.
-- ✅ **Ciclo contra o GitHub real**: um PR, um merge e a confirmação pós-merge com recibo. Um merge cujo conteúdo não era o candidato aprovado foi recusado sem recibo e sem mudança de estado.
-- ✅ **Isolamento de contexto do Quality Engineer no Claude Code**, observado por sonda de despacho com braço de controle: ele não recebe a conversa nem o raciocínio de quem construiu. É isolamento de contexto, não sandbox — ele ainda compartilha o sistema de arquivos e o histórico do git.
-- ⏳ **Isolamento no Codex**: ainda não sondado. Até ser, o passe 2 fica bloqueado lá.
-- ⏳ **Tempo de entrega**: a estrutura (um PR, um merge, nada depois) é testada; o tempo de relógio ainda é hipótese.
-- ⏳ **macOS**: nunca executado.
+- **Get started** — [install](docs/install.md) · [compatibility](docs/compatibility.md)
+- **Understand** — [architecture](docs/architecture.md) · [delivery cycle](docs/workflow.md) · [why each rule exists](docs/protocol-rationale.md) · [known limits](docs/maintenance.md)
+- **The runtime** — [next step](docs/planning.md) · [resume and verification](docs/reliability.md) · [resilient execution](docs/resilient-execution.md) · [delivery reliability](docs/delivery-reliability.md) · [connected runtime](docs/runtime-connected.md)
+- **Existing projects** — [operational adoption](docs/operational-adoption.md) · [guided reconciliation](docs/guided-reconciliation.md)
+- **Roadmap** — [docs/ROADMAP.md](docs/ROADMAP.md)
 
-O registro completo, com o que rodou, onde e como, está em [docs/compatibility.md](docs/compatibility.md) e [docs/maintenance.md](docs/maintenance.md).
-
-## Estrutura do repositório
-
-Uma fonte, duas renderizações: `protocol/` é a única fonte autoritativa do squad, e o que o Claude Code e o Codex leem é **gerado** a partir dela e verificado no CI.
-
-| Caminho | Conteúdo |
-|---|---|
-| `protocol/` | O squad, neutro de fornecedor: as seções do protocolo e o corpo de cada papel. **Edite aqui.** |
-| `adapters/claude-code/`, `adapters/codex/` | O que é específico de cada fornecedor: tokens, ferramentas, metadados |
-| `CLAUDE.md`, `agents/`, `adapters/codex/dist/` | **Gerados.** Rode `npm run build`; nunca edite à mão |
-| `scripts/` | O runtime: a linha de comando abaixo e as bibliotecas em `scripts/lib/` |
-| `schemas/` | Os contratos estruturados: mudança, despacho, evidência, aprovação, adiamento, preparação e recibo |
-| `tests/`, `evals/` | Suíte determinística e avaliações com agentes reais em projetos sintéticos |
-| `console/`, `presence/` | As duas interfaces locais |
-| `bench/` | [Medição de performance](docs/performance.md), nunca autoridade para gates |
-| `docs/` | A documentação, abaixo |
-
-### O runtime na linha de comando
-
-| Comando | Para quê |
-|---|---|
-| `state.mjs` | A máquina de estados: abrir mudanças, registrar evidência e aprovações, transitar, [planejar o próximo passo](docs/planning.md) |
-| `tasks.mjs`, `bridge.mjs` | O executor: tarefas com dependências e orçamento, sessões supervisionadas, [execução resiliente](docs/resilient-execution.md) |
-| `work.mjs`, `verification.mjs`, `mutation-probe.mjs` | [Retomada e verificação](docs/reliability.md): checkpoints, plano de verificação, mutação em cópia descartável |
-| `prepare-closure.mjs`, `post-merge.mjs` | Preparar o fechamento na branch e [confirmar o merge com recibo](docs/workflow.md) |
-| `delivery.mjs` | [Confiabilidade de entrega](docs/delivery-reliability.md): a suíte inteira contra os cenários e o inventário de testes |
-| `retro.mjs` | Os sinais medidos de um PR integrado para a [retro do fechamento](docs/retros/README.md): CI, commits, Atrito e as assinaturas de achados conhecidas; `trends` diz quais achados voltaram e quais ficaram quietos |
-| `reports.mjs`, `evals.mjs` | [Diagnóstico, revisão e avaliações](docs/evolution.md) com agentes reais |
-| `adopt.mjs`, `reconcile.mjs` | [Adoção operacional](docs/operational-adoption.md) e [reconciliação guiada](docs/guided-reconciliation.md) de projetos existentes |
-| `capabilities.mjs` | O que o Claude Code ou o Codex de fato oferecem ao squad, e com que grau de certeza |
-| `install-codex.mjs` | O instalador para o Codex |
-
-## Desenvolvimento
-
-```bash
-npm ci --ignore-scripts   # dependência local do renderer do Presence
-npm run build             # regenera os artefatos a partir de protocol/
-npm run check             # deriva + integridade + suíte — o mesmo portão do CI
-```
-
-Contribuições são bem-vindas; leia o [guia de contribuição](CONTRIBUTING.md) antes de abrir um PR. Os artefatos que o squad produz nos projetos — specs, código, commits, cards — são em inglês. Tudo que chega a você é em português. Este repositório é a ferramenta, não um projeto do squad: a história dele é em português.
-
-## Documentação
-
-- **Começar** — [instalação, verificação, atualização e remoção](docs/install.md) · [compatibilidade](docs/compatibility.md)
-- **Entender** — [arquitetura](docs/architecture.md) · [ciclo de entrega](docs/workflow.md) · [manutenção e limites conhecidos](docs/maintenance.md)
-- **O runtime** — [próximo passo](docs/planning.md) · [retomada e verificação](docs/reliability.md) · [execução e avaliações](docs/evolution.md) · [execução resiliente](docs/resilient-execution.md) · [confiabilidade de entrega](docs/delivery-reliability.md) · [runtime conectado](docs/runtime-connected.md)
-- **Projetos existentes** — [adoção operacional](docs/operational-adoption.md) · [reconciliação guiada](docs/guided-reconciliation.md)
-- **Interfaces** — [Console](docs/console.md) · [Presence](docs/presence.md) · [voz Realtime](docs/presence-realtime.md)
-
-## Como o plugin evolui
-
-O [roadmap](docs/ROADMAP.md) registra a sequência aprovada de evolução do **Spectree Presence**: uma interface de conversa por voz com o Invoker e os especialistas. A versão **1.16.0** acrescenta voz opcional e conversa Realtime à sessão textual local com Codex. Nesta branch, a [P4.1](docs/presence-squad.md) acrescenta delegação por API textual local aos seis papéis; personagens e vozes dos subagentes permanecem nas próximas etapas.
-
-A [P2 conecta uma conversa por texto ao Codex local](docs/presence-codex.md): `npm run presence -- --codex`. Usa login ChatGPT existente e um canário próprio, sem abrir projetos consumidores.
-
-A [P3 acrescenta voz opcional por gravações](docs/presence-voice.md). O [modo Realtime](docs/presence-realtime.md) oferece conversa contínua nativa OpenAI, interrupção pela fala e consulta ao Codex local. Requer API de voz separada; canário real validado e experiência aceita pelo Founder em 2026-10-16. O guia registra os comandos, limites e saldo conservador dos ensaios.
-
-Um **projeto canário** roda a metodologia de verdade, sem ninguém segurando a mão. O que o canário faz de diferente do que está escrito é achado; achado vira PR aqui, nunca correção lá. Seis dos artefatos e regras deste repositório nasceram assim — o squad inventou a guarda antes de a metodologia tê-la, e a metodologia a adotou.
-
-## Licença
+## License
 
 [MIT](LICENSE) © 2026 Spectree Tecnologia
