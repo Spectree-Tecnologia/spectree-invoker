@@ -62,7 +62,7 @@ The squad says what has to happen. The runtime makes sure it did. It never pushe
 
 **Evidence bound to content.** Every result (a test, a CI run, a QA attack) is recorded with the revision it ran at and two digests: the **contract** digest (the approved proposal and delta) and the **content** digest (the git tree plus every uncommitted change). At each transition the runtime recomputes both from disk, never from the record. A test that passed before an edit is worthless after it: `E_STALE_EVIDENCE`, `E_CONTENT_CHANGED`, `E_CONTRACT_CHANGED`.
 
-**A state machine that refuses.** A change moves through 12 states, from `draft` to `closed`, always to the next one and never skipping. Each state demands its own evidence, and an agent's report is never evidence (`E_SELF_REPORT_ONLY`). Being blocked is no shortcut: leaving `blocked` re-checks the requirements of the state it came from. There are 22 stable refusal codes.
+**A state machine that refuses.** A change moves through 12 states, from `draft` to `closed`, always to the next one and never skipping, except that a deltaless change has no pass 1. Each state names the evidence and approvals it requires, and an agent's report is never evidence (`E_SELF_REPORT_ONLY`). Being blocked is no shortcut: leaving `blocked` re-checks the requirements of the state it came from. There are 22 stable refusal codes.
 
 **A living spec, changed by delta.** The system's behaviour lives in `docs/specs/<module>/spec.md`, which nobody edits by hand. A change carries a **delta**: only what is added (`ADDED`), changed (`MODIFIED`), removed (`REMOVED`) or renamed (`RENAMED`). Each `Requirement` has exactly one `SHALL` and at least one **`Scenario`** — a Given/When/Then case observable from outside, which becomes a test. The delta is merged into the living spec at closure, on the change's own branch, before the merge.
 
@@ -97,7 +97,7 @@ Roles follow three boundaries with physical consequences — **blast radius**, *
 | **Full Stack Developer** ×N | the module, with the tests proving each `Scenario` | one per module, in parallel |
 | **Quality Engineer** | a failing test, never an opinion | adversarial, in an isolated context |
 | **Platform Engineer** | branch, CI, database, migration, merge and deploy | the only one with blast radius over git, database and production |
-| **Integration Engineer** | a fact about an external system, with a cited source | the only one with network access; writes nothing |
+| **Integration Engineer** | a fact about an external system, with a cited source | the general route to the network; writes nothing |
 | **TypeSafe Engineer** | typed judgments and a measured calibration | **optional and paid**: only when the approved stack includes TypeSafe |
 
 The boundaries are a protocol mandate plus after-the-fact verification of the paths each agent touched. They are not an operating-system sandbox, and this README does not promise one.
@@ -121,14 +121,14 @@ flowchart LR
     subgraph I["3 · Integrate"]
         direction TB
         I1[Pass 2 · attack and<br/>scope audit<br/><i>Quality Engineer</i>] --> I2[CI green]
-        I2 --> G3{{Gate 3 · integration<br/>approval}}
+        I2 --> G3{{Integration<br/>approval}}
         G3 --> I3[One merge]
         I3 --> I4([Receipt → closed])
     end
     D --> B2 --> I
 ```
 
-Gate 2 is not drawn because it only exists when a `Scenario` cannot become a test. Deploy and first internet exposure are a separate gate 3, after `closed`. The full cycle, with every rule and the reason behind it: [docs/workflow.md](docs/workflow.md).
+Gate 2 is not drawn because it only exists when a `Scenario` cannot become a test. The integration approval is gate 3 applied to `main`; deploy and first internet exposure are a gate of their own, after `closed`. The full cycle, with every rule and the reason behind it: [docs/workflow.md](docs/workflow.md).
 
 ## Built for modular monoliths
 

@@ -81,7 +81,7 @@ Record each as evidence with `source_kind: observed_execution` and the harness v
 
 ## Deliberate non-goals
 
-No network service of its own, no external telemetry, no database, no cloud integration, and no
+No hosted service, no external telemetry, no database, no cloud integration, and no
 mandatory paid API. The [Console](console.md) and the Invoker panel are local, and neither sits on
 the path of a gate; the panel's `mcp__spectree__plan` tool lives inside the Claude Code session. The squad is not bound to any model: the model is the user's configuration,
 the harness is the execution mechanism, and neither is named in `protocol/`.
