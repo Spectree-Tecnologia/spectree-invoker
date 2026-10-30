@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 124,
+    "title": "Correção dos achados da auditoria de código (D-027, D-028, D-029), retro de auditoria-de-codigo (tarefa 52) — v1.91.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/124",
+    "opened": "2026-10-30T00:07:54Z",
+    "merged": "2026-10-30T00:41:16Z"
+  },
+  "signals": {
+    "open_minutes": 33,
+    "commits": 4,
+    "ci_heads": 4,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.91.0",
+    "archived": [
+      "docs/changes/archive/2026-10-30-auditoria-correcoes/proposal.md"
+    ]
+  },
+  "friction": "- D-027 a D-029 continuam abertos, porque fechar exige evidência observada (D-009). Também seguem devidos:\n  - no D-027, escrever sem seguir link;\n  - no D-028, recusar ou marcar `source_kind: observed_execution` na importação.\n- O teste do D-029 roda em POSIX. No Windows a ordem de busca continua não observada, e a correção não depende dela.\n- O classificador recusou o push com `--force-with-lease`. O push simples bastou, porque era fast-forward.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01HmcdNJVDF9kc3t86gLg12N",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}
