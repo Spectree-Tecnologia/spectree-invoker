@@ -241,7 +241,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Entregue pela mudança auditoria-correcoes: install-codex recusa, já no dry run, todo componente symlink entre a raiz do projeto e cada destino, e tests/security-audit-fixes.test.mjs (AGENTS.md e .spectree como links) falha em 68e6aeb e passa depois. Continua aberto só porque fechar exige evidência observada, que este repositório ainda não registra (D-009).
+- Decision: Entregue pela mudança auditoria-correcoes: install-codex recusa, já no dry run, todo componente symlink entre a raiz do projeto e cada destino, e tests/security-audit-fixes.test.mjs (AGENTS.md e .spectree como links) falha em 68e6aeb e passa depois. Ainda devido: a escrita continua seguindo links (mkdirSync, writeFileSync e cpSync), então um link criado entre a checagem e a escrita ainda a desvia; escrever sem seguir link, como install-console, segue na condição de fechamento. E fechar exige evidência observada, que este repositório ainda não registra (D-009).
 - Due: A próxima change de correção de segurança, ou o primeiro relato de escrita fora do projeto num consumidor, ou o primeiro ambiente de um projeto na internet
 - Closure condition: install-codex recusa symlink em todo componente existente entre a raiz do projeto e cada destino, escreve sem seguir link como install-console, e um teste com AGENTS.md e .spectree como links falha antes e passa depois.
 

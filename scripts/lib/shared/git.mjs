@@ -18,16 +18,19 @@ export function gitExecutable(root, env = process.env) {
   const key = `${tree}\0${env.PATH ?? env.Path ?? ''}\0${env.PATHEXT ?? ''}`;
   if (found.has(key)) return found.get(key);
   const names = win ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean).map((e) => `git${e.toLowerCase()}`) : ['git'];
+  // Compared after resolving links: a PATH entry, or a git in it, that links into the project is the project.
+  const outside = (p) => {
+    const rel = relative(win ? tree.toLowerCase() : tree, win ? real(p).toLowerCase() : real(p));
+    return isAbsolute(rel) || rel === '..' || rel.startsWith(`..${sep}`);
+  };
   for (const entry of (env.PATH ?? env.Path ?? '').split(delimiter)) {
     const dir = win ? entry.replace(/^"(.*)"$/, '$1') : entry;
     if (!dir || !isAbsolute(dir)) continue;
-    // Compared after resolving links: an entry that is a link into the project is the project.
-    const rel = relative(win ? tree.toLowerCase() : tree, win ? real(dir).toLowerCase() : real(dir));
-    if (!isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${sep}`)) continue;
+    if (!outside(dir)) continue;
     for (const name of names) {
       const file = join(dir, name);
       try {
-        if (!statSync(file).isFile()) continue;
+        if (!statSync(file).isFile() || !outside(file)) continue;
         if (!win) accessSync(file, constants.X_OK);
         else if (!['.exe', '.com'].includes(extname(file).toLowerCase())) continue;
         found.set(key, file);

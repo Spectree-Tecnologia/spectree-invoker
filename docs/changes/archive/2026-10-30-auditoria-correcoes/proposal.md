@@ -40,6 +40,7 @@ tarefa 51 com dono `own_change`:
 
 ## O que esta mudança deve e não paga
 
+- D-027: a checagem roda antes da escrita, que ainda segue links; escrever sem seguir link fica devido.
 - D-027 a D-029 continuam abertos: fechar exige evidência observada, que este repositório ainda não
   registra (D-009). A entrega e o teste estão citados em cada um.
 - Desvio no D-028: a condição pedia também recusar `source_kind: observed_execution`. Ficou aceito

@@ -1,5 +1,5 @@
 // The three findings of the first code audit (D-027, D-028, D-029), each pinned by a test that
-// fails on the code the audit read (fa64575) and passes on the fix.
+// fails on the base of the fix (68e6aeb) and passes on the fix.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
