@@ -1,7 +1,7 @@
 // One way to ask git for text. Output is captured whole (64 MiB) and stderr is piped, so a failure
 // throws with git's own message instead of leaking it onto the caller's terminal.
 import { execFileSync } from 'node:child_process';
-import { accessSync, constants, statSync } from 'node:fs';
+import { accessSync, constants, realpathSync, statSync } from 'node:fs';
 import { delimiter, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 /**
@@ -13,13 +13,16 @@ import { delimiter, extname, isAbsolute, join, relative, resolve, sep } from 'no
 const found = new Map();
 export function gitExecutable(root, env = process.env) {
   const win = process.platform === 'win32';
-  const tree = resolve(root);
+  const real = (p) => { try { return realpathSync(p); } catch { return resolve(p); } };
+  const tree = real(root);
   const key = `${tree}\0${env.PATH ?? env.Path ?? ''}\0${env.PATHEXT ?? ''}`;
   if (found.has(key)) return found.get(key);
   const names = win ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean).map((e) => `git${e.toLowerCase()}`) : ['git'];
-  for (const dir of (env.PATH ?? env.Path ?? '').split(delimiter)) {
+  for (const entry of (env.PATH ?? env.Path ?? '').split(delimiter)) {
+    const dir = win ? entry.replace(/^"(.*)"$/, '$1') : entry;
     if (!dir || !isAbsolute(dir)) continue;
-    const rel = relative(tree, resolve(dir));
+    // Compared after resolving links: an entry that is a link into the project is the project.
+    const rel = relative(win ? tree.toLowerCase() : tree, win ? real(dir).toLowerCase() : real(dir));
     if (!isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${sep}`)) continue;
     for (const name of names) {
       const file = join(dir, name);

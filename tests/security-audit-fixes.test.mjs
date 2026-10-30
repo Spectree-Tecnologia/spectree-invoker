@@ -71,10 +71,19 @@ test('D-029: git is never resolved from the project directory, even when PATH na
     const head = git(repo, ['rev-parse', 'HEAD'], { env }).trim();
     assert.match(head, /^[0-9a-f]{40}$/, 'the real git answered');
     assert.equal(existsSync(join(repo, 'planted.txt')), false, 'the planted binary never ran');
+
+    // An absolute PATH entry that is a link into the project is the project too.
+    const outside = tempDir('spectree-pathlink-');
+    try {
+      symlinkSync(repo, join(outside, 'bin'));
+      const linked = { ...process.env, PATH: `${join(outside, 'bin')}${delimiter}${process.env.PATH}` };
+      git(repo, ['rev-parse', 'HEAD'], { env: linked });
+      assert.equal(existsSync(join(repo, 'planted.txt')), false, 'nor through a linked PATH entry');
+    } finally { cleanup(outside); }
   } finally { cleanup(repo); }
 });
 
 test('D-029: the Console observation spawns git only through the resolved executable', () => {
   const src = readFileSync(join(REPO, 'scripts/lib/console/observation.mjs'), 'utf8');
-  assert.doesNotMatch(src, /execFileSync\('git'/, 'no bare git spawn left in the observation');
+  assert.doesNotMatch(src, /\b(?:execFileSync|execFile|spawnSync|spawn|execSync|exec)\(\s*['"`]git/, 'no bare git spawn left in the observation');
 });

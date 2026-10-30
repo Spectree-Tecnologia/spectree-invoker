@@ -250,7 +250,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Entregue pela mudança auditoria-correcoes: record-evidence recusa code_fingerprint e neutral_paths além de fingerprint e contract_digest, então um documento importado não chega mais ao caminho carried; tests/security-audit-fixes.test.mjs falha em 68e6aeb e passa depois. Desvio: source_kind observed_execution continua aceito na importação, porque o documento sai marcado como importado e sem binding não conta (tests/cli-cycle.test.mjs fixa isso). Continua aberto só porque fechar exige evidência observada (D-009).
+- Decision: Entregue pela mudança auditoria-correcoes: record-evidence recusa code_fingerprint e neutral_paths além de fingerprint e contract_digest, então um documento importado não chega mais ao caminho carried; tests/security-audit-fixes.test.mjs falha em 68e6aeb e passa depois. Desvio, ainda devido: source_kind observed_execution continua aceito na importação (tests/cli-cycle.test.mjs fixa isso). O documento é gravado como veio, só com um aviso, e ainda conta nos gates que não exigem evidência fresca e na checagem de frescor só por revisão, quando quem chama não passa digest de conteúdo. O que esta mudança tirou foi o caminho carried; a recusa do source_kind, ou a marca de importado, segue como condição de fechamento. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: A próxima change de correção de segurança, ou a próxima mudança que tocar state.mjs record-evidence, ou o primeiro ambiente de um projeto na internet
 - Closure condition: record-evidence recusa code_fingerprint, neutral_paths e source_kind observed_execution, e um teste que importa um ci.green com o code_fingerprint atual falha antes e passa depois.
 
@@ -259,7 +259,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Entregue pela mudança auditoria-correcoes: o helper de git e a observação do Console resolvem git para um caminho absoluto fora do projeto (só entradas absolutas do PATH; no Windows só .exe ou .com), e tests/security-audit-fixes.test.mjs planta git na raiz com PATH apontando para ela e mostra que ele nunca roda, falhando em 68e6aeb. Sem Windows na rodada, a ordem de busca do libuv segue não observada, e não importa mais. Continua aberto só porque fechar exige evidência observada (D-009).
+- Decision: Entregue pela mudança auditoria-correcoes: o helper de git e a observação do Console resolvem git para um caminho absoluto fora do projeto (só entradas absolutas do PATH; no Windows só .exe ou .com), e tests/security-audit-fixes.test.mjs planta git na raiz com PATH apontando para ela e mostra que ele nunca roda, falhando em 68e6aeb. A correção cobre o helper git() e a observação do Console; as outras execuções de git puro continuam no D-030. Sem Windows na rodada, a ordem de busca do libuv segue não observada, e não importa mais. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: Validação num Windows descartável, ou a próxima change de correção de segurança, ou o primeiro ambiente de um projeto na internet
 - Closure condition: A observação e o helper de git resolvem git para um caminho absoluto fora do projeto, e um teste que planta git na raiz do projeto mostra que ele nunca roda, ou a validação no Windows mostra que o cwd não é buscado.
 
@@ -268,7 +268,7 @@
 - Status: open
 - Owner: own_change
 - Impact: ceiling
-- Decision: O piloto quick da auditoria security-audit (fa64575) deixou três unidades adiadas pelo crítico: as demais execuções de git puro sobre raízes de projeto fora do Console (variantes do D-029), os comandos declarados pelo projeto e o launcher, e adopt, reconcile e migrate-closure, onde há join sem inside(). Fica fora porque o perfil quick roda uma onda só. A próxima rodada parte destas três unidades.
+- Decision: O piloto quick da auditoria security-audit (fa64575) deixou três unidades adiadas pelo crítico: as demais execuções de git puro sobre raízes de projeto fora do Console (variantes do D-029), os comandos declarados pelo projeto e o launcher, e adopt, reconcile e migrate-closure, onde há join sem inside(). Fica fora porque o perfil quick roda uma onda só. A próxima rodada parte destas três unidades. Levantamento da revisão do #124: git puro com a raiz do projeto ainda em closure/closure-prep.mjs, closure/post-merge.mjs, closure/prepare.mjs, evidence/diff.mjs, change/work.mjs, execution/task-executor.mjs e capabilities.mjs (este com -C); o gitExecutable do helper compartilhado é a correção pronta para eles.
 - Due: A próxima rodada da auditoria de código, ou o gate de exposição de um projeto que rode o runtime do squad
 - Closure condition: Uma rodada da auditoria cobre as três unidades, com o ledger validado e cada candidato decidido por um verificador independente.
 

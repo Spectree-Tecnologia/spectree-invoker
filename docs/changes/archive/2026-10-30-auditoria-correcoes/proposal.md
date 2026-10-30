@@ -42,8 +42,11 @@ tarefa 51 com dono `own_change`:
 
 - D-027 a D-029 continuam abertos: fechar exige evidência observada, que este repositório ainda não
   registra (D-009). A entrega e o teste estão citados em cada um.
-- Desvio no D-028: a condição pedia também recusar `source_kind: observed_execution`. Ficou aceito,
-  porque o documento sai marcado como importado e, sem binding, não conta para nenhuma transição;
-  `tests/cli-cycle.test.mjs` fixa esse comportamento.
+- Desvio no D-028: a condição pedia também recusar `source_kind: observed_execution`. Ficou aceito
+  (`tests/cli-cycle.test.mjs` fixa isso). O documento é gravado como veio e ainda conta nos gates que
+  não exigem evidência fresca; esta mudança tirou só o caminho `carried`. O resto segue devido no
+  D-028.
+- O D-029 foi corrigido no helper `git()` e na observação do Console. Outras sete execuções de `git`
+  puro sobre a raiz do projeto, levantadas na revisão, estão listadas no D-030.
 - O teste do D-029 roda em POSIX. No Windows, a ordem de busca do libuv segue não observada; a
   correção não depende dela, porque o spawn recebe um caminho absoluto.
