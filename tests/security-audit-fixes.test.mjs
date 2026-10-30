@@ -79,6 +79,13 @@ test('D-029: git is never resolved from the project directory, even when PATH na
       const linked = { ...process.env, PATH: `${join(outside, 'bin')}${delimiter}${process.env.PATH}` };
       git(repo, ['rev-parse', 'HEAD'], { env: linked });
       assert.equal(existsSync(join(repo, 'planted.txt')), false, 'nor through a linked PATH entry');
+
+      // Nor a git in an outside PATH entry that is itself a link to the planted one.
+      mkdirSync(join(outside, 'real'));
+      symlinkSync(join(repo, 'git'), join(outside, 'real', 'git'));
+      const viaFile = { ...process.env, PATH: `${join(outside, 'real')}${delimiter}${process.env.PATH}` };
+      git(repo, ['rev-parse', 'HEAD'], { env: viaFile });
+      assert.equal(existsSync(join(repo, 'planted.txt')), false, 'nor through a linked git file');
     } finally { cleanup(outside); }
   } finally { cleanup(repo); }
 });
