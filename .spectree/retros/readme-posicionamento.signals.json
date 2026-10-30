@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "repo": "Spectree-Tecnologia/spectree-invoker",
+  "pr": {
+    "number": 125,
+    "title": "README e About que descrevem a tecnologia, retro de auditoria-correcoes (tarefa 53) — v1.92.0",
+    "url": "https://github.com/Spectree-Tecnologia/spectree-invoker/pull/125",
+    "opened": "2026-10-30T01:41:57Z",
+    "merged": "2026-10-30T01:46:00Z"
+  },
+  "signals": {
+    "open_minutes": 4,
+    "commits": 3,
+    "ci_heads": 1,
+    "ci_runs_complete": true,
+    "ci_red": [],
+    "base_merges": 0,
+    "review_comments": 0,
+    "comments": 0,
+    "friction": "present",
+    "release": "v1.92.0",
+    "archived": [
+      "docs/changes/archive/2026-10-30-readme-posicionamento/proposal.md"
+    ]
+  },
+  "friction": "- A pesquisa rodou num clone raso e sem tags, então a contagem de commits e tags não foi conferida.\n- Os guias em `docs/` continuam em português. O README avisa isso.\n- O nome \"Invoker\" e os nomes Quas, Wex e Exort lembram um jogo. Ninguém conferiu marca registrada.\n- Ficou fora o GIF do runtime recusando um \"pronto\" sem prova, que seria a melhor imagem possível.",
+  "candidates": [],
+  "meaning": "Measured signals and matched signatures only. A candidate is not a finding until the retro judges it, and an empty list is not a clean change."
+}

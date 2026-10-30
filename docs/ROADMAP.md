@@ -120,6 +120,7 @@ proposta dela; os adiamentos que ela resolve estão em [DEFERRED.md](DEFERRED.md
 | 51 | Auditoria de código com a skill da Cloudflare | Integrada, v1.90.0: a `security-audit` referenciada e fixada em commit, fora do caminho padrão, com o Quality Engineer dono do resultado e o gate de exposição mostrando a última rodada, [proposta](changes/archive/2026-10-29-auditoria-de-codigo/proposal.md) | D-027 a D-030 (registrados) |
 | 52 | Correção dos achados da auditoria | Integrada, v1.91.0: o instalador do Codex recusa symlink no caminho, `record-evidence` recusa os campos de binding de uma execução e o git é resolvido fora do projeto, cada um com teste que falhava antes, [proposta](changes/archive/2026-10-30-auditoria-correcoes/proposal.md) | D-027 a D-029 entregues, abertos por D-009 |
 | 53 | README e About que descrevem a tecnologia | Integrada, v1.92.0: README em inglês com a tese da prova na primeira tela, o mascote, para quem não é e comprovado contra pendente; uma descrição só em `package.json`, `plugin.json` e `marketplace.json`; `compatibility.md` sem contagens velhas, [proposta](changes/archive/2026-10-30-readme-posicionamento/proposal.md) | — |
+| 54 | README sem a seção do que está comprovado | Integrada, v1.93.0: o README perde "What is proven — and what is not"; o registro segue em `compatibility.md` e `maintenance.md`, [proposta](changes/archive/2026-10-30-readme-sem-comprovado/proposal.md) | — |
 
 ## Itens com aprovação permanente
 
@@ -133,6 +134,7 @@ política, Seção 8 do protocolo). O merge continua pedindo a autorização do 
 
 ## Histórico de decisões
 
+- **2026-10-30:** Founder pediu para tirar do README a seção do que está comprovado e do que não está (tarefa 54).
 - **2026-10-30:** Founder pediu README e About que representem a tecnologia, escolheu o inglês e autorizou a mudança (tarefa 53).
 - **2026-10-29:** Founder escolheu corrigir os achados A, B e C da auditoria numa change separada, depois da tarefa 51 (tarefa 52).
 - **2026-10-29:** Founder pediu a skill `security-audit` da Cloudflare no squad e autorizou o piloto e a mudança (tarefa 51).
