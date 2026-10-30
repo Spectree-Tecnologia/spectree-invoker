@@ -241,7 +241,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Achado pela auditoria de código security-audit (piloto quick em fa64575, registro install-codex:lexical-containment-follows-consumer-symlinks), mantido como needs_validation pelo verificador independente; sem sandbox, nada foi executado. scripts/install-codex.mjs confere a contenção só pelo texto do caminho (contained(), linha 48) e escreve com writeFileSync, mkdirSync e cpSync, que seguem links. Um AGENTS.md ou .spectree/.codex/.agents commitado como symlink leva a escrita para fora do projeto: o ponteiro é acrescentado ao alvo com --apply simples, e installed.json e os arquivos copiados caem no alvo do link. O conteúdo é do pacote, então o efeito é integridade de arquivos do operador e instalação global não pedida. Fica fora porque esta mudança só referencia a skill de auditoria; a correção é uma change própria com teste falhando antes.
+- Decision: Entregue pela mudança auditoria-correcoes: install-codex recusa, já no dry run, todo componente symlink entre a raiz do projeto e cada destino, e tests/security-audit-fixes.test.mjs (AGENTS.md e .spectree como links) falha em 68e6aeb e passa depois. Continua aberto só porque fechar exige evidência observada, que este repositório ainda não registra (D-009).
 - Due: A próxima change de correção de segurança, ou o primeiro relato de escrita fora do projeto num consumidor, ou o primeiro ambiente de um projeto na internet
 - Closure condition: install-codex recusa symlink em todo componente existente entre a raiz do projeto e cada destino, escreve sem seguir link como install-console, e um teste com AGENTS.md e .spectree como links falha antes e passa depois.
 
@@ -250,7 +250,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Achado pela auditoria de código security-audit (piloto quick em fa64575, registro state-import-code-fingerprint-carried-freshness), mantido como needs_validation pelo verificador independente; sem sandbox, nada foi executado. state.mjs record-evidence recusa fingerprint, contract_digest e observed_ci_run, mas aceita code_fingerprint, neutral_paths e source_kind observed_execution. measuredOn trata o code_fingerprint igual como frescor carregado e observedHere confia no source_kind, então um ci.green importado leva a change a ci_green sem CI nem suíte observada, contra docs/install.md e a regra de nunca aceitar um verde não observado. Limitado pela aprovação de integração humana, pelo pass2.attack ligado ao contrato e pelo recibo pós-merge. Fica fora pelo mesmo motivo do D-027.
+- Decision: Entregue pela mudança auditoria-correcoes: record-evidence recusa code_fingerprint e neutral_paths além de fingerprint e contract_digest, então um documento importado não chega mais ao caminho carried; tests/security-audit-fixes.test.mjs falha em 68e6aeb e passa depois. Desvio: source_kind observed_execution continua aceito na importação, porque o documento sai marcado como importado e sem binding não conta (tests/cli-cycle.test.mjs fixa isso). Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: A próxima change de correção de segurança, ou a próxima mudança que tocar state.mjs record-evidence, ou o primeiro ambiente de um projeto na internet
 - Closure condition: record-evidence recusa code_fingerprint, neutral_paths e source_kind observed_execution, e um teste que importa um ci.green com o code_fingerprint atual falha antes e passa depois.
 
@@ -259,7 +259,7 @@
 - Status: open
 - Owner: own_change
 - Impact: defect
-- Decision: Achado pela auditoria de código security-audit (piloto quick em fa64575, registro console-observation:windows-git-resolved-from-project-cwd), mantido como needs_validation pelo verificador independente; sem sandbox, nada foi executado. scripts/lib/console/observation.mjs (linhas 29, 32 e 35) e scripts/lib/shared/git.mjs:12 executam git pelo nome puro com cwd na raiz do projeto registrado. Se o Windows procura o executável no cwd antes do PATH, um git.exe commitado num repositório não confiável roda com os privilégios do operador antes das recusas de fsmonitor e filtros. launch.mjs já resolve só pelo PATH, mas a observação não o usa. O fato decisivo (ordem de busca do libuv no Windows) não está no código e não havia Windows na rodada.
+- Decision: Entregue pela mudança auditoria-correcoes: o helper de git e a observação do Console resolvem git para um caminho absoluto fora do projeto (só entradas absolutas do PATH; no Windows só .exe ou .com), e tests/security-audit-fixes.test.mjs planta git na raiz com PATH apontando para ela e mostra que ele nunca roda, falhando em 68e6aeb. Sem Windows na rodada, a ordem de busca do libuv segue não observada, e não importa mais. Continua aberto só porque fechar exige evidência observada (D-009).
 - Due: Validação num Windows descartável, ou a próxima change de correção de segurança, ou o primeiro ambiente de um projeto na internet
 - Closure condition: A observação e o helper de git resolvem git para um caminho absoluto fora do projeto, e um teste que planta git na raiz do projeto mostra que ele nunca roda, ou a validação no Windows mostra que o cwd não é buscado.
 

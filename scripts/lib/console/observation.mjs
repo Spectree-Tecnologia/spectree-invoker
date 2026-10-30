@@ -3,7 +3,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import { readdirSync, existsSync, lstatSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { identifier } from '../change/index.mjs';
-import { inside, refuse, observeProcesses } from '../shared/index.mjs';
+import { inside, refuse, observeProcesses, gitExecutable } from '../shared/index.mjs';
 import { taskStatus } from '../execution/index.mjs';
 import { diagnoseProject } from '../closure/index.mjs';
 
@@ -25,14 +25,14 @@ function preflight(root, candidate = true) {
   if (!candidate) return;
   // Git status can invoke fsmonitor and hashing can invoke clean/process filters.
   // Refuse executable configuration rather than running project-specific helpers from a read UI.
-  let config;
-  try { config = execFileSync('git', ['config', '--null', '--list'], { cwd: root, encoding: 'utf8', timeout: 5000, maxBuffer: 1024 * 1024, windowsHide: true }); }
+  let config, gitBin;
+  try { gitBin = gitExecutable(root); config = execFileSync(gitBin, ['config', '--null', '--list'], { cwd: root, encoding: 'utf8', timeout: 5000, maxBuffer: 1024 * 1024, windowsHide: true }); }
   catch { refuse('E_OBSERVATION_GIT', 'Git configuration could not be inspected.'); }
   if (config.split('\0').some(s => /^core\.fsmonitor\n(?!false$|0$|$)/i.test(s))) refuse('E_OBSERVATION_HELPER', 'Git fsmonitor requires inspection outside the Console.');
-  const paths = [...new Set([...metadata, ...execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8', timeout: 5000, maxBuffer: 4 * 1024 * 1024, windowsHide: true }).split('\0').filter(Boolean)])];
+  const paths = [...new Set([...metadata, ...execFileSync(gitBin, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root, encoding: 'utf8', timeout: 5000, maxBuffer: 4 * 1024 * 1024, windowsHide: true }).split('\0').filter(Boolean)])];
   if (paths.length > 50000) refuse('E_OBSERVATION_LIMIT', 'Candidate exceeds observation limits.');
   if (paths.length) {
-    const attrs = execFileSync('git', ['check-attr', '-z', '--stdin', 'filter'], { cwd: root, input: paths.join('\0') + '\0', encoding: 'utf8', timeout: 5000, maxBuffer: 8 * 1024 * 1024, windowsHide: true }).split('\0');
+    const attrs = execFileSync(gitBin, ['check-attr', '-z', '--stdin', 'filter'], { cwd: root, input: paths.join('\0') + '\0', encoding: 'utf8', timeout: 5000, maxBuffer: 8 * 1024 * 1024, windowsHide: true }).split('\0');
     for (let i = 2; i < attrs.length; i += 3) {
       const filter = attrs[i];
       if (['unspecified', 'unset'].includes(filter)) continue;
