@@ -144,7 +144,7 @@ A module is a business capability, never a layer: a pure domain package with no 
 
 `protocol/` is the squad's single source and names no model or harness. What Claude Code reads (`CLAUDE.md`, `agents/`) and what Codex reads (a skill and TOML agents) is **generated** from it deterministically, and CI fails if anything drifts or if the rendered core loses one of the listed rules.
 
-The squad runs on Claude Code's and Codex's native authentication: no API key, no paid API, no server. The runtime has zero npm dependencies. The only paid exception is opt-in and named: the TypeSafe Engineer is dispatched only when you approve a stack that includes TypeSafe.
+The squad runs on Claude Code's and Codex's native authentication: no API key, no paid API, no hosted server. The runtime has zero npm dependencies. The squad's only paid exception is opt-in and named: the TypeSafe Engineer is dispatched only when you approve a stack that includes TypeSafe. Presence voice, outside the squad, is the other one (see Local interfaces).
 
 ## Who it is not for
 
