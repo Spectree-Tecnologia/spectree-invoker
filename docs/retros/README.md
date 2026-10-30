@@ -52,9 +52,11 @@ lugar; cada correção entra por uma mudança própria.
 | R-020 | `review-standards · proposta · heuristica-antes-do-desenho-exato` | 1 | Aberto: no #119, a busca por candidatos com limite caiu em três rodadas de revisão antes da localização exata |
 | R-021 | `automated-checks · executor · guarda-testada-so-na-funcao` | 1 | Aberto: no #121, a recusa `E_PASS2_UNRECORDED` foi testada só em `startWork`, e o caminho do executor gastava uma tentativa antes de recusar |
 | R-022 | `tool-economy · push · classificador-recusa-push` | 2 | Fora do projeto, registrado: o classificador da sessão recusou um push no #122 e outro no #124 |
+| R-023 | `information-access · readme · sem-leitura-antes-do-merge` | 1 | Aberto: no #125 o Founder tirou uma seção do README minutos depois do merge; primo do R-011 |
 
 ## Retros
 
+- [2026-10-30 — `readme-posicionamento` (#125)](2026-10-30-readme-posicionamento.md)
 - [2026-10-30 — `auditoria-correcoes` (#124)](2026-10-30-auditoria-correcoes.md)
 - [2026-10-30 — `auditoria-de-codigo` (#122)](2026-10-30-auditoria-de-codigo.md)
 - [2026-10-29 — `regra-multi-caminho` (#123)](2026-10-29-regra-multi-caminho.md)

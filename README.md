@@ -162,32 +162,6 @@ The Invoker is heavier than a lightweight spec framework, on purpose. It pays th
 | lean orchestration against context rot | GSD | a living spec by delta, a merge receipt and module boundaries in CI |
 | an IDE with executable specs | Kiro | runs on Claude Code and Codex, no credits and no IDE of its own |
 
-## What is proven — and what is not
-
-This repository would rather write *implemented, real-world validation pending* than *compatible*. `capabilities.mjs` marks each harness capability as VERIFIED, DECLARED or UNKNOWN, without testing a permission by exercising it.
-
-**Observed in real runs**
-
-- ✅ **Claude Code desktop** loaded the squad, reported the state read from disk and refused to invent a first change.
-- ✅ **OpenAI Codex Desktop** (Windows) discovered the skill, dispatched a native specialist, and the gate refused with `E_MISSING_APPROVAL`, on native authentication and with no API key.
-- ✅ **A cycle against real GitHub**, on a disposable repository: one PR closed with a receipt; one PR with a commit pushed after approval refused without a receipt; one PR refused with CI in progress and then with CI red.
-- ✅ **Quality Engineer context isolation on Claude Code**, observed by a probe with a control arm. It is context isolation, not a sandbox: the QE still shares the file system, git history and model, and its prompt is written by the Invoker.
-- ✅ **Supervised executor**: opened a real Codex session in a synthetic project and verified acceptance by running the named test (preconditions set up in the fixture, not the full pipeline); the native Claude Code executor was validated on version 2.1.234.
-- ✅ **Real consumer projects** run the methodology, and many recent versions came from incidents measured there; this repository archives its own changes, keeps the deferral ledger and runs a retro on every closure.
-
-**Tested in the deterministic suite** — state machine, digests, receipt, recovery from processes killed mid-write, strict TAP parsing, concurrency between two processes, module boundaries. `npm run check` runs it, the same gate as CI; the Presence tests need `npm ci --ignore-scripts` first.
-
-**Pending**
-
-- ⏳ **Context isolation on Codex**: never probed, and the harness identity comes out as UNKNOWN. Until it is, pass 2 stays blocked on Codex.
-- ⏳ **A full pipeline**, from exploration to `closed`, driven by real agents in a consumer project and recorded end to end.
-- ⏳ **Delivery time**: the structure (one PR, one merge, nothing after) is tested; wall-clock savings are not promised.
-- ⏳ **macOS**: never run.
-- ⏳ **Invoker panel**: depends on Claude Code function hooks in early access; there is no compatibility line saying which versions load it.
-- ⏳ Squash, rebase and merge queues are **not supported**, and the runtime says so.
-
-Full record: [docs/compatibility.md](docs/compatibility.md) and [docs/maintenance.md](docs/maintenance.md).
-
 ## Local interfaces
 
 None of them sits on the gate path: they show, they do not decide.

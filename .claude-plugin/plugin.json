@@ -1,7 +1,7 @@
 {
   "name": "spectree",
   "description": "A runtime that refuses to call work done until a command proves it: evidence bound to a content digest, isolated adversarial QA, a post-merge receipt and only three human gates. An agent squad for Claude Code and Codex, built for spec-driven modular monoliths.",
-  "version": "1.92.0",
+  "version": "1.93.0",
   "author": {
     "name": "Spectree Tecnologia"
   },
